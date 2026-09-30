@@ -2,13 +2,14 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ChevronDown, Search, User } from "lucide-react";
+import { ChevronDown, IdCard, Swords, Users, BookMarked, User, House } from "lucide-react";
 
 const MENU = [
-  { label: "Mis personajes" },
-  { label: "Mis campañas" },
-  { label: "Social" },
-  { label: "Sistemas" },
+  { label: "Inicio", icon: House },  
+  { label: "Mis personajes", icon: IdCard },
+  { label: "Mis campañas", icon: Swords },
+  { label: "Social", icon: Users },
+  { label: "Sistemas", icon: BookMarked }
 ];
 
 export default function Navbar() {
@@ -27,11 +28,12 @@ export default function Navbar() {
 
         {/* Navegación principal (Oculta en móviles, visible en escritorio) */}
         <nav className="hidden md:flex items-center gap-6" aria-label="Menú principal">
-          {MENU.map(({ label }) => (
+          {MENU.map(({ label, icon: Icon }) => (
             <button 
               key={label} 
               className="flex items-center gap-1 text-[13px] font-bold tracking-wide text-gray-200 hover:text-white uppercase transition-colors"
             >
+              <Icon size={16} className="text-gray-400" aria-hidden="true"/>
               {label}
               <ChevronDown size={14} className="text-gray-400" aria-hidden="true" />
             </button>
@@ -41,12 +43,6 @@ export default function Navbar() {
 
       {/* Zona Derecha: Búsqueda y Autenticación */}
       <div className="flex items-center gap-5">
-        
-        {/* Icono de búsqueda común en ambos estados */}
-        <button aria-label="Buscar en Roll2Go" className="text-gray-300 hover:text-white transition-colors">
-          <Search size={20} />
-        </button>
-
         {isLoggedIn ? (
           /* ESTADO: SESIÓN INICIADA */
           <>
@@ -60,7 +56,8 @@ export default function Navbar() {
                 <User size={16} className="text-gray-300" />
               </div>
               <span className="text-sm font-medium text-gray-200 hidden sm:block">
-                Hola, Aventurero
+                {/*Debo cambiar esto por el nombre del usuario en la base de datos.*/ }                
+                Hola, Usuario 
               </span>
               <ChevronDown size={14} className="text-gray-400 hidden sm:block" />
             </div>

@@ -21,6 +21,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <footer className="footer">
           <div className="wrap">
             <a href="#">Work In Progress</a>
+            <p>Añadir Licencia Wizard of the Coast aqui más tarde.</p>            
           </div>
         </footer>
         <ChatAssistant />
