@@ -2,18 +2,29 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ChevronDown, IdCard, Swords, Users, BookMarked, User, House } from "lucide-react";
-
+import { ChevronDown, CircleUser, Swords, Users, BookMarked, User, House } from "lucide-react";
+/*Definición del menú principal con etiquetas y sus respectivos iconos
+  El formato siempre es label: "Nombre de la sección", icon: Icono correspondiente
+  Los iconos se importan desde la librería lucide-react y se asignan a cada sección del menú.
+  Galeria con los Iconos: https://lucide.dev/icons/
+*/
 const MENU = [
   { label: "Inicio", icon: House },  
-  { label: "Mis personajes", icon: IdCard },
+  { label: "Mis personajes", icon: User },
   { label: "Mis campañas", icon: Swords },
   { label: "Social", icon: Users },
-  { label: "Sistemas", icon: BookMarked }
+  { label: "Biblioteca", icon: BookMarked }
 ];
 
 export default function Navbar() {
-  // Estado simulado para alternar entre sesión iniciada y no iniciada
+  /*Estado simulado para alternar entre sesión iniciada y no iniciada
+    Por ahora lo he hecho muy simple, porque no hay sistema de autenticación implementado. En un futuro,
+    este estado debería estar vinculado a la autenticación real del usuario, y cambiar dinámicamente 
+    según el estado de la sesión. Incluso se podría tener en cuenta si el usuario desea que se le recuerde la sesión 
+    iniciada o no, y almacenar esa preferencia en cookies o localStorage.
+    Además, una vez establecido el sistema de autenticación, se podría mostrar el nombre del usuario en 
+    lugar de "Usuario" en la barra de navegación.
+  */
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   return (
@@ -41,7 +52,12 @@ export default function Navbar() {
         </nav>
       </div>
 
-      {/* Zona Derecha: Búsqueda y Autenticación */}
+      {/* Zona Derecha: Autenticación 
+      Si está logueado, se muestra su perfil y un botón para cerrar sesión. 
+      Si no está logueado, se muestran botones para iniciar sesión o crear una cuenta.
+      Por ahora, estos botones solo simulan el cambio de estado de sesión, 
+      pero en un futuro deberían estar conectados a la lógica real de autenticación del usuario.
+      */}
       <div className="flex items-center gap-5">
         {isLoggedIn ? (
           /* ESTADO: SESIÓN INICIADA */
@@ -70,15 +86,18 @@ export default function Navbar() {
               className="flex items-center gap-2 text-sm font-medium text-gray-300 hover:text-white transition-colors"
               onClick={() => setIsLoggedIn(true)}
             >
-              <User size={18} />
+              <CircleUser size={18} />
               <span className="hidden sm:inline">Iniciar sesión</span>
             </button>
             
-            {/* Botón de acción principal equivalente a "CREATE ACCOUNT" */}
+            {/* Botón de acción principal equivalente a "CREATE ACCOUNT"
+                Esto es solo ahora porque no hay sistema de autenticación. En un futuro, este botón debería 
+                llevar a un formulario de registro.
+            */ }           
             <button 
               className="bg-[#dc3741] hover:bg-[#c22d37] text-white px-4 py-2 font-bold text-xs uppercase tracking-wider transition-colors"
-              onClick={() => setIsLoggedIn(true)}
-            >
+              onClick={() => setIsLoggedIn(true)} 
+              >
               Crear cuenta
             </button>
           </>

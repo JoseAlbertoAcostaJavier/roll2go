@@ -1,7 +1,13 @@
 "use client";
 
 import { useState } from "react";
-
+/*
+  Roll define la estructura de un lanzamiento de dados. 
+  Quick es un array de expresiones de dados predefinidas para lanzamientos rápidos.
+  DiceRoller es un componente que permite a los usuarios lanzar dados, manteniendo un historial de dichos
+  lanzamientos. Su funcionamiento esta basado en /roll/route.ts, que es la API que procesa la expresión de dados 
+  y devuelve el resultado.
+*/
 type Roll = { id: string; dice: string; sides: number; rolls: number[]; modifier: number; total: number };
 const QUICK = ["1d4", "1d6", "1d8", "1d10", "1d12", "1d20", "1d100"];
 

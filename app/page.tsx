@@ -1,5 +1,5 @@
 import DiceRoller from "./components/DiceRoller";
-import GamesGrid from "./components/GamesGrid";
+import SystemsGrid from "./components/SystemsGrid";
 export default function Page() {
   return (
     <div className="wrap">
@@ -10,7 +10,7 @@ export default function Page() {
         </div>
         <DiceRoller />
       </section>
-      <GamesGrid />
+      <SystemsGrid />
     </div>
   );
 }

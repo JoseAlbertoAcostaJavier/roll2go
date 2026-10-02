@@ -2,7 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 import { MessageCircle, Send, X } from "lucide-react";
-
+/* Componente de asistente de rol
+  Este componente es un asistente de rol que permite a los usuarios hacer preguntas sobre reglas, clases 
+  y builds de rol de mesa. El asistente mantiene un historial de mensajes entre el usuario y la API de Gemini, y 
+  permite enviar preguntas y recibir respuestas. El componente utiliza varios hooks de React para manejar el estado, 
+  los efectos y las referencias a elementos del DOM. Además, el asistente puede abrirse desde cualquier parte de 
+  la aplicación mediante un evento personalizado llamado "open-assistant".
+*/
 type Msg = { role: "user" | "model"; text: string };
 
 const SUGGESTIONS = [
@@ -41,8 +47,8 @@ export default function ChatAssistant() {
     const box = boxRef.current;
     if (box) box.scrollTop = box.scrollHeight;
   }, [messages, loading, open]);
-
   async function send(text: string) {
+    // Evita enviar preguntas vacías o mientras se está cargando.
     const question = text.trim();
     if (!question || loading) return;
     const next: Msg[] = [...messages, { role: "user", text: question }];
@@ -50,12 +56,14 @@ export default function ChatAssistant() {
     setInput("");
     setError("");
     setLoading(true);
+  // Llamada a la API de Gemini para obtener la respuesta del asistente.
     try {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ messages: next }),
       });
+  // Manejo de la respuesta de la API y actualización del estado de mensajes.      
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       setMessages([...next, { role: "model", text: data.reply }]);
@@ -65,7 +73,9 @@ export default function ChatAssistant() {
       setLoading(false);
     }
   }
-
+/* Renderizado del componente, incluyendo el botón flotante para abrir el asistente, la ventana del chat,
+   el historial de mensajes, el campo de entrada y los botones de sugerencias.
+*/
   return (
     <>
       {!open && (
@@ -98,7 +108,7 @@ export default function ChatAssistant() {
             {messages.map((m, i) => (
               <p key={i} className={`msg ${m.role}`}>{m.text}</p>
             ))}
-            {loading && <p className="msg model">Consultando el manual...</p>}
+            {loading && <p className="msg model">Espera un momento mientras encuentro el tomo correcto...</p>}
           </div>
 
           {error && <p className="error" role="alert">{error}</p>}

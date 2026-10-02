@@ -2,6 +2,29 @@ import { GoogleGenAI } from "@google/genai";
 import { NextRequest, NextResponse } from "next/server";
 import { SYSTEM_PROMPT } from "@/lib/rolAssistant";
 
+export const maxDuration = 30;
+
+const TIMEOUT_MS = 12000;
+
+// Si el modelo tarda más de 12 s, se considera saturado y se pasa al siguiente
+function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const t = setTimeout(
+      () => reject(Object.assign(new Error("Timeout"), { status: 503 })),
+      ms,
+    );
+    p.then(
+      (v) => {
+        clearTimeout(t);
+        resolve(v);
+      },
+      (e) => {
+        clearTimeout(t);
+        reject(e);
+      },
+    );
+  });
+}
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 // Se prueban en orden: si el primero está saturado, pasa al siguiente
@@ -13,33 +36,43 @@ const MODELS = [
     .filter(Boolean),
 ];
 
+
 type Msg = { role: "user" | "model"; text: string };
 type Content = { role: "user" | "model"; parts: { text: string }[] };
 
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const statusOf = (err: unknown) => (err as { status?: number })?.status;
 const isBusy = (err: unknown) => [429, 500, 503].includes(statusOf(err) ?? 0);
-
+/*Todos los mensajes que aparezcan en la consola de Gemini son de nivel "warn" 
+y no se muestran al usuario. Solo se muestra un mensaje genérico de saturación si el error es 429 o 503.*/
 async function generate(contents: Content[]): Promise<string> {
   let lastErr: unknown;
+  let sawBusy = false;
   for (const model of MODELS) {
-    for (let attempt = 0; attempt < 2; attempt++) {
-      try {
-        const r = await ai.models.generateContent({
+    try {
+      const r = await withTimeout(
+        ai.models.generateContent({
           model,
           contents,
           config: { systemInstruction: SYSTEM_PROMPT, temperature: 0.6 },
-        });
-        return r.text ?? "No he podido generar una respuesta.";
-      } catch (err) {
-        lastErr = err;
-        if (statusOf(err) === 404) break; // el modelo no existe: pasa al siguiente
-        if (!isBusy(err)) throw err;      // otro error (clave, petición...): no reintentar
-        console.warn(`Gemini saturado con ${model} (intento ${attempt + 1})`);
-        await sleep(700 * (attempt + 1));
+        }),
+        TIMEOUT_MS,
+      );
+      return r.text ?? "No he podido generar una respuesta.";
+    } catch (err) {
+      lastErr = err;
+      if (statusOf(err) === 404) {
+        console.warn(
+          `Modelo no disponible: ${model}. Revisa GEMINI_MODEL / GEMINI_FALLBACK_MODELS.`,
+        );
+        continue;
       }
+      if (!isBusy(err)) throw err;
+      sawBusy = true;
+      console.warn(`Gemini lento o saturado con ${model}`);
     }
   }
+  if (sawBusy)
+    throw Object.assign(new Error("Modelos saturados"), { status: 503 });
   throw lastErr;
 }
 

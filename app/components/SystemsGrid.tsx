@@ -1,6 +1,6 @@
 import { system } from "@/lib/systems";
 
-export default function GamesGrid() {
+export default function SystemsGrid() {
   return (
     <section id="sistemas">
       <h2 className="section-title">Sistemas</h2>
