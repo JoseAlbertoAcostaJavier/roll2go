@@ -1,52 +1,36 @@
 import mongoose from "mongoose";
 
-const MONGODB_URI = process.env.MONGODB_URI!;
+// 1. Declaramos el tipo en el espacio global de TypeScript
+declare global {
+  // Debe usarse 'var' obligatoriamente para extender globalThis
+  var mongooseConnection: {
+    conn: typeof mongoose | null;
+    promise: Promise<typeof mongoose> | null;
+  };
+}
+
+const MONGODB_URI = process.env.MONGODB_URI;
 
 if (!MONGODB_URI) {
-  throw new Error("Por favor, define la variable MONGODB_URI en el archivo .env.local");
+  throw new Error("Falta MONGODB_URI en .env.local");
 }
 
-// 1. Definimos la estructura exacta de nuestra caché para evitar usar 'any'
-interface MongooseCache {
-  conn: typeof mongoose | null;
-  promise: Promise<typeof mongoose> | null;
-}
-
-// 2. Le indicamos a TypeScript que el objeto global de Node incluye nuestra caché
-declare global {
-  var mongoose: MongooseCache;
-}
-
-// 3. Inicializamos la caché
-let cached = global.mongoose;
+// 2. Usamos nuestra variable global fuertemente tipada
+let cached = global.mongooseConnection;
 
 if (!cached) {
-  cached = global.mongoose = { conn: null, promise: null };
+  cached = global.mongooseConnection = { conn: null, promise: null };
 }
 
-async function connectToDatabase() {
-  if (cached.conn) {
-    return cached.conn;
-  }
+export async function connectDB() {
+  if (cached.conn) return cached.conn;
 
   if (!cached.promise) {
-    const opts = {
-      bufferCommands: false,
-    };
-
-    cached.promise = mongoose.connect(MONGODB_URI, opts).then((mongoose) => {
-      return mongoose;
-    });
+    cached.promise = mongoose.connect(MONGODB_URI as string, { 
+      dbName: "roll2go" 
+    }).then((m) => m);
   }
   
-  try {
-    cached.conn = await cached.promise;
-  } catch (e) {
-    cached.promise = null;
-    throw e;
-  }
-
+  cached.conn = await cached.promise;
   return cached.conn;
 }
-
-export default connectToDatabase;

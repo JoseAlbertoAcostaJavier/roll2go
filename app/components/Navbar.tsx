@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import {
-  ChevronDown, CircleUser, Swords, Users, BookOpen, BookMarked, User, House, Menu, X,
+  CircleUser, Swords, Users, BookOpen, BookMarked, User, House, Menu, X, LogOut,
 } from "lucide-react";
 // OJO: usa aquí la misma ruta de tu logo que ya tenías funcionando
 import logo from "@/assets/logo.png";
@@ -26,15 +26,9 @@ const MENU = [
 ];
 
 export default function Navbar() {
-  /*Estado simulado para alternar entre sesión iniciada y no iniciada
-    Por ahora lo he hecho muy simple, porque no hay sistema de autenticación implementado. En un futuro,
-    este estado debería estar vinculado a la autenticación real del usuario, y cambiar dinámicamente 
-    según el estado de la sesión. Incluso se podría tener en cuenta si el usuario desea que se le recuerde la sesión 
-    iniciada o no, y almacenar esa preferencia en cookies o localStorage.
-    Además, una vez establecido el sistema de autenticación, se podría mostrar el nombre del usuario en 
-    lugar de "Usuario" en la barra de navegación.
-  */
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  /* Usuario con la sesión iniciada (null si no hay nadie).
+     Se consulta a /api/auth/me, que lee la cookie de sesión en el servidor. */
+  const [user, setUser] = useState<{ id: string; username: string } | null>(null);
 
   // Menú desplegable (hamburguesa): abierto o cerrado
   const [menuOpen, setMenuOpen] = useState(false);
@@ -45,6 +39,27 @@ export default function Navbar() {
   // "Inicio" solo está activo en "/" exacto; el resto también en sus subpáginas (/personajes/nuevo...)
   const isActive = (href: string) =>
     href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(href + "/");
+
+  // Pregunta quién ha iniciado sesión cada vez que se cambia de página
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/auth/me")
+      .then((r) => r.json())
+      .then((d) => {
+        if (!cancelled) setUser(d.user);
+      })
+      .catch(() => {
+        if (!cancelled) setUser(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [pathname]);
+
+  async function logout() {
+    await fetch("/api/auth/logout", { method: "POST" });
+    setUser(null);
+  }
 
   // Con el menú desplegable abierto, la tecla Escape lo cierra
   useEffect(() => {
@@ -111,54 +126,47 @@ export default function Navbar() {
         </nav>
       </div>
 
-      {/* Zona Derecha: Autenticación 
-      Si está logueado, se muestra su perfil y un botón para cerrar sesión. 
-      Si no está logueado, se muestran botones para iniciar sesión o crear una cuenta.
-      Por ahora, estos botones solo simulan el cambio de estado de sesión, 
-      pero en un futuro deberían estar conectados a la lógica real de autenticación del usuario.
+      {/* Zona Derecha: Autenticación
+      Con sesión: nombre del usuario y botón para cerrar sesión.
+      Sin sesión: enlaces a iniciar sesión y a crear cuenta.
       */}
       <div className="flex shrink-0 items-center gap-5 py-3">
-        {isLoggedIn ? (
+        {user ? (
           /* ESTADO: SESIÓN INICIADA */
           <>
-            {/* Caja de Perfil */}
-            <div
-              className="flex cursor-pointer items-center gap-2 rounded border border-line bg-panel px-3 py-1.5 transition-colors hover:bg-line"
-              onClick={() => setIsLoggedIn(false)}
-              title="Cerrar sesión (Simulación)"
-            >
+            <div className="flex h-10 items-center gap-2 rounded border border-line bg-panel px-3">
               <div className="flex h-7 w-7 items-center justify-center overflow-hidden rounded-full bg-gray-600">
                 <User size={16} className="text-gray-300" />
               </div>
               <span className="hidden whitespace-nowrap text-sm font-medium text-gray-200 sm:block">
-                {/*Debo cambiar esto por el nombre del usuario en la base de datos.*/}
-                Hola, Usuario
+                Hola, {user.username}
               </span>
-              <ChevronDown size={14} className="hidden text-gray-400 sm:block" />
             </div>
+            <button
+              onClick={logout}
+              aria-label="Cerrar sesión"
+              title="Cerrar sesión"
+              className="flex h-10 w-10 items-center justify-center rounded text-gray-300 transition-colors hover:bg-panel hover:text-white"
+            >
+              <LogOut size={18} />
+            </button>
           </>
         ) : (
           /* ESTADO: INVITADO (SIN INICIAR SESIÓN) */
           <>
-            {/* Botón Sign in */}
-            <button
-              className="flex items-center gap-2 whitespace-nowrap text-sm font-medium text-gray-300 transition-colors hover:text-white"
-              onClick={() => setIsLoggedIn(true)}
+            <Link
+              href="/sign_in"
+              className="flex h-10 items-center gap-2 whitespace-nowrap text-sm font-medium text-gray-300 transition-colors hover:text-white"
             >
               <CircleUser size={18} />
               <span className="hidden sm:inline">Iniciar sesión</span>
-            </button>
-
-            {/* Botón de acción principal equivalente a "CREATE ACCOUNT"
-                Esto es solo ahora porque no hay sistema de autenticación. En un futuro, este botón debería 
-                llevar a un formulario de registro.
-            */}
-            <button
-              className="whitespace-nowrap bg-brand px-4 py-2 text-xs font-bold uppercase tracking-wider text-white transition-colors hover:bg-brand-hover"
-              onClick={() => setIsLoggedIn(true)}
+            </Link>
+            <Link
+              href="/sign_up"
+              className="flex h-10 items-center whitespace-nowrap bg-brand px-4 text-xs font-bold uppercase tracking-wider text-white transition-colors hover:bg-brand-hover"
             >
               Crear cuenta
-            </button>
+            </Link>
           </>
         )}
       </div>

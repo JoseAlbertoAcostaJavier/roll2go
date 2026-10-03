@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { MessageCircle, Send, X } from "lucide-react";
+import { LoaderCircle, MessageCircle, Send, X } from "lucide-react";
 /* Componente de asistente de rol
   Este componente es un asistente de rol que permite a los usuarios hacer preguntas sobre reglas, clases 
   y builds de rol de mesa. El asistente mantiene un historial de mensajes entre el usuario y la API de Gemini, y 
@@ -133,7 +133,11 @@ export default function ChatAssistant() {
             {messages.map((m, i) => (
               <p key={i} className={m.role === "user" ? userBubble : modelBubble}>{m.text}</p>
             ))}
-            {loading && <p className={modelBubble}>Espera un momento mientras encuentro el tomo correcto...</p>}
+            {loading && ( <p className={`${modelBubble} flex items-center gap-2`}>
+                          <LoaderCircle size={16} className="shrink-0 animate-spin text-brand-soft" aria-hidden="true" />
+                          Espera un momento mientras encuentro el tomo correcto...
+                          </p>
+                        )}
           </div>
 
           {error && <p className="px-3.5 pb-2 text-sm text-brand-soft" role="alert">{error}</p>}
@@ -150,12 +154,13 @@ export default function ChatAssistant() {
               className="min-w-0 flex-1 rounded-md border border-line bg-surface px-3 py-2.5 text-[.95rem] text-fg"
             />
             <button
-              className="flex w-[42px] items-center justify-center rounded-md bg-brand text-white transition-colors enabled:hover:bg-brand-hover disabled:opacity-50"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md 
+              bg-brand text-white transition-colors enabled:hover:bg-brand-hover disabled:opacity-50"
               onClick={() => send(input)}
               disabled={loading || !input.trim()}
               aria-label="Enviar pregunta"
             >
-              <Send size={18} />
+              <Send size={24} />
             </button>
           </div>
         </section>

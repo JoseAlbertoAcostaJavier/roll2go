@@ -23,6 +23,9 @@
 }
 
 @layer base {
+  html {
+    color-scheme: dark;
+  }
   body {
     background: var(--color-surface);
     color: var(--color-fg);

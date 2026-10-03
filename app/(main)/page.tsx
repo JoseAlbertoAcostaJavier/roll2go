@@ -1,9 +1,11 @@
-import DiceRoller from "./components/DiceRoller";
-import SystemsGrid from "./components/SystemsGrid";
+import DiceRoller from "@/app/components/DiceRoller";
+import SystemsGrid from "@/app/components/SystemsGrid";
+import type { Metadata } from "next";
+export const metadata: Metadata = { title: "Inicio - Roll2Go" };
 
 export default function Page() {
   return (
-    <div className="mx-auto max-w-[1120px] px-5">
+    <div className="mx-auto max-w-280 px-5">
       <section className="grid items-center gap-10 py-9 md:grid-cols-[1.1fr_1fr] md:py-14">
         <div>
           <h1 className="mb-4 font-heading text-[clamp(2rem,4.5vw,3.2rem)] font-extrabold leading-[1.1]">

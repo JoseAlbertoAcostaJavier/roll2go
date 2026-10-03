@@ -1,31 +1,22 @@
 import type { Metadata } from "next";
 import { Montserrat, Open_Sans } from "next/font/google";
-import Navbar from "./components/Navbar";
 import "./globals.css";
-import ChatAssistant from "./components/ChatAssistant";
 
 const montserrat = Montserrat({ subsets: ["latin"], variable: "--font-montserrat" });
 const openSans = Open_Sans({ subsets: ["latin"], variable: "--font-open-sans" });
 
 export const metadata: Metadata = {
-  title: "Roll2Go - Tu mesa de rol, en cualquier sitio",
+  title: {
+    default: "Roll2Go - Tu mesa de rol, en cualquier sitio",
+    template: "%s - Roll2Go",
+  },
   description: "Crea personajes, organiza campañas y tira dados con tu grupo.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="es">
-      <body className={`${montserrat.variable} ${openSans.variable}`}>
-        <Navbar />
-        <main>{children}</main>
-        <footer className="border-t border-line bg-[#111] py-7 text-sm text-muted">
-          <div className="mx-auto max-w-[1120px] px-5">
-            <a href="#" className="hover:text-brand-soft">Work In Progress</a>
-            <p>Añadir Licencia Wizard of the Coast aqui más tarde.</p>
-          </div>
-        </footer>
-        <ChatAssistant />
-      </body>
+      <body className={`${montserrat.variable} ${openSans.variable}`}>{children}</body>
     </html>
   );
 }
