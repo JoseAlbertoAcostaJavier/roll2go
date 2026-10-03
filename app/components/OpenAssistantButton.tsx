@@ -6,7 +6,10 @@
 */
 export default function OpenAssistantButton({ children }: { children: React.ReactNode }) {
   return (
-    <button className="btn" onClick={() => window.dispatchEvent(new Event("open-assistant"))}>
+    <button
+      className="inline-block rounded-md bg-brand px-5 py-2.5 font-heading text-[.95rem] font-bold text-white transition-colors hover:bg-brand-hover"
+      onClick={() => window.dispatchEvent(new Event("open-assistant"))}
+    >
       {children}
     </button>
   );

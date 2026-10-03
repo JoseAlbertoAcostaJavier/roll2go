@@ -6,6 +6,6 @@ export const system: System[] = [
   { id: "dnd-5", name: "D&D 5e (2014)", text: "Sumérgete en el mundo que cautivó a miles y revolucionó el género." },
   { id: "Vampiro-5", name: "Vampiro La Mascarada 5e", text: "Adentrate en un universo basado en el terror y la intriga durante la noche con Vampiro 5e." },
   { id: "coc-7e", name: "La Llamada de Cthulhu 7e", text: "Desvela secretos prohibidos y enfréntate a los horrores cósmicos de los mitos de Lovecraft en La Llamada de Cthulhy 7e." },
-  { id: "dcc", name: "Dungeon Crawler Carl", text: "Un calabozo televisado donde el público decide quién sobrevive. Crea tu crawler y entretén a la audiencia... o muere intentándolo." },
+  { id: "dcc", name: "Daggerheart", text: "De los creadores de Critical Role, llega su propio Juego de Rol para desafíar a DnD." },
 
 ];

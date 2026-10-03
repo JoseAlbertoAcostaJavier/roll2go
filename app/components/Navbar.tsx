@@ -1,19 +1,28 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ChevronDown, CircleUser, Swords, Users, BookMarked, User, House } from "lucide-react";
-/*Definición del menú principal con etiquetas y sus respectivos iconos
-  El formato siempre es label: "Nombre de la sección", icon: Icono correspondiente
+import Image from "next/image";
+import { usePathname } from "next/navigation";
+import {
+  ChevronDown, CircleUser, Swords, Users, BookOpen, BookMarked, User, House, Menu, X,
+} from "lucide-react";
+// OJO: usa aquí la misma ruta de tu logo que ya tenías funcionando
+import logo from "@/assets/logo.png";
+
+/*Definición del menú principal con etiquetas, iconos y a dónde lleva cada uno.
+  El formato es: label: "Nombre de la sección", icon: Icono correspondiente, href: "/ruta".
   Los iconos se importan desde la librería lucide-react y se asignan a cada sección del menú.
   Galeria con los Iconos: https://lucide.dev/icons/
+  Este array alimenta tanto el menú de escritorio como el desplegable de la hamburguesa.
 */
 const MENU = [
-  { label: "Inicio", icon: House },  
-  { label: "Mis personajes", icon: User },
-  { label: "Mis campañas", icon: Swords },
-  { label: "Social", icon: Users },
-  { label: "Biblioteca", icon: BookMarked }
+  { label: "Inicio", icon: House, href: "/" },
+  { label: "Mis personajes", icon: User, href: "/personajes" },
+  { label: "Mis campañas", icon: Swords, href: "/campanas" },
+  { label: "Social", icon: Users, href: "/social" },
+  { label: "Sistemas", icon: BookOpen, href: "/sistemas" },
+  { label: "Biblioteca", icon: BookMarked, href: "/biblioteca" },
 ];
 
 export default function Navbar() {
@@ -27,28 +36,78 @@ export default function Navbar() {
   */
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
+  // Menú desplegable (hamburguesa): abierto o cerrado
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  // Ruta actual (por ejemplo "/personajes")
+  const pathname = usePathname() ?? "";
+
+  // "Inicio" solo está activo en "/" exacto; el resto también en sus subpáginas (/personajes/nuevo...)
+  const isActive = (href: string) =>
+    href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(href + "/");
+
+  // Con el menú desplegable abierto, la tecla Escape lo cierra
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setMenuOpen(false);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [menuOpen]);
+
+  /* El prefijo "nav:" (definido en globals.css, 1360px) marca el punto en el que cabe el menú completo.
+     Por debajo de ese ancho se ve: hamburguesa + logo + botones de sesión.
+     Desde ese ancho: logo + menú completo + botones de sesión. */
   return (
-    <header className="flex items-center justify-between px-4 lg:px-8 py-3 bg-[#19191a] text-white border-b border-[#000]">
-      
-      {/* Zona Izquierda: Logo y Menú Principal */}
-      <div className="flex items-center gap-8">
-        {/* Logo manteniendo tu clase CSS original */}
-        <Link className="brand" href="/" style={{ margin: 0, padding: 0 }}>
-          Roll<span>2</span>Go
+    <header className="relative z-40 flex items-stretch justify-between gap-3 border-b border-black bg-surface px-4 text-white lg:px-8">
+
+      {/* Zona Izquierda: Hamburguesa, Logo y Menú Principal */}
+      <div className="flex items-stretch gap-3 nav:gap-6">
+        {/* Botón de hamburguesa: visible hasta que cabe el menú completo */}
+        <button
+          className="flex items-center text-gray-300 transition-colors hover:text-white nav:hidden"
+          onClick={() => setMenuOpen((o) => !o)}
+          aria-label={menuOpen ? "Cerrar menú" : "Abrir menú"}
+          aria-expanded={menuOpen}
+          aria-controls="mobile-menu"
+        >
+          {menuOpen ? <X size={24} /> : <Menu size={24} />}
+        </button>
+
+        <Link className="flex shrink-0 items-center py-2" href="/" onClick={() => setMenuOpen(false)}>
+          <Image src={logo} alt="Roll2Go" priority className="h-auto w-36 md:w-44 hover:scale-105 transition-all" />
         </Link>
 
-        {/* Navegación principal (Oculta en móviles, visible en escritorio) */}
-        <nav className="hidden md:flex items-center gap-6" aria-label="Menú principal">
-          {MENU.map(({ label, icon: Icon }) => (
-            <button 
-              key={label} 
-              className="flex items-center gap-1 text-[13px] font-bold tracking-wide text-gray-200 hover:text-white uppercase transition-colors"
-            >
-              <Icon size={16} className="text-gray-400" aria-hidden="true"/>
-              {label}
-              <ChevronDown size={14} className="text-gray-400" aria-hidden="true" />
-            </button>
-          ))}
+        {/* Navegación principal: solo cuando cabe completa */}
+        <nav className="hidden items-stretch gap-1 nav:flex" aria-label="Menú principal">
+          {MENU.map(({ label, icon: Icon, href }) => {
+            const active = isActive(href);
+            return (
+              <Link
+                key={href}
+                href={href}
+                aria-current={active ? "page" : undefined}
+                className="group relative flex items-center whitespace-nowrap"
+              >
+                {/* Píldora: es lo que se ilumina en hover, más pequeña que la barra */}
+                <span
+                  className={`flex items-center  gap-1.5 px-4.5 py-4 text-[13px] font-bold uppercase tracking-wide transition-colors ${
+                    active ? "text-white" : "text-gray-300 group-hover:bg-brand group-hover:text-white"
+                  }`}
+                >
+                  <Icon
+                    size={16}
+                    className={`transition-colors ${active ? "text-white" : "text-gray-400 group-hover:text-white"}`}
+                    aria-hidden="true"
+                  />
+                  {label}
+                </span>
+                {/* Línea roja que marca la zona activa */}
+                {active && (
+                  <span className="absolute inset-x-0 bottom-0 h-[3px] bg-brand" aria-hidden="true" />
+                )}
+              </Link>
+            );
+          })}
         </nav>
       </div>
 
@@ -58,51 +117,87 @@ export default function Navbar() {
       Por ahora, estos botones solo simulan el cambio de estado de sesión, 
       pero en un futuro deberían estar conectados a la lógica real de autenticación del usuario.
       */}
-      <div className="flex items-center gap-5">
+      <div className="flex shrink-0 items-center gap-5 py-3">
         {isLoggedIn ? (
           /* ESTADO: SESIÓN INICIADA */
           <>
             {/* Caja de Perfil */}
-            <div 
-              className="flex items-center gap-2 bg-[#242426] px-3 py-1.5 rounded cursor-pointer hover:bg-[#38383b] transition-colors border border-[#38383b]"
+            <div
+              className="flex cursor-pointer items-center gap-2 rounded border border-line bg-panel px-3 py-1.5 transition-colors hover:bg-line"
               onClick={() => setIsLoggedIn(false)}
               title="Cerrar sesión (Simulación)"
             >
-              <div className="w-7 h-7 bg-gray-600 rounded-full flex items-center justify-center overflow-hidden">
+              <div className="flex h-7 w-7 items-center justify-center overflow-hidden rounded-full bg-gray-600">
                 <User size={16} className="text-gray-300" />
               </div>
-              <span className="text-sm font-medium text-gray-200 hidden sm:block">
-                {/*Debo cambiar esto por el nombre del usuario en la base de datos.*/ }                
-                Hola, Usuario 
+              <span className="hidden whitespace-nowrap text-sm font-medium text-gray-200 sm:block">
+                {/*Debo cambiar esto por el nombre del usuario en la base de datos.*/}
+                Hola, Usuario
               </span>
-              <ChevronDown size={14} className="text-gray-400 hidden sm:block" />
+              <ChevronDown size={14} className="hidden text-gray-400 sm:block" />
             </div>
           </>
         ) : (
           /* ESTADO: INVITADO (SIN INICIAR SESIÓN) */
           <>
             {/* Botón Sign in */}
-            <button 
-              className="flex items-center gap-2 text-sm font-medium text-gray-300 hover:text-white transition-colors"
+            <button
+              className="flex items-center gap-2 whitespace-nowrap text-sm font-medium text-gray-300 transition-colors hover:text-white"
               onClick={() => setIsLoggedIn(true)}
             >
               <CircleUser size={18} />
               <span className="hidden sm:inline">Iniciar sesión</span>
             </button>
-            
+
             {/* Botón de acción principal equivalente a "CREATE ACCOUNT"
                 Esto es solo ahora porque no hay sistema de autenticación. En un futuro, este botón debería 
                 llevar a un formulario de registro.
-            */ }           
-            <button 
-              className="bg-[#dc3741] hover:bg-[#c22d37] text-white px-4 py-2 font-bold text-xs uppercase tracking-wider transition-colors"
-              onClick={() => setIsLoggedIn(true)} 
-              >
+            */}
+            <button
+              className="whitespace-nowrap bg-brand px-4 py-2 text-xs font-bold uppercase tracking-wider text-white transition-colors hover:bg-brand-hover"
+              onClick={() => setIsLoggedIn(true)}
+            >
               Crear cuenta
             </button>
           </>
         )}
       </div>
+
+      {/* Menú desplegable: siempre en el DOM para poder animar la apertura y el cierre */}
+      <div
+        className={`fixed inset-0 -z-10 bg-black/50 transition-opacity duration-300 nav:hidden ${
+          menuOpen ? "opacity-100" : "pointer-events-none opacity-0"
+        }`}
+        onClick={() => setMenuOpen(false)}
+        aria-hidden="true"
+      />
+      <nav
+        id="mobile-menu"
+        className={`absolute inset-x-0 top-full flex flex-col border-b border-black bg-surface pb-0 pt-1 shadow-[0_12px_30px_rgba(0,0,0,0.6)] 
+        transition-[opacity,transform,visibility] duration-300 ease-out nav:hidden ${menuOpen ? "visible translate-y-0 opacity-100" : "invisible -translate-y-2 opacity-0"
+        }`}
+        aria-label="Menú principal"
+      >
+        {MENU.map(({ label, icon: Icon, href }) => {
+          const active = isActive(href);
+          return (
+            <Link
+              key={href}
+              href={href}
+              onClick={() => setMenuOpen(false)}
+              aria-current={active ? "page" : undefined}
+              className={`flex items-center gap-3 border-l-4 px-5 py-3 text-sm font-bold uppercase tracking-wide transition-colors ${
+                active
+                  ? "border-brand bg-panel text-white"
+                  : "border-transparent text-gray-300 hover:bg-panel hover:text-white"
+              }`}
+            >
+              <Icon size={18} className={active ? "text-white" : "text-gray-400"} aria-hidden="true" />
+              {label}
+            </Link>
+          );
+        })}
+      </nav>
     </header>
   );
 }

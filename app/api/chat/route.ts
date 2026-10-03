@@ -30,12 +30,11 @@ const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 // Se prueban en orden: si el primero está saturado, pasa al siguiente
 const MODELS = [
   process.env.GEMINI_MODEL ?? "gemini-flash-latest",
-  ...(process.env.GEMINI_FALLBACK_MODELS ?? "gemini-2.5-flash,gemini-2.5-flash-lite")
+  ...(process.env.GEMINI_FALLBACK_MODELS ?? "gemini-2.5-flash,gemini-3.5-flash-lite")
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean),
 ];
-
 
 type Msg = { role: "user" | "model"; text: string };
 type Content = { role: "user" | "model"; parts: { text: string }[] };
