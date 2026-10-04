@@ -1,8 +1,7 @@
 import DiceRoller from "@/app/components/DiceRoller";
 import SystemsGrid from "@/app/components/SystemsGrid";
 import type { Metadata } from "next";
-export const metadata: Metadata = { title: "Inicio - Roll2Go" };
-
+export const metadata: Metadata = { title: "Inicio" };
 export default function Page() {
   return (
     <div className="mx-auto max-w-280 px-5">

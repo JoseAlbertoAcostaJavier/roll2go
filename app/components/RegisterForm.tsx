@@ -9,10 +9,14 @@ type Errors = Partial<Record<"username" | "email" | "password" | "confirm", stri
 
 // Estilos del campo: borde normal o rojo claro si tiene error
 const inputClass = (hasError: boolean, extra = "pr-3") =>
-  `w-full rounded-md border bg-surface py-2.5 pl-10 ${extra} text-fg placeholder:text-muted focus:outline-none ${
+  `w-full rounded-md border bg-surface py-2.5 pl-10 ${extra} text-fg placeholder:text-muted focus:outline-none transition-colors ${
     hasError ? "border-brand-soft" : "border-line focus:border-brand"
   }`;
 const iconClass = "pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted";
+
+// Expresiones regulares unificadas
+const USERNAME_REGEX = /^[a-zA-Z0-9_]{3,20}$/;
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function RegisterForm() {
   const router = useRouter();
@@ -20,21 +24,42 @@ export default function RegisterForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
-  // Cada contraseña tiene su propio ojo: se muestran u ocultan por separado
+  
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  
+  // Guardamos los errores dinámicamente
   const [errors, setErrors] = useState<Errors>({});
   const [formError, setFormError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // Comprueba los campos y devuelve un error por cada uno que no cumpla
+  // Manejador en tiempo real para el nombre de usuario (Muestra el texto de error mientras escribes)
+  const handleUsernameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setUsername(val);
+    
+    if (val.trim() === "") {
+      setErrors((prev) => ({ ...prev, username: undefined }));
+      return;
+    }
+
+    if (!USERNAME_REGEX.test(val.trim())) {
+      setErrors((prev) => ({ 
+        ...prev, 
+        username: "Entre 3 y 20 caracteres: letras, números y guion bajo (sin @ ni espacios)." 
+      }));
+    } else {
+      setErrors((prev) => ({ ...prev, username: undefined }));
+    }
+  };
+
+  // Función general de validación al enviar
   function validate(): Errors {
     const e: Errors = {};
-    // El nombre de usuario no puede llevar "@" ni espacios: así el login distingue usuario de correo
-    if (!/^[a-zA-Z0-9_]{3,20}$/.test(username.trim())) {
+    if (!USERNAME_REGEX.test(username.trim())) {
       e.username = "Entre 3 y 20 caracteres: letras, números y guion bajo (sin @ ni espacios).";
     }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+    if (!EMAIL_REGEX.test(email.trim())) {
       e.email = "Escribe un correo electrónico válido.";
     }
     if (password.length < 8) {
@@ -62,7 +87,6 @@ export default function RegisterForm() {
       });
       const data = await res.json();
       if (!res.ok) {
-        // Errores por campo (por ejemplo "ese usuario ya existe") o uno general
         if (data.errors) setErrors(data.errors);
         else setFormError(data.error ?? "No se pudo crear la cuenta.");
         return;
@@ -90,8 +114,10 @@ export default function RegisterForm() {
 
       {/* Nombre de usuario */}
       <div className="mb-4">
-        <label htmlFor="username" className="mb-1.5 block text-sm font-semibold">
+        <label htmlFor="username" className="mb-1.5 flex items-center text-sm font-semibold">
           Nombre de usuario
+          {/* El asterisco solo desaparece si cumple el regex estricto */}
+          {(!USERNAME_REGEX.test(username.trim()) || !!errors.username) && <span className="ml-1 text-red-500">*</span>}
         </label>
         <div className="relative">
           <User size={18} className={iconClass} aria-hidden="true" />
@@ -102,7 +128,7 @@ export default function RegisterForm() {
             autoCapitalize="none"
             spellCheck={false}
             value={username}
-            onChange={(e) => setUsername(e.target.value)}
+            onChange={handleUsernameChange}
             aria-invalid={!!errors.username}
             aria-describedby={errors.username ? "username-error" : undefined}
             className={inputClass(!!errors.username)}
@@ -113,8 +139,10 @@ export default function RegisterForm() {
 
       {/* Correo */}
       <div className="mb-4">
-        <label htmlFor="email" className="mb-1.5 block text-sm font-semibold">
+        <label htmlFor="email" className="mb-1.5 flex items-center text-sm font-semibold">
           Correo electrónico
+          {/* El asterisco solo desaparece si es un email válido (ej. usuario@dominio.com) */}
+          {(!EMAIL_REGEX.test(email.trim()) || !!errors.email) && <span className="ml-1 text-red-500">*</span>}
         </label>
         <div className="relative">
           <Mail size={18} className={iconClass} aria-hidden="true" />
@@ -123,7 +151,10 @@ export default function RegisterForm() {
             type="email"
             autoComplete="email"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              setErrors((prev) => ({ ...prev, email: undefined }));
+            }}
             aria-invalid={!!errors.email}
             aria-describedby={errors.email ? "email-error" : undefined}
             className={inputClass(!!errors.email)}
@@ -134,8 +165,10 @@ export default function RegisterForm() {
 
       {/* Contraseña */}
       <div className="mb-4">
-        <label htmlFor="password" className="mb-1.5 block text-sm font-semibold">
+        <label htmlFor="password" className="mb-1.5 flex items-center text-sm font-semibold">
           Contraseña
+          {/* El asterisco desaparece al llegar a 8 caracteres */}
+          {(password.length < 8 || !!errors.password) && <span className="ml-1 text-red-500">*</span>}
         </label>
         <div className="relative">
           <Lock size={18} className={iconClass} aria-hidden="true" />
@@ -144,7 +177,10 @@ export default function RegisterForm() {
             type={showPassword ? "text" : "password"}
             autoComplete="new-password"
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={(e) => {
+              setPassword(e.target.value);
+              setErrors((prev) => ({ ...prev, password: undefined }));
+            }}
             aria-invalid={!!errors.password}
             aria-describedby={errors.password ? "password-error" : undefined}
             className={inputClass(!!errors.password, "pr-11")}
@@ -158,13 +194,16 @@ export default function RegisterForm() {
             {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
           </button>
         </div>
+        <p className="mt-1 text-xs text-muted">Mínimo 8 caracteres</p>        
         {errorText("password", errors.password)}
       </div>
 
       {/* Confirmación */}
       <div className="mb-6">
-        <label htmlFor="confirm" className="mb-1.5 block text-sm font-semibold">
+        <label htmlFor="confirm" className="mb-1.5 flex items-center text-sm font-semibold">
           Confirma la contraseña
+          {/* El asterisco desaparece cuando coinciden y no está vacío */}
+          {(confirm === "" || confirm !== password || !!errors.confirm) && <span className="ml-1 text-red-500">*</span>}
         </label>
         <div className="relative">
           <Lock size={18} className={iconClass} aria-hidden="true" />
@@ -173,7 +212,10 @@ export default function RegisterForm() {
             type={showConfirm ? "text" : "password"}
             autoComplete="new-password"
             value={confirm}
-            onChange={(e) => setConfirm(e.target.value)}
+            onChange={(e) => {
+              setConfirm(e.target.value);
+              setErrors((prev) => ({ ...prev, confirm: undefined }));
+            }}
             aria-invalid={!!errors.confirm}
             aria-describedby={errors.confirm ? "confirm-error" : undefined}
             className={inputClass(!!errors.confirm, "pr-11")}

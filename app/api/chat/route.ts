@@ -1,12 +1,14 @@
 import { GoogleGenAI } from "@google/genai";
 import { NextRequest, NextResponse } from "next/server";
 import { SYSTEM_PROMPT } from "@/lib/rolAssistant";
+import { getClientIp, rateLimit, tooManyRequests } from "@/lib/rateLimit";
 
 export const maxDuration = 30;
 
-const TIMEOUT_MS = 12000;
+// 3 modelos x 9 s = 27 s en el peor caso, dentro de los 30 s de maxDuration
+const TIMEOUT_MS = 9000;
 
-// Si el modelo tarda más de 12 s, se considera saturado y se pasa al siguiente
+// Si el modelo tarda más de 9 s, se considera saturado y se pasa al siguiente
 function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
   return new Promise((resolve, reject) => {
     const t = setTimeout(
@@ -79,6 +81,10 @@ export async function POST(req: NextRequest) {
   if (!process.env.GEMINI_API_KEY) {
     return NextResponse.json({ error: "Falta GEMINI_API_KEY en el servidor." }, { status: 500 });
   }
+
+  // Máximo 20 preguntas cada 10 minutos por IP (protege tu cuota de Gemini)
+  const limited = await rateLimit("chat", getClientIp(req), 20, 10 * 60);
+  if (!limited.ok) return tooManyRequests(limited.retryAfter);
 
   let body: { messages?: Msg[] };
   try {

@@ -5,7 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff, Lock, User } from "lucide-react";
 
-export default function LoginForm() {
+// redirectTo: a dónde ir tras entrar (por defecto la portada)
+export default function LoginForm({ redirectTo = "/" }: { redirectTo?: string }) {
   const router = useRouter();
   // "identifier" puede ser el correo o el nombre de usuario
   const [identifier, setIdentifier] = useState("");
@@ -34,7 +35,7 @@ export default function LoginForm() {
         setError(data.error ?? "No se pudo iniciar sesión.");
         return;
       }
-      router.push("/");
+      router.push(redirectTo);
       router.refresh();
     } catch {
       setError("No se pudo conectar con el servidor.");

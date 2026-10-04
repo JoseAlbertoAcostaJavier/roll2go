@@ -39,3 +39,8 @@ export function sessionCookieOptions(remember: boolean) {
     ...(remember ? { maxAge: 60 * 60 * 24 * 30 } : {}),
   };
 }
+
+// Evita redirecciones a otras webs: solo se aceptan rutas internas ("/algo", nunca "//otra.com")
+export function safeRedirect(path?: string | null) {
+  return path && path.startsWith("/") && !path.startsWith("//") && !path.startsWith("/\\") ? path : "/";
+}

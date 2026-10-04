@@ -41,9 +41,10 @@ export function GET(req: NextRequest) {
     );
   }
 /*
-  rolls es una lista con tantos elementos como dados
-  y rellena cada uno con un número aleatorio haciendo uso de Math.random()
-  . Esto da un número entre 1 y 0 multiplicado por las caras
+  rolls es una lista con tantos elementos como dados.
+  Cada uno se rellena con un número aleatorio: Math.random() da un decimal entre 0 y 1,
+  multiplicado por las caras y redondeado hacia abajo da de 0 a (caras - 1),
+  y el "1 +" lo pasa al rango de 1 a caras.
 */
   const rolls = Array.from(
     { length: count },

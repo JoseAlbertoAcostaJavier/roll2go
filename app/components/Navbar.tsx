@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   CircleUser, Swords, Users, BookOpen, BookMarked, User, House, Menu, X, LogOut,
 } from "lucide-react";
@@ -25,10 +25,10 @@ const MENU = [
   { label: "Biblioteca", icon: BookMarked, href: "/biblioteca" },
 ];
 
-export default function Navbar() {
-  /* Usuario con la sesión iniciada (null si no hay nadie).
-     Se consulta a /api/auth/me, que lee la cookie de sesión en el servidor. */
-  const [user, setUser] = useState<{ id: string; username: string } | null>(null);
+/* "user" llega desde el layout (que lee la cookie de sesión en el servidor):
+   null si no hay nadie con la sesión iniciada. */
+export default function Navbar({ user }: { user: { id: string; username: string } | null }) {
+  const router = useRouter();
 
   // Menú desplegable (hamburguesa): abierto o cerrado
   const [menuOpen, setMenuOpen] = useState(false);
@@ -40,25 +40,10 @@ export default function Navbar() {
   const isActive = (href: string) =>
     href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(href + "/");
 
-  // Pregunta quién ha iniciado sesión cada vez que se cambia de página
-  useEffect(() => {
-    let cancelled = false;
-    fetch("/api/auth/me")
-      .then((r) => r.json())
-      .then((d) => {
-        if (!cancelled) setUser(d.user);
-      })
-      .catch(() => {
-        if (!cancelled) setUser(null);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [pathname]);
-
+  // Borra la cookie y vuelve a leer la sesión en el servidor
   async function logout() {
     await fetch("/api/auth/logout", { method: "POST" });
-    setUser(null);
+    router.refresh();
   }
 
   // Con el menú desplegable abierto, la tecla Escape lo cierra
@@ -92,6 +77,7 @@ export default function Navbar() {
           <Image src={logo} alt="Roll2Go" priority className="h-auto w-36 md:w-44 hover:scale-105 transition-all" />
         </Link>
 
+        {/* VERSION 1: Underline Animation.  Para la VERSION 2, comenta el bloque 'nav' debajo y descomenta el segundo bloque 'nav'. */}
         {/* Navegación principal: solo cuando cabe completa */}
         <nav className="hidden items-stretch gap-1 nav:flex" aria-label="Menú principal">
           {MENU.map(({ label, icon: Icon, href }) => {
@@ -106,7 +92,7 @@ export default function Navbar() {
                 {/* Píldora: es lo que se ilumina en hover, más pequeña que la barra */}
                 <span
                   className={`flex items-center  gap-1.5 px-4.5 py-4 text-[13px] font-bold uppercase tracking-wide transition-colors ${
-                    active ? "text-white" : "text-gray-300 group-hover:bg-brand group-hover:text-white"
+                    active ? "text-white" : "text-gray-300 group-hover:text-white"
                   }`}
                 >
                   <Icon
@@ -116,10 +102,11 @@ export default function Navbar() {
                   />
                   {label}
                 </span>
-                {/* Línea roja que marca la zona activa */}
-                {active && (
-                  <span className="absolute inset-x-0 bottom-0 h-[3px] bg-brand" aria-hidden="true" />
-                )}
+                {/* Línea roja que marca la zona activa. Expandida con transform scale-x en hover */}
+                <span 
+                    className={`absolute inset-x-0 bottom-0 h-[3px] bg-brand transition-transform duration-900 origin-left ${active ? 'scale-x-100' : 'scale-x-0 group-hover:scale-x-100'}`} 
+                    aria-hidden="true" 
+                />
               </Link>
             );
           })}
@@ -163,7 +150,7 @@ export default function Navbar() {
             </Link>
             <Link
               href="/sign_up"
-              className="flex h-10 items-center whitespace-nowrap bg-brand px-4 text-xs font-bold uppercase tracking-wider text-white transition-colors hover:bg-brand-hover"
+              className="flex h-10 items-center whitespace-nowrap bg-brand px-4 text-xs font-bold uppercase tracking-wider text-white transition-colors  hover:bg-brand-hover"
             >
               Crear cuenta
             </Link>
