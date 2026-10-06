@@ -77,7 +77,6 @@ export default function Navbar({ user }: { user: { id: string; username: string 
           <Image src={logo} alt="Roll2Go" priority className="h-auto w-36 md:w-44 hover:scale-105 transition-all" />
         </Link>
 
-        {/* VERSION 1: Underline Animation.  Para la VERSION 2, comenta el bloque 'nav' debajo y descomenta el segundo bloque 'nav'. */}
         {/* Navegación principal: solo cuando cabe completa */}
         <nav className="hidden items-stretch gap-1 nav:flex" aria-label="Menú principal">
           {MENU.map(({ label, icon: Icon, href }) => {
@@ -89,23 +88,23 @@ export default function Navbar({ user }: { user: { id: string; username: string 
                 aria-current={active ? "page" : undefined}
                 className="group relative flex items-center whitespace-nowrap"
               >
-                {/* Píldora: es lo que se ilumina en hover, más pequeña que la barra */}
+                {/* Compacto para pantallas por debajo de 1536px (Se quitan iconos y hay menos relleno)*/}
                 <span
-                  className={`flex items-center  gap-1.5 px-4.5 py-4 text-[13px] font-bold uppercase tracking-wide transition-colors ${
+                  className={`flex items-center gap-1.5 px-3 py-4 text-[13px] font-bold uppercase tracking-wide transition-colors 2xl:px-4.5 ${
                     active ? "text-white" : "text-gray-300 group-hover:text-white"
                   }`}
                 >
                   <Icon
                     size={16}
-                    className={`transition-colors ${active ? "text-white" : "text-gray-400 group-hover:text-white"}`}
+                    className={`hidden transition-colors 2xl:block ${active ? "text-white" : "text-gray-400 group-hover:text-white"}`}
                     aria-hidden="true"
                   />
                   {label}
                 </span>
                 {/* Línea roja que marca la zona activa. Expandida con transform scale-x en hover */}
-                <span 
-                    className={`absolute inset-x-0 bottom-0 h-[3px] bg-brand transition-transform duration-900 origin-left ${active ? 'scale-x-100' : 'scale-x-0 group-hover:scale-x-100'}`} 
-                    aria-hidden="true" 
+                <span
+                  className={`absolute inset-x-0 bottom-0 h-[3px] bg-brand transition-transform duration-900 origin-left ${active ? "scale-x-100" : "scale-x-0 group-hover:scale-x-100"}`}
+                  aria-hidden="true"
                 />
               </Link>
             );

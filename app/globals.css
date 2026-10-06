@@ -3,7 +3,7 @@
 /* Colores de Roll2Go: generan clases como bg-surface, text-brand, border-line... */
 @theme {
   /* Ancho mínimo para mostrar el menú completo; por debajo, se usa la hamburguesa */
-  --breakpoint-nav: 85rem; /* 1360px */
+  --breakpoint-nav: 78rem; /* 1248px */
   --color-surface: #19191a;
   --color-panel: #242426;
   --color-line: #38383b;
