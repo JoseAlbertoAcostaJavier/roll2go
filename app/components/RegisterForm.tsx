@@ -91,7 +91,7 @@ export default function RegisterForm() {
         else setFormError(data.error ?? "No se pudo crear la cuenta.");
         return;
       }
-      router.push("/");
+      router.push(`/verify?email=${encodeURIComponent(email.trim())}`);
       router.refresh();
     } catch {
       setFormError("No se pudo conectar con el servidor.");

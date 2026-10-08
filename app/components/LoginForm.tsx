@@ -32,6 +32,11 @@ export default function LoginForm({ redirectTo = "/" }: { redirectTo?: string })
       });
       const data = await res.json();
       if (!res.ok) {
+        // Contraseña correcta pero cuenta sin verificar: se lleva al usuario a pedir otro enlace
+        if (data.code === "unverified") {
+          router.push(`/verify?email=${encodeURIComponent(data.email)}`);
+          return;
+        }
         setError(data.error ?? "No se pudo iniciar sesión.");
         return;
       }
@@ -102,7 +107,8 @@ export default function LoginForm({ redirectTo = "/" }: { redirectTo?: string })
           />
           Recuérdame
         </label>
-        <Link href="#" className="text-muted transition-colors hover:text-brand-soft">
+        {/*Queda por hacer la pagina forgot_password*/}
+        <Link href="/forgot_password" className="text-muted transition-colors hover:text-brand-soft">
           ¿Olvidaste tu contraseña?
         </Link>
       </div>
