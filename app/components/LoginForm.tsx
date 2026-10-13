@@ -2,12 +2,17 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Eye, EyeOff, Lock, User } from "lucide-react";
 
 // redirectTo: a dónde ir tras entrar (por defecto la portada)
 export default function LoginForm({ redirectTo = "/" }: { redirectTo?: string }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  
+  // Comprobamos si la URL tiene el parámetro ?reset=success
+  const resetSuccess = searchParams?.get("reset") === "success";
+
   // "identifier" puede ser el correo o el nombre de usuario
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
@@ -53,6 +58,13 @@ export default function LoginForm({ redirectTo = "/" }: { redirectTo?: string })
     <form onSubmit={handleSubmit} noValidate className="w-full">
       <h1 className="mb-1 font-heading text-3xl font-extrabold">Bienvenido</h1>
       <p className="mb-6 text-sm text-muted">Entra en tu cuenta para ver tus personajes y campañas.</p>
+
+      {/* Mensaje de éxito al cambiar la contraseña */}
+      {resetSuccess && (
+        <div className="mb-6 rounded-md bg-[#6fd08c]/15 p-3 text-sm font-semibold text-[#6fd08c]" role="status">
+          ¡Contraseña actualizada! Ya puedes iniciar sesión con tu nueva clave.
+        </div>
+      )}
 
       {/* Correo o nombre de usuario */}
       <label htmlFor="identifier" className="mb-1.5 block text-sm font-semibold">
@@ -107,7 +119,6 @@ export default function LoginForm({ redirectTo = "/" }: { redirectTo?: string })
           />
           Recuérdame
         </label>
-        {/*Queda por hacer la pagina forgot_password*/}
         <Link href="/forgot_password" className="text-muted transition-colors hover:text-brand-soft">
           ¿Olvidaste tu contraseña?
         </Link>

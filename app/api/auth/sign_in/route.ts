@@ -48,6 +48,17 @@ export async function POST(req: NextRequest) {
       // Mensaje genérico a propósito: no se dice si falló el usuario o la contraseña
       return NextResponse.json({ error: "Credenciales incorrectas." }, { status: 401 });
     }
+    //Si el usuario no esta verificado, no le permitimos iniciar sesion 
+    if (!user.verified) {
+      return NextResponse.json(
+        {
+          error: "Tu cuenta aún no está verificada. Revisa tu correo.",
+          code: "unverified",
+          email: user.email,
+        },
+        { status: 403 },
+      );
+    }    
 
     // 4. Crear sesión y firmar JWT
     const id = user._id.toString();

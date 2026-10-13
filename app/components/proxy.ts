@@ -18,7 +18,11 @@ export async function proxy(req: NextRequest) {
   return NextResponse.next();
 }
 
-// Páginas protegidas: añade aquí las nuevas rutas privadas
+// Páginas protegidas: A futuro se añaden aquí las rutas de páginas privadas que no se pueden ver sin sesión.
+/*Ejemplo, No puedes entrar en personajes a menos que hayas iniciado sesión.
+  Si intentaras hacerlo, te mandaría a la página de login y, tras iniciar sesión, 
+  te llevaría a la página de personajes.
+*/
 export const config = {
   matcher: ["/personajes/:path*", "/campanas/:path*"],
 };

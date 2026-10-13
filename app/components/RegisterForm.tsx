@@ -19,6 +19,9 @@ const USERNAME_REGEX = /^[a-zA-Z0-9_]{3,20}$/;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function RegisterForm() {
+/*Todos los valores que debe cumplir el formulario de registro se validan en el servidor también, 
+para evitar que alguien haga un POST directo a la API y cree una cuenta con datos inválidos. 
+Y showPassword y showConfirm son para mostrar/ocultar las contraseñas si el usuario le da al boton.*/
   const router = useRouter();
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
@@ -59,9 +62,15 @@ export default function RegisterForm() {
     if (!USERNAME_REGEX.test(username.trim())) {
       e.username = "Entre 3 y 20 caracteres: letras, números y guion bajo (sin @ ni espacios).";
     }
+    {/* Por ahora es muy simple, porque solo comprueba que escribas un string@string.com
+        y no si realmente existe el correo. Pero como luego hace falta que el servidor valide la cuenta,
+        mediante el uso de un correo de verificación, no creo que sea necesario hacerlo más estricto.
+    */}
     if (!EMAIL_REGEX.test(email.trim())) {
       e.email = "Escribe un correo electrónico válido.";
     }
+    {/*Se podría complicar esto a futuro, obligando al usuario a usar una contraseña segura.
+      Usando caracteres especiales, números y letras mayúsculas y minúsculas, etc...*/}
     if (password.length < 8) {
       e.password = "La contraseña debe tener al menos 8 caracteres.";
     }
@@ -92,7 +101,6 @@ export default function RegisterForm() {
         return;
       }
       router.push(`/verify?email=${encodeURIComponent(email.trim())}`);
-      router.refresh();
     } catch {
       setFormError("No se pudo conectar con el servidor.");
     } finally {

@@ -1,4 +1,4 @@
-/* Layout de las páginas de acceso (Login) */
+/* Layout de las páginas de Auth. (Sign In, Sign Up, Verify, Forgot Password, etc..)*/
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
     <main className="flex min-h-screen items-center justify-center bg-linear-to-br from-[#4a0c12]

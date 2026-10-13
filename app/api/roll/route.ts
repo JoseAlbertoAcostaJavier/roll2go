@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 /*
   Esta API maneja las solicitudes GET para lanzar dados.
-  Aunque ahora mismo es simple, y lo único que hace es tiradas de dados, a futuro podría ampliarse esta API para
-  incluir más funcionalidades relacionadas con la creación de fichas de personajes, en específico, como en el caso
-  de hacer las tiradas de características al crear un personaje, el hitdice, incluso la tirada de iniciativa, de
-  habilidades, etc. 
+  Aunque ahora mismo es simple, y lo único que hace es tiradas de dados, a futuro la intencion es ampliar esta API
+  para incluir más funcionalidades relacionadas con la creación de fichas de personajes,
+  como en el caso de hacer las tiradas de características al crear un personaje, el hitdice, 
+  incluso se podría implementar la tirada de iniciativa, de habilidades y daño, etc. En el caso de que se quisiera
+  hacer rol de mesa y no desde un tablero virtual.
 */
 // GET /api/roll?dice=2d6%2B3
 export function GET(req: NextRequest) {

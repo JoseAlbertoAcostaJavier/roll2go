@@ -132,7 +132,7 @@ export default function ChatAssistant() {
 
       {open && (
         <section
-          className="fixed bottom-3 right-3 z-50 flex h-[min(540px,calc(100dvh_-_40px))] w-[min(380px,calc(100vw_-_24px))] flex-col overflow-hidden rounded-xl border border-line bg-panel shadow-[0_12px_40px_rgba(0,0,0,0.6)] sm:bottom-5 sm:right-5"
+          className="fixed bottom-3 right-3 z-50 flex h-[min(540px,calc(100dvh-40px))] w-[min(380px,calc(100vw_-_24px))] flex-col overflow-hidden rounded-xl border border-line bg-panel shadow-[0_12px_40px_rgba(0,0,0,0.6)] sm:bottom-5 sm:right-5"
           role="dialog"
           aria-label="Asistente de rol"
         >
@@ -199,7 +199,7 @@ export default function ChatAssistant() {
             {loading && (
               <p className={`${modelBubble} flex items-center gap-2`}>
                 <LoaderCircle size={16} className="shrink-0 animate-spin text-brand-soft" aria-hidden="true" />
-                Espera un momento mientras encuentro el tomo correcto...
+                Un momento, estoy seguro que tengo un libro sobre eso en alguna parte...
               </p>
             )}
           </div>

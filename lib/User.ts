@@ -15,7 +15,10 @@ const UserSchema = new mongoose.Schema(
     verified: { type: Boolean, default: false },
     // Verificación del correo: se guarda el HASH del token (nunca el token) y cuándo caduca
     verifyTokenHash: { type: String, select: false, index: true, sparse: true },
-    verifyTokenExpires: { type: Date, select: false },
+    verifyTokenExpires: { type: Date, select: false }, // ... debajo de verifyTokenExpires
+    
+    resetTokenHash: { type: String, select: false, index: true, sparse: true },
+    resetTokenExpires: { type: Date, select: false },
   },
   {
     timestamps: true, // Esto crea automáticamente createdAt y updatedAt

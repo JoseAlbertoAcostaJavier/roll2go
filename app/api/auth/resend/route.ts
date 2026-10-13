@@ -5,8 +5,9 @@ import { getClientIp, rateLimit, tooManyRequests } from "@/lib/rateLimit";
 import { createVerificationToken, VERIFY_TTL_MS } from "@/lib/verification";
 import { sendVerificationEmail } from "@/lib/mail";
 
+//Permite pedir otro enlace.
 const COOLDOWN_MS = 60 * 1000; // mínimo entre dos envíos al mismo correo
-
+//Espera 1 minuto entre dos envios al mismo correo. Crea un token nuevo y lo guarda encima del anterior
 export async function POST(req: NextRequest) {
   // Máximo 5 peticiones cada 15 minutos por IP
   const limited = await rateLimit("resend", getClientIp(req), 5, 15 * 60);

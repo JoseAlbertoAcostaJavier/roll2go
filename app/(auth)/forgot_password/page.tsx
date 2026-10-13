@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import AuthShell from "@/app/components/AuthShell";
-import LoginForm from "@/app/components/LoginForm";
+import ForgotPasswordForm from "@/app/components/ForgotPasswordForm";
 import { COOKIE_NAME, verifySession, safeRedirect } from "@/lib/auth";
 
 export const metadata: Metadata = { title: "Restablecer contraseña" };
@@ -22,7 +22,7 @@ export default async function LoginPage({
 
   return (
     <AuthShell>
-      <LoginForm redirectTo={redirectTo} />
+      <ForgotPasswordForm/>
     </AuthShell>
   );
 }

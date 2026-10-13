@@ -2,6 +2,12 @@ import fs from "node:fs";
 import path from "node:path";
 import nodemailer, { type Transporter } from "nodemailer";
 
+/* La función mail hace tres cosas:
+ * 1. Conecta con el servidor SMTP.
+ * 2. Construye el enlace.
+ * 3. Compone el correo en HTML y texto plano, y lo envía.
+ * Además en mail tenemos tanto el correo de verificación como el de recuperación de contraseña.
+ */
 let transporter: Transporter | null = null;
 
 function getTransporter() {
@@ -30,6 +36,7 @@ const escapeHtml = (s: string) =>
 
 const LOGO_CID = "roll2go-logo";
 
+/* A futuro debere cambiar el http://localhost:3000 por la URL de la aplicación */
 export async function sendVerificationEmail(
   to: string,
   username: string,
@@ -41,13 +48,13 @@ export async function sendVerificationEmail(
   );
   const link = `${base}/verify/confirm?token=${token}`;
   const name = escapeHtml(username);
-  const year = new Date().getFullYear();
   const contactEmail = process.env.CONTACT_EMAIL;
 
   /* El logo del correo, por orden de preferencia:
      1. EMAIL_LOGO_URL: una dirección pública (https) de la imagen. Es lo recomendable en producción.
      2. assets/logo.png incrustado en el propio correo (funciona también en local).
      3. Si no hay imagen, se muestra el nombre en texto. */
+
   const logoUrl = process.env.EMAIL_LOGO_URL;
   const logoPath = path.join(process.cwd(), "assets", "logo.png");
   const embedLogo = !logoUrl && fs.existsSync(logoPath);
@@ -55,7 +62,7 @@ export async function sendVerificationEmail(
     logoUrl || embedLogo
       ? `<img src="${logoUrl ?? `cid:${LOGO_CID}`}" alt="Roll2Go" width="260" style="display:block;width:260px;max-width:100%;height:auto;border:0;margin:0 auto;">`
       : `<span style="font-family:'Arial Black',Impact,Arial,sans-serif;font-size:44px;font-weight:900;color:#ffffff;letter-spacing:1px;">ROLL2GO</span>`;
-
+/*El HTML del correo. */
   const html = `<!DOCTYPE html>
 <html lang="es">
 <head>
@@ -138,7 +145,61 @@ export async function sendVerificationEmail(
       : [],
   });
 
-  // Con Ethereal (solo pruebas) se imprime un enlace para ver el correo; con un SMTP real no hace nada
+  // Esto lo utilizo para que me imprima por consola el enlace donde puedo ver el correo en Ethereal
+  //Esto se eliminará cuando terminemos la fase de desarrollo.
   const preview = nodemailer.getTestMessageUrl(info);
   if (preview) console.log("Vista previa del correo:", preview);
+}
+
+export async function sendPasswordResetEmail(
+  to: string,
+  username: string,
+  token: string,
+) {
+  const base = (process.env.APP_URL ?? "http://localhost:3000").replace(
+    /\/$/,
+    "",
+  );
+  const link = `${base}/reset_password?token=${token}`; // Pantalla donde se introduce la nueva clave
+  const name = escapeHtml(username);
+
+  const html = `<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f2f2f3;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+    <tr>
+      <td align="center" style="padding:24px 12px;">
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;">
+          <tr>
+            <td style="padding:40px 32px 32px;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.6;color:#242426;">
+              <p style="margin:0 0 16px;font-size:18px;color:#19191a;">Hola ${name},</p>
+              <p style="margin:0;">Has solicitado restablecer tu contraseña en Roll2Go. Pulsa el botón para elegir una nueva:</p>
+              <table role="presentation" align="center" cellpadding="0" cellspacing="0" style="margin:30px auto;">
+                <tr>
+                  <td align="center" bgcolor="#dc3741" style="border-radius:6px;background:#dc3741;">
+                    <a href="${link}" style="display:inline-block;padding:14px 34px;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:bold;color:#ffffff;text-decoration:none;">Cambiar mi contraseña</a>
+                  </td>
+                </tr>
+              </table>
+              <p style="margin:0 0 16px;font-size:13px;color:#6b6b70;">El enlace caduca en 1 hora. Si no has solicitado este cambio, ignora este mensaje.</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+  // Guardamos el resultado en la variable "info"
+  const info = await getTransporter().sendMail({
+    from: process.env.MAIL_FROM ?? process.env.SMTP_USER,
+    to,
+    subject: "Recuperación de contraseña - Roll2Go",
+    html,
+  });
+
+  // Imprimimos el enlace de Ethereal en la terminal (igual que en el registro)
+  const preview = nodemailer.getTestMessageUrl(info);
+  if (preview) console.log("Vista previa del correo (Recuperación):", preview);
 }
