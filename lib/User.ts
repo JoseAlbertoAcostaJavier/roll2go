@@ -16,9 +16,11 @@ const UserSchema = new mongoose.Schema(
     // Verificación del correo: se guarda el HASH del token (nunca el token) y cuándo caduca
     verifyTokenHash: { type: String, select: false, index: true, sparse: true },
     verifyTokenExpires: { type: Date, select: false }, // ... debajo de verifyTokenExpires
-    
+
     resetTokenHash: { type: String, select: false, index: true, sparse: true },
     resetTokenExpires: { type: Date, select: false },
+    // Libros de reglas que el usuario posee (ids de lib/books.ts). Se editarán desde el perfil.
+    ownedBooks: { type: [String], default: [] },
   },
   {
     timestamps: true, // Esto crea automáticamente createdAt y updatedAt

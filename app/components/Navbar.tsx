@@ -18,11 +18,11 @@ import logo from "@/assets/logo.png";
 */
 const MENU = [
   { label: "Inicio", icon: House, href: "/" },
-  { label: "Mis personajes", icon: User, href: "/personajes" },
-  { label: "Mis campañas", icon: Swords, href: "/campanas" },
+  { label: "Mis personajes", icon: User, href: "/characters" },
+  { label: "Mis campañas", icon: Swords, href: "/campaigns" },
   { label: "Social", icon: Users, href: "/social" },
-  { label: "Sistemas", icon: BookOpen, href: "/sistemas" },
-  { label: "Biblioteca", icon: BookMarked, href: "/biblioteca" },
+  { label: "Sistemas", icon: BookOpen, href: "/system" },
+  { label: "Biblioteca", icon: BookMarked, href: "/library" },
 ];
 
 /* "user" llega desde el layout (que lee la cookie de sesión en el servidor):

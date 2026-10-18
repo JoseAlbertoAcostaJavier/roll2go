@@ -1,3 +1,5 @@
+import { COOKIE_NAME, verifySession } from "@/lib/auth";
+import { loadCampaignContext } from "@/lib/campaignContext";
 import { GoogleGenAI } from "@google/genai";
 import { NextRequest, NextResponse } from "next/server";
 import { systemPromptFor } from "@/lib/rolAssistant";
@@ -96,15 +98,37 @@ export async function POST(req: NextRequest) {
   const limited = await rateLimit("chat", getClientIp(req), 20, 10 * 60);
   if (!limited.ok) return tooManyRequests(limited.retryAfter);
 
-  let body: { messages?: Msg[]; systemId?: unknown };
+  let body: { messages?: Msg[]; systemId?: unknown; campaignId?: unknown };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: "Petición no válida." }, { status: 400 });
   }
 
-  // El sistema de rol es obligatorio y tiene que ser uno de los de la lista (no se puede inventar)
-  const selected = rpgSystems.find((s) => s.id === body.systemId);
+  // Campaña (opcional): exige sesión iniciada y que el usuario sea miembro
+  let campaign: Awaited<ReturnType<typeof loadCampaignContext>> = null;
+  if (typeof body.campaignId === "string" && body.campaignId) {
+    const token = req.cookies.get(COOKIE_NAME)?.value;
+    const user = token ? await verifySession(token) : null;
+    if (!user) {
+      return NextResponse.json(
+        { error: "Inicia sesión para usar el asistente con tu campaña." },
+        { status: 401 },
+      );
+    }
+    campaign = await loadCampaignContext(user.id, body.campaignId);
+    if (!campaign) {
+      return NextResponse.json(
+        { error: "No tienes acceso a esa campaña." },
+        { status: 403 },
+      );
+    }
+  }
+
+  // El sistema de rol es obligatorio: el de la campaña si hay una, o el elegido en el chat
+  const selected = rpgSystems.find(
+    (s) => s.id === (campaign?.systemId ?? body.systemId),
+  );
   if (!selected) {
     return NextResponse.json(
       { error: "Elige primero un sistema de rol." },
@@ -134,7 +158,10 @@ export async function POST(req: NextRequest) {
 
   try {
     return NextResponse.json({
-      reply: await generate(contents, systemPromptFor(selected.name)),
+      reply: await generate(
+        contents,
+        systemPromptFor(selected.name, campaign ?? undefined),
+      ),
     });
   } catch (err) {
     console.error("Error de Gemini:", err);
