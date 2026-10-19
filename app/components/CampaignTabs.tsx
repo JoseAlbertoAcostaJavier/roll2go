@@ -8,7 +8,7 @@ const TABS = [
   { label: "Detalles", suffix: "", icon: FileText },
   { label: "Personajes", suffix: "/characters", icon: Users },
   { label: "Diario de campaña", suffix: "/log", icon: ScrollText },
-  { label: "Participantes", suffix: "/members", icon: UserPlus },
+  { label: "Jugadores", suffix: "/members", icon: UserPlus },
 ];
 
 // base: dirección de la campaña, por ejemplo "/campaigns/6710f3a2..."

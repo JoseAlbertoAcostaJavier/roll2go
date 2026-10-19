@@ -41,7 +41,7 @@ export default async function CampaignMembersPage({ params }: { params: Promise<
 
       <section>
         <h2 className={heading}>
-          Participantes{" "}
+          Jugadores{" "}
           <span className="text-sm font-normal text-muted">
             ({people.length} de {MAX_MEMBERS})
           </span>
@@ -66,16 +66,16 @@ export default async function CampaignMembersPage({ params }: { params: Promise<
                   <ConfirmAction
                     url={`/api/campaigns/${id}/members/${p.id}`}
                     label="Expulsar"
-                    question={`¿Expulsar a ${p.name}? Sus personajes se quedarán sin campaña.`}
-                    confirmLabel="Sí, expulsar"
+                    question={`¿Estas seguro de que quieres expulsar a ${p.name}?`}
+                    confirmLabel="Sí, expulsar."
                   />
                 )}
                 {!isDm && isMe && (
                   <ConfirmAction
                     url={`/api/campaigns/${id}/members/${p.id}`}
                     label="Abandonar campaña"
-                    question="¿Abandonar la campaña? Tus personajes se quedarán sin campaña."
-                    confirmLabel="Sí, abandonar"
+                    question="¿Estas seguro? Los personajes que crearas se quedarán sin campaña."
+                    confirmLabel="Sí, abandonar."
                     redirectTo="/campaigns"
                   />
                 )}

@@ -24,5 +24,11 @@ export async function proxy(req: NextRequest) {
   te llevaría a la página de personajes.
 */
 export const config = {
-  matcher: ["/personajes/:path*", "/campanas/:path*"],
+  matcher: [
+    "/personajes/:path*",
+    "/campaigns/:path*",
+    "/profile/:path*",
+    "/settings/:path*",
+    "/users/:path*",
+  ],
 };

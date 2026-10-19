@@ -7,6 +7,7 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   CircleUser, Swords, Users, BookOpen, BookMarked, User, House, Menu, X, LogOut,
 } from "lucide-react";
+import UserMenu, { type NavUser } from "@/app/components/UserMenu";
 // OJO: usa aquí la misma ruta de tu logo que ya tenías funcionando
 import logo from "@/assets/logo.png";
 
@@ -27,8 +28,7 @@ const MENU = [
 
 /* "user" llega desde el layout (que lee la cookie de sesión en el servidor):
    null si no hay nadie con la sesión iniciada. */
-export default function Navbar({ user }: { user: { id: string; username: string } | null }) {
-  const router = useRouter();
+   export default function Navbar({ user }: { user: NavUser | null }) {  
 
   // Menú desplegable (hamburguesa): abierto o cerrado
   const [menuOpen, setMenuOpen] = useState(false);
@@ -39,12 +39,6 @@ export default function Navbar({ user }: { user: { id: string; username: string 
   // "Inicio" solo está activo en "/" exacto; el resto también en sus subpáginas (/personajes/nuevo...)
   const isActive = (href: string) =>
     href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(href + "/");
-
-  // Borra la cookie y vuelve a leer la sesión en el servidor
-  async function logout() {
-    await fetch("/api/auth/logout", { method: "POST" });
-    router.refresh();
-  }
 
   // Con el menú desplegable abierto, la tecla Escape lo cierra
   useEffect(() => {
@@ -117,27 +111,10 @@ export default function Navbar({ user }: { user: { id: string; username: string 
       Sin sesión: enlaces a iniciar sesión y a crear cuenta.
       */}
       <div className="flex shrink-0 items-center gap-5 py-3">
-        {user ? (
-          /* ESTADO: SESIÓN INICIADA */
-          <>
-            <div className="flex h-10 items-center gap-2 rounded border border-line bg-panel px-3">
-              <div className="flex h-7 w-7 items-center justify-center overflow-hidden rounded-full bg-gray-600">
-                <User size={16} className="text-gray-300" />
-              </div>
-              <span className="hidden whitespace-nowrap text-sm font-medium text-gray-200 sm:block">
-                Hola, {user.username}
-              </span>
-            </div>
-            <button
-              onClick={logout}
-              aria-label="Cerrar sesión"
-              title="Cerrar sesión"
-              className="flex h-10 w-10 items-center justify-center rounded text-gray-300 transition-colors hover:bg-panel hover:text-white"
-            >
-              <LogOut size={18} />
-            </button>
-          </>
-        ) : (
+           {user ? (
+             /* ESTADO: SESIÓN INICIADA */
+             <UserMenu user={user} />
+           ) : (
           /* ESTADO: INVITADO (SIN INICIAR SESIÓN) */
           <>
             <Link

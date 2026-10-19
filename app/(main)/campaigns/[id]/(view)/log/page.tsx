@@ -5,7 +5,7 @@ import ConfirmAction from "@/app/components/ConfirmAction";
 import { getCampaignAccess } from "@/lib/campaignAccess";
 import { CampaignLogEntry } from "@/lib/CampaignLogEntry";
 import { User } from "@/lib/User";
-
+import LocalDate from "@/app/components/LocalDate";
 const PAGE_SIZE = 10;
 const FILTERS = [
   ["all", "Todas"],
@@ -14,11 +14,6 @@ const FILTERS = [
 ] as const;
 
 const first = (v?: string | string[]) => (Array.isArray(v) ? v[0] : v);
-const dateFormat = new Intl.DateTimeFormat("es-ES", {
-  dateStyle: "medium",
-  timeStyle: "short",
-  timeZone: "Europe/Madrid",
-});
 
 export default async function CampaignLogPage({
   params,
@@ -105,7 +100,7 @@ export default async function CampaignLogPage({
                     <h3 className="font-heading text-lg font-bold">{e.title}</h3>
                     <p className="text-xs text-muted">
                       {authorName.get(String(e.author)) ?? "Participante eliminado"} ·{" "}
-                      {dateFormat.format(new Date(e.createdAt))}
+                      <LocalDate iso={new Date(e.createdAt).toISOString()} />
                       {edited && " · editada"}
                     </p>
                   </div>

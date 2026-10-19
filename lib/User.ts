@@ -21,6 +21,21 @@ const UserSchema = new mongoose.Schema(
     resetTokenExpires: { type: Date, select: false },
     // Libros de reglas que el usuario posee (ids de lib/books.ts). Se editarán desde el perfil.
     ownedBooks: { type: [String], default: [] },
+
+    // Perfil público
+    displayName: { type: String, trim: true, maxlength: 40, default: "" },
+    pronouns: { type: String, trim: true, maxlength: 30, default: "" },
+    location: { type: String, trim: true, maxlength: 60, default: "" },
+    bio: { type: String, maxlength: 500, default: "" },
+    avatarId: { type: mongoose.Schema.Types.ObjectId, ref: "CampaignImage" },
+    // Cambio de correo pendiente de confirmar (reutiliza verifyTokenHash y verifyTokenExpires)
+    pendingEmail: { type: String, select: false, lowercase: true },
+    // Si, además de en Roll2Go, la notificación llega por correo
+    emailPrefs: {
+      campaigns: { type: Boolean, default: true },
+      messages: { type: Boolean, default: false },
+      social: { type: Boolean, default: true },
+    },
   },
   {
     timestamps: true, // Esto crea automáticamente createdAt y updatedAt

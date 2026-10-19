@@ -2,7 +2,7 @@
 
 import { useState, useSyncExternalStore } from "react";
 import { Check, Copy, LoaderCircle } from "lucide-react";
-
+import LocalDate from "@/app/components/LocalDate";
 const OPTIONS = [
   ["never", "No caduca"],
   ["1d", "1 día"],
@@ -10,11 +10,6 @@ const OPTIONS = [
   ["30d", "30 días"],
 ] as const;
 
-const dateFormat = new Intl.DateTimeFormat("es-ES", {
-  dateStyle: "medium",
-  timeStyle: "short",
-  timeZone: "Europe/Madrid",
-});
 
 // Dirección de la web: solo existe en el navegador (en el servidor es "" y no hay diferencia al cargar)
 const noop = () => () => {};
@@ -112,8 +107,7 @@ export default function InviteLink({
             </button>
           </div>
           <p className="mt-1 text-xs text-muted">
-            {expiresAt ? `Caduca el ${dateFormat.format(new Date(expiresAt))}.` : "No caduca."} Cualquiera que tenga el
-            enlace puede unirse.
+            {expiresAt ? <>Caduca el <LocalDate iso={expiresAt} />.</> : "No caduca."} Cualquiera que tenga el enlace puede unirse.
           </p>
 
           <div className="mt-4 flex flex-wrap items-center gap-3">

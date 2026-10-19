@@ -306,7 +306,7 @@ export default function CampaignForm({
         <div className="grid gap-6 sm:grid-cols-2">
           <ImagePicker
             id="image"
-            label="Imagen"
+            label="Banner"
             hint="PNG, JPG o WebP, máximo 2 MB. Se usa como portada."
             maxMB={2}
             previewClass="h-24 w-36"
@@ -317,8 +317,8 @@ export default function CampaignForm({
           />
           <ImagePicker
             id="logo"
-            label="Logo"
-            hint="PNG, JPG o WebP, máximo 1 MB. Mejor cuadrado."
+            label="Icono"
+            hint="PNG, JPG o WebP, máximo 1 MB. Mejor Cuadrado, se usa como icono de la campaña."
             maxMB={1}
             previewClass="h-24 w-24"
             currentUrl={initial?.logoUrl}

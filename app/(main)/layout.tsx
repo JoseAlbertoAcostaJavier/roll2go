@@ -1,15 +1,13 @@
-import { cookies } from "next/headers";
 import Navbar from "@/app/components/Navbar";
 import ChatAssistant from "@/app/components/ChatAssistant";
-import { COOKIE_NAME, verifySession } from "@/lib/auth";
 
 /* Layout de la página principal incluye: Navbar, footer y asistente de IA.   
 */
-   
-export default async function MainLayout({ children }: { children: React.ReactNode }) {
-  const token = (await cookies()).get(COOKIE_NAME)?.value;
-  const user = token ? await verifySession(token) : null;
+import { getCurrentUser } from "@/lib/currentUser";
+// ...
 
+export default async function MainLayout({ children }: { children: React.ReactNode }) {
+  const user = await getCurrentUser();
   return (
     <>
       <Navbar user={user} />

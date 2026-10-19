@@ -5,11 +5,8 @@ import { COOKIE_NAME, verifySession } from "@/lib/auth";
 import { rateLimit, tooManyRequests } from "@/lib/rateLimit";
 import { Campaign } from "@/lib/Campaign";
 import { CampaignImage } from "@/lib/CampaignImage";
-import { HomebrewEntry } from "@/lib/HomebrewEntry";
-import { Character } from "@/lib/Character";
 import { User } from "@/lib/User";
 import { parseCampaignForm, storeImage } from "@/lib/campaignInput";
-import { CampaignLogEntry } from "@/lib/CampaignLogEntry";
 type Ctx = { params: Promise<{ id: string }> };
 
 const notFound = () =>
@@ -139,16 +136,8 @@ export async function DELETE(req: NextRequest, { params }: Ctx) {
   }
 
   try {
-    // 1. Los personajes siguen existiendo, pero sin campaña
-    await Character.updateMany(
-      { campaign: campaign._id },
-      { $unset: { campaign: "", origin: "" } },
-    );
-    // 2. Homebrew de la campaña (cuando exista el diario, sus entradas se borrarán aquí también)
-    await HomebrewEntry.deleteMany({ campaign: campaign._id });
-    // 3. La campaña
-    await CampaignLogEntry.deleteMany({ campaign: campaign._id });    
-    await Campaign.deleteOne({ _id: campaign._id });
+    await deleteCampaignData(campaign);
+    return NextResponse.json({ ok: true });
   } catch (err) {
     console.error("Error al borrar la campaña:", err);
     return NextResponse.json(
