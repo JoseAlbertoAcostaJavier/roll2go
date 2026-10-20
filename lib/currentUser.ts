@@ -1,6 +1,6 @@
 import { cache } from "react";
 import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { COOKIE_NAME, verifySession } from "@/lib/auth";
 import { connectDB } from "@/lib/mongodb";
 import { User } from "@/lib/User";
@@ -10,6 +10,7 @@ export type CurrentUser = {
   username: string;
   displayName: string;
   avatarUrl: string | null;
+  role: "user" | "admin";
 };
 
 export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
@@ -19,7 +20,7 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
 
   await connectDB();
   const u = await User.findById(session.id)
-    .select("username displayName avatarId")
+    .select("username displayName avatarId role")
     .lean();
   if (!u) return null; // la cuenta ya no existe
   return {
@@ -27,6 +28,7 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
     username: u.username,
     displayName: u.displayName || u.username, // sin nombre visible, se muestra el usuario
     avatarUrl: u.avatarId ? `/api/images/${u.avatarId}` : null,
+    role: u.role === "admin" ? "admin" : "user",
   };
 });
 
@@ -34,5 +36,12 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
 export async function requireUser(next: string) {
   const user = await getCurrentUser();
   if (!user) redirect(`/sign_in?next=${encodeURIComponent(next)}`);
+  return user;
+}
+
+// Solo administradores. Al resto les da 404, para no revelar que la página existe
+export async function requireAdmin() {
+  const user = await getCurrentUser();
+  if (!user || user.role !== "admin") notFound();
   return user;
 }

@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import AuthShell from "@/app/components/AuthShell";
 import LoginForm from "@/app/components/LoginForm";
-import { COOKIE_NAME, verifySession, safeRedirect } from "@/lib/auth";
+import { safeRedirect } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/currentUser";
 
 export const metadata: Metadata = { title: "Iniciar sesión" };
 
@@ -16,9 +16,8 @@ export default async function LoginPage({
   const { next } = await searchParams;
   const redirectTo = safeRedirect(next);
 
-  // Si ya tiene sesión, no tiene sentido ver el login
-  const token = (await cookies()).get(COOKIE_NAME)?.value;
-  if (token && (await verifySession(token))) redirect(redirectTo);
+  // Si ya tiene sesión (y su cuenta sigue existiendo), no tiene sentido ver el login
+  if (await getCurrentUser()) redirect(redirectTo);
 
   return (
     <AuthShell>

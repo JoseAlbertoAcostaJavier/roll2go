@@ -3,14 +3,13 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname} from "next/navigation";
 import {
-  CircleUser, Swords, Users, BookOpen, BookMarked, User, House, Menu, X, LogOut,
+  CircleUser, Swords, Users, BookOpen, BookMarked, User, House, Menu, X
 } from "lucide-react";
 import UserMenu, { type NavUser } from "@/app/components/UserMenu";
-// OJO: usa aquí la misma ruta de tu logo que ya tenías funcionando
 import logo from "@/assets/logo.png";
-
+import NotificationBell from "@/app/components/NotificationBell";
 /*Definición del menú principal con etiquetas, iconos y a dónde lleva cada uno.
   El formato es: label: "Nombre de la sección", icon: Icono correspondiente, href: "/ruta".
   Los iconos se importan desde la librería lucide-react y se asignan a cada sección del menú.
@@ -28,8 +27,7 @@ const MENU = [
 
 /* "user" llega desde el layout (que lee la cookie de sesión en el servidor):
    null si no hay nadie con la sesión iniciada. */
-   export default function Navbar({ user }: { user: NavUser | null }) {  
-
+  export default function Navbar({ user, unread }: { user: NavUser | null; unread: number }) {
   // Menú desplegable (hamburguesa): abierto o cerrado
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -113,7 +111,10 @@ const MENU = [
       <div className="flex shrink-0 items-center gap-5 py-3">
            {user ? (
              /* ESTADO: SESIÓN INICIADA */
+             <>
+            <NotificationBell initialUnread={unread} />
              <UserMenu user={user} />
+             </>
            ) : (
           /* ESTADO: INVITADO (SIN INICIAR SESIÓN) */
           <>

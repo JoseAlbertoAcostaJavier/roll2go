@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
+import FriendActions from "@/app/components/FriendActions";
 import ProfileCard from "@/app/components/ProfileCard";
 import { requireUser } from "@/lib/currentUser";
 import { getPublicProfile } from "@/lib/userProfile";
+import { relationBetween } from "@/lib/friends";
 
 export const metadata: Metadata = { title: "Perfil" };
 
@@ -14,11 +16,13 @@ export default async function UserProfilePage({ params }: { params: Promise<{ us
 
   const profile = await getPublicProfile(username);
   if (!profile) notFound();
+  const relation = await relationBetween(me.id, profile.id);
 
-  // Los botones de amistad y de mensaje se añaden en la entrega de Social
   return (
     <div className="mx-auto max-w-xl px-5 py-10">
-      <ProfileCard profile={profile} />
+      <ProfileCard profile={profile}>
+        <FriendActions username={profile.username} initialRelation={relation} showStatus />
+      </ProfileCard>
     </div>
   );
 }

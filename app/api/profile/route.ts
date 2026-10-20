@@ -61,7 +61,13 @@ export async function PATCH(req: NextRequest) {
   if (!user)
     return NextResponse.json({ error: "Inicia sesión." }, { status: 401 });
 
-  const set: Record<string, unknown> = { displayName, pronouns, location, bio };
+  const set: Record<string, unknown> = {
+    displayName,
+    displayNameLower: displayName.toLowerCase(),
+    pronouns,
+    location,
+    bio,
+  };  
   const unset: Record<string, ""> = {};
   let createdId: unknown;
   let oldAvatar: unknown;

@@ -36,6 +36,10 @@ const UserSchema = new mongoose.Schema(
       messages: { type: Boolean, default: false },
       social: { type: Boolean, default: true },
     },
+    //Si el usuario es administrador o no (para poder acceder al panel de administración)
+    // Búsqueda por prefijo del nombre visible (copia en minúsculas; se rellena al guardar el perfil)
+    displayNameLower: { type: String, default: "", index: true },
+    role: { type: String, enum: ["user", "admin"], default: "user" },
   },
   {
     timestamps: true, // Esto crea automáticamente createdAt y updatedAt

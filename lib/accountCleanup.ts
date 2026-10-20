@@ -5,7 +5,8 @@ import { HomebrewEntry } from "@/lib/HomebrewEntry";
 import { Character } from "@/lib/Character";
 import { Friendship } from "@/lib/Friendship";
 import { User } from "@/lib/User";
-
+import { Message } from "@/lib/Message";
+import { Notification } from "@/lib/Notification";
 /* Borra una campaña y todo lo que depende de ella. Los personajes NO se borran: se quedan sin campaña.
    La campaña se borra antes que las imágenes: si algo falla a medias, volver a intentarlo es seguro. */
 export async function deleteCampaignData(campaign: {
@@ -49,7 +50,8 @@ export async function deleteUserData(userId: string) {
   await Friendship.deleteMany({
     $or: [{ requester: userId }, { recipient: userId }],
   });
-
+  await Message.deleteMany({ $or: [{ from: userId }, { to: userId }] });
+  await Notification.deleteMany({ $or: [{ user: userId }, { actor: userId }] });
   // 4. Todas las imágenes que subió (avatar incluido) y, por último, la cuenta
   await CampaignImage.deleteMany({ owner: userId });
   await User.deleteOne({ _id: userId });

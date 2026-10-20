@@ -3,11 +3,11 @@
 import { useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronDown, LogOut, Pencil, Settings, User as UserIcon } from "lucide-react";
+import { ChevronDown, LogOut, Pencil, Settings, User as UserIcon, MessageSquare, Megaphone, Users } from "lucide-react";
 import Avatar from "@/app/components/Avatar";
 import useDismiss from "@/app/components/useDismiss";
 
-export type NavUser = { id: string; username: string; displayName: string; avatarUrl: string | null };
+export type NavUser = { id: string; username: string; displayName: string; role?: "user" | "admin"; avatarUrl: string | null };
 
 const item =
   "flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm text-gray-200 transition-colors hover:bg-line hover:text-white";
@@ -52,12 +52,23 @@ export default function UserMenu({ user }: { user: NavUser }) {
           <Link href="/profile" role="menuitem" onClick={() => setOpen(false)} className={item}>
             <UserIcon size={16} aria-hidden="true" /> Ver mi perfil
           </Link>
+          <Link href="/social" role="menuitem" onClick={() => setOpen(false)} className={item}>
+            <Users size={16} aria-hidden="true" /> Mis amigos
+          </Link>
+          <Link href="/messages" role="menuitem" onClick={() => setOpen(false)} className={item}>
+            <MessageSquare size={16} aria-hidden="true" /> Mensajes
+          </Link>          
           <Link href="/settings/profile" role="menuitem" onClick={() => setOpen(false)} className={item}>
             <Pencil size={16} aria-hidden="true" /> Editar perfil
           </Link>
           <Link href="/settings/account" role="menuitem" onClick={() => setOpen(false)} className={item}>
             <Settings size={16} aria-hidden="true" /> Mi cuenta
           </Link>
+          {user.role === "admin" && (
+            <Link href="/admin/announcements" role="menuitem" onClick={() => setOpen(false)} className={item}>
+              <Megaphone size={16} aria-hidden="true" /> Avisos de Roll2Go
+            </Link>
+          )}          
           <button type="button" role="menuitem" onClick={logout} className={`${item} border-t border-line`}>
             <LogOut size={16} aria-hidden="true" /> Cerrar sesión
           </button>

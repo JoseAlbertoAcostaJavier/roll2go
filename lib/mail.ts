@@ -10,7 +10,7 @@ import nodemailer, { type Transporter } from "nodemailer";
  */
 let transporter: Transporter | null = null;
 
-function getTransporter() {
+export function getTransporter() {
   if (transporter) return transporter;
   const { SMTP_HOST, SMTP_USER, SMTP_PASS } = process.env;
   if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS) {
