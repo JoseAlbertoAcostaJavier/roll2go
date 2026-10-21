@@ -8,7 +8,9 @@ import { connectDB } from "@/lib/mongodb";
 import { Friendship } from "@/lib/Friendship";
 import { User } from "@/lib/User";
 import { relationOf, type Relation } from "@/lib/friends";
-
+import ConfirmAction from "@/app/components/ConfirmAction";
+import { Block } from "@/lib/Block";
+import { loadUserCards } from "@/lib/userCards";
 export const metadata: Metadata = { title: "Social" };
 
 type Person = { username: string; displayName: string; avatarUrl: string | null; relation: Relation };
@@ -68,7 +70,9 @@ export default async function SocialPage() {
     });
   });
   const pick = (rel: Relation) => people.filter((p) => p.relation === rel);
-
+  const blocks = await Block.find({ blocker: me.id }).sort({ createdAt: -1 }).limit(200).lean();
+  const blockedCards = await loadUserCards(blocks.map((b) => b.blocked));
+  const blockedUsers = blocks.map((b) => blockedCards.get(String(b.blocked))).filter((u) => !!u);
   return (
     <div className="mx-auto max-w-280 px-5 py-10">
       <h1 className="mb-6 font-heading text-3xl font-extrabold">Lista de Amigos</h1>
@@ -86,6 +90,31 @@ export default async function SocialPage() {
           Todavía no tienes amigos en Roll2Go. Busca a alguien por su nombre de usuario y envíale una solicitud.
         </p>
       )}
+
+      {blockedUsers.length > 0 && (
+        <section className="mt-10">
+          <h2 className="mb-4 border-l-4 border-brand pl-3 font-heading text-xl font-bold">
+            Usuarios bloqueados <span className="text-sm font-normal text-muted">({blockedUsers.length})</span>
+          </h2>
+          <ul className="divide-y divide-line overflow-hidden rounded-lg border border-line bg-panel">
+            {blockedUsers.map((u) => (
+              <li key={u.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+                <span className="min-w-0">
+                  <span className="block truncate font-semibold">{u.displayName}</span>
+                  <span className="block truncate text-xs text-muted">@{u.username}</span>
+                </span>
+                <ConfirmAction
+                  url={`/api/blocks/${u.username}`}
+                  method="DELETE"
+                  label="Desbloquear"
+                  question={`¿Quieres desbloquear a ${u.displayName}?`}
+                  confirmLabel="Sí, desbloquear"
+                />
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}      
     </div>
   );
 }

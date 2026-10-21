@@ -46,7 +46,7 @@ export default function NotificationPrefsForm({ initial }: { initial: Prefs }) {
     <form onSubmit={save} className={card}>
       <h2 className={cardTitle}>Notificaciones por correo</h2>
       <p className="mb-5 text-sm text-muted">
-        Las notificaciones siempre aparecen dentro de Roll2Go. Aquí eliges de qué tipo quieres recibir, además, un correo.
+        Elige qué notificaciones quieres recibir por correo.
       </p>
       <div className="space-y-4">
         {OPTIONS.map(({ key, title, desc }) => (

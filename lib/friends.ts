@@ -45,3 +45,12 @@ export async function findUserByUsername(username: string) {
     .select("username displayName avatarId")
     .lean();
 }
+
+// Ids de los amigos de un usuario (amistades aceptadas)
+export async function friendIdsOf(meId: string): Promise<string[]> {
+  const rows = await Friendship.find({ status: "accepted", $or: [{ requester: meId }, { recipient: meId }] })
+    .select("requester recipient")
+    .limit(500)
+    .lean();
+  return rows.map((r) => (String(r.requester) === meId ? String(r.recipient) : String(r.requester)));
+}

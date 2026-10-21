@@ -4,9 +4,8 @@ import { sessionOf } from "@/lib/campaignApi";
 import { rateLimit, tooManyRequests } from "@/lib/rateLimit";
 import { User } from "@/lib/User";
 import { relationsWith } from "@/lib/friends";
-
+import { blockedIdsOf } from "@/lib/blocks";
 const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-
 export async function GET(req: NextRequest) {
   const session = await sessionOf(req);
   if (!session)
@@ -26,9 +25,10 @@ export async function GET(req: NextRequest) {
     await connectDB();
     // Solo por usuario y nombre visible, y solo por el principio (nunca por correo)
     const prefix = new RegExp("^" + escapeRegex(q));
+    const hidden = await blockedIdsOf(session.id); // bloqueados en cualquier dirección
     const users = await User.find({
       verified: true,
-      _id: { $ne: session.id },
+      _id: { $nin: [session.id, ...hidden] },
       $or: [{ usernameLower: prefix }, { displayNameLower: prefix }],
     })
       .select("username displayName avatarId")

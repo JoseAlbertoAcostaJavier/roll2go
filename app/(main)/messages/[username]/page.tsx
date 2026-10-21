@@ -9,7 +9,7 @@ import { connectDB } from "@/lib/mongodb";
 import { Message } from "@/lib/Message";
 import { pairKey } from "@/lib/Friendship";
 import { findUserByUsername, relationBetween } from "@/lib/friends";
-
+import { blockStatus } from "@/lib/blocks";
 export const metadata: Metadata = { title: "Mensajes" };
 
 export default async function ConversationPage({ params }: { params: Promise<{ username: string }> }) {
@@ -22,7 +22,8 @@ export default async function ConversationPage({ params }: { params: Promise<{ u
   const otherId = String(other._id);
   if (otherId === me.id) redirect("/messages");
 
-  const canSend = (await relationBetween(me.id, otherId)) === "friend";
+  const friends = (await relationBetween(me.id, otherId)) === "friend";
+  const canSend = friends && !(await blockStatus(me.id, otherId)).any;
   const recent = await Message.find({ pair: pairKey(me.id, otherId) }).sort({ createdAt: -1 }).limit(50).lean();
 
   // Sin amistad y sin historial no hay nada que ver aquí
@@ -34,6 +35,11 @@ export default async function ConversationPage({ params }: { params: Promise<{ u
     text: m.text,
     createdAt: new Date(m.createdAt).toISOString(),
   }));
+
+  const lastRead = await Message.findOne({ pair: pairKey(me.id, otherId), from: me.id, readAt: { $ne: null } })
+    .sort({ createdAt: -1 })
+    .select("_id")
+    .lean();
 
   return (
     <div className="mx-auto max-w-2xl px-5 py-8">
@@ -47,7 +53,12 @@ export default async function ConversationPage({ params }: { params: Promise<{ u
           <span className="block text-xs text-muted">@{other.username}</span>
         </span>
       </Link>
-      <ChatThread username={other.username} initial={initial} canSend={canSend} />
-    </div>
+      <ChatThread
+        username={other.username}
+        initial={initial}
+        initialReadId={lastRead ? String(lastRead._id) : null}
+        canSend={canSend}
+      />    
+      </div>
   );
 }

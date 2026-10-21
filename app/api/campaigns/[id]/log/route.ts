@@ -3,7 +3,7 @@ import { rateLimit, tooManyRequests } from "@/lib/rateLimit";
 import { CampaignLogEntry } from "@/lib/CampaignLogEntry";
 import { requireMember } from "@/lib/campaignApi";
 import { parseLogBody } from "@/lib/logInput";
-
+import { notify } from "@/lib/notify";
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -33,6 +33,24 @@ export async function POST(
       author: ctx.session.id,
       ...value,
     });
+    // Las notas públicas avisan al resto de participantes. Las privadas no avisan a nadie.
+    if (value.visibility === "public") {
+      const others = ctx.campaign.members
+        .map(String)
+        .filter((m) => m !== ctx.session.id);
+      await Promise.all(
+        others.map((user) =>
+          notify({
+            user,
+            type: "campaign_note",
+            actor: ctx.session.id,
+            campaign: id,
+          }).catch((err) =>
+            console.error("No se pudo avisar de la nota:", err),
+          ),
+        ),
+      );
+    }
     return NextResponse.json({ id: String(entry._id) }, { status: 201 });
   } catch (err) {
     console.error("Error al crear la nota:", err);

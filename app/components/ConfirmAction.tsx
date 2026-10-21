@@ -13,7 +13,7 @@ export default function ConfirmAction({
   redirectTo,
 }: {
   url: string;
-  method?: "DELETE" | "POST";
+  method?: "DELETE" | "POST" | "PUT";
   label: string; // texto del botón
   question: string; // pregunta de confirmación
   confirmLabel: string; // texto del botón que confirma

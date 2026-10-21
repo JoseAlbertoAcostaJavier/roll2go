@@ -15,11 +15,11 @@ export default function ProfileCard({ profile, children }: { profile: PublicProf
 
       <p className="mt-5 flex justify-center gap-6 text-sm text-muted">
         <span>
-          <strong className="text-white">{profile.friends}</strong> {profile.friends === 1 ? "amistad" : "amistades"}
+          <strong className="text-white">{profile.friends}</strong> {profile.friends === 1 ? "Amigo" : "Amigos"}
         </span>
         <span>
           <strong className="text-white">{profile.characters}</strong>{" "}
-          {profile.characters === 1 ? "personaje creado" : "personajes creados"}
+          {profile.characters === 1 ? "Personaje creado" : "Personajes creados"}
         </span>
       </p>
 

@@ -6,7 +6,7 @@ import { Friendship, pairKey } from "@/lib/Friendship";
 import { Notification } from "@/lib/Notification";
 import { findUserByUsername } from "@/lib/friends";
 import { notify } from "@/lib/notify";
-
+import { blockStatus } from "@/lib/blocks";
 const MAX_PENDING = 50; // solicitudes enviadas sin responder
 
 export async function POST(req: NextRequest) {
@@ -36,6 +36,23 @@ export async function POST(req: NextRequest) {
       );
     const targetId = String(target._id);
     if (targetId === session.id) {
+      // Nadie puede enviar una solicitud a quien le ha bloqueado, ni a quien ha bloqueado él
+      const block = await blockStatus(session.id, targetId);
+      if (block.byMe) {
+        return NextResponse.json(
+          {
+            error:
+              "Has bloqueado a este usuario. Desbloquéalo para poder enviarle una solicitud.",
+          },
+          { status: 403 },
+        );
+      }
+      if (block.byThem) {
+        return NextResponse.json(
+          { error: "No puedes enviar una solicitud a este usuario." },
+          { status: 403 },
+        );
+      }
       return NextResponse.json(
         { error: "No puedes enviarte una solicitud a ti mismo." },
         { status: 400 },

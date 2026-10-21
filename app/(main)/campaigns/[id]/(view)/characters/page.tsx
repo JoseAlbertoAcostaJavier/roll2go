@@ -1,6 +1,7 @@
 import { getCampaignAccess } from "@/lib/campaignAccess";
 import { Character } from "@/lib/Character";
-import { User } from "@/lib/User";
+import UserLink from "@/app/components/UserLink";
+import { loadUserCards } from "@/lib/userCards";
 
 export default async function CampaignCharactersPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -11,9 +12,7 @@ export default async function CampaignCharactersPage({ params }: { params: Promi
     .sort({ createdAt: 1 })
     .lean();
 
-  const ownerIds = [...new Set(characters.map((c) => String(c.owner)))];
-  const owners = await User.find({ _id: { $in: ownerIds } }).select("username").lean();
-  const ownerName = new Map<string, string>(owners.map((u): [string, string] => [String(u._id), String(u.username)]));
+  const ownerCards = await loadUserCards(characters.map((c) => c.owner));
 
   return (
     <section>
@@ -27,7 +26,10 @@ export default async function CampaignCharactersPage({ params }: { params: Promi
           {characters.map((c) => (
             <li key={String(c._id)} className="rounded-lg border border-line bg-surface p-4">
               <p className="font-heading font-bold">{c.name}</p>
-              <p className="text-sm text-muted">{ownerName.get(String(c.owner)) ?? "Desconocido"}</p>
+              {(() => {
+                const owner = ownerCards.get(String(c.owner));
+                return owner ? <UserLink user={owner} size={24} className="mt-1 text-sm" /> : <p className="text-sm text-muted">Desconocido</p>;
+              })()}
               {c.origin && (
                 <span className="mt-2 inline-block rounded bg-panel px-2 py-0.5 text-xs text-muted">
                   {c.origin === "internal" ? "Interno" : "Externo"}

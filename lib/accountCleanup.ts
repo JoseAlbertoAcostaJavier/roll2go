@@ -7,6 +7,8 @@ import { Friendship } from "@/lib/Friendship";
 import { User } from "@/lib/User";
 import { Message } from "@/lib/Message";
 import { Notification } from "@/lib/Notification";
+import { Block } from "@/lib/Block";
+import { CampaignInvite } from "@/lib/CampaignInvite";
 /* Borra una campaña y todo lo que depende de ella. Los personajes NO se borran: se quedan sin campaña.
    La campaña se borra antes que las imágenes: si algo falla a medias, volver a intentarlo es seguro. */
 export async function deleteCampaignData(campaign: {
@@ -20,6 +22,7 @@ export async function deleteCampaignData(campaign: {
   );
   await HomebrewEntry.deleteMany({ campaign: campaign._id });
   await CampaignLogEntry.deleteMany({ campaign: campaign._id });
+  await CampaignInvite.deleteMany({ campaign: campaign._id });  
   await Campaign.deleteOne({ _id: campaign._id });
 
   const imageIds = [campaign.imageId, campaign.logoId].filter(Boolean);
@@ -50,6 +53,11 @@ export async function deleteUserData(userId: string) {
   await Friendship.deleteMany({
     $or: [{ requester: userId }, { recipient: userId }],
   });
+  await Block.deleteMany({ $or: [{ blocker: userId }, { blocked: userId }] });
+  await CampaignInvite.deleteMany({
+    $or: [{ user: userId }, { invitedBy: userId }],
+  });
+  await Campaign.updateMany({ banned: userId }, { $pull: { banned: userId } });  
   await Message.deleteMany({ $or: [{ from: userId }, { to: userId }] });
   await Notification.deleteMany({ $or: [{ user: userId }, { actor: userId }] });
   // 4. Todas las imágenes que subió (avatar incluido) y, por último, la cuenta

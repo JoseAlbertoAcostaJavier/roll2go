@@ -9,6 +9,7 @@ import {
   type NotificationType,
 } from "@/lib/notificationText";
 import { sendNotificationEmail } from "@/lib/notifyMail";
+import { isBlockedEither } from "@/lib/blocks";
 
 // Valores por defecto para cuentas que todavía no han tocado sus preferencias
 const DEFAULT_EMAIL_PREFS = { campaigns: true, messages: false, social: true };
@@ -26,21 +27,48 @@ export async function countUnread(userId: string) {
   return Notification.countDocuments({ user: userId, read: false });
 }
 
+/* Mientras no se lean, estos avisos se agrupan en uno solo con contador (y se envía un único correo):
+   los mensajes de la misma persona y las notas o mensajes de foro nuevos de una misma campaña. */
+function groupFilter(input: Input) {
+  if (input.type === "message" && input.actor)
+    return { type: "message", actor: input.actor };
+  if (
+    (input.type === "campaign_note" || input.type === "campaign_post") &&
+    input.campaign
+  ) {
+    return { type: input.type, campaign: input.campaign };
+  }
+  return null;
+}
+
 export async function notify(input: Input) {
   await connectDB();
 
-  // Mensajes seguidos de la misma persona: una sola notificación con contador (y un solo correo)
-  if (input.type === "message" && input.actor) {
+  // Si hay un bloqueo entre las dos personas, no se avisa
+  if (
+    input.actor &&
+    input.actor !== input.user &&
+    (await isBlockedEither(input.user, input.actor))
+  )
+    return;
+
+  const group = groupFilter(input);
+  if (group) {
     const existing = await Notification.findOne({
       user: input.user,
-      type: "message",
-      actor: input.actor,
       read: false,
+      ...group,
     }).select("_id");
     if (existing) {
       await Notification.updateOne(
         { _id: existing._id },
-        { $inc: { count: 1 }, $set: { createdAt: new Date() } },
+        {
+          $inc: { count: 1 },
+          $set: {
+            createdAt: new Date(),
+            ...(input.actor ? { actor: input.actor } : {}),
+          },
+        },
       );
       return;
     }

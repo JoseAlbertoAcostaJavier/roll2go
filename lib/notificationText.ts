@@ -74,12 +74,18 @@ export function describeNotification(
       return { text: `${who} te ha invitado a ${where}`, href: "/campaigns" };
     case "campaign_note":
       return {
-        text: `${who} ha publicado una nueva nota en ${where}`,
+        text:
+          (n.count ?? 1) > 1
+            ? `Hay ${n.count} notas nuevas en ${where}`
+            : `${who} ha publicado una nueva nota en ${where}`,
         href: `${campaignHref}/log`,
       };
     case "campaign_post":
       return {
-        text: `${who} ha publicado un nuevo mensaje en ${where}`,
+        text:
+          (n.count ?? 1) > 1
+            ? `Hay ${n.count} mensajes nuevos en ${where}`
+            : `${who} ha publicado un nuevo mensaje en ${where}`,
         href: `${campaignHref}/forum`,
       };
     case "character_created":

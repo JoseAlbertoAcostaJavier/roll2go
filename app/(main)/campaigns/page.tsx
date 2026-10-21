@@ -2,12 +2,15 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { Plus, User as UserIcon } from "lucide-react";
+import { Plus } from "lucide-react";
 import { COOKIE_NAME, verifySession } from "@/lib/auth";
 import { connectDB } from "@/lib/mongodb";
 import { Campaign } from "@/lib/Campaign";
-import { User } from "@/lib/User";
 import { system as rpgSystems } from "@/lib/systems";
+import Avatar from "@/app/components/Avatar";
+import CampaignInvites, { type InviteData } from "@/app/components/CampaignInvites";
+import { CampaignInvite } from "@/lib/CampaignInvite";
+import { loadUserCards } from "@/lib/userCards";
 
 export const metadata: Metadata = { title: "Mis campañas" };
 
@@ -49,7 +52,7 @@ export default async function CampaignsPage({
   if (owner === "mine") filter.owner = session.id;
   if (owner === "others") filter.owner = { $ne: session.id };
   if (status !== "all") filter.status = status;
-  if (q) filter.name = { $regex: escapeRegex(q), $options: "i" };
+  if (q) filter.name = { $regex: escapeRegex(q),$options: "i" };
 
   const sortBy: Record<string, 1 | -1> =
     sort === "name" ? { name: 1 } : sort === "new" ? { createdAt: -1 } : { updatedAt: -1 };
@@ -61,10 +64,25 @@ export default async function CampaignsPage({
     .limit(100)
     .lean();
 
-  // Nombre de usuario de los DM de las campañas
-  const ownerIds = [...new Set(campaigns.map((c) => String(c.owner)))];
-  const owners = await User.find({ _id: { $in: ownerIds } }).select("username").lean();
-  const ownerName = new Map<string, string>(owners.map((u): [string, string] => [String(u._id), String(u.username)]));
+  // Tarjetas de usuario de los DM de las campañas
+  const ownerCards = await loadUserCards(campaigns.map((c) => c.owner));
+
+  // Invitaciones pendientes que te han enviado
+  const invites = await CampaignInvite.find({ user: session.id }).sort({ createdAt: -1 }).limit(20).lean();
+  const inviteCampaigns = await Campaign.find({ _id: { $in: invites.map((i) => i.campaign) } }).select("name systemId").lean();
+  const inviteCampaignById = new Map(inviteCampaigns.map((c) => [String(c._id), c] as const));
+  const inviterCards = await loadUserCards(invites.map((i) => i.invitedBy));
+  const inviteData: InviteData[] = invites.flatMap((i) => {
+    const c = inviteCampaignById.get(String(i.campaign));
+    if (!c) return [];
+    const inviter = inviterCards.get(String(i.invitedBy));
+    return [{
+      id: String(i._id),
+      campaignName: c.name,
+      systemName: rpgSystems.find((s) => s.id === c.systemId)?.name ?? c.systemId,
+      inviter: inviter ? { displayName: inviter.displayName, avatarUrl: inviter.avatarUrl } : null,
+    }];
+  });
 
   return (
     <div className="mx-auto max-w-280 px-5 py-10">
@@ -77,6 +95,8 @@ export default async function CampaignsPage({
           <Plus size={16} aria-hidden="true" /> Crear campaña
         </Link>
       </div>
+
+      <CampaignInvites invites={inviteData} />
 
       {/* Buscador: es un formulario GET, así que los filtros quedan en la dirección y funciona sin JavaScript.
           La key reinicia los campos cuando cambian los filtros (por ejemplo al pulsar "Limpiar"). */}
@@ -174,15 +194,18 @@ export default async function CampaignsPage({
                     {rpgSystems.find((s) => s.id === c.systemId)?.name ?? c.systemId}
                   </p>
                   <p className="text-sm text-muted">
-                    {players} {players === 1 ? "participante" : "participantes"}
+                    {players} {players === 1 ? "jugador" : "jugadores"}
                   </p>
-                  <p className="mt-3 flex items-center gap-2 text-sm">
-                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-surface text-muted">
-                      <UserIcon size={14} aria-hidden="true" />
-                    </span>
-                    <span className="font-semibold text-[#6fd08c]">{ownerName.get(String(c.owner)) ?? "Desconocido"}</span>
-                    {mine && <span className="text-xs text-muted">(tú, DM)</span>}
-                  </p>
+                  {(() => {
+                    const owner = ownerCards.get(String(c.owner));
+                    return (
+                      <p className="mt-3 flex items-center gap-2 text-sm">
+                        <Avatar url={owner?.avatarUrl} size={24} crown />
+                        <span className="font-semibold text-[#6fd08c]">Creada por {owner?.displayName ?? "Desconocido"}</span>
+                        {mine && <span className="text-xs text-muted">(tú, DM)</span>}
+                      </p>
+                    );
+                  })()}
                 </div>
               </Link>
             );

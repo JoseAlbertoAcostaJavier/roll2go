@@ -1,9 +1,9 @@
 import Bbcode from "@/app/components/Bbcode";
 import { getCampaignAccess } from "@/lib/campaignAccess";
 import { Campaign } from "@/lib/Campaign";
-import { User } from "@/lib/User";
 import { books } from "@/lib/books";
-
+import  UserLink from "@/app/components/UserLink";
+import { loadUserCards } from "@/lib/userCards"
 const heading = "mb-3 border-l-4 border-brand pl-3 font-heading text-xl font-bold";
 
 export default async function CampaignDetailsPage({ params }: { params: Promise<{ id: string }> }) {
@@ -17,11 +17,10 @@ export default async function CampaignDetailsPage({ params }: { params: Promise<
 
   // Participantes: el DM primero
   const ownerId = String(campaign.owner);
-  const users = await User.find({ _id: { $in: campaign.members } }).select("username").lean();
-  const people = users
-    .map((u) => ({ id: String(u._id), name: String(u.username) }))
-    .sort((a, b) => Number(b.id === ownerId) - Number(a.id === ownerId));
-
+  const cards = await loadUserCards(campaign.members);
+  const people = [...cards.values()].sort(
+    (a, b) => Number(b.id === ownerId) - Number(a.id === ownerId) || a.displayName.localeCompare(b.displayName, "es"),
+  );
   const bookNames = campaign.restrictBooks
     ? (campaign.allowedBooks as string[]).map((b) => books.find((x) => x.id === b)?.name ?? b)
     : null;
@@ -52,9 +51,9 @@ export default async function CampaignDetailsPage({ params }: { params: Promise<
         <h2 className={heading}>Participantes</h2>
         <ul className="flex flex-wrap gap-2">
           {people.map((p) => (
-            <li key={p.id} className="rounded-full border border-line bg-surface px-3 py-1 text-sm">
-              {p.name}
-              {p.id === ownerId && <span className="ml-2 text-xs text-brand-soft">DM</span>}
+            <li key={p.id} className="flex items-center gap-2 rounded-full border border-line bg-surface py-1 pl-1 pr-3 text-sm">
+              <UserLink user={p} size={28} crown={p.id === ownerId} />
+              {p.id === ownerId && <span className="text-xs text-brand-soft">DM</span>}
             </li>
           ))}
         </ul>

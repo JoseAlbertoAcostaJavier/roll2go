@@ -8,7 +8,8 @@ const CampaignSchema = new Schema(
     status: { type: String, enum: ["active", "inactive"], default: "active" },
     owner: { type: Schema.Types.ObjectId, ref: "User", required: true }, // el DM
     members: [{ type: Schema.Types.ObjectId, ref: "User" }], // jugadores (el DM también está aquí)
-
+    // Lista de bloqueados de la campaña: no pueden volver a unirse (ni por enlace ni por invitación)
+    banned: [{ type: Schema.Types.ObjectId, ref: "User" }],
     imageId: { type: Schema.Types.ObjectId, ref: "CampaignImage" },
     logoId: { type: Schema.Types.ObjectId, ref: "CampaignImage" },
 

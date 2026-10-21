@@ -2,8 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
 import { rateLimit, tooManyRequests } from "@/lib/rateLimit";
 import { Campaign } from "@/lib/Campaign";
+import { Block } from "@/lib/Block";
 import { sessionOf } from "@/lib/campaignApi";
-import { INVITE_REGEX, MAX_MEMBERS } from "@/lib/members";
+import { INVITE_REGEX } from "@/lib/members";
+import { joinCampaign } from "@/lib/joinCampaign";
 
 export async function POST(req: NextRequest) {
   const session = await sessionOf(req);
@@ -34,34 +36,31 @@ export async function POST(req: NextRequest) {
 
   try {
     await connectDB();
-    const now = new Date();
-    // Enlace vigente: sin caducidad, o con una fecha todavía en el futuro
     const campaign = await Campaign.findOne({
       inviteCode: code,
       $or: [
         { inviteExpires: { $exists: false } },
-        { inviteExpires: { $gt: now } },
+        { inviteExpires: { $gt: new Date() } },
       ],
-    }).select("members");
+    }).select("owner");
     if (!campaign) return invalid();
 
-    const id = String(campaign._id);
-    if (campaign.members.some((m: unknown) => String(m) === session.id)) {
-      return NextResponse.json({ id, already: true });
-    }
+    // Quien ha sido bloqueado por el DM recibe el mismo mensaje que con un enlace caducado
+    if (await Block.exists({ blocker: campaign.owner, blocked: session.id }))
+      return invalid();
 
-    // Operación atómica: solo añade si todavía hay hueco (el elemento nº MAX_MEMBERS no existe)
-    const updated = await Campaign.findOneAndUpdate(
-      { _id: campaign._id, [`members.${MAX_MEMBERS - 1}`]: { $exists: false } },
-      { $addToSet: { members: session.id } },
-    );
-    if (!updated) {
+    const result = await joinCampaign(campaign._id, session.id);
+    if (result === "banned" || result === "missing") return invalid();
+    if (result === "full") {
       return NextResponse.json(
         { error: "La campaña ha alcanzado el máximo de participantes." },
         { status: 409 },
       );
     }
-    return NextResponse.json({ id });
+    return NextResponse.json({
+      id: String(campaign._id),
+      already: result === "already",
+    });
   } catch (err) {
     console.error("Error al unirse a la campaña:", err);
     return NextResponse.json(

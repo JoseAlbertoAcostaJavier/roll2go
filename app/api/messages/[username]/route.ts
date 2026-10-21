@@ -5,6 +5,7 @@ import { rateLimit, tooManyRequests } from "@/lib/rateLimit";
 import { Message } from "@/lib/Message";
 import { Notification } from "@/lib/Notification";
 import { pairKey } from "@/lib/Friendship";
+import { blockStatus } from "@/lib/blocks";
 import { findUserByUsername, relationBetween } from "@/lib/friends";
 import { notify } from "@/lib/notify";
 
@@ -21,7 +22,8 @@ const view = (
 });
 
 /* GET: mensajes de la conversación (los últimos 50, o los posteriores a ?after=).
-   Al consultarla, los mensajes recibidos pasan a leídos y su notificación desaparece. */
+   Al consultarla, los mensajes recibidos pasan a leídos y su notificación desaparece.
+   myLastReadId: el último mensaje TUYO que la otra persona ya ha leído (para mostrar "Leído"). */
 export async function GET(req: NextRequest, { params }: Ctx) {
   const { username } = await params;
   const session = await sessionOf(req);
@@ -65,10 +67,21 @@ export async function GET(req: NextRequest, { params }: Ctx) {
       actor: otherId,
     });
 
-    const canSend = (await relationBetween(session.id, otherId)) === "friend";
+    const lastRead = await Message.findOne({
+      pair,
+      from: session.id,
+      readAt: { $ne: null },
+    })
+      .sort({ createdAt: -1 })
+      .select("_id")
+      .lean();
+
+    const friends = (await relationBetween(session.id, otherId)) === "friend";
+    const canSend = friends && !(await blockStatus(session.id, otherId)).any;
     return NextResponse.json({
       messages: messages.map((m) => view(m, session.id)),
       canSend,
+      myLastReadId: lastRead ? String(lastRead._id) : null,
     });
   } catch (err) {
     console.error("Error al cargar los mensajes:", err);
@@ -79,7 +92,7 @@ export async function GET(req: NextRequest, { params }: Ctx) {
   }
 }
 
-// POST: enviar un mensaje (solo a amigos)
+// POST: enviar un mensaje (solo a amigos, y sin bloqueos de por medio)
 export async function POST(req: NextRequest, { params }: Ctx) {
   const { username } = await params;
   const session = await sessionOf(req);
@@ -116,6 +129,12 @@ export async function POST(req: NextRequest, { params }: Ctx) {
       );
     const otherId = String(other._id);
 
+    if ((await blockStatus(session.id, otherId)).any) {
+      return NextResponse.json(
+        { error: "No puedes enviar mensajes a este usuario." },
+        { status: 403 },
+      );
+    }
     if ((await relationBetween(session.id, otherId)) !== "friend") {
       return NextResponse.json(
         { error: "Solo puedes escribir a tus amigos." },

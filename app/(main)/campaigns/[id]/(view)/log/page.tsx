@@ -4,8 +4,10 @@ import Bbcode from "@/app/components/Bbcode";
 import ConfirmAction from "@/app/components/ConfirmAction";
 import { getCampaignAccess } from "@/lib/campaignAccess";
 import { CampaignLogEntry } from "@/lib/CampaignLogEntry";
-import { User } from "@/lib/User";
 import LocalDate from "@/app/components/LocalDate";
+import UserLink from "@/app/components/UserLink";
+import { loadUserCards } from "@/lib/userCards";
+
 const PAGE_SIZE = 10;
 const FILTERS = [
   ["all", "Todas"],
@@ -44,9 +46,7 @@ export default async function CampaignLogPage({
     .limit(PAGE_SIZE)
     .lean();
 
-  const authorIds = [...new Set(entries.map((e) => String(e.author)))];
-  const authors = await User.find({ _id: { $in: authorIds } }).select("username").lean();
-  const authorName = new Map<string, string>(authors.map((u): [string, string] => [String(u._id), String(u.username)]));
+  const authors = await loadUserCards(entries.map((e) => e.author));
 
   const href = (p: number, filterKey: string) => {
     const q = new URLSearchParams();
@@ -90,6 +90,7 @@ export default async function CampaignLogPage({
       ) : (
         <div className="space-y-4">
           {entries.map((e) => {
+            const author = authors.get(String(e.author));
             const mine = String(e.author) === session.id;
             const isPublic = e.visibility === "public";
             const edited = new Date(e.updatedAt).getTime() - new Date(e.createdAt).getTime() > 1000;
@@ -98,11 +99,12 @@ export default async function CampaignLogPage({
                 <header className="mb-3 flex flex-wrap items-start justify-between gap-3">
                   <div>
                     <h3 className="font-heading text-lg font-bold">{e.title}</h3>
-                    <p className="text-xs text-muted">
-                      {authorName.get(String(e.author)) ?? "Participante eliminado"} ·{" "}
+                    <div className="mt-1 flex flex-wrap items-center gap-x-2 text-xs text-muted">
+                      {author ? <UserLink user={author} size={20} /> : <span>Participante eliminado</span>}
+                      <span aria-hidden="true">·</span>
                       <LocalDate iso={new Date(e.createdAt).toISOString()} />
-                      {edited && " · editada"}
-                    </p>
+                      {edited && <span>· editada</span>}
+                    </div>
                   </div>
                   <span
                     title={isPublic ? "La ven todos los participantes" : "Solo la ven su autor y el DM"}
