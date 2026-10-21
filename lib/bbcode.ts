@@ -76,29 +76,63 @@ export function safeUrl(
   }
 }
 
-// Solo se incrustan vídeos de YouTube y Vimeo (nunca una dirección cualquiera)
+// Solo se incrustan vídeos de YouTube, Vimeo, Dailymotion y Twitch
 export function videoEmbedUrl(raw: string) {
-  const url = safeUrl(raw);
-  if (!url) return null;
-  const u = new URL(url);
-  const host = u.hostname.replace(/^www\./, "");
+  const url = safeUrl(raw); //[cite: 1]
+  if (!url) return null; //[cite: 1]
+  const u = new URL(url); //[cite: 1]
+  const host = u.hostname.replace(/^www\./, ""); //[cite: 1]
 
-  let id: string | null | undefined;
-  if (host === "youtu.be") id = u.pathname.slice(1);
-  else if (host === "youtube.com" || host === "m.youtube.com") {
+  // YouTube
+  let id: string | null | undefined; //[cite: 1]
+  if (host === "youtu.be") id = u.pathname.slice(1); //[cite: 1]
+  else if (host === "youtube.com" || host === "m.youtube.com") { //[cite: 1]
     id =
-      u.pathname === "/watch"
-        ? u.searchParams.get("v")
-        : u.pathname.match(/^\/(?:embed|shorts)\/([\w-]{11})/)?.[1];
+      u.pathname === "/watch" //[cite: 1]
+        ? u.searchParams.get("v") //[cite: 1]
+        : u.pathname.match(/^\/(?:embed|shorts)\/([\w-]{11})/)?.[1]; //[cite: 1]
   }
-  if (id && /^[\w-]{11}$/.test(id))
-    return `https://www.youtube-nocookie.com/embed/${id}`;
+  if (id && /^[\w-]{11}$/.test(id)) //[cite: 1]
+    return `https://www.youtube-nocookie.com/embed/${id}`; //[cite: 1]
 
-  if (host === "vimeo.com") {
-    const vid = u.pathname.match(/^\/(\d+)/)?.[1];
-    if (vid) return `https://player.vimeo.com/video/${vid}`;
+  // Vimeo
+  if (host === "vimeo.com") { //[cite: 1]
+    const vid = u.pathname.match(/^\/(\d+)/)?.[1]; //[cite: 1]
+    if (vid) return `https://player.vimeo.com/video/${vid}`; //[cite: 1]
   }
-  return null;
+
+  // Dailymotion
+  if (host === "dai.ly") {
+    const vid = u.pathname.slice(1);
+    if (vid) return `https://www.dailymotion.com/embed/video/${vid}`;
+  }
+  if (host === "dailymotion.com") {
+    const vid = u.pathname.match(/^\/video\/([a-zA-Z0-9]+)/)?.[1];
+    if (vid) return `https://www.dailymotion.com/embed/video/${vid}`;
+  }
+
+  // Twitch
+  if (host === "clips.twitch.tv") {
+    const clip = u.pathname.slice(1);
+    if (clip) return `https://clips.twitch.tv/embed?clip=${clip}&parent=localhost`;
+  }
+  if (host === "twitch.tv") {
+    // Clips con formato twitch.tv/usuario/clip/ID_DEL_CLIP
+    const clipMatch = u.pathname.match(/^\/[a-zA-Z0-9_]+\/clip\/([a-zA-Z0-9_-]+)/);
+    if (clipMatch) return `https://clips.twitch.tv/embed?clip=${clipMatch[1]}&parent=localhost`;
+
+    // Vídeos bajo demanda (VODs)
+    const videoMatch = u.pathname.match(/^\/videos\/(\d+)/);
+    if (videoMatch) return `https://player.twitch.tv/?video=${videoMatch[1]}&parent=localhost`;
+
+    // Canales en directo (ej: twitch.tv/ibai)
+    const channelMatch = u.pathname.match(/^\/([a-zA-Z0-9_]+)$/);
+    if (channelMatch && !['videos', 'directory', 'downloads'].includes(channelMatch[1])) {
+      return `https://player.twitch.tv/?channel=${channelMatch[1]}&parent=localhost`;
+    }
+  }
+
+  return null; //[cite: 1]
 }
 
 // Texto plano sin etiquetas ni multimedia (para pasárselo al asistente de IA)

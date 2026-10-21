@@ -15,7 +15,7 @@ const TOOLS: Tool[] = [
   { label: "Lista numerada", icon: ListOrdered, action: "ordered-list" },
   { label: "Enlace", shortcut: "K", icon: LinkIcon, action: "link" },
   { label: "Imagen", icon: ImageIcon, action: "image" },
-  { label: "Vídeo (YouTube o Vimeo)", icon: Video, action: "video" },
+  { label: "Vídeo (YouTube, Twitch, Vimeo o DailyMotion)", icon: Video, action: "video" },
 ];
 
 const GUIDE = [
@@ -23,7 +23,7 @@ const GUIDE = [
   ["[i]texto[/i]", "Cursiva (Ctrl+I)"],
   ["[url=https://…]texto[/url]", "Enlace (Ctrl+K)"],
   ["[img]https://…[/img]", "Imagen"],
-  ["[video]https://youtube.com/watch?v=…[/video]", "Vídeo de YouTube o Vimeo"],
+  ["[video]https://youtube.com/watch?v=…[/video]", "Vídeo de YouTube, Twitch, Vimeo o Dailymotion"],
   ["[list][*] uno [*] dos [/list]", "Lista"],
   ["[list=1][*] uno [*] dos [/list]", "Lista numerada"],
 ] as const;
@@ -142,7 +142,7 @@ export default function BbcodeEditor({
       )}
 
       <div className="mt-1 flex flex-wrap items-center justify-between gap-2 text-xs text-muted">
-        <span>Los vídeos solo admiten YouTube y Vimeo.</span>
+        <span>Los vídeos solo admiten YouTube, Twitch, Vimeo y DailyMotion.</span>
         <button
           type="button"
           onClick={() => setHelp((h) => !h)}
