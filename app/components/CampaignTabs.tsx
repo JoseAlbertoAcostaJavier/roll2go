@@ -16,7 +16,7 @@ export default function CampaignTabs({ base }: { base: string }) {
   const pathname = usePathname() ?? "";
 
   return (
-    <nav aria-label="Secciones de la campaña" className="flex gap-1 overflow-x-auto border-b border-line">
+    <nav aria-label="Secciones de la campaña" className="flex gap-1 overflow-x-auto overflow-y-hidden border-b border-line">
       {TABS.map(({ label, suffix, icon: Icon }) => {
         const href = base + suffix;
         // "Detalles" solo está activa en la dirección exacta; las demás también en sus subpáginas
