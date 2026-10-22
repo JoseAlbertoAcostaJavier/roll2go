@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import mongoose from "mongoose";
 import { sessionOf } from "@/lib/campaignApi";
 import { rateLimit, tooManyRequests } from "@/lib/rateLimit";
@@ -51,6 +52,7 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
 
   const res = await BookEntry.updateOne({ _id: entryId, book: id }, { $set: update });
   if (!res.matchedCount) return notFound();
+  revalidateTag(`book:${id}`, "max");
   return NextResponse.json({ ok: true });
 }
 
@@ -63,5 +65,6 @@ export async function DELETE(req: NextRequest, { params }: Ctx) {
   const found = await loadBook(id, session.id);
   if (!found?.canEdit) return notFound();
   await BookEntry.deleteOne({ _id: entryId, book: id });
+  revalidateTag(`book:${id}`, "max");
   return NextResponse.json({ ok: true });
 }

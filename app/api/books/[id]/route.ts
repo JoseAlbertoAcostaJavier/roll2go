@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { sessionOf } from "@/lib/campaignApi";
 import { rateLimit, tooManyRequests } from "@/lib/rateLimit";
 import { Book } from "@/lib/Book";
@@ -46,6 +47,7 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
     return NextResponse.json({ error: "No hay nada que guardar." }, { status: 400 });
 
   await Book.updateOne({ _id: id }, { $set: update });
+  revalidateTag(`book:${id}`, "max");
   return NextResponse.json({ ok: true });
 }
 
@@ -60,5 +62,6 @@ export async function DELETE(req: NextRequest, { params }: Ctx) {
 
   await BookEntry.deleteMany({ book: id });
   await Book.deleteOne({ _id: id });
+  revalidateTag(`book:${id}`, "max");
   return NextResponse.json({ ok: true });
 }
