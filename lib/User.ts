@@ -15,8 +15,7 @@ const UserSchema = new mongoose.Schema(
     verified: { type: Boolean, default: false },
     // Verificación del correo: se guarda el HASH del token (nunca el token) y cuándo caduca
     verifyTokenHash: { type: String, select: false, index: true, sparse: true },
-    verifyTokenExpires: { type: Date, select: false }, // ... debajo de verifyTokenExpires
-
+    verifyTokenExpires: { type: Date, select: false },
     resetTokenHash: { type: String, select: false, index: true, sparse: true },
     resetTokenExpires: { type: Date, select: false },
     // Libros de reglas que el usuario posee (ids de lib/books.ts). Se editarán desde el perfil.
@@ -35,10 +34,18 @@ const UserSchema = new mongoose.Schema(
       campaigns: { type: Boolean, default: true },
       messages: { type: Boolean, default: false },
       social: { type: Boolean, default: true },
+      // Por tipo de aviso de campaña. Sin valor = se usa "campaigns"
+      campaignTypes: {
+        notes: Boolean,
+        forum: Boolean,
+        invites: Boolean,
+        removals: Boolean,
+        dm: Boolean,
+      },
     },
-    //Si el usuario es administrador o no (para poder acceder al panel de administración)
     // Búsqueda por prefijo del nombre visible (copia en minúsculas; se rellena al guardar el perfil)
     displayNameLower: { type: String, default: "", index: true },
+    // Si el usuario es administrador o no (para poder acceder al panel de administración)
     role: { type: String, enum: ["user", "admin"], default: "user" },
   },
   {
@@ -46,7 +53,7 @@ const UserSchema = new mongoose.Schema(
   },
 );
 
-  // Borra las cuentas SIN verificar pasadas 24 horas (no toca las que ya están verificadas)
+// Borra las cuentas SIN verificar pasadas 24 horas (no toca las que ya están verificadas)
 UserSchema.index(
   { createdAt: 1 },
   { expireAfterSeconds: 60 * 60 * 24, partialFilterExpression: { verified: false } },

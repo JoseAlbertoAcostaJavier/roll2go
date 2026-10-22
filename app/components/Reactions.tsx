@@ -3,13 +3,30 @@
 import { useCallback, useRef, useState } from "react";
 import { SmilePlus, ThumbsUp } from "lucide-react";
 import useDismiss from "@/app/components/useDismiss";
-import { LIKE, REACTIONS, type ReactionState } from "@/lib/forum";
+import { LIKE, REACTIONS, reactionWho, type ReactionState } from "@/lib/forum";
 
-const chip = "flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm transition-colors disabled:cursor-wait";
+type Reaction = ReactionState[string];
+
+const chip =
+  "group/chip relative flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm transition-[color,border-color,background-color,transform] active:scale-95 disabled:cursor-wait";
 const chipState = (mine: boolean) =>
   mine ? "border-brand bg-brand/15 text-white" : "border-line text-muted hover:border-muted hover:text-white";
 const OTHERS = REACTIONS.filter((r) => r.emoji !== LIKE);
-const EMPTY = { count: 0, mine: false };
+const EMPTY: Reaction = { count: 0, mine: false, names: [] };
+
+// Globo con quién ha reaccionado: aparece al pasar el ratón o al enfocar el botón con el teclado
+function Who({ label, r }: { label: string; r: Reaction }) {
+  if (r.count === 0) return null;
+  return (
+    <span
+      role="tooltip"
+      className="pointer-events-none absolute bottom-full left-1/2 z-30 mb-2 hidden w-max max-w-60 -translate-x-1/2 animate-pop rounded-md border border-line bg-panel px-2.5 py-1.5 text-left text-xs text-fg shadow-[0_8px_24px_rgba(0,0,0,0.5)] group-hover/chip:block group-focus-visible/chip:block"
+    >
+      <span className="block font-semibold">{label}</span>
+      <span className="block text-muted">{reactionWho(r)}</span>
+    </span>
+  );
+}
 
 export default function Reactions({
   campaignId,
@@ -32,7 +49,10 @@ export default function Reactions({
     // Mientras hay una petición de ese emoji, los clics se ignoran (así no se desincroniza el contador)
     if (pending.includes(emoji)) return;
     const prev = state[emoji] ?? EMPTY;
-    setState((s) => ({ ...s, [emoji]: { count: Math.max(0, prev.count + (prev.mine ? -1 : 1)), mine: !prev.mine } }));
+    setState((s) => ({
+      ...s,
+      [emoji]: { ...prev, count: Math.max(0, prev.count + (prev.mine ? -1 : 1)), mine: !prev.mine },
+    }));
     setPending((p) => [...p, emoji]);
     setError("");
     setOpen(false);
@@ -44,7 +64,7 @@ export default function Reactions({
       });
       const data = await res.json().catch(() => null);
       if (!res.ok) throw new Error(data?.error ?? "No se pudo reaccionar.");
-      setState((s) => ({ ...s, [emoji]: { count: data.count, mine: data.active } }));
+      setState((s) => ({ ...s, [emoji]: { ...prev, count: data.count, mine: data.active } }));
     } catch (e) {
       setState((s) => ({ ...s, [emoji]: prev })); // se deshace
       setError(e instanceof Error && e.message !== "Failed to fetch" ? e.message : "No se pudo reaccionar.");
@@ -64,8 +84,10 @@ export default function Reactions({
         aria-pressed={like.mine}
         className={`${chip} ${chipState(like.mine)}`}
       >
-        <ThumbsUp size={14} aria-hidden="true" className={like.mine ? "fill-current" : ""} /> Me gusta
+        <ThumbsUp size={14} aria-hidden="true" className={`transition-transform ${like.mine ? "-rotate-12 fill-current" : ""}`} />
+        Me gusta
         {like.count > 0 && <span className="font-semibold tabular-nums">{like.count}</span>}
+        <Who label="Me gusta" r={like} />
       </button>
 
       {OTHERS.filter((r) => (state[r.emoji]?.count ?? 0) > 0).map((r) => {
@@ -78,11 +100,11 @@ export default function Reactions({
             disabled={pending.includes(r.emoji)}
             aria-pressed={s.mine}
             aria-label={`${r.label}: ${s.count}`}
-            title={r.label}
-            className={`${chip} ${chipState(s.mine)}`}
+            className={`${chip} ${chipState(s.mine)} animate-pop`}
           >
             <span aria-hidden="true">{r.emoji}</span>
             <span className="font-semibold tabular-nums">{s.count}</span>
+            <Who label={r.label} r={s} />
           </button>
         );
       })}
@@ -102,7 +124,7 @@ export default function Reactions({
         {open && (
           <div
             role="menu"
-            className="absolute bottom-full left-0 z-30 mb-2 flex gap-1 rounded-full border border-line bg-panel p-1.5 shadow-[0_12px_30px_rgba(0,0,0,0.6)]"
+            className="absolute bottom-full left-0 z-30 mb-2 flex origin-bottom-left animate-pop gap-1 rounded-full border border-line bg-panel p-1.5 shadow-[0_12px_30px_rgba(0,0,0,0.6)]"
           >
             {OTHERS.map((r) => {
               const mine = state[r.emoji]?.mine ?? false;

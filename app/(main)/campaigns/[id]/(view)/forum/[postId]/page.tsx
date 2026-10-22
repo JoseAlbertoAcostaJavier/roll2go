@@ -10,8 +10,7 @@ import { ForumPost } from "@/lib/ForumPost";
 import { REPLIES_PER_PAGE } from "@/lib/forum";
 import { loadReactions } from "@/lib/forumData";
 import { loadUserCards } from "@/lib/userCards";
-
-const first = (v?: string | string[]) => (Array.isArray(v) ? v[0] : v);
+import { pageFrom } from "@/lib/utils";
 
 export default async function ForumThreadPage({
   params,
@@ -32,7 +31,7 @@ export default async function ForumThreadPage({
   if (!root) notFound();
 
   const pages = Math.max(1, Math.ceil(total / REPLIES_PER_PAGE));
-  const page = Math.min(Math.max(parseInt(first(sp.page) ?? "1", 10) || 1, 1), pages);
+  const page = pageFrom(sp.page, pages);
   const replies = await ForumPost.find({ parent: root._id })
     .sort({ createdAt: 1 })
     .skip((page - 1) * REPLIES_PER_PAGE)

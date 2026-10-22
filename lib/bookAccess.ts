@@ -8,9 +8,6 @@ export const MAX_BOOK_NAME = 120;
 export const MAX_BOOK_DESCRIPTION = 20000;
 export const MAX_ENTRY_DESCRIPTION = 50000;
 
-// Quita los caracteres de control (salvo tabulador y saltos de línea)
-export const cleanText = (s: string) => s.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "");
-
 // Devuelve el libro y si el usuario puede leerlo / editarlo. Lo decide siempre el servidor.
 export async function loadBook(bookId: string, userId: string | null) {
   if (!mongoose.isValidObjectId(bookId)) return null;

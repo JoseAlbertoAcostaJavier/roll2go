@@ -7,8 +7,7 @@ import { getCampaignAccess } from "@/lib/campaignAccess";
 import { ForumPost } from "@/lib/ForumPost";
 import { THREADS_PER_PAGE } from "@/lib/forum";
 import { loadUserCards } from "@/lib/userCards";
-
-const first = (v?: string | string[]) => (Array.isArray(v) ? v[0] : v);
+import { pageFrom } from "@/lib/utils";
 
 const newButton =
   "flex items-center gap-2 rounded-md bg-brand px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-brand-hover";
@@ -27,7 +26,7 @@ export default async function ForumPage({
   const filter = { campaign: campaign._id, parent: null };
   const total = await ForumPost.countDocuments(filter);
   const pages = Math.max(1, Math.ceil(total / THREADS_PER_PAGE));
-  const page = Math.min(Math.max(parseInt(first(sp.page) ?? "1", 10) || 1, 1), pages);
+  const page = pageFrom(sp.page, pages);
 
   // Fijados primero y después por última actividad
   const threads = await ForumPost.find(filter)
@@ -50,7 +49,7 @@ export default async function ForumPage({
     <section>
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="font-heading text-lg font-bold uppercase tracking-wide">Foro de la campaña</h2>
+          <h2 className="break-words font-heading text-lg font-bold uppercase tracking-wide">Foro de {campaign.name}</h2>
           {total > 0 && (
             <p className="text-xs text-muted">
               {total} {total === 1 ? "hilo" : "hilos"}
@@ -82,7 +81,7 @@ export default async function ForumPage({
             const author = cards.get(String(t.author));
             const last = s ? cards.get(String(s.lastAuthor)) : undefined;
             return (
-              <li key={String(t._id)}>
+              <li key={String(t._id)} className="animate-fade-in">
                 <Link
                   href={`/campaigns/${id}/forum/${t._id}`}
                   className={`group flex items-center gap-3 px-4 py-3 transition-colors hover:bg-panel ${

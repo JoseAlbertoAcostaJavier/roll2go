@@ -1,14 +1,17 @@
+import { BookOpen, UserRound } from "lucide-react";
 import Bbcode from "@/app/components/Bbcode";
+import ConfirmAction from "@/app/components/ConfirmAction";
+import UserLink from "@/app/components/UserLink";
 import { getCampaignAccess } from "@/lib/campaignAccess";
 import { Campaign } from "@/lib/Campaign";
 import { books } from "@/lib/books";
-import  UserLink from "@/app/components/UserLink";
-import { loadUserCards } from "@/lib/userCards"
+import { loadUserCards } from "@/lib/userCards";
+
 const heading = "mb-3 border-l-4 border-brand pl-3 font-heading text-xl font-bold";
 
 export default async function CampaignDetailsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const { campaign, isDm } = await getCampaignAccess(id);
+  const { session, campaign, isDm } = await getCampaignAccess(id);
 
   // Las notas privadas solo se cargan de la base de datos si eres el DM
   const notes = isDm
@@ -32,10 +35,10 @@ export default async function CampaignDetailsPage({ params }: { params: Promise<
         .join(" y ");
 
   return (
-    <div className="space-y-8">
+    <div className="animate-fade-in space-y-8">
       {campaign.imageId && (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={`/api/images/${campaign.imageId}`} alt="" className="h-56 w-full rounded-lg object-cover sm:h-72" />
+        <img src={`/api/images/${campaign.imageId}`} alt="" className="h-56 w-full rounded-lg object-cover shadow-[0_10px_30px_rgba(0,0,0,0.4)] sm:h-72" />
       )}
 
       {campaign.shortDescription && <p className="text-lg text-muted">{campaign.shortDescription}</p>}
@@ -51,12 +54,40 @@ export default async function CampaignDetailsPage({ params }: { params: Promise<
         <h2 className={heading}>Participantes</h2>
         <ul className="flex flex-wrap gap-2">
           {people.map((p) => (
-            <li key={p.id} className="flex items-center gap-2 rounded-full border border-line bg-surface py-1 pl-1 pr-3 text-sm">
+            <li key={p.id} className="flex items-center gap-2 rounded-full border border-line bg-surface py-1 pl-1 pr-3 text-sm transition-colors hover:border-muted">
               <UserLink user={p} size={28} crown={p.id === ownerId} />
               {p.id === ownerId && <span className="text-xs text-brand-soft">DM</span>}
             </li>
           ))}
         </ul>
+      </section>
+
+      <section>
+        <h2 className={heading}>Reglas de la campaña</h2>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="flex gap-3 rounded-lg border border-line bg-surface p-4">
+            <BookOpen size={20} className="mt-0.5 shrink-0 text-brand-soft" aria-hidden="true" />
+            <div className="text-sm">
+              <p className="font-semibold">Libros</p>
+              <p className="text-muted">
+                {bookNames === null
+                  ? "Se pueden usar todos los libros."
+                  : bookNames.length > 0
+                    ? `Solo: ${bookNames.join(", ")}.`
+                    : "No se ha permitido ningún libro."}
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-3 rounded-lg border border-line bg-surface p-4">
+            <UserRound size={20} className="mt-0.5 shrink-0 text-brand-soft" aria-hidden="true" />
+            <div className="text-sm">
+              <p className="font-semibold">Personajes</p>
+              <p className="text-muted">
+                {ch?.allowed ? `Se admiten personajes ${characterText || "de ningún tipo"}.` : characterText}
+              </p>
+            </div>
+          </div>
+        </div>
       </section>
 
       {isDm && (
@@ -68,6 +99,19 @@ export default async function CampaignDetailsPage({ params }: { params: Promise<
             <p className="text-sm text-muted">No has escrito notas.</p>
           )}
         </section>
+      )}
+
+      {/* El DM no puede abandonar su campaña (tendría que borrarla) */}
+      {!isDm && (
+        <div className="flex justify-end border-t border-line pt-4">
+          <ConfirmAction
+            url={`/api/campaigns/${id}/members/${session.id}`}
+            label="Abandonar campaña"
+            question="¿Seguro que quieres abandonar la campaña?"
+            confirmLabel="Sí, abandonar"
+            redirectTo="/campaigns"
+          />
+        </div>
       )}
     </div>
   );

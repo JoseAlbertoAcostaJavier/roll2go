@@ -27,11 +27,11 @@ export default function CampaignTabs({ base }: { base: string }) {
             key={href}
             href={href}
             aria-current={active ? "page" : undefined}
-            className={`-mb-px flex items-center gap-2 whitespace-nowrap border-b-[3px] px-4 py-3 text-sm font-semibold transition-colors ${
+            className={`group -mb-px flex items-center gap-2 whitespace-nowrap border-b-[3px] px-4 py-3 text-sm font-semibold transition-colors ${
               active ? "border-brand text-white" : "border-transparent text-muted hover:text-white"
             }`}
           >
-            <Icon size={16} aria-hidden="true" />
+            <Icon size={16} aria-hidden="true" className={`transition-transform ${active ? "" : "group-hover:-translate-y-0.5"}`} />
             {label}
           </Link>
         );

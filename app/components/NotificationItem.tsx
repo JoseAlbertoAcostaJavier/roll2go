@@ -16,6 +16,8 @@ export type NotificationData = {
   actor: { username: string; displayName: string; avatarUrl: string | null } | null;
 };
 
+const json = { "Content-Type": "application/json" };
+
 export default function NotificationItem({
   item,
   onOpen,
@@ -27,6 +29,7 @@ export default function NotificationItem({
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
+  const [leaving, setLeaving] = useState(false);
   const isRequest = item.type === "friend_request" && !!item.actor;
 
   // Las solicitudes de amistad se responden desde la propia notificación
@@ -36,7 +39,7 @@ export default function NotificationItem({
     try {
       const res = await fetch(`/api/friends/${item.actor.username}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: json,
         body: JSON.stringify({ action }),
       });
       if (res.ok) {
@@ -49,8 +52,25 @@ export default function NotificationItem({
     }
   }
 
+  // Quitar la notificación: desaparece al momento y, si el servidor falla, vuelve a aparecer
+  async function dismiss() {
+    setLeaving(true);
+    try {
+      const res = await fetch("/api/notifications", { method: "DELETE", headers: json, body: JSON.stringify({ id: item.id }) });
+      if (!res.ok) throw new Error();
+      onRemove(item.id);
+      window.dispatchEvent(new Event("notifications:changed"));
+    } catch {
+      setLeaving(false);
+    }
+  }
+
   return (
-    <li className={`flex items-center gap-2 px-4 py-3 ${item.read ? "" : "bg-brand/10"}`}>
+    <li
+      className={`group flex items-center gap-2 px-4 py-3 transition-[opacity,transform,background-color] duration-200 ${
+        item.read ? "hover:bg-surface/60" : "bg-brand/10 hover:bg-brand/15"
+      } ${leaving ? "pointer-events-none translate-x-4 opacity-0" : "animate-fade-in"}`}
+    >
       <button
         type="button"
         onClick={() => onOpen(item)}
@@ -67,9 +87,10 @@ export default function NotificationItem({
           <span className="block text-sm">{item.text}</span>
           <span className="block text-xs text-muted">{timeAgo(item.createdAt)}</span>
         </span>
+        {!item.read && <span className="ml-auto h-2 w-2 shrink-0 rounded-full bg-brand" aria-label="Sin leer" />}
       </button>
 
-      {isRequest && (
+      {isRequest ? (
         <span className="flex shrink-0 gap-1.5">
           <button
             type="button"
@@ -92,6 +113,16 @@ export default function NotificationItem({
             <X size={16} aria-hidden="true" />
           </button>
         </span>
+      ) : (
+        <button
+          type="button"
+          onClick={dismiss}
+          aria-label="Quitar notificación"
+          title="Quitar"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded text-muted opacity-100 transition-[opacity,color,background-color] hover:bg-line hover:text-white focus-visible:opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
+        >
+          <X size={16} aria-hidden="true" />
+        </button>
       )}
     </li>
   );

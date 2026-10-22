@@ -7,6 +7,8 @@ import { CampaignLogEntry } from "@/lib/CampaignLogEntry";
 import LocalDate from "@/app/components/LocalDate";
 import UserLink from "@/app/components/UserLink";
 import { loadUserCards } from "@/lib/userCards";
+import { first, pageFrom } from "@/lib/utils";
+import Pagination from "@/app/components/Pagination";
 
 const PAGE_SIZE = 10;
 const FILTERS = [
@@ -14,8 +16,6 @@ const FILTERS = [
   ["public", "Públicas"],
   ["private", "Privadas"],
 ] as const;
-
-const first = (v?: string | string[]) => (Array.isArray(v) ? v[0] : v);
 
 export default async function CampaignLogPage({
   params,
@@ -29,7 +29,7 @@ export default async function CampaignLogPage({
   const { session, campaign, isDm } = await getCampaignAccess(id);
 
   const v = FILTERS.find(([key]) => key === first(sp.v))?.[0] ?? "all";
-  const page = Math.min(Math.max(parseInt(first(sp.page) ?? "1", 10) || 1, 1), 1000);
+  const page = pageFrom(sp.page, 1000);
 
   const filter = {
     campaign: campaign._id,
@@ -141,21 +141,13 @@ export default async function CampaignLogPage({
         </div>
       )}
 
-      {pages > 1 && (
-        <nav aria-label="Paginación" className="mt-6 flex items-center justify-between text-sm">
-          {page > 1 ? (
-            <Link href={href(page - 1, v)} className="text-muted hover:text-white">← Más recientes</Link>
-          ) : (
-            <span />
-          )}
-          <span className="text-muted">Página {page} de {pages}</span>
-          {page < pages ? (
-            <Link href={href(page + 1, v)} className="text-muted hover:text-white">Más antiguas →</Link>
-          ) : (
-            <span />
-          )}
-        </nav>
-      )}
+      <Pagination
+        page={page}
+        pages={pages}
+        href={(n) => href(n, v)}
+        prevLabel="Más recientes"
+        nextLabel="Más antiguas"
+      />
     </section>
   );
 }

@@ -88,7 +88,7 @@ export default function NotificationBell({ initialUnread }: { initialUnread: num
         <span className="relative">
           <Bell size={20} aria-hidden="true" />
           {unread > 0 && (
-            <span className="absolute -right-2 -top-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-brand px-1 text-[10px] font-bold leading-none text-white">
+            <span key={unread} className="absolute -right-2 -top-2 flex h-4 min-w-4 animate-pop items-center justify-center rounded-full bg-brand px-1 text-[10px] font-bold leading-none text-white">
               {unread > 99 ? "99+" : unread}
             </span>
           )}
@@ -97,7 +97,7 @@ export default function NotificationBell({ initialUnread }: { initialUnread: num
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full z-50 mt-2 w-[min(24rem,calc(100vw-2rem))] overflow-hidden rounded-lg border border-line bg-panel shadow-[0_12px_30px_rgba(0,0,0,0.6)]">
+        <div className="absolute right-0 top-full z-50 mt-2 w-[min(24rem,calc(100vw-2rem))] origin-top-right animate-pop overflow-hidden rounded-lg border border-line bg-panel shadow-[0_12px_30px_rgba(0,0,0,0.6)]">
           <div className="flex items-center justify-between gap-3 border-b border-line px-4 py-3">
             <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-muted">
               Notificaciones

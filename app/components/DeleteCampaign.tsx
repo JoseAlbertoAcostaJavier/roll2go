@@ -79,7 +79,7 @@ export default function DeleteCampaign({
 
       {open && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+          className="fixed inset-0 z-50 flex animate-fade-in items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
           onMouseDown={(e) => {
             if (e.target === e.currentTarget) close();
           }}
@@ -88,7 +88,7 @@ export default function DeleteCampaign({
             role="dialog"
             aria-modal="true"
             aria-labelledby="delete-title"
-            className="w-full max-w-md rounded-xl border border-line bg-panel p-6 shadow-[0_12px_40px_rgba(0,0,0,0.6)]"
+            className="w-full max-w-md animate-pop rounded-xl border border-line bg-panel p-6 shadow-[0_12px_40px_rgba(0,0,0,0.6)]"
           >
             <div className="mb-4 flex items-center gap-3">
               <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand/15 text-brand-soft">

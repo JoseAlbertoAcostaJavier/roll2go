@@ -62,6 +62,7 @@ export default function UserSearch() {
         <input
           id="user-search"
           type="search"
+          role="combobox"
           autoComplete="off"
           autoCapitalize="none"
           spellCheck={false}
@@ -82,7 +83,7 @@ export default function UserSearch() {
       {open && active && (
         <div
           id="user-search-results"
-          className="absolute inset-x-0 top-full z-30 mt-2 max-h-96 overflow-y-auto rounded-lg border border-line bg-panel shadow-[0_12px_30px_rgba(0,0,0,0.6)]"
+          className="absolute inset-x-0 top-full z-30 mt-2 animate-pop origin-top max-h-96 overflow-y-auto rounded-lg border border-line bg-panel shadow-[0_12px_30px_rgba(0,0,0,0.6)]"
         >
           {error ? (
             <p className="px-4 py-3 text-sm text-brand-soft" role="alert">{error}</p>
@@ -94,10 +95,10 @@ export default function UserSearch() {
             <ul className="divide-y divide-line">
               {results.map((u) => (
                 <li key={u.username} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
-                  <Link href={`/users/${u.username}`} className="flex min-w-0 items-center gap-3 hover:underline">
+                  <Link href={`/users/${u.username}`} className="group flex min-w-0 items-center gap-3">
                     <Avatar url={u.avatarUrl} size={40} />
                     <span className="min-w-0">
-                      <span className="block truncate font-semibold">{u.displayName}</span>
+                      <span className="block truncate font-semibold group-hover:underline">{u.displayName}</span>
                       <span className="block truncate text-xs text-muted">@{u.username}</span>
                     </span>
                   </Link>

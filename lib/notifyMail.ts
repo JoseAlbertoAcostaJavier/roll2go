@@ -8,11 +8,15 @@ const escapeHtml = (s: string) =>
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
 
-// Correo de aviso con el mismo estilo que el de verificación: cabecera roja, cuerpo claro y pie oscuro
+const MAX_QUOTE = 600;
+
+/* Correo de aviso con el mismo estilo que el de verificación: cabecera roja, cuerpo claro y pie oscuro.
+   quote: texto que se cita en el correo (por ejemplo, el mensaje recibido). */
 export async function sendNotificationEmail(
   to: string,
   text: string,
   path: string,
+  quote?: string,
 ) {
   const base = (process.env.APP_URL ?? "http://localhost:3000").replace(
     /\/$/,
@@ -21,6 +25,11 @@ export async function sendNotificationEmail(
   const link = `${base}${path}`;
   const settings = `${base}/settings/notifications`;
   const safe = escapeHtml(text);
+  const q = quote?.trim() ?? "";
+  const cut = q.length > MAX_QUOTE ? `${q.slice(0, MAX_QUOTE)}…` : q;
+  const quoteHtml = cut
+    ? `<div style="margin:0 0 24px;padding:14px 18px;border-left:4px solid #dc3741;background:#f6f6f7;color:#242426;white-space:pre-wrap;word-break:break-word;">${escapeHtml(cut)}</div>`
+    : "";
 
   const html = `<!DOCTYPE html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="color-scheme" content="light"></head>
@@ -32,6 +41,7 @@ export async function sendNotificationEmail(
       </td></tr>
       <tr><td style="padding:36px 32px;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.6;color:#242426;">
         <p style="margin:0 0 24px;font-size:18px;color:#19191a;">${safe}</p>
+        ${quoteHtml}
         <table role="presentation" align="center" cellpadding="0" cellspacing="0" style="margin:8px auto 24px;"><tr>
           <td align="center" bgcolor="#dc3741" style="border-radius:6px;background:#dc3741;">
             <a href="${link}" style="display:inline-block;padding:14px 34px;font-size:15px;font-weight:bold;color:#ffffff;text-decoration:none;border-radius:6px;">Verlo en Roll2Go</a>

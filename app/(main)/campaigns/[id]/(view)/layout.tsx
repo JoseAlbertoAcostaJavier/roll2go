@@ -59,7 +59,7 @@ export default async function CampaignLayout({
       </header>
 
       <CampaignTabs base={`/campaigns/${id}`} />
-      <div className="rounded-b-lg border border-t-0 border-line bg-panel p-5 sm:p-6">{children}</div>
+      <div className="animate-fade-in rounded-b-lg border border-t-0 border-line bg-panel p-5 sm:p-6">{children}</div>
     </div>
   );
 }

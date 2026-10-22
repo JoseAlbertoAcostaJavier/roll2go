@@ -5,7 +5,7 @@ import { rateLimit, tooManyRequests } from "@/lib/rateLimit";
 import { User } from "@/lib/User";
 import { relationsWith } from "@/lib/friends";
 import { blockedIdsOf } from "@/lib/blocks";
-const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+import { escapeRegex } from "@/lib/utils";
 export async function GET(req: NextRequest) {
   const session = await sessionOf(req);
   if (!session)

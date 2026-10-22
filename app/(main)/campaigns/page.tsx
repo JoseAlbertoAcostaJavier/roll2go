@@ -9,8 +9,10 @@ import { Campaign } from "@/lib/Campaign";
 import { system as rpgSystems } from "@/lib/systems";
 import Avatar from "@/app/components/Avatar";
 import CampaignInvites, { type InviteData } from "@/app/components/CampaignInvites";
+import ConfirmAction from "@/app/components/ConfirmAction";
 import { CampaignInvite } from "@/lib/CampaignInvite";
 import { loadUserCards } from "@/lib/userCards";
+import { escapeRegex, first } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Mis campañas" };
 
@@ -22,8 +24,6 @@ const SORTS = ["recent", "new", "name"] as const;
 function pick<T extends string>(value: string | undefined, allowed: readonly T[], fallback: T): T {
   return allowed.find((a) => a === value) ?? fallback;
 }
-const first = (v?: string | string[]) => (Array.isArray(v) ? v[0] : v);
-const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 const field =
   "h-11 w-full rounded-md border border-line bg-surface px-3 text-fg placeholder:text-muted focus:border-brand focus:outline-none";
@@ -52,26 +52,29 @@ export default async function CampaignsPage({
   if (owner === "mine") filter.owner = session.id;
   if (owner === "others") filter.owner = { $ne: session.id };
   if (status !== "all") filter.status = status;
-  if (q) filter.name = { $regex: escapeRegex(q),$options: "i" };
+  if (q) filter.name = { $regex: escapeRegex(q), $options: "i" };
 
   const sortBy: Record<string, 1 | -1> =
     sort === "name" ? { name: 1 } : sort === "new" ? { createdAt: -1 } : { updatedAt: -1 };
 
-  const campaigns = await Campaign.find(filter)
-    .select("name systemId status owner members imageId logoId shortDescription")
-    .sort(sortBy)
-    .collation({ locale: "es", strength: 2 }) // ordena por nombre sin distinguir mayúsculas ni tildes
-    .limit(100)
-    .lean();
+  // Campañas e invitaciones pendientes que te han enviado, a la vez
+  const [campaigns, invites] = await Promise.all([
+    Campaign.find(filter)
+      .select("name systemId status owner members imageId logoId shortDescription")
+      .sort(sortBy)
+      .collation({ locale: "es", strength: 2 }) // ordena por nombre sin distinguir mayúsculas ni tildes
+      .limit(100)
+      .lean(),
+    CampaignInvite.find({ user: session.id }).sort({ createdAt: -1 }).limit(20).lean(),
+  ]);
 
-  // Tarjetas de usuario de los DM de las campañas
-  const ownerCards = await loadUserCards(campaigns.map((c) => c.owner));
-
-  // Invitaciones pendientes que te han enviado
-  const invites = await CampaignInvite.find({ user: session.id }).sort({ createdAt: -1 }).limit(20).lean();
-  const inviteCampaigns = await Campaign.find({ _id: { $in: invites.map((i) => i.campaign) } }).select("name systemId").lean();
+  // DM de cada campaña, campañas de las invitaciones y quién invita
+  const [ownerCards, inviteCampaigns, inviterCards] = await Promise.all([
+    loadUserCards(campaigns.map((c) => c.owner)),
+    Campaign.find({ _id: { $in: invites.map((i) => i.campaign) } }).select("name systemId").lean(),
+    loadUserCards(invites.map((i) => i.invitedBy)),
+  ]);
   const inviteCampaignById = new Map(inviteCampaigns.map((c) => [String(c._id), c] as const));
-  const inviterCards = await loadUserCards(invites.map((i) => i.invitedBy));
   const inviteData: InviteData[] = invites.flatMap((i) => {
     const c = inviteCampaignById.get(String(i.campaign));
     if (!c) return [];
@@ -163,23 +166,26 @@ export default async function CampaignsPage({
         </div>
       ) : (
         <div className="grid grid-cols-[repeat(auto-fill,minmax(min(300px,100%),1fr))] gap-4">
-          {campaigns.map((c) => {
+          {campaigns.map((c, i) => {
             const players = Math.max(0, (c.members?.length ?? 1) - 1); // sin contar al DM
             const mine = String(c.owner) === session.id;
+            const owner = ownerCards.get(String(c.owner));
             return (
-              <Link
+              /* La tarjeta entera abre la campaña gracias al enlace "estirado" del título (after:inset-0).
+                 El pie queda por encima (z-10) para que el enlace al DM y el botón de abandonar funcionen. */
+              <article
                 key={String(c._id)}
-                href={`/campaigns/${c._id}`}
-                className="overflow-hidden rounded-lg border border-line bg-panel transition-colors hover:border-brand"
+                style={{ animationDelay: `${Math.min(i, 12) * 40}ms` }}
+                className="group relative flex animate-fade-up flex-col overflow-hidden rounded-lg border border-line bg-panel transition-[border-color,transform,box-shadow] duration-200 hover:-translate-y-0.5 hover:border-brand hover:shadow-[0_10px_30px_rgba(0,0,0,0.45)] has-[a:focus-visible]:border-brand"
               >
-                <div className="relative h-36 bg-surface">
+                <div className="relative h-36 overflow-hidden bg-surface">
                   {c.imageId && (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={`/api/images/${c.imageId}`} alt="" loading="lazy" className="h-full w-full object-cover" />
+                    <img src={`/api/images/${c.imageId}`} alt="" loading="lazy" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
                   )}
                   {c.logoId && (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={`/api/images/${c.logoId}`} alt="" loading="lazy" className="absolute bottom-2 left-2 h-12 w-12 rounded-md bg-surface object-cover" />
+                    <img src={`/api/images/${c.logoId}`} alt="" loading="lazy" className="absolute bottom-2 left-2 h-12 w-12 rounded-md bg-surface object-cover shadow-md" />
                   )}
                   {c.status === "inactive" && (
                     <span className="absolute right-2 top-2 rounded bg-black/70 px-2 py-0.5 text-xs font-semibold text-muted">
@@ -187,8 +193,12 @@ export default async function CampaignsPage({
                     </span>
                   )}
                 </div>
-                <div className="p-4">
-                  <h2 className="font-heading text-lg font-bold">{c.name}</h2>
+                <div className="flex flex-1 flex-col p-4">
+                  <h2 className="font-heading text-lg font-bold">
+                    <Link href={`/campaigns/${c._id}`} className="outline-none after:absolute after:inset-0 after:content-['']">
+                      {c.name}
+                    </Link>
+                  </h2>
                   {c.shortDescription && <p className="mt-1 line-clamp-3 text-sm text-muted">{c.shortDescription}</p>}
                   <p className="mt-3 text-sm font-semibold">
                     {rpgSystems.find((s) => s.id === c.systemId)?.name ?? c.systemId}
@@ -196,18 +206,32 @@ export default async function CampaignsPage({
                   <p className="text-sm text-muted">
                     {players} {players === 1 ? "jugador" : "jugadores"}
                   </p>
-                  {(() => {
-                    const owner = ownerCards.get(String(c.owner));
-                    return (
-                      <p className="mt-3 flex items-center gap-2 text-sm">
-                        <Avatar url={owner?.avatarUrl} size={24} crown />
-                        <span className="font-semibold text-[#6fd08c]">Creada por {owner?.displayName ?? "Desconocido"}</span>
-                        {mine && <span className="text-xs text-muted">(tú, DM)</span>}
-                      </p>
-                    );
-                  })()}
+                  <div className="relative z-10 mt-auto flex flex-wrap items-center justify-between gap-x-3 gap-y-2 pt-3">
+                    {owner ? (
+                      <Link href={`/users/${owner.username}`} className="group/dm flex min-w-0 items-center gap-2 text-sm">
+                        <Avatar url={owner.avatarUrl} size={24} crown />
+                        <span className="truncate font-semibold text-[#6fd08c]">
+                          Creada por <span className="group-hover/dm:underline">{owner.displayName}</span>
+                        </span>
+                      </Link>
+                    ) : (
+                      <span className="flex items-center gap-2 text-sm text-muted">
+                        <Avatar url={null} size={24} crown /> Creada por un usuario eliminado
+                      </span>
+                    )}
+                    {mine ? (
+                      <span className="text-xs text-muted">(tú, DM)</span>
+                    ) : (
+                      <ConfirmAction
+                        url={`/api/campaigns/${c._id}/members/${session.id}`}
+                        label="Abandonar"
+                        question={`¿Abandonar ${c.name}?`}
+                        confirmLabel="Sí, abandonar"
+                      />
+                    )}
+                  </div>
                 </div>
-              </Link>
+              </article>
             );
           })}
         </div>

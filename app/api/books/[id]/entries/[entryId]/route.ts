@@ -3,7 +3,8 @@ import mongoose from "mongoose";
 import { sessionOf } from "@/lib/campaignApi";
 import { rateLimit, tooManyRequests } from "@/lib/rateLimit";
 import { BookEntry } from "@/lib/BookEntry";
-import { MAX_BOOK_NAME, MAX_ENTRY_DESCRIPTION, cleanText, loadBook } from "@/lib/bookAccess";
+import { MAX_BOOK_NAME, MAX_ENTRY_DESCRIPTION, loadBook } from "@/lib/bookAccess";
+import { cleanText } from "@/lib/utils";
 
 type Ctx = { params: Promise<{ id: string; entryId: string }> };
 

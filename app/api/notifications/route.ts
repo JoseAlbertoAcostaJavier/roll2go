@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import mongoose from "mongoose";
 import { connectDB } from "@/lib/mongodb";
 import { sessionOf } from "@/lib/campaignApi";
 import { Notification } from "@/lib/Notification";
@@ -87,6 +88,33 @@ export async function GET(req: NextRequest) {
     console.error("Error al cargar las notificaciones:", err);
     return NextResponse.json(
       { error: "No se pudieron cargar las notificaciones." },
+      { status: 500 },
+    );
+  }
+}
+
+// DELETE { id } borra una notificación; DELETE { all: true } las borra todas
+export async function DELETE(req: NextRequest) {
+  const session = await sessionOf(req);
+  if (!session)
+    return NextResponse.json({ error: "Inicia sesión." }, { status: 401 });
+
+  const body = await req.json().catch(() => null);
+  let filter: Record<string, unknown>;
+  if (body?.all === true) filter = { user: session.id };
+  else if (typeof body?.id === "string" && mongoose.isValidObjectId(body.id))
+    filter = { _id: body.id, user: session.id };
+  else
+    return NextResponse.json({ error: "Petición no válida." }, { status: 400 });
+
+  try {
+    await connectDB();
+    await Notification.deleteMany(filter);
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    console.error("Error al borrar notificaciones:", err);
+    return NextResponse.json(
+      { error: "No se pudo completar la acción." },
       { status: 500 },
     );
   }

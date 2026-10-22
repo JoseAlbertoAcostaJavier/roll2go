@@ -1,13 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
-import { COOKIE_NAME, verifySession } from "@/lib/auth";
+import { sessionOf } from "@/lib/campaignApi";
 import { User } from "@/lib/User";
 import { books } from "@/lib/books";
-
-async function sessionOf(req: NextRequest) {
-  const token = req.cookies.get(COOKIE_NAME)?.value;
-  return token ? verifySession(token) : null;
-}
 
 export async function GET(req: NextRequest) {
   const session = await sessionOf(req);

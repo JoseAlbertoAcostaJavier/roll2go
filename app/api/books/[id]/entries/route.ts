@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { sessionOf } from "@/lib/campaignApi";
 import { rateLimit, tooManyRequests } from "@/lib/rateLimit";
 import { BookEntry, ENTRY_KINDS } from "@/lib/BookEntry";
-import { MAX_BOOK_NAME, MAX_ENTRIES_PER_BOOK, MAX_ENTRY_DESCRIPTION, cleanText, loadBook } from "@/lib/bookAccess";
+import { MAX_BOOK_NAME, MAX_ENTRIES_PER_BOOK, MAX_ENTRY_DESCRIPTION, loadBook } from "@/lib/bookAccess";
+import { cleanText, escapeRegex } from "@/lib/utils";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -19,7 +20,7 @@ export async function GET(req: NextRequest, { params }: Ctx) {
   const q = (req.nextUrl.searchParams.get("q") ?? "").trim().toLowerCase().slice(0, MAX_BOOK_NAME);
   const filter: Record<string, unknown> = { book: id };
   if (kind && isKind(kind)) filter.kind = kind;
-  if (q) filter.nameLower = { $regex: "^" + q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") };
+  if (q) filter.nameLower = { $regex: "^" + escapeRegex(q) };
 
   const entries = await BookEntry.find(filter)
     .select("-description") // el listado no necesita el texto completo

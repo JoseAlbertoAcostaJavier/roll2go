@@ -16,10 +16,10 @@ export default function UserLink({
   className?: string;
 }) {
   return (
-    <Link href={`/users/${user.username}`} className={`flex min-w-0 items-center gap-3 hover:underline ${className}`}>
-      <Avatar url={user.avatarUrl} size={size} crown={crown} />
+    <Link href={`/users/${user.username}`} className={`group flex min-w-0 items-center gap-3 ${className}`}>
+      <Avatar url={user.avatarUrl} size={size} crown={crown} className="transition-transform group-hover:scale-105" />
       <span className="min-w-0">
-        <span className="block truncate font-semibold">{user.displayName}</span>
+        <span className="block truncate font-semibold group-hover:underline">{user.displayName}</span>
         {showHandle && <span className="block truncate text-xs text-muted">@{user.username}</span>}
       </span>
     </Link>

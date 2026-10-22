@@ -46,10 +46,10 @@ export default async function ConversationPage({ params }: { params: Promise<{ u
       <Link href="/messages" className="mb-4 flex items-center gap-1 text-sm text-muted hover:text-white">
         <ChevronLeft size={16} aria-hidden="true" /> Mensajes
       </Link>
-      <Link href={`/users/${other.username}`} className="mb-4 flex items-center gap-3 hover:underline">
+      <Link href={`/users/${other.username}`} className="group mb-4 flex items-center gap-3">
         <Avatar url={other.avatarId ? `/api/images/${other.avatarId}` : null} size={44} />
         <span>
-          <span className="block font-heading text-lg font-bold">{other.displayName || other.username}</span>
+          <span className="block font-heading text-lg font-bold group-hover:underline">{other.displayName || other.username}</span>
           <span className="block text-xs text-muted">@{other.username}</span>
         </span>
       </Link>

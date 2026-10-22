@@ -66,7 +66,7 @@ export default function ForumMessage({ campaignId, data }: { campaignId: string;
   return (
     <article
       id={`msg-${data.id}`}
-      className={`scroll-mt-24 rounded-lg border bg-surface p-5 transition-colors target:border-brand ${
+      className={`scroll-mt-24 animate-fade-up rounded-lg border bg-surface p-5 transition-colors target:border-brand target:shadow-[0_0_0_3px_rgba(220,55,65,0.2)] ${
         data.isRoot && data.pinned ? "border-brand/60" : "border-line"
       }`}
     >

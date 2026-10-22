@@ -43,7 +43,7 @@ export default function UserMenu({ user }: { user: NavUser }) {
       {open && (
         <div
           role="menu"
-          className="absolute right-0 top-full z-50 mt-2 w-60 overflow-hidden rounded-lg border border-line bg-panel shadow-[0_12px_30px_rgba(0,0,0,0.6)]"
+          className="absolute right-0 top-full z-50 mt-2 w-60 origin-top-right animate-pop overflow-hidden rounded-lg border border-line bg-panel shadow-[0_12px_30px_rgba(0,0,0,0.6)]"
         >
           <div className="border-b border-line px-4 py-3">
             <p className="truncate text-sm font-bold">{user.displayName}</p>

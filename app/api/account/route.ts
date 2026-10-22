@@ -8,6 +8,7 @@ import { User } from "@/lib/User";
 import { createVerificationToken } from "@/lib/verification";
 import { sendVerificationEmail } from "@/lib/mail";
 import { deleteUserData } from "@/lib/accountCleanup";
+import { CAMPAIGN_EMAIL_PREFS } from "@/lib/notificationText";
 
 const USERNAME_REGEX = /^[a-zA-Z0-9_]{3,20}$/;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -50,14 +51,19 @@ export async function PATCH(req: NextRequest) {
   try {
     if (kind === "notifications") {
       const flag = (v: unknown) => v === true;
+      const types = (body.campaignTypes ?? {}) as Record<string, unknown>;
+      const campaignTypes = Object.fromEntries(
+        CAMPAIGN_EMAIL_PREFS.map(({ key }) => [key, flag(types[key])]),
+      );
       await User.updateOne(
         { _id: session.id },
         {
           $set: {
             emailPrefs: {
-              campaigns: flag(body.campaigns),
+              campaigns: Object.values(campaignTypes).some(Boolean),
               messages: flag(body.messages),
               social: flag(body.social),
+              campaignTypes,
             },
           },
         },

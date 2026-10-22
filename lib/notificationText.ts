@@ -14,7 +14,32 @@ export const NOTIFICATION_TYPES = [
   "book_like",
 ] as const;
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
-export type EmailPref = "campaigns" | "messages" | "social";
+// Tipos de aviso de campaña que se pueden activar o desactivar por separado para el correo
+export const CAMPAIGN_EMAIL_PREFS = [
+  { key: "notes", title: "Nuevas notas", desc: "Notas nuevas en el diario de campaña." },
+  { key: "forum", title: "Mensajes del foro", desc: "Hilos nuevos y respuestas a tus mensajes." },
+  { key: "invites", title: "Invitaciones", desc: "Cuando alguien te invita a una campaña." },
+  { key: "removals", title: "Expulsiones", desc: "Cuando el DM te expulsa de una campaña." },
+  { key: "dm", title: "Avisos del DM", desc: "En tus campañas: nuevos jugadores, personajes y solicitudes de importación." },
+] as const;
+export type CampaignEmailPref = (typeof CAMPAIGN_EMAIL_PREFS)[number]["key"];
+export type EmailPref = "messages" | "social" | CampaignEmailPref;
+
+export type EmailPrefs = {
+  campaigns?: boolean; // interruptor antiguo: se usa para los tipos de campaña que no se han tocado
+  messages?: boolean;
+  social?: boolean;
+  campaignTypes?: Partial<Record<CampaignEmailPref, boolean>>;
+};
+
+// Valores por defecto para cuentas que todavía no han tocado sus preferencias
+const DEFAULTS = { campaigns: true, messages: false, social: true };
+
+// ¿Quiere el usuario este correo?
+export function wantsEmail(prefs: EmailPrefs | undefined, pref: EmailPref): boolean {
+  if (pref === "messages" || pref === "social") return prefs?.[pref] ?? DEFAULTS[pref];
+  return prefs?.campaignTypes?.[pref] ?? prefs?.campaigns ?? DEFAULTS.campaigns;
+}
 
 // A qué opción de correo (Ajustes → Notificaciones) pertenece cada tipo. null = nunca se envía correo.
 export function emailPrefFor(type: NotificationType): EmailPref | null {
@@ -24,11 +49,22 @@ export function emailPrefFor(type: NotificationType): EmailPref | null {
       return "social";
     case "message":
       return "messages";
+    case "campaign_note":
+      return "notes";
+    case "campaign_post":
+    case "forum_reply":
+      return "forum";
+    case "campaign_invite":
+      return "invites";
+    case "campaign_removed":
+      return "removals";
+    case "campaign_joined":
+    case "character_created":
+    case "character_import_request":
+      return "dm";
     case "system":
     case "book_like":
       return null;
-    default:
-      return "campaigns";
   }
 }
 

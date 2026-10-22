@@ -8,6 +8,7 @@ import { pairKey } from "@/lib/Friendship";
 import { blockStatus } from "@/lib/blocks";
 import { findUserByUsername, relationBetween } from "@/lib/friends";
 import { notify } from "@/lib/notify";
+import { cleanText } from "@/lib/utils";
 
 type Ctx = { params: Promise<{ username: string }> };
 
@@ -108,9 +109,7 @@ export async function POST(req: NextRequest, { params }: Ctx) {
   } catch {
     return NextResponse.json({ error: "Petición no válida." }, { status: 400 });
   }
-  const text = (typeof body.text === "string" ? body.text : "")
-    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "")
-    .trim();
+  const text = cleanText(typeof body.text === "string" ? body.text : "").trim();
   if (!text)
     return NextResponse.json({ error: "Escribe un mensaje." }, { status: 400 });
   if (text.length > 2000)
@@ -148,7 +147,7 @@ export async function POST(req: NextRequest, { params }: Ctx) {
       pair: pairKey(session.id, otherId),
       text,
     });
-    await notify({ user: otherId, type: "message", actor: session.id });
+    await notify({ user: otherId, type: "message", actor: session.id, quote: text });
     return NextResponse.json(
       { message: view(message, session.id) },
       { status: 201 },

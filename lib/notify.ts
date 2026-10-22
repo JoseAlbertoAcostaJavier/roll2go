@@ -6,13 +6,11 @@ import { Campaign } from "@/lib/Campaign";
 import {
   describeNotification,
   emailPrefFor,
+  wantsEmail,
   type NotificationType,
 } from "@/lib/notificationText";
 import { sendNotificationEmail } from "@/lib/notifyMail";
 import { isBlockedEither } from "@/lib/blocks";
-
-// Valores por defecto para cuentas que todavía no han tocado sus preferencias
-const DEFAULT_EMAIL_PREFS = { campaigns: true, messages: false, social: true };
 
 type Input = {
   user: string;
@@ -21,6 +19,7 @@ type Input = {
   campaign?: string;
   post?: string;
   text?: string;
+  quote?: string; // solo para el correo: el texto del mensaje recibido (no se guarda en la notificación)
 };
 
 export async function countUnread(userId: string) {
@@ -94,7 +93,7 @@ export async function notify(input: Input) {
     .select("email emailPrefs")
     .lean();
   if (!recipient) return;
-  if (!(recipient.emailPrefs?.[pref] ?? DEFAULT_EMAIL_PREFS[pref])) return;
+  if (!wantsEmail(recipient.emailPrefs, pref)) return;
 
   const [actor, campaign] = await Promise.all([
     input.actor
@@ -117,7 +116,7 @@ export async function notify(input: Input) {
   // El correo se envía DESPUÉS de responder, para no retrasar la acción del usuario
   after(async () => {
     try {
-      await sendNotificationEmail(recipient.email, text, href);
+      await sendNotificationEmail(recipient.email, text, href, input.quote);
     } catch (err) {
       console.error("No se pudo enviar el correo de notificación:", err);
     }

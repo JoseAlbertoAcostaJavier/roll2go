@@ -52,7 +52,7 @@ export default function ConfirmAction({
   }
 
   return (
-    <span className="flex flex-wrap items-center gap-3 text-sm">
+    <span className="flex animate-fade-in flex-wrap items-center gap-3 text-sm">
       <span className="text-muted">{question}</span>
       <button
         type="button"

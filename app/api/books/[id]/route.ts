@@ -3,7 +3,8 @@ import { sessionOf } from "@/lib/campaignApi";
 import { rateLimit, tooManyRequests } from "@/lib/rateLimit";
 import { Book } from "@/lib/Book";
 import { BookEntry } from "@/lib/BookEntry";
-import { MAX_BOOK_DESCRIPTION, MAX_BOOK_NAME, cleanText, loadBook } from "@/lib/bookAccess";
+import { MAX_BOOK_DESCRIPTION, MAX_BOOK_NAME, loadBook } from "@/lib/bookAccess";
+import { cleanText } from "@/lib/utils";
 
 type Ctx = { params: Promise<{ id: string }> };
 

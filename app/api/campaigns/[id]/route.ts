@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
 import { connectDB } from "@/lib/mongodb";
-import { COOKIE_NAME, verifySession } from "@/lib/auth";
+import { sessionOf } from "@/lib/campaignApi";
 import { rateLimit, tooManyRequests } from "@/lib/rateLimit";
 import { Campaign } from "@/lib/Campaign";
 import { CampaignImage } from "@/lib/CampaignImage";
@@ -12,11 +12,6 @@ type Ctx = { params: Promise<{ id: string }> };
 
 const notFound = () =>
   NextResponse.json({ error: "Campaña no encontrada." }, { status: 404 });
-
-async function sessionOf(req: NextRequest) {
-  const token = req.cookies.get(COOKIE_NAME)?.value;
-  return token ? verifySession(token) : null;
-}
 
 // EDITAR: solo el DM (owner) puede modificar la campaña
 export async function PATCH(req: NextRequest, { params }: Ctx) {
