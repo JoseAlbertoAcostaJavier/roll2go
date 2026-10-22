@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "vitest run",
+    "import:5etools": "tsx scripts/import-5etools.ts"
   },
   "dependencies": {
     "@google/genai": "^2.24.0",
@@ -34,6 +36,8 @@
     "prisma": "^7.10.0",
     "tailwindcss": "^4.3.3",
     "tailwindcss-motion": "^1.1.1",
-    "typescript": "^5"
+    "tsx": "^4.23.15",
+    "typescript": "^5",
+    "vitest": "^4.1.12"
   }
 }
