@@ -1,4 +1,5 @@
 import { SignJWT, jwtVerify } from "jose";
+import { isBanned } from "@/lib/ban";
 
 export const COOKIE_NAME = "roll2go_session";
 
@@ -18,14 +19,17 @@ export async function signSession(user: { id: string; username: string }, rememb
     .sign(secret());
 }
 
-// Devuelve el usuario si el token es válido y no ha caducado; si no, null
+// Devuelve el usuario si el token es válido, no ha caducado y la cuenta no está baneada; si no, null.
+// Todas las páginas y rutas pasan por aquí, así que un baneo cierra todas las sesiones abiertas.
 export async function verifySession(token: string) {
+  let session;
   try {
     const { payload } = await jwtVerify(token, secret());
-    return { id: payload.sub as string, username: payload.username as string };
+    session = { id: payload.sub as string, username: payload.username as string };
   } catch {
     return null;
   }
+  return (await isBanned(session.id)) ? null : session;
 }
 
 // httpOnly: el JavaScript del navegador no puede leer la cookie.

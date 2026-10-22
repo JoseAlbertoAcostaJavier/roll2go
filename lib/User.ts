@@ -40,6 +40,20 @@ const UserSchema = new mongoose.Schema(
     // Búsqueda por prefijo del nombre visible (copia en minúsculas; se rellena al guardar el perfil)
     displayNameLower: { type: String, default: "", index: true },
     role: { type: String, enum: ["user", "admin"], default: "user" },
+    // Moderación: historial de advertencias y baneo permanente (con bannedAt la cuenta no puede entrar)
+    warnings: {
+      type: [
+        {
+          reason: { type: String, required: true, maxlength: 500 },
+          by: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+          createdAt: { type: Date, default: Date.now },
+        },
+      ],
+      default: [],
+    },
+    bannedAt: { type: Date, default: null },
+    banReason: { type: String, maxlength: 500, default: "" },
+    bannedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
   },
   {
     timestamps: true, // Esto crea automáticamente createdAt y updatedAt

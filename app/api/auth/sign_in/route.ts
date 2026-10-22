@@ -48,6 +48,18 @@ export async function POST(req: NextRequest) {
       // Mensaje genérico a propósito: no se dice si falló el usuario o la contraseña
       return NextResponse.json({ error: "Credenciales incorrectas." }, { status: 401 });
     }
+    // Cuenta baneada: solo se avisa tras acertar la contraseña, para no revelar qué cuentas lo están
+    if (user.bannedAt) {
+      return NextResponse.json(
+        {
+          error: user.banReason
+            ? `Tu cuenta ha sido suspendida de forma permanente. Motivo: ${user.banReason}`
+            : "Tu cuenta ha sido suspendida de forma permanente.",
+          code: "banned",
+        },
+        { status: 403 },
+      );
+    }
     //Si el usuario no esta verificado, no le permitimos iniciar sesion 
     if (!user.verified) {
       return NextResponse.json(
