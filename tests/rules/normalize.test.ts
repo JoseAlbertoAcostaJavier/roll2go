@@ -237,6 +237,15 @@ test("ignora entradas de otras fuentes", () => {
   expect(normalizeAll({ spells: [{ spell: [other] }] }, "XPHB").entries).toEqual([]);
 });
 
+test("los itemGroup se importan como objetos", () => {
+  const group = { name: "Holy Symbol", source: "XPHB", srd52: true, type: "SCF|XPHB", scfType: "holy", items: ["Amulet|XPHB"] };
+  const r = normalizeAll({ items: { itemGroup: [group] } }, "XPHB");
+  expect(r.errors).toEqual([]);
+  expect(r.entries).toHaveLength(1);
+  expect(r.entries[0]).toMatchObject({ kind: "item", key: "item:holy symbol|xphb", srd52: true });
+  expect((r.entries[0].data as ItemData).type).toBe("SCF");
+});
+
 describe("herencias", () => {
   test("_copy copia la base y aplica _mod", () => {
     const all = [

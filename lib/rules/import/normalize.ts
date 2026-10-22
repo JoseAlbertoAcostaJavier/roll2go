@@ -30,7 +30,7 @@ export type RawFiles = {
   races?: { race?: unknown[] };
   backgrounds?: { background?: unknown[] };
   feats?: { feat?: unknown[] };
-  items?: { item?: unknown[] };
+  items?: { item?: unknown[]; itemGroup?: unknown[] };
   itemsBase?: { baseitem?: unknown[] };
   languages?: { language?: unknown[] };
   skills?: { skill?: unknown[] };
@@ -664,7 +664,8 @@ export function normalizeAll(files: RawFiles, source: string): {
     for (const v of expandVersions(f)) run("feat", v, () => normalizeFeat(v));
   }
   for (const s of (files.spells ?? []).flatMap((f) => fromSource("spell", f.spell))) run("spell", s, () => normalizeSpell(s, ctx));
-  const itemPool = [...(files.itemsBase?.baseitem ?? []), ...(files.items?.item ?? [])];
+  // Los `itemGroup` (Símbolo sagrado, Canalizador druídico…) son entradas de equipo como las demás
+  const itemPool = [...(files.itemsBase?.baseitem ?? []), ...(files.items?.item ?? []), ...(files.items?.itemGroup ?? [])];
   for (const i of fromSource("item", itemPool)) run("item", i, () => normalizeItem(i));
   for (const l of fromSource("language", files.languages?.language)) run("language", l, () => normalizeLanguage(l));
   for (const s of skills) run("skill", s, () => normalizeSkill(s));
