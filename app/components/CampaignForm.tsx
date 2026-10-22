@@ -7,7 +7,7 @@ import { ImagePlus, LoaderCircle, X } from "lucide-react";
 import BbcodeEditor from "@/app/components/BbcodeEditor";
 
 type Option = { id: string; name: string };
-type Book = { id: string; systemId: string; name: string };
+import type { BookOption } from "@/lib/rules/books";
 type Errors = Partial<
   Record<"name" | "systemId" | "shortDescription" | "description" | "privateNotes" | "books" | "characters" | "image" | "logo", string>
 >;
@@ -144,7 +144,7 @@ function ImagePicker({
 export default function CampaignForm({
   systems, books, ownedBooks, mode = "create", campaignId, initial,
 }: {
-  systems: Option[]; books: Book[]; ownedBooks: string[];
+  systems: Option[]; books: BookOption[]; ownedBooks: string[];
   mode?: "create" | "edit"; campaignId?: string; initial?: CampaignInitial;
 }) {
   const router = useRouter();

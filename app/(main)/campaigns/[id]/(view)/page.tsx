@@ -4,7 +4,7 @@ import ConfirmAction from "@/app/components/ConfirmAction";
 import UserLink from "@/app/components/UserLink";
 import { getCampaignAccess } from "@/lib/campaignAccess";
 import { Campaign } from "@/lib/Campaign";
-import { books } from "@/lib/books";
+import { booksByIds } from "@/lib/rules/books";
 import { loadUserCards } from "@/lib/userCards";
 
 const heading = "mb-3 border-l-4 border-brand pl-3 font-heading text-xl font-bold";
@@ -25,7 +25,7 @@ export default async function CampaignDetailsPage({ params }: { params: Promise<
     (a, b) => Number(b.id === ownerId) - Number(a.id === ownerId) || a.displayName.localeCompare(b.displayName, "es"),
   );
   const bookNames = campaign.restrictBooks
-    ? (campaign.allowedBooks as string[]).map((b) => books.find((x) => x.id === b)?.name ?? b)
+    ? (await booksByIds(campaign.allowedBooks as string[])).map((b) => b.name)
     : null;
   const ch = campaign.characters;
   const characterText = !ch?.allowed

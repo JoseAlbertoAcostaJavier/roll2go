@@ -3,7 +3,7 @@ import { connectDB } from "@/lib/mongodb";
 import { Campaign } from "@/lib/Campaign";
 import { HomebrewEntry } from "@/lib/HomebrewEntry";
 import { bbcodeToText } from "@/lib/bbcode";
-import { booksOf } from "@/lib/books";
+import { booksByIds } from "@/lib/rules/books";
 const MAX_CONTEXT_CHARS = 12000; // ~3.000-4.000 tokens: de sobra para una campaña normal
 
 // Quita < y > para que un texto escrito por un usuario no pueda "cerrar" las etiquetas del contexto
@@ -41,8 +41,8 @@ export async function loadCampaignContext(userId: string, campaignId: string) {
   if (campaign.shortDescription)
     parts.push(`<resumen>\n${clean(campaign.shortDescription)}\n</resumen>`);
   if (campaign.restrictBooks) {
-    const names = booksOf(campaign.systemId)
-      .filter((b) => (campaign.allowedBooks as string[]).includes(b.id))
+    const names = (await booksByIds(campaign.allowedBooks as string[]))
+      .filter((b) => b.systemId === campaign.systemId)
       .map((b) => b.name);
     parts.push(
       `<libros_permitidos>\n${names.join(", ")}\n</libros_permitidos>`,

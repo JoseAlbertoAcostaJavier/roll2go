@@ -25,7 +25,7 @@ const CampaignSchema = new Schema(
 
     // Si restrictBooks es true, los personajes solo pueden usar los libros de allowedBooks
     restrictBooks: { type: Boolean, default: false },
-    allowedBooks: { type: [String], default: [] },
+    allowedBooks: { type: [String], default: [] }, // ids de `Book` (hex)
 
     characters: {
       allowed: { type: Boolean, default: true },

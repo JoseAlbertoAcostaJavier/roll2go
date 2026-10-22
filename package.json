@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
-    "import:5etools": "tsx scripts/import-5etools.ts"
+    "import:5etools": "tsx scripts/import-5etools.ts",
+    "migrate:books": "tsx scripts/migrate-book-ids.ts"
   },
   "dependencies": {
     "@google/genai": "^2.24.0",

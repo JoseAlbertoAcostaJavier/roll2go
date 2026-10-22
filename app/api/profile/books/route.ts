@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
 import { sessionOf } from "@/lib/campaignApi";
 import { User } from "@/lib/User";
-import { books } from "@/lib/books";
+import { officialBookIds } from "@/lib/rules/books";
 
 export async function GET(req: NextRequest) {
   const session = await sessionOf(req);
@@ -16,7 +16,7 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({ ownedBooks: me?.ownedBooks ?? [] });
 }
 
-// Sustituye la lista de libros del usuario. Solo se aceptan ids que existan en el catálogo.
+// Sustituye la lista de libros del usuario. Solo se aceptan ids de libros oficiales existentes.
 export async function PUT(req: NextRequest) {
   const session = await sessionOf(req);
   if (!session)
@@ -32,16 +32,10 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ error: "Petición no válida." }, { status: 400 });
   }
 
-  const valid = new Set(books.map((b) => b.id));
-  const ownedBooks = Array.isArray(body.ownedBooks)
-    ? [
-        ...new Set(
-          body.ownedBooks.filter(
-            (id): id is string => typeof id === "string" && valid.has(id),
-          ),
-        ),
-      ]
+  const requested = Array.isArray(body.ownedBooks)
+    ? [...new Set(body.ownedBooks.filter((id): id is string => typeof id === "string"))]
     : [];
+  const ownedBooks = await officialBookIds(requested);
 
   await connectDB();
   await User.updateOne({ _id: session.id }, { $set: { ownedBooks } });

@@ -1,5 +1,5 @@
 import { system as rpgSystems } from "@/lib/systems";
-import { booksOf } from "@/lib/books";
+import { officialBooksOf } from "@/lib/rules/books";
 import { detectImageType } from "@/lib/images";
 import { CampaignImage } from "@/lib/CampaignImage";
 
@@ -78,7 +78,7 @@ export async function parseCampaignForm(
   }
 
   if (restrictBooks && !errors.systemId) {
-    const inSystem = new Set(booksOf(systemId).map((b) => b.id));
+    const inSystem = new Set((await officialBooksOf(systemId)).map((b) => b.id));
     const owned = new Set(opts.ownedBooks);
     allowedBooks = [...new Set(allowedBooks)];
     if (allowedBooks.length === 0)

@@ -5,6 +5,7 @@ import { rateLimit, tooManyRequests } from "@/lib/rateLimit";
 import { BookEntry } from "@/lib/BookEntry";
 import { MAX_BOOK_NAME, MAX_ENTRY_DESCRIPTION, loadBook } from "@/lib/bookAccess";
 import { cleanText } from "@/lib/utils";
+import { normalizeName } from "@/lib/rules/schemas";
 
 type Ctx = { params: Promise<{ id: string; entryId: string }> };
 
@@ -41,7 +42,7 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
     if (!name || name.length > MAX_BOOK_NAME)
       return NextResponse.json({ error: "Nombre no válido." }, { status: 400 });
     update.name = name;
-    update.nameLower = name.toLowerCase();
+    update.nameLower = normalizeName(name);
   }
   if (typeof body?.description === "string")
     update.description = cleanText(body.description).slice(0, MAX_ENTRY_DESCRIPTION);

@@ -6,7 +6,7 @@ import { COOKIE_NAME, verifySession } from "@/lib/auth";
 import { connectDB } from "@/lib/mongodb";
 import { User } from "@/lib/User";
 import { system as rpgSystems } from "@/lib/systems";
-import { books } from "@/lib/books";
+import { officialBooksOf } from "@/lib/rules/books";
 
 export const metadata: Metadata = { title: "Crear campaña" };
 
@@ -17,6 +17,7 @@ export default async function NewCampaignPage() {
 
   await connectDB();
   const me = await User.findById(session.id).select("ownedBooks").lean();
+  const books = (await Promise.all(rpgSystems.map((s) => officialBooksOf(s.id)))).flat();
 
   return (
     <div className="mx-auto max-w-3xl px-5 py-10">

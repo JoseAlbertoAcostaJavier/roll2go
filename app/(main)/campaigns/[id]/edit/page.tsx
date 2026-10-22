@@ -8,7 +8,7 @@ import { getCampaignAccess } from "@/lib/campaignAccess";
 import { Campaign } from "@/lib/Campaign";
 import { User } from "@/lib/User";
 import { system as rpgSystems } from "@/lib/systems";
-import { books } from "@/lib/books";
+import { officialBooksOf } from "@/lib/rules/books";
 
 export const metadata: Metadata = { title: "Editar campaña" };
 
@@ -23,6 +23,7 @@ export default async function EditCampaignPage({ params }: { params: Promise<{ i
 
   // Los libros ya aprobados se mantienen visibles aunque el DM ya no los tenga en su perfil
   const me = await User.findById(session.id).select("ownedBooks").lean();
+  const books = await officialBooksOf(full.systemId); // el sistema no cambia al editar
   const owned = [...new Set<string>([...(me?.ownedBooks ?? []), ...(full.allowedBooks ?? [])])];
 
   return (

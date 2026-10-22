@@ -10,7 +10,7 @@ const CharacterSchema = new Schema(
     }, // el jugador
     name: { type: String, required: true, trim: true, maxlength: 80 },
     systemId: { type: String, required: true }, // id de lib/systems.ts
-    books: { type: [String], default: [] }, // libros de reglas que usa (ids de lib/books.ts)
+    books: { type: [String], default: [] }, // libros de reglas que usa (ids de `Book`)
 
     // Campaña a la que pertenece (vacío = personaje independiente, todavía sin campaña)
     campaign: { type: Schema.Types.ObjectId, ref: "Campaign", index: true },
