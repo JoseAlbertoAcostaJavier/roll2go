@@ -118,13 +118,13 @@ async function main() {
       {
         $set: {
           systemId: "dnd-2024",
-          name: BOOK_NAMES[source] ?? source,
           visibility: "public",
           license: args.srdOnly
             ? { type: "srd", attribution: SRD_ATTRIBUTION, sourceUrl: "https://www.dndbeyond.com/srd" }
             : { type: "official", attribution: "", sourceUrl: "" },
         },
-        $setOnInsert: { owner: null, key: source, language: "es" },
+        // El nombre solo se pone al crear el libro, para no pisar un nombre cambiado después
+        $setOnInsert: { owner: null, key: source, language: "es", name: BOOK_NAMES[source] ?? source },
       },
       { upsert: true, returnDocument: "after" },
     );
