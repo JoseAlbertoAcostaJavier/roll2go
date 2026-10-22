@@ -2,7 +2,7 @@
 //
 // Las referencias a otras entradas se construyen con `book: BOOK_PLACEHOLDER`; el script de importación lo
 // sustituye por el id del libro que está importando. `parent` solo guarda la clave (`{ key }`), porque el
-// padre siempre está en el mismo libro.
+// padre siempre está en el mismo libro. Todas las claves llevan el tipo delante (`spell:fireball|xphb`).
 import { ABILITIES } from "../types";
 import type {
   Ability, EntryData, EntryKind, Equipment, LevelFeature, Pack, Ref, SpellGrant,
@@ -69,13 +69,14 @@ export function toIdentifier(name: string): string {
     .replace(/[\s-]+/g, "-");
 }
 
-/** Clave estilo 5etools: `nombre|fuente` en minúsculas. */
-const keyOf = (name: string, source: string) => lower(`${name}|${source}`);
+/** Clave con el tipo delante y el resto estilo 5etools en minúsculas: `spell:fireball|xphb`. */
+const prefixed = (kind: EntryKind, bare: string) => `${kind}:${lower(bare)}`;
+const keyOf = (kind: EntryKind, name: string, source: string) => prefixed(kind, `${name}|${source}`);
 
 /** Referencia del tipo `"dancing lights|xphb#c"` → clave sin sufijo `#…`. */
 const cleanRefKey = (s: string) => lower(s.split("#")[0]);
 
-const ref = (key: string): Ref => ({ book: BOOK_PLACEHOLDER, key });
+const ref = (kind: EntryKind, bare: string): Ref => ({ book: BOOK_PLACEHOLDER, key: prefixed(kind, bare) });
 
 /** Quita las etiquetas `{@tag texto|…}` dejando el texto visible. */
 function plainText(s: string): string {
@@ -210,7 +211,7 @@ function spellGrants(additional: unknown[]): SpellGrant[] {
         const level = Number(lvl);
         if (!Number.isInteger(level)) continue; // "_" = sin nivel, s1… = nivel de conjuro
         for (const s of collectStrings(value)) {
-          grants.push({ level, ref: ref(cleanRefKey(s)), ...(isAbility(ability) ? { ability } : {}) });
+          grants.push({ level, ref: ref("spell", cleanRefKey(s)), ...(isAbility(ability) ? { ability } : {}) });
         }
       }
     }
@@ -218,17 +219,19 @@ function spellGrants(additional: unknown[]): SpellGrant[] {
   return grants.sort((a, b) => a.level - b.level);
 }
 
+// Los objetos con `choose` (elección del jugador) o `all` (lista ampliada por filtro), p. ej.
+// `{ choose: "level=0;1|class=Wizard" }`, no son conjuros fijos y se omiten
 const collectStrings = (v: unknown): string[] =>
   typeof v === "string" ? [v]
     : Array.isArray(v) ? v.flatMap(collectStrings)
-      : isObj(v) ? Object.values(v).flatMap(collectStrings) : [];
+      : isObj(v) && !("choose" in v) && !("all" in v) ? Object.values(v).flatMap(collectStrings) : [];
 
 /** Elemento de equipo inicial de 5etools → `Pack`. */
 function toPack(p: unknown): Pack | null {
-  if (typeof p === "string") return { ref: ref(cleanRefKey(p)) };
+  if (typeof p === "string") return { ref: ref("item", cleanRefKey(p)) };
   if (!isObj(p)) return null;
   const pack: Pack = {};
-  if (typeof p.item === "string") pack.ref = ref(cleanRefKey(p.item));
+  if (typeof p.item === "string") pack.ref = ref("item", cleanRefKey(p.item));
   if (typeof p.value === "number") pack.value = p.value;
   if (typeof p.quantity === "number") pack.quantity = p.quantity;
   const label = str(p.displayName) || str(p.special) || str(p.equipmentType) || asArr(p.equipmentTypes).map(str).join(" / ");
@@ -236,11 +239,12 @@ function toPack(p: unknown): Pack | null {
   return Object.keys(pack).length ? pack : null;
 }
 
-/** Solo se importan las opciones A y B (las demás, p. ej. la C del Guerrero, se omiten). */
+/** Opciones de equipo inicial por letra ("A", "B", "C"…). */
 function toEquipment(raw: unknown): Equipment {
   const opts = isObj(raw) ? raw : {};
-  const list = (k: string) => asArr(opts[k]).map(toPack).filter((x): x is Pack => x !== null);
-  return { A: list("A"), B: list("B") };
+  return Object.fromEntries(Object.entries(opts)
+    .filter(([letter]) => /^[A-Z]$/.test(letter))
+    .map(([letter, items]) => [letter, asArr(items).map(toPack).filter((x): x is Pack => x !== null)]));
 }
 
 /** `[{ a: true, b: true }]` → `["a", "b"]` (las claves `any…`/`choose` también se conservan como texto). */
@@ -278,12 +282,12 @@ export function normalizeSpecies(raw: Rec, ctx: NormalizeContext): NormalizedEnt
       skills.choose = { count: skillBlock.any, from: ctx.skillNames };
     }
   }
-  const speed = isObj(raw.speed) ? raw.speed.walk : raw.speed;
+  const speed = walkSpeed(raw.speed);
   // Los conjuros con nombre pertenecen a un legado; las especies 2024 no tienen aumentos de característica
   const ownSpells = asArr(raw.additionalSpells).filter((b) => isObj(b) && b.name === undefined);
-  return entry<"species">(header("species", raw, keyOf(str(raw.name), str(raw.source))), {
+  return entry<"species">(header("species", raw, keyOf("species", str(raw.name), str(raw.source))), {
     size: asArr(raw.size).map(str) as ("S" | "M" | "L")[],
-    speed: typeof speed === "number" ? speed : 30,
+    speed: speed ?? 30,
     darkvision: typeof raw.darkvision === "number" ? raw.darkvision : 0,
     creatureType: str(asArr(raw.creatureTypes)[0]) || "humanoid",
     skills,
@@ -291,6 +295,11 @@ export function normalizeSpecies(raw: Rec, ctx: NormalizeContext): NormalizedEnt
     hasLineages: asArr(raw._versions).length > 0,
   });
 }
+
+const walkSpeed = (v: unknown): number | undefined => {
+  const walk = isObj(v) ? v.walk : v;
+  return typeof walk === "number" ? walk : undefined;
+};
 
 /** Nombre del legado: `"Elf; Drow Lineage"` → `Drow`. */
 const lineageName = (versionName: string) =>
@@ -305,11 +314,13 @@ export function normalizeLineage(version: Rec, species: Rec): NormalizedEntry {
     traitName: nameOf(own[0]) || name,
   };
   if (typeof version.darkvision === "number" && version.darkvision !== species.darkvision) data.darkvision = version.darkvision;
+  const speed = walkSpeed(version.speed);
+  if (speed !== undefined && speed !== walkSpeed(species.speed)) data.speed = speed;
   return entry<"lineage">({
     kind: "lineage",
-    key: keyOf(name, str(version.source)),
+    key: keyOf("lineage", name, str(version.source)),
     identifier: toIdentifier(name),
-    parent: { key: keyOf(str(species.name), str(species.source)) },
+    parent: { key: keyOf("species", str(species.name), str(species.source)) },
     name,
     description: entriesToBbcode(own),
     srd52: Boolean(species.srd52),
@@ -321,9 +332,9 @@ export function normalizeBackground(raw: Rec): NormalizedEntry {
   const weighted = isObj(abilityBlock) && isObj(abilityBlock.choose) && isObj(abilityBlock.choose.weighted)
     ? abilityBlock.choose.weighted : {};
   const featKey = Object.keys(asArr(raw.feats)[0] ?? {})[0] ?? "";
-  return entry<"background">(header("background", raw, keyOf(str(raw.name), str(raw.source))), {
+  return entry<"background">(header("background", raw, keyOf("background", str(raw.name), str(raw.source))), {
     abilities: asArr(weighted.from).map(str) as Ability[],
-    feat: ref(lower(featKey)),
+    feat: ref("feat", featKey),
     skills: trueKeys(raw.skillProficiencies),
     tools: trueKeys(raw.toolProficiencies),
     equipment: toEquipment(asArr(raw.startingEquipment)[0]),
@@ -368,7 +379,7 @@ export function normalizeFeat(raw: Rec): NormalizedEntry {
     from.filter(isAbility).forEach((x) => increase.add(x));
   }
   if (increase.size) data.abilityIncrease = ABILITIES.filter((x) => increase.has(x));
-  return entry<"feat">(header("feat", raw, keyOf(str(raw.name), str(raw.source))), data);
+  return entry<"feat">(header("feat", raw, keyOf("feat", str(raw.name), str(raw.source))), data);
 }
 
 const TIME_UNITS: Record<string, string> = { action: "action", bonus: "bonus action", reaction: "reaction" };
@@ -429,7 +440,7 @@ function spellDuration(duration: unknown): string {
 }
 
 export function normalizeSpell(raw: Rec, ctx: NormalizeContext): NormalizedEntry {
-  const key = keyOf(str(raw.name), str(raw.source));
+  const key = keyOf("spell", str(raw.name), str(raw.source));
   const head = header("spell", raw, key);
   head.description = entriesToBbcode([...asArr(raw.entries), ...asArr(raw.entriesHigherLevel)]);
   const meta = isObj(raw.meta) ? raw.meta : {};
@@ -480,25 +491,25 @@ export function normalizeItem(raw: Rec): NormalizedEntry {
       return p?.ref ? [{ ref: p.ref, quantity: p.quantity ?? 1 }] : [];
     });
   }
-  return entry<"item">(header("item", raw, keyOf(str(raw.name), str(raw.source))), data);
+  return entry<"item">(header("item", raw, keyOf("item", str(raw.name), str(raw.source))), data);
 }
 
 export function normalizeLanguage(raw: Rec): NormalizedEntry {
-  return entry<"language">(header("language", raw, keyOf(str(raw.name), str(raw.source))),
+  return entry<"language">(header("language", raw, keyOf("language", str(raw.name), str(raw.source))),
     { type: raw.type as "standard" | "rare" });
 }
 
 export function normalizeSkill(raw: Rec): NormalizedEntry {
-  return entry<"skill">(header("skill", raw, keyOf(str(raw.name), str(raw.source))), { ability: raw.ability as Ability });
+  return entry<"skill">(header("skill", raw, keyOf("skill", str(raw.name), str(raw.source))), { ability: raw.ability as Ability });
 }
 
 /** Referencia de rasgo `"Rage|Barbarian|XPHB|1"` (o `{ classFeature: … }`) → clave y nivel. */
-function featureRef(f: unknown, field: string): LevelFeature | null {
+function featureRef(f: unknown, field: "classFeature" | "subclassFeature"): LevelFeature | null {
   const s = typeof f === "string" ? f : isObj(f) ? str(f[field]) : "";
   if (!s) return null;
   const parts = s.split("|");
   const level = Number(parts[parts.length - 1]);
-  return Number.isInteger(level) ? { ref: ref(lower(s)), level } : null;
+  return Number.isInteger(level) ? { ref: ref(field, s), level } : null;
 }
 
 const PROGRESSION: Record<string, "full" | "half" | "pact"> = { full: "full", "1/2": "half", artificer: "half", pact: "pact" };
@@ -521,7 +532,7 @@ export function normalizeClass(raw: Rec, ctx: NormalizeContext): NormalizedEntry
   const hd = isObj(raw.hd) ? raw.hd.faces : undefined;
   const ability = raw.spellcastingAbility;
   const spellTable = asArr(raw.classTableGroups).find((g) => isObj(g) && Array.isArray(g.rowsSpellProgression));
-  return entry<"class">(header("class", raw, keyOf(str(raw.name), str(raw.source))), {
+  return entry<"class">(header("class", raw, keyOf("class", str(raw.name), str(raw.source))), {
     hitDie: hd as EntryData["class"]["hitDie"],
     primaryAbility: ABILITIES.filter((a) => asArr(raw.primaryAbility).some((p) => isObj(p) && p[a] === true)),
     saves: asArr(raw.proficiency).map(str) as Ability[],
@@ -531,7 +542,7 @@ export function normalizeClass(raw: Rec, ctx: NormalizeContext): NormalizedEntry
     skills,
     equipment: toEquipment(asArr(isObj(raw.startingEquipment) ? raw.startingEquipment.defaultData : [])[0]),
     subclassLevel: subclassAt?.level ?? 3,
-    asiLevels: features.filter((f) => f.ref.key.startsWith("ability score improvement|")).map((f) => f.level),
+    asiLevels: features.filter((f) => f.ref.key.startsWith("classFeature:ability score improvement|")).map((f) => f.level),
     spellcasting: isAbility(ability)
       ? {
         ability,
@@ -543,17 +554,17 @@ export function normalizeClass(raw: Rec, ctx: NormalizeContext): NormalizedEntry
   });
 }
 
-/** Clave de subclase: `nombre|clase|fuente de la clase` (+ `|fuente` si es otra). */
+/** Clave de subclase: `subclass:nombre|clase|fuente de la clase` (+ `|fuente` si es otra). */
 const subclassKey = (raw: Rec) => {
-  const k = lower(`${str(raw.name)}|${str(raw.className)}|${str(raw.classSource)}`);
-  return lower(str(raw.source)) === lower(str(raw.classSource)) ? k : `${k}|${lower(str(raw.source))}`;
+  const k = `${str(raw.name)}|${str(raw.className)}|${str(raw.classSource)}`;
+  return prefixed("subclass", lower(str(raw.source)) === lower(str(raw.classSource)) ? k : `${k}|${str(raw.source)}`);
 };
 const subclassLookup = (shortName: string, className: string, classSource: string, source: string) =>
   lower(`${shortName}|${className}|${classSource}|${source}`);
 
 export function normalizeSubclass(raw: Rec): NormalizedEntry {
   return entry<"subclass">(header("subclass", raw, subclassKey(raw), {
-    parent: { key: keyOf(str(raw.className), str(raw.classSource)) },
+    parent: { key: keyOf("class", str(raw.className), str(raw.classSource)) },
   }), {
     features: asArr(raw.subclassFeatures).map((f) => featureRef(f, "subclassFeature"))
       .filter((x): x is LevelFeature => x !== null),
@@ -563,20 +574,20 @@ export function normalizeSubclass(raw: Rec): NormalizedEntry {
 
 export function normalizeClassFeature(raw: Rec): NormalizedEntry {
   const sourceSuffix = lower(str(raw.source)) === lower(str(raw.classSource)) ? "" : `|${str(raw.source)}`;
-  const key = lower(`${str(raw.name)}|${str(raw.className)}|${str(raw.classSource)}|${String(raw.level)}${sourceSuffix}`);
+  const key = prefixed("classFeature", `${str(raw.name)}|${str(raw.className)}|${str(raw.classSource)}|${String(raw.level)}${sourceSuffix}`);
   return entry<"classFeature">(header("classFeature", raw, key, {
-    parent: { key: keyOf(str(raw.className), str(raw.classSource)) },
+    parent: { key: keyOf("class", str(raw.className), str(raw.classSource)) },
   }), { level: raw.level as number, className: str(raw.className) });
 }
 
 export function normalizeSubclassFeature(raw: Rec, ctx: NormalizeContext): NormalizedEntry {
   const sourceSuffix = lower(str(raw.source)) === lower(str(raw.subclassSource)) ? "" : `|${str(raw.source)}`;
-  const key = lower([raw.name, raw.className, raw.classSource, raw.subclassShortName, raw.subclassSource, raw.level]
-    .map(String).join("|") + sourceSuffix);
+  const key = prefixed("subclassFeature", [raw.name, raw.className, raw.classSource, raw.subclassShortName,
+    raw.subclassSource, raw.level].map(String).join("|") + sourceSuffix);
   const sub = ctx.subclasses.get(subclassLookup(
     str(raw.subclassShortName), str(raw.className), str(raw.classSource), str(raw.subclassSource)));
   return entry<"subclassFeature">(header("subclassFeature", raw, key, {
-    parent: { key: sub?.key ?? lower(`${str(raw.subclassShortName)}|${str(raw.className)}|${str(raw.classSource)}`) },
+    parent: { key: sub?.key ?? prefixed("subclass", `${str(raw.subclassShortName)}|${str(raw.className)}|${str(raw.classSource)}`) },
   }), {
     level: raw.level as number,
     className: str(raw.className),
@@ -598,23 +609,23 @@ export function normalizeAll(files: RawFiles, source: string): {
   const entries: NormalizedEntry[] = [];
   const errors: { key: string; errors: string[] }[] = [];
   // Entradas de la fuente con su `_copy` resuelto; `pool` es donde se buscan las bases
-  const fromSource = (list: unknown[] | undefined, pool: unknown[] = list ?? []): Rec[] =>
+  const fromSource = (kind: EntryKind, list: unknown[] | undefined, pool: unknown[] = list ?? []): Rec[] =>
     (list ?? []).flatMap((x) => {
       if (!isObj(x) || lower(str(x.source)) !== src) return [];
       try {
         return [resolveCopy(x, pool) as Rec];
       } catch (err) {
-        errors.push({ key: keyOf(str(x.name), str(x.source)), errors: [err instanceof Error ? err.message : String(err)] });
+        errors.push({ key: keyOf(kind, str(x.name), str(x.source)), errors: [err instanceof Error ? err.message : String(err)] });
         return [];
       }
     });
 
-  const run = (raw: Rec, make: () => NormalizedEntry) => {
+  const run = (kind: EntryKind, raw: Rec, make: () => NormalizedEntry) => {
     let e: NormalizedEntry;
     try {
       e = make();
     } catch (err) {
-      errors.push({ key: keyOf(str(raw.name), str(raw.source)), errors: [err instanceof Error ? err.message : String(err)] });
+      errors.push({ key: keyOf(kind, str(raw.name), str(raw.source)), errors: [err instanceof Error ? err.message : String(err)] });
       return;
     }
     const r = validateEntryData(e.kind, e.data);
@@ -623,7 +634,7 @@ export function normalizeAll(files: RawFiles, source: string): {
   };
 
   // Contexto
-  const skills = fromSource(files.skills?.skill);
+  const skills = fromSource("skill", files.skills?.skill);
   const ctx: NormalizeContext = {
     skillNames: skills.map((s) => lower(str(s.name))),
     spellClasses: new Map(),
@@ -631,11 +642,11 @@ export function normalizeAll(files: RawFiles, source: string): {
   };
   for (const [spellSource, byName] of Object.entries(files.spellSources ?? {})) {
     for (const [name, info] of Object.entries(byName)) {
-      ctx.spellClasses.set(keyOf(name, spellSource), (info.class ?? []).map((c) => lower(c.name)));
+      ctx.spellClasses.set(keyOf("spell", name, spellSource), (info.class ?? []).map((c) => lower(c.name)));
     }
   }
   const classFiles = files.classes ?? [];
-  const subclasses = classFiles.flatMap((f) => fromSource(f.subclass));
+  const subclasses = classFiles.flatMap((f) => fromSource("subclass", f.subclass));
   for (const s of subclasses) {
     ctx.subclasses.set(
       subclassLookup(str(s.shortName), str(s.className), str(s.classSource), str(s.source)),
@@ -643,25 +654,25 @@ export function normalizeAll(files: RawFiles, source: string): {
     );
   }
 
-  for (const r of fromSource(files.races?.race)) {
-    run(r, () => normalizeSpecies(r, ctx));
-    for (const v of expandVersions(r)) run(v, () => normalizeLineage(v, r));
+  for (const r of fromSource("species", files.races?.race)) {
+    run("species", r, () => normalizeSpecies(r, ctx));
+    for (const v of expandVersions(r)) run("lineage", v, () => normalizeLineage(v, r));
   }
-  for (const b of fromSource(files.backgrounds?.background)) run(b, () => normalizeBackground(b));
-  for (const f of fromSource(files.feats?.feat)) {
-    run(f, () => normalizeFeat(f));
-    for (const v of expandVersions(f)) run(v, () => normalizeFeat(v));
+  for (const b of fromSource("background", files.backgrounds?.background)) run("background", b, () => normalizeBackground(b));
+  for (const f of fromSource("feat", files.feats?.feat)) {
+    run("feat", f, () => normalizeFeat(f));
+    for (const v of expandVersions(f)) run("feat", v, () => normalizeFeat(v));
   }
-  for (const s of (files.spells ?? []).flatMap((f) => fromSource(f.spell))) run(s, () => normalizeSpell(s, ctx));
+  for (const s of (files.spells ?? []).flatMap((f) => fromSource("spell", f.spell))) run("spell", s, () => normalizeSpell(s, ctx));
   const itemPool = [...(files.itemsBase?.baseitem ?? []), ...(files.items?.item ?? [])];
-  for (const i of fromSource(itemPool)) run(i, () => normalizeItem(i));
-  for (const l of fromSource(files.languages?.language)) run(l, () => normalizeLanguage(l));
-  for (const s of skills) run(s, () => normalizeSkill(s));
+  for (const i of fromSource("item", itemPool)) run("item", i, () => normalizeItem(i));
+  for (const l of fromSource("language", files.languages?.language)) run("language", l, () => normalizeLanguage(l));
+  for (const s of skills) run("skill", s, () => normalizeSkill(s));
   for (const f of classFiles) {
-    for (const c of fromSource(f.class)) run(c, () => normalizeClass(c, ctx));
-    for (const c of fromSource(f.classFeature)) run(c, () => normalizeClassFeature(c));
+    for (const c of fromSource("class", f.class)) run("class", c, () => normalizeClass(c, ctx));
+    for (const c of fromSource("classFeature", f.classFeature)) run("classFeature", c, () => normalizeClassFeature(c));
   }
-  for (const s of subclasses) run(s, () => normalizeSubclass(s));
-  for (const f of classFiles) for (const s of fromSource(f.subclassFeature)) run(s, () => normalizeSubclassFeature(s, ctx));
+  for (const s of subclasses) run("subclass", s, () => normalizeSubclass(s));
+  for (const f of classFiles) for (const s of fromSource("subclassFeature", f.subclassFeature)) run("subclassFeature", s, () => normalizeSubclassFeature(s, ctx));
   return { entries, errors };
 }

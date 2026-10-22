@@ -78,6 +78,18 @@ describe("validateEntryData", () => {
       weapon: { damage: "1d12", damageType: "slashing", properties: ["heavy"], mastery: "cleave", category: "martial" } });
     expect(r.ok).toBe(true);
   });
+  test("equipo: opciones por letra mayúscula, al menos una", () => {
+    const withEquipment = (equipment: unknown) => validateEntryData("class", { ...barbarianData, equipment });
+    expect(withEquipment({ A: [], B: [], C: [{ value: 15500 }] }).ok).toBe(true);
+    expect(withEquipment({}).ok).toBe(false);
+    expect(withEquipment({ a: [] }).ok).toBe(false);
+    expect(withEquipment({ AB: [] }).ok).toBe(false);
+    expect(withEquipment({ A: [{ value: "x" }] }).ok).toBe(false);
+  });
+  test("lineage acepta velocidad propia", () => {
+    expect(validateEntryData("lineage", { speed: 35, spells: [], traitName: "Wood Elf" }).ok).toBe(true);
+    expect(validateEntryData("lineage", { speed: "35", spells: [], traitName: "Wood Elf" }).ok).toBe(false);
+  });
   test("el nivel de los conjuros concedidos es el nivel de personaje (1-20)", () => {
     const grant = (level: number) => ({ darkvision: 120, traitName: "Drow",
       spells: [{ level, ref: { book: "b", key: "faerie fire|xphb" } }] });

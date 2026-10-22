@@ -3,7 +3,11 @@
 export type Ability = "str" | "dex" | "con" | "int" | "wis" | "cha";
 export const ABILITIES: Ability[] = ["str", "dex", "con", "int", "wis", "cha"];
 
-/** Referencia a otra entrada; puede apuntar a un libro distinto. */
+/**
+ * Referencia a otra entrada; puede apuntar a un libro distinto. Las claves (`BookEntry.key` y `Ref.key`) llevan
+ * el tipo delante, igual que el destino de `[ref=tipo:clave]`: `spell:fireball|xphb`, `species:elf|xphb`,
+ * `classFeature:rage|barbarian|xphb|1`.
+ */
 export type Ref = { book: string; key: string };
 
 export type EntryKind =
@@ -14,9 +18,10 @@ export type EntryKind =
 export type Pack = { ref?: Ref; quantity?: number; value?: number; displayName?: string };
 
 /** Conjuro concedido; `level` es el nivel de personaje o de clase en que se obtiene (1-20). */
-export type SpellGrant ={ level: number; ref: Ref; ability?: Ability };
+export type SpellGrant = { level: number; ref: Ref; ability?: Ability };
 export type LevelFeature = { ref: Ref; level: number };
-export type Equipment = { A: Pack[]; B: Pack[] };
+/** Opciones de equipo inicial por letra: `{ A: [...], B: [...], C: [...] }`. */
+export type Equipment = Record<string, Pack[]>;
 
 export type SpeciesData = {
   size: ("S" | "M" | "L")[];
@@ -30,6 +35,7 @@ export type SpeciesData = {
 
 export type LineageData = {
   darkvision?: number;
+  speed?: number;
   spells: SpellGrant[];
   traitName: string;
 };

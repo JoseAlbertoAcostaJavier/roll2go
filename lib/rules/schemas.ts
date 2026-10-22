@@ -40,7 +40,16 @@ const shape = (fields: Record<string, Check>): Check => (v, p, e) => {
 
 const ref = shape({ book: str, key: str });
 const pack = shape({ "ref?": ref, "quantity?": num, "value?": num, "displayName?": str });
-const equipment = shape({ A: arrayOf(pack), B: arrayOf(pack) });
+/** Opciones de equipo por letra mayúscula ("A", "B", "C"…); al menos una. */
+const equipment: Check = (v, p, e) => {
+  if (!isObj(v)) { e.push(`${p}: debe ser un objeto`); return; }
+  const letters = Object.keys(v);
+  if (!letters.length) e.push(`${p}: debe tener al menos una opción`);
+  for (const letter of letters) {
+    if (!/^[A-Z]$/.test(letter)) e.push(`${p}.${letter}: la opción debe ser una letra mayúscula`);
+    else arrayOf(pack)(v[letter], `${p}.${letter}`, e);
+  }
+};
 // `level` es el nivel de personaje o de clase en que se obtiene el conjuro, no el nivel del conjuro
 const spellGrant = shape({ level: int(1, 20), ref, "ability?": ability });
 const levelFeature = shape({ ref, level: int(1, 20) });
@@ -61,7 +70,7 @@ const checks: { [K in EntryKind]: Check } = {
     spells: arrayOf(spellGrant),
     hasLineages: bool,
   }),
-  lineage: shape({ "darkvision?": num, spells: arrayOf(spellGrant), traitName: str }),
+  lineage: shape({ "darkvision?": num, "speed?": num, spells: arrayOf(spellGrant), traitName: str }),
   class: shape({
     hitDie: oneOf(6, 8, 10, 12),
     primaryAbility: abilities,
