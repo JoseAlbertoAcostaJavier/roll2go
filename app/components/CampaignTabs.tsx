@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { FileText, ScrollText, UserPlus, Users } from "lucide-react";
+import { FileText, MessagesSquare, ScrollText, UserPlus, Users } from "lucide-react";
 
 const TABS = [
   { label: "Detalles", suffix: "", icon: FileText },
   { label: "Personajes", suffix: "/characters", icon: Users },
   { label: "Diario de campaña", suffix: "/log", icon: ScrollText },
-  { label: "Jugadores", suffix: "/members", icon: UserPlus },
+  { label: "Foro", suffix: "/forum", icon: MessagesSquare },
+  { label: "Participantes", suffix: "/members", icon: UserPlus },
 ];
 
 // base: dirección de la campaña, por ejemplo "/campaigns/6710f3a2..."

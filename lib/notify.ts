@@ -19,6 +19,7 @@ type Input = {
   type: NotificationType;
   actor?: string;
   campaign?: string;
+  post?: string;
   text?: string;
 };
 
@@ -28,7 +29,8 @@ export async function countUnread(userId: string) {
 }
 
 /* Mientras no se lean, estos avisos se agrupan en uno solo con contador (y se envía un único correo):
-   los mensajes de la misma persona y las notas o mensajes de foro nuevos de una misma campaña. */
+   los mensajes de la misma persona, las notas o mensajes de foro nuevos de una misma campaña y las
+   respuestas a un mismo hilo del foro. */
 function groupFilter(input: Input) {
   if (input.type === "message" && input.actor)
     return { type: "message", actor: input.actor };
@@ -38,6 +40,8 @@ function groupFilter(input: Input) {
   ) {
     return { type: input.type, campaign: input.campaign };
   }
+  if (input.type === "forum_reply" && input.post)
+    return { type: "forum_reply", post: input.post };
   return null;
 }
 
@@ -79,6 +83,7 @@ export async function notify(input: Input) {
     type: input.type,
     actor: input.actor,
     campaign: input.campaign,
+    post: input.post,
     text: input.text,
   });
 
@@ -100,7 +105,7 @@ export async function notify(input: Input) {
       : null,
   ]);
   const { text, href } = describeNotification(
-    { type: input.type, text: input.text },
+    { type: input.type, text: input.text, post: input.post },
     actor
       ? {
           username: actor.username,

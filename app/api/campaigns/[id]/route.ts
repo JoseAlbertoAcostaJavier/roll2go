@@ -7,6 +7,7 @@ import { Campaign } from "@/lib/Campaign";
 import { CampaignImage } from "@/lib/CampaignImage";
 import { User } from "@/lib/User";
 import { parseCampaignForm, storeImage } from "@/lib/campaignInput";
+import { deleteCampaignData } from "@/lib/accountCleanup";
 type Ctx = { params: Promise<{ id: string }> };
 
 const notFound = () =>

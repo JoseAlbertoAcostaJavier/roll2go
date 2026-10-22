@@ -3,7 +3,7 @@ export const NOTIFICATION_TYPES = [
   "friend_accepted",
   "message",
   "system",
-  // Los siguientes se usarán en las entregas de campañas y libros
+  "forum_reply",
   "campaign_joined",
   "campaign_removed",
   "campaign_invite",
@@ -37,7 +37,7 @@ type CampaignRef = { id: string; name: string } | null;
 
 // Texto y enlace de una notificación (se usan en la campana y en el correo)
 export function describeNotification(
-  n: { type: NotificationType; count?: number; text?: string },
+  n: { type: NotificationType; count?: number; text?: string; post?: string },
   actor: Actor,
   campaign: CampaignRef,
 ): { text: string; href: string } {
@@ -80,13 +80,21 @@ export function describeNotification(
             : `${who} ha publicado una nueva nota en ${where}`,
         href: `${campaignHref}/log`,
       };
-    case "campaign_post":
+    case "campaign_post": {
+      const many = (n.count ?? 1) > 1;
+      return {
+        text: many ? `Hay ${n.count} mensajes nuevos en ${where}` : `${who} ha publicado un nuevo mensaje en ${where}`,
+        // Un solo mensaje enlaza directo a su hilo; varios, a la lista del foro
+        href: !many && n.post ? `${campaignHref}/forum/${n.post}` : `${campaignHref}/forum`,
+      };
+    }
+    case "forum_reply":
       return {
         text:
           (n.count ?? 1) > 1
-            ? `Hay ${n.count} mensajes nuevos en ${where}`
-            : `${who} ha publicado un nuevo mensaje en ${where}`,
-        href: `${campaignHref}/forum`,
+            ? `Hay ${n.count} respuestas nuevas a tu mensaje en ${where}`
+            : `${who} ha respondido a tu mensaje en ${where}`,
+        href: n.post ? `${campaignHref}/forum/${n.post}` : `${campaignHref}/forum`,
       };
     case "character_created":
       return {

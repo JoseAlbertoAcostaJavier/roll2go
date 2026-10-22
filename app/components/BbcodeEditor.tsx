@@ -34,11 +34,13 @@ export default function BbcodeEditor({
   value,
   onChange,
   maxLength = 100000,
+  rows = 12,
 }: {
   id: string;
   value: string;
   onChange: (v: string) => void;
   maxLength?: number;
+  rows?: number;
 }) {
   const ref = useRef<HTMLTextAreaElement>(null);
   const [tab, setTab] = useState<"edit" | "preview">("edit");
@@ -130,7 +132,7 @@ export default function BbcodeEditor({
           ref={ref}
           value={value}
           maxLength={maxLength}
-          rows={12}
+          rows={rows}
           onChange={(e) => onChange(e.target.value)}
           onKeyDown={onKeyDown}
           className="w-full rounded-b-md border border-t-0 border-line bg-surface px-3 py-2.5 font-mono text-sm text-fg placeholder:text-muted focus:border-brand focus:outline-none"

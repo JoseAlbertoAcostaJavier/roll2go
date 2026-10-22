@@ -60,7 +60,7 @@ export async function GET(req: NextRequest) {
         const a = n.actor ? actorById.get(String(n.actor)) : undefined;
         const c = n.campaign ? campaignById.get(String(n.campaign)) : undefined;
         const { text, href } = describeNotification(
-          { type: n.type as NotificationType, count: n.count, text: n.text },
+          { type: n.type as NotificationType, count: n.count, text: n.text, post: n.post ? String(n.post) : undefined },
           a
             ? { username: a.username, displayName: a.displayName || a.username }
             : null,
