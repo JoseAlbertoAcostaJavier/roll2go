@@ -4,9 +4,8 @@ import { redirect } from "next/navigation";
 import CampaignForm from "@/app/components/CampaignForm";
 import { COOKIE_NAME, verifySession } from "@/lib/auth";
 import { connectDB } from "@/lib/mongodb";
-import { User } from "@/lib/User";
 import { system as rpgSystems } from "@/lib/systems";
-import { officialBooksOf } from "@/lib/rules/books";
+import { visibleBooksOf } from "@/lib/rules/books";
 
 export const metadata: Metadata = { title: "Crear campaña" };
 
@@ -16,8 +15,7 @@ export default async function NewCampaignPage() {
   if (!session) redirect("/sign_in?next=/campaigns/new");
 
   await connectDB();
-  const me = await User.findById(session.id).select("ownedBooks").lean();
-  const books = (await Promise.all(rpgSystems.map((s) => officialBooksOf(s.id)))).flat();
+  const books = await visibleBooksOf(session.id);
 
   return (
     <div className="mx-auto max-w-3xl px-5 py-10">
@@ -25,7 +23,6 @@ export default async function NewCampaignPage() {
       <CampaignForm
         systems={rpgSystems.map((s) => ({ id: s.id, name: s.name }))}
         books={books}
-        ownedBooks={me?.ownedBooks ?? []}
       />
     </div>
   );

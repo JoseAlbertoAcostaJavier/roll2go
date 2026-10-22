@@ -5,9 +5,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ImagePlus, LoaderCircle, X } from "lucide-react";
 import BbcodeEditor from "@/app/components/BbcodeEditor";
+import type { BookOption } from "@/lib/rules/books";
 
 type Option = { id: string; name: string };
-import type { BookOption } from "@/lib/rules/books";
 type Errors = Partial<
   Record<"name" | "systemId" | "shortDescription" | "description" | "privateNotes" | "books" | "characters" | "image" | "logo", string>
 >;
@@ -142,9 +142,9 @@ function ImagePicker({
 }
 
 export default function CampaignForm({
-  systems, books, ownedBooks, mode = "create", campaignId, initial,
+  systems, books, mode = "create", campaignId, initial,
 }: {
-  systems: Option[]; books: BookOption[]; ownedBooks: string[];
+  systems: Option[]; books: BookOption[];
   mode?: "create" | "edit"; campaignId?: string; initial?: CampaignInitial;
 }) {
   const router = useRouter();
@@ -169,8 +169,8 @@ export default function CampaignForm({
   const [formError, setFormError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // Libros del sistema elegido que el usuario tiene en su perfil
-  const available = books.filter((b) => b.systemId === systemId && ownedBooks.includes(b.id));
+  // Libros del sistema elegido que el usuario puede ver (oficiales y propios)
+  const available = books.filter((b) => b.systemId === systemId);
 
   function changeSystem(id: string) {
     setSystemId(id);
@@ -392,13 +392,11 @@ export default function CampaignForm({
               <p className="text-sm text-muted">Elige primero un sistema de rol.</p>
             ) : available.length === 0 ? (
               <p className="text-sm text-muted">
-                No tienes libros de este sistema en tu perfil. Añádelos en{" "}
-                <Link href="/profile" className="font-semibold text-white hover:text-brand-soft">tu perfil</Link>{" "}
-                para poder elegirlos aquí.
+                No hay libros disponibles de este sistema.
               </p>
             ) : (
               <fieldset>
-                <legend className="mb-2 text-sm text-muted">Tus libros de este sistema:</legend>
+                <legend className="mb-2 text-sm text-muted">Libros de este sistema:</legend>
                 <div className="space-y-2">
                   {available.map((b) => (
                     <label key={b.id} className="flex cursor-pointer items-center gap-2 text-sm">

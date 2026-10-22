@@ -1,5 +1,5 @@
 import { system as rpgSystems } from "@/lib/systems";
-import { officialBooksOf } from "@/lib/rules/books";
+import type { BookOption } from "@/lib/rules/books";
 import { detectImageType } from "@/lib/images";
 import { CampaignImage } from "@/lib/CampaignImage";
 
@@ -34,10 +34,10 @@ export async function storeImage(img: NewImage, owner: string) {
 }
 
 /* Valida los datos del formulario de campaña (el servidor repite todas las comprobaciones del navegador).
-   ownedBooks: libros que se pueden aprobar. lockedSystemId: al editar, el sistema no cambia. */
+   visibleBooks: libros que el usuario puede aprobar (los que ve). lockedSystemId: al editar, el sistema no cambia. */
 export async function parseCampaignForm(
   form: FormData,
-  opts: { ownedBooks: string[]; lockedSystemId?: string },
+  opts: { visibleBooks: BookOption[]; lockedSystemId?: string },
 ) {
   const name = text(form.get("name")).trim();
   const systemId = opts.lockedSystemId ?? text(form.get("systemId"));
@@ -78,14 +78,13 @@ export async function parseCampaignForm(
   }
 
   if (restrictBooks && !errors.systemId) {
-    const inSystem = new Set((await officialBooksOf(systemId)).map((b) => b.id));
-    const owned = new Set(opts.ownedBooks);
+    const visible = new Set(opts.visibleBooks.filter((b) => b.systemId === systemId).map((b) => b.id));
     allowedBooks = [...new Set(allowedBooks)];
     if (allowedBooks.length === 0)
       errors.books = "Selecciona al menos un libro.";
-    else if (allowedBooks.some((id) => !inSystem.has(id) || !owned.has(id))) {
+    else if (allowedBooks.some((id) => !visible.has(id))) {
       errors.books =
-        "Hay libros que no son de ese sistema o que no tienes en tu perfil.";
+        "Hay libros que no son de ese sistema o que no puedes usar.";
     }
   } else {
     allowedBooks = [];

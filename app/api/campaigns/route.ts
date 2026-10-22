@@ -6,6 +6,7 @@ import { rateLimit, tooManyRequests } from "@/lib/rateLimit";
 import { Campaign } from "@/lib/Campaign";
 import { CampaignImage } from "@/lib/CampaignImage";
 import { User } from "@/lib/User";
+import { visibleBooksOf } from "@/lib/rules/books";
 import { parseCampaignForm, storeImage } from "@/lib/campaignInput";
 
 export async function POST(req: NextRequest) {
@@ -31,7 +32,7 @@ export async function POST(req: NextRequest) {
   }
 
   await connectDB();
-  const me = await User.findById(session.id).select("ownedBooks");
+  const me = await User.findById(session.id).select("_id");
   if (!me)
     return NextResponse.json(
       { error: "Inicia sesión para crear una campaña." },
@@ -39,7 +40,7 @@ export async function POST(req: NextRequest) {
     );
 
   const parsed = await parseCampaignForm(form, {
-    ownedBooks: me.ownedBooks ?? [],
+    visibleBooks: await visibleBooksOf(session.id),
   });
   if (Object.keys(parsed.errors).length > 0) {
     return NextResponse.json({ errors: parsed.errors }, { status: 400 });

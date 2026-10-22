@@ -48,6 +48,17 @@ export async function officialBooksOf(systemId: string): Promise<BookOption[]> {
   return docs.map(toOption);
 }
 
+// Libros que el usuario puede ver: oficiales públicos + los suyos (opcionalmente de un sistema)
+export async function visibleBooksOf(userId: string, systemId?: string): Promise<BookOption[]> {
+  await connectDB();
+  const filter: Record<string, unknown> = {
+    $or: [{ owner: null, visibility: "public" }, { owner: userId }],
+  };
+  if (systemId) filter.systemId = systemId;
+  const docs = await Book.find(filter).sort({ name: 1 }).lean();
+  return docs.map(toOption);
+}
+
 // Ids (de los dados) que son de libros oficiales y públicos, de cualquier sistema
 export async function officialBookIds(ids: string[]): Promise<string[]> {
   const valid = ids.filter((id) => mongoose.isValidObjectId(id));

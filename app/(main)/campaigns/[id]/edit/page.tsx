@@ -6,9 +6,8 @@ import CampaignForm from "@/app/components/CampaignForm";
 import DeleteCampaign from "@/app/components/DeleteCampaign";
 import { getCampaignAccess } from "@/lib/campaignAccess";
 import { Campaign } from "@/lib/Campaign";
-import { User } from "@/lib/User";
 import { system as rpgSystems } from "@/lib/systems";
-import { officialBooksOf } from "@/lib/rules/books";
+import { booksByIds, visibleBooksOf } from "@/lib/rules/books";
 
 export const metadata: Metadata = { title: "Editar campaña" };
 
@@ -21,10 +20,10 @@ export default async function EditCampaignPage({ params }: { params: Promise<{ i
   const full = await Campaign.findOne({ _id: id, owner: session.id }).select("+privateNotes").lean();
   if (!full) notFound();
 
-  // Los libros ya aprobados se mantienen visibles aunque el DM ya no los tenga en su perfil
-  const me = await User.findById(session.id).select("ownedBooks").lean();
-  const books = await officialBooksOf(full.systemId); // el sistema no cambia al editar
-  const owned = [...new Set<string>([...(me?.ownedBooks ?? []), ...(full.allowedBooks ?? [])])];
+  // Los libros ya aprobados se mantienen visibles aunque el DM ya no los vea
+  const visible = await visibleBooksOf(session.id, full.systemId); // el sistema no cambia al editar
+  const approved = await booksByIds((full.allowedBooks ?? []) as string[]);
+  const books = [...new Map([...visible, ...approved].map((b) => [b.id, b])).values()];
 
   return (
     <div className="mx-auto max-w-3xl px-5 py-10">
@@ -43,7 +42,6 @@ export default async function EditCampaignPage({ params }: { params: Promise<{ i
         campaignId={id}
         systems={rpgSystems.map((s) => ({ id: s.id, name: s.name }))}
         books={books}
-        ownedBooks={owned}
         initial={{
           name: full.name,
           systemId: full.systemId,
