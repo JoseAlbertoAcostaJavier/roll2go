@@ -41,7 +41,8 @@ const shape = (fields: Record<string, Check>): Check => (v, p, e) => {
 const ref = shape({ book: str, key: str });
 const pack = shape({ "ref?": ref, "quantity?": num, "value?": num, "displayName?": str });
 const equipment = shape({ A: arrayOf(pack), B: arrayOf(pack) });
-const spellGrant = shape({ level: int(0, 9), ref, "ability?": ability });
+// `level` es el nivel de personaje o de clase en que se obtiene el conjuro, no el nivel del conjuro
+const spellGrant = shape({ level: int(1, 20), ref, "ability?": ability });
 const levelFeature = shape({ ref, level: int(1, 20) });
 const exactly = (n: number, c: Check): Check => (v, p, e) => {
   if (Array.isArray(v) && v.length !== n) { e.push(`${p}: deben ser ${n}`); return; }
@@ -79,7 +80,7 @@ const checks: { [K in EntryKind]: Check } = {
     })),
     features: arrayOf(levelFeature),
   }),
-  subclass: shape({ features: arrayOf(levelFeature), spells: arrayOf(shape({ level: int(0, 9), ref })) }),
+  subclass: shape({ features: arrayOf(levelFeature), spells: arrayOf(shape({ level: int(1, 20), ref })) }),
   classFeature: feature,
   subclassFeature: feature,
   background: shape({

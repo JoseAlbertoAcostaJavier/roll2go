@@ -13,7 +13,8 @@ export type EntryKind =
 /** Elemento de equipo: una entrada del catálogo, monedas (pc) o un texto libre. */
 export type Pack = { ref?: Ref; quantity?: number; value?: number; displayName?: string };
 
-export type SpellGrant = { level: number; ref: Ref; ability?: Ability };
+/** Conjuro concedido; `level` es el nivel de personaje o de clase en que se obtiene (1-20). */
+export type SpellGrant ={ level: number; ref: Ref; ability?: Ability };
 export type LevelFeature = { ref: Ref; level: number };
 export type Equipment = { A: Pack[]; B: Pack[] };
 

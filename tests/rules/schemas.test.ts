@@ -78,6 +78,17 @@ describe("validateEntryData", () => {
       weapon: { damage: "1d12", damageType: "slashing", properties: ["heavy"], mastery: "cleave", category: "martial" } });
     expect(r.ok).toBe(true);
   });
+  test("el nivel de los conjuros concedidos es el nivel de personaje (1-20)", () => {
+    const grant = (level: number) => ({ darkvision: 120, traitName: "Drow",
+      spells: [{ level, ref: { book: "b", key: "faerie fire|xphb" } }] });
+    expect(validateEntryData("lineage", grant(3)).ok).toBe(true);
+    expect(validateEntryData("lineage", grant(17)).ok).toBe(true);
+    expect(validateEntryData("lineage", grant(0)).ok).toBe(false);
+    expect(validateEntryData("lineage", grant(21)).ok).toBe(false);
+    const oath = (level: number) => ({ features: [], spells: [{ level, ref: { book: "b", key: "commune|xphb" } }] });
+    expect(validateEntryData("subclass", oath(17)).ok).toBe(true);
+    expect(validateEntryData("subclass", oath(0)).ok).toBe(false);
+  });
   test("lo que no es objeto se rechaza", () => {
     expect(validateEntryData("language", null).ok).toBe(false);
     expect(validateEntryData("skill", "x").ok).toBe(false);
