@@ -17,6 +17,9 @@ const CharacterSchema = new Schema(
     // "internal": creado desde la campaña. "external": creado fuera y añadido después
     origin: { type: String, enum: ["internal", "external"] },
 
+    // En activo, retirado o fallecido
+    status: { type: String, enum: ["active", "retired", "dead"], default: "active" },
+    portraitId: { type: Schema.Types.ObjectId, ref: "CampaignImage" },
     imageId: { type: Schema.Types.ObjectId, ref: "CampaignImage" },
     backstory: { type: String, default: "", maxlength: 100000 }, // BBCode
     // La hoja del personaje: cada sistema tiene campos distintos, así que es flexible
@@ -25,6 +28,7 @@ const CharacterSchema = new Schema(
   { timestamps: true, minimize: false },
 );
 CharacterSchema.index({ campaign: 1, createdAt: 1 });
+CharacterSchema.index({ owner: 1, status: 1, updatedAt: -1 });
 
 export const Character =
   mongoose.models.Character || mongoose.model("Character", CharacterSchema);
