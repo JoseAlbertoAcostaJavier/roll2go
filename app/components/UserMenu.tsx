@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronDown, LogOut, Pencil, Settings, User as UserIcon, MessageSquare, Megaphone, Users } from "lucide-react";
+import { ChevronDown, LogOut, Pencil, Settings, User as UserIcon, MessageSquare, Megaphone, ShieldAlert, Users } from "lucide-react";
 import Avatar from "@/app/components/Avatar";
 import useDismiss from "@/app/components/useDismiss";
 
@@ -68,7 +68,12 @@ export default function UserMenu({ user }: { user: NavUser }) {
             <Link href="/admin/announcements" role="menuitem" onClick={() => setOpen(false)} className={item}>
               <Megaphone size={16} aria-hidden="true" /> Avisos de Roll2Go
             </Link>
-          )}          
+          )}
+          {user.role === "admin" && (
+            <Link href="/admin/users" role="menuitem" onClick={() => setOpen(false)} className={item}>
+              <ShieldAlert size={16} aria-hidden="true" /> Usuarios de Roll2Go
+            </Link>
+          )}
           <button type="button" role="menuitem" onClick={logout} className={`${item} border-t border-line`}>
             <LogOut size={16} aria-hidden="true" /> Cerrar sesión
           </button>

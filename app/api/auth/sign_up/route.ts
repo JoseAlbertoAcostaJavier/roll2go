@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { connectDB } from "@/lib/mongodb";
 import { User } from "@/lib/User";
+import { BannedEmail } from "@/lib/BannedEmail";
 import { getClientIp, rateLimit, tooManyRequests } from "@/lib/rateLimit";
 import { createVerificationToken } from "@/lib/verification";
 import { sendVerificationEmail } from "@/lib/mail";
@@ -43,6 +44,14 @@ export async function POST(req: NextRequest) {
   try {
     await connectDB();
     const usernameLower = username.toLowerCase();
+
+    // Un correo baneado no puede crear otra cuenta
+    if (await BannedEmail.exists({ email })) {
+      return NextResponse.json(
+        { errors: { email: "Este correo no puede usarse para registrarse en Roll2Go." } },
+        { status: 403 },
+      );
+    }
 
     // Comprobar si el correo o el usuario ya existen
     const existing = await User.findOne({
