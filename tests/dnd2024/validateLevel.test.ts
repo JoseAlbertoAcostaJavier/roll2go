@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import type { CatalogEntry } from "@/lib/rules/catalog";
-import { signHitDie } from "@/lib/rules/dnd2024/rolls";
+import { signHitDie, type HitDieRoll } from "@/lib/rules/dnd2024/rolls";
 import type { Choice, Dnd2024SheetV2, LevelEntry } from "@/lib/rules/dnd2024/sheet";
 import { validateLevel } from "@/lib/rules/dnd2024/validateLevel";
 import type { Ref } from "@/lib/rules/types";
@@ -34,6 +34,7 @@ extra("optionalFeature:misty visions|xphb", { featureType: ["EI"] }, "Misty Visi
 
 const ctx = (userId = "u1") => ({
   userId,
+  characterId: "c1",
   books: [B],
   resolve: async (r: Ref): Promise<CatalogEntry | null> => (r.book === B ? (cat.get(`${B}:${r.key}`) ?? null) : null),
   entries: cat,
@@ -237,13 +238,18 @@ describe("validateLevel", () => {
     });
     it("tirada: token propio → ok y se guarda; ajeno, caducado o 13 en d12 → error", async () => {
       const roll = (value: number, token: string) => input({ hp: { method: "roll", value, token } });
-      const r = await validateLevel(barbarian3(), roll(9, signHitDie("u1", 12, 9)), ctx());
+      const sign = (userId: string, value: number, over: Partial<HitDieRoll> = {}, now?: number) =>
+        signHitDie(userId, { characterId: "c1", n: 4, die: 12, value, ...over }, now);
+      const r = await validateLevel(barbarian3(), roll(9, sign("u1", 9)), ctx());
       if (!r.ok) throw new Error(JSON.stringify(r.errors));
       expect(r.entry.hp).toEqual({ method: "roll", value: 9, token: expect.any(String) });
-      expect(await errorsOf(barbarian3(), roll(9, signHitDie("u2", 12, 9)))).toHaveProperty("hp");
-      expect(await errorsOf(barbarian3(), roll(9, signHitDie("u1", 12, 9, Date.now() - 25 * 3600 * 1000)))).toHaveProperty("hp");
-      expect(await errorsOf(barbarian3(), roll(13, signHitDie("u1", 12, 13)))).toHaveProperty("hp");
-      expect(await errorsOf(barbarian3(), roll(9, signHitDie("u1", 10, 9)))).toHaveProperty("hp");
+      expect(await errorsOf(barbarian3(), roll(9, sign("u2", 9)))).toHaveProperty("hp");
+      expect(await errorsOf(barbarian3(), roll(9, sign("u1", 9, {}, Date.now() - 25 * 3600 * 1000)))).toHaveProperty("hp");
+      expect(await errorsOf(barbarian3(), roll(13, sign("u1", 13)))).toHaveProperty("hp");
+      expect(await errorsOf(barbarian3(), roll(9, sign("u1", 9, { die: 10 })))).toHaveProperty("hp");
+      // Token de otro personaje o de otro nivel
+      expect(await errorsOf(barbarian3(), roll(9, sign("u1", 9, { characterId: "c2" })))).toHaveProperty("hp");
+      expect(await errorsOf(barbarian3(), roll(9, sign("u1", 9, { n: 5 })))).toHaveProperty("hp");
     });
     it("máximo fuera del nivel 1 de la primera clase → error; método desconocido → error", async () => {
       expect(await errorsOf(barbarian3(), input({ hp: { method: "max", value: 12 } }))).toHaveProperty("hp");
@@ -289,5 +295,39 @@ describe("validateLevel", () => {
   it("entrada no válida → error", async () => {
     expect(await errorsOf(barbarian3(), null)).not.toEqual({});
     expect(await errorsOf(barbarian3(), input({ choices: "x" }))).toHaveProperty("choices");
+  });
+
+  it("rasgo de una subclase que ya tiene, con opciones, por encima del nivel de subclase: se exige y se acepta", async () => {
+    const SUB = "subclass:path of testing|barbarian|xphb";
+    const FEATURE = "subclassFeature:testing choice|barbarian|xphb|testing|xphb|7";
+    extra("classFeature:option a|barbarian|xphb|7", { level: 7, className: "Barbarian" }, "Option A");
+    extra("classFeature:option b|barbarian|xphb|7", { level: 7, className: "Barbarian" }, "Option B");
+    extra(FEATURE, {
+      level: 7, className: "Barbarian", subclassName: "Testing",
+      options: [ref("classFeature:option a|barbarian|xphb|7"), ref("classFeature:option b|barbarian|xphb|7")],
+    }, "Testing Choice");
+    extra(SUB, { features: [{ ref: ref(FEATURE), level: 7 }], spells: [], progressions: { feats: [], optionalFeatures: [] } }, "Path of Testing");
+    cat.get(`${B}:${SUB}`)!.parent = cls("barbarian");
+    const sheet = sheetWith([["barbarian", 6]], {
+      3: [{ type: "subclass", source: "class:subclass", value: named(ref(SUB)) }],
+    });
+    // Como la hoja: solo la clase y la subclase cargadas, sin los rasgos de nivel 7
+    const entries = new Map([...cat].filter(([k]) => !k.endsWith(FEATURE) && !k.includes("|7")));
+    const body = (choices: unknown[]) => ({ expectedLevel: 7, class: client("class:barbarian|xphb"), hp: average, choices });
+    const missing = await validateLevel(sheet, body([]), { ...ctx(), entries });
+    expect(missing.ok ? {} : missing.errors).toHaveProperty("choices");
+    const option = { type: "featureOption", source: FEATURE, value: client("classFeature:option b|barbarian|xphb|7") };
+    const r = await validateLevel(sheet, body([option]), { ...ctx(), entries });
+    if (!r.ok) throw new Error(JSON.stringify(r.errors));
+    expect(r.entry.choices).toEqual([{ ...option, value: { ref: ref("classFeature:option b|barbarian|xphb|7"), name: "Option B" } }]);
+  });
+
+  it("referencias de una elección de un libro no utilizable → error", async () => {
+    const other = (key: string) => ({ ref: { book: "otro", key }, name: "x" });
+    const weapon = { type: "weaponMastery", source: MASTERY, value: [{ book: "otro", key: "item:shortsword|xphb" }] };
+    expect(await errorsOf(barbarian3(), input({ choices: [asi({ abilities: { str: 2 } }), weapon] })))
+      .toHaveProperty([`choices.${MASTERY}`]);
+    const feat = asi({ feat: other("feat:great weapon master|xphb"), ability: "str" });
+    expect(await errorsOf(barbarian3(), input({ choices: [feat, mastery()] }))).toHaveProperty([`choices.${ASI}`]);
   });
 });

@@ -231,9 +231,17 @@ export function heldPicks(levels: LevelEntry[]): Map<string, FeatPickValue[]> {
 /** Dotes de las elecciones `feat` (estilos de combate, dones épicos…) que conserva, con el nivel total en que se ganaron. */
 export function heldFeats(levels: LevelEntry[]): (FeatPickValue & { level: number })[] {
   const held = heldPicks(levels);
-  return levels.flatMap((l) => l.choices.flatMap((c) => (c.type !== "feat" ? [] : c.value
-    .filter((f) => held.get(c.source)?.includes(f))
-    .map((f) => ({ ...f, level: l.n })))));
+  // Si se volvió a elegir una que se había sustituido, cuenta la última vez
+  const last = new Map<string, FeatPickValue & { level: number }>();
+  for (const l of levels) {
+    for (const c of l.choices) {
+      if (c.type !== "feat") continue;
+      for (const f of c.value) {
+        if (held.get(c.source)?.some((h) => refKey(h.ref) === refKey(f.ref))) last.set(`${c.source}|${refKey(f.ref)}`, { ...f, level: l.n });
+      }
+    }
+  }
+  return [...last.values()];
 }
 
 /** Lo que piden los prerrequisitos de las dotes: nivel total, características, armaduras y lanzamiento de conjuros. */

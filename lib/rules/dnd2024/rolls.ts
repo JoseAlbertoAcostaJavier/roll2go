@@ -15,8 +15,8 @@ const hmac = (payload: string) => createHmac("sha256", secret()).update(payload)
 const mac = (userId: string, values: number[], expires: number) =>
   hmac(`${userId}|${[...values].sort((a, b) => a - b).join(",")}|${expires}`);
 // Prefijo propio: un token de dado de golpe no sirve como tirada de características ni al revés
-const hitDieMac = (userId: string, die: number, value: number, expires: number) =>
-  hmac(`hit-die|${userId}|${die}|${value}|${expires}`);
+const hitDieMac = (userId: string, r: HitDieRoll, expires: number) =>
+  hmac(`hit-die|${userId}|${r.characterId}|${r.n}|${r.die}|${r.value}|${expires}`);
 
 // Token `expira.firma`: comprueba la forma, la caducidad y la firma esperada
 function checkToken(token: unknown, now: number, expected: (expires: number) => string): boolean {
@@ -47,16 +47,20 @@ const isHitDie = (die: unknown): die is number => HIT_DICE.includes(die as (type
 /** Tirada de un dado de golpe (1..die). */
 export const rollHitDie = (die: number, rng: () => number = Math.random) => Math.floor(rng() * die) + 1;
 
-/** Token de una tirada de dado de golpe, ligado al usuario, al dado y al valor (24 h). */
-export function signHitDie(userId: string, die: number, value: number, now = Date.now()): string {
+/** Tirada de dado de golpe para el nivel total `n` del personaje `characterId`. */
+export type HitDieRoll = { characterId: string; n: number; die: number; value: number };
+
+/** Token de una tirada de dado de golpe, ligado al usuario, al personaje, al nivel, al dado y al valor (24 h). */
+export function signHitDie(userId: string, roll: HitDieRoll, now = Date.now()): string {
   const expires = now + TTL_MS;
-  return `${expires}.${hitDieMac(userId, die, value, expires)}`;
+  return `${expires}.${hitDieMac(userId, roll, expires)}`;
 }
 
 /** Comprueba el token y que el valor esté dentro del dado. */
-export function verifyHitDie(userId: string, die: number, value: number, token: string, now = Date.now()): boolean {
+export function verifyHitDie(userId: string, roll: HitDieRoll, token: string, now = Date.now()): boolean {
+  const { die, value } = roll;
   if (!isHitDie(die) || !Number.isInteger(value) || value < 1 || value > die) return false;
-  return checkToken(token, now, (expires) => hitDieMac(userId, die, value, expires));
+  return checkToken(token, now, (expires) => hitDieMac(userId, roll, expires));
 }
 
 /** 4d6 sin el menor, seis veces; `dice[i]` son los 4 dados de `values[i]` en el orden en que salieron. */

@@ -13,6 +13,8 @@ import { checkChoices, loadInto } from "./validate";
 
 export type ValidateLevelCtx = {
   userId: string;
+  /** Personaje que sube (la tirada de PG va ligada a él y al nivel). */
+  characterId: string;
   books: string[];
   /** Solo resuelve referencias de los libros utilizables. */
   resolve: (ref: Ref) => Promise<CatalogEntry | null>;
@@ -92,8 +94,11 @@ export async function validateLevel(
     }
   }
 
-  // Lo que pide el nivel: rasgos nuevos de la clase y de la subclase, y las opciones de estos
-  const subData = subclass ? (entries.get(refKey(subclass.ref))?.data as SubclassData | undefined) : undefined;
+  // Lo que pide el nivel: rasgos nuevos de la clase y de la subclase (la elegida ahora o la que ya tiene), y las
+  // opciones de estos
+  const subRef = subclass?.ref ?? owned?.subclass?.ref;
+  if (subRef) await loadInto(entries, [subRef], ctx.resolve);
+  const subData = subRef ? (entries.get(refKey(subRef))?.data as SubclassData | undefined) : undefined;
   const newFeatures = [...data.features, ...(subData?.features ?? [])].filter((f) => f.level === classLevel);
   await loadInto(entries, newFeatures.map((f) => f.ref), ctx.resolve);
   const options = newFeatures.flatMap((f) => (entries.get(refKey(f.ref))?.data as FeatureData | undefined)?.options ?? []);
@@ -127,14 +132,16 @@ export async function validateLevel(
   for (const [k, msg] of Object.entries(checked.errors)) err(k, msg);
 
   // Puntos de golpe: media exacta o tirada firmada; el máximo solo en el nivel 1 de la primera clase (la creación)
-  const hp = checkHp(input.hp, data.hitDie, ctx.userId);
+  const hp = checkHp(input.hp, data.hitDie, ctx.userId, ctx.characterId, n);
   if ("error" in hp) err("hp", hp.error);
 
   if (Object.keys(errors).length || "error" in hp) return fail();
   return { ok: true, entry: { n, class: named(classEntry), classLevel, hp, choices: checked.choices } };
 }
 
-function checkHp(raw: unknown, die: number, userId: string): LevelEntry["hp"] | { error: string } {
+function checkHp(
+  raw: unknown, die: number, userId: string, characterId: string, n: number,
+): LevelEntry["hp"] | { error: string } {
   if (!isObj(raw) || typeof raw.value !== "number") return { error: "Elige cómo ganar los puntos de golpe." };
   const value = raw.value;
   switch (raw.method) {
@@ -143,7 +150,7 @@ function checkHp(raw: unknown, die: number, userId: string): LevelEntry["hp"] | 
         ? { method: "average", value }
         : { error: `La media del d${die} es ${averageHitDie(die)}.` };
     case "roll":
-      return typeof raw.token === "string" && verifyHitDie(userId, die, value, raw.token)
+      return typeof raw.token === "string" && verifyHitDie(userId, { characterId, n, die, value }, raw.token)
         ? { method: "roll", value, token: raw.token }
         : { error: "La tirada no es válida o ha caducado." };
     case "max":

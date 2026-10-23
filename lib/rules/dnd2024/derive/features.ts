@@ -19,7 +19,7 @@ export type FeatPick = { ref: Ref; name: string | null; level: number };
 
 // Columna de la tabla de clase (etiqueta en español del importador) con el valor de cada rasgo, por su nombre en la
 // clave del rasgo
-const FEATURE_COLUMNS: Record<string, string> = {
+export const FEATURE_COLUMNS: Record<string, string> = {
   rage: "Furias",
   "bardic inspiration": "Dado de inspiración bárdica",
   "channel divinity": "Canalizar divinidad",
@@ -34,8 +34,8 @@ const FEATURE_COLUMNS: Record<string, string> = {
   "font of magic": "Puntos de hechicería",
   "eldritch invocations": "Invocaciones",
 };
-// Ataque adicional no se acumula entre clases (spec de subir de nivel §4.2): solo se muestra el de la primera
-const EXTRA_ATTACK = "classFeature:extra attack|";
+// Ataque adicional no se acumula entre clases ni subclases (spec de subir de nivel §4.2): solo se muestra el primero
+const isExtraAttack = (ref: Ref) => ref.key.replace(/^[^:]*:/, "").startsWith("extra attack|");
 // Celda vacía o «—» (0 en la tabla): sin valor
 const EMPTY_CELL = new Set(["", "—"]);
 
@@ -64,21 +64,26 @@ export function featureGroups(
     return cell === undefined || EMPTY_CELL.has(cell) ? {} : { value: cell };
   };
   let extraAttack = false;
+  // Quita Ataque adicional si ya lo da un bloque anterior
+  const withoutRepeatedExtraAttack = <T extends { ref: Ref }>(features: T[]) => {
+    const out = features.filter((f) => !(isExtraAttack(f.ref) && extraAttack));
+    if (out.some((f) => isExtraAttack(f.ref))) extraAttack = true;
+    return out;
+  };
 
   const groups: FeatureGroup[] = [];
   if (sheet.species) groups.push({ title: sheet.species.name, source: "species", ref: sheet.species.ref, features: [] });
   if (sheet.lineage) groups.push({ title: sheet.lineage.name, source: "lineage", ref: sheet.lineage.ref, features: [] });
   for (const c of classes) {
     const data = entries.get(refKey(c.class.ref))?.data as ClassData | undefined;
-    const features = upTo(data?.features, c.level)
-      .filter((f) => !(f.ref.key.startsWith(EXTRA_ATTACK) && extraAttack))
+    const features = withoutRepeatedExtraAttack(upTo(data?.features, c.level))
       .map((f) => ({ ...f, ...tableValue(data, f.ref, c.level) }));
-    if (features.some((f) => f.ref.key.startsWith(EXTRA_ATTACK))) extraAttack = true;
     groups.push({ title: c.class.name, source: "class", ref: c.class.ref, level: c.level, features });
     if (!c.subclass) continue;
     const sub = entries.get(refKey(c.subclass.ref))?.data as SubclassData | undefined;
     groups.push({
-      title: c.subclass.name, source: "subclass", ref: c.subclass.ref, level: c.level, features: upTo(sub?.features, c.level),
+      title: c.subclass.name, source: "subclass", ref: c.subclass.ref, level: c.level,
+      features: withoutRepeatedExtraAttack(upTo(sub?.features, c.level)),
     });
   }
   if (feats.length > 0) {

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { CatalogEntry } from "@/lib/rules/catalog";
 import { derive } from "@/lib/rules/dnd2024/derive";
+import { FEATURE_COLUMNS } from "@/lib/rules/dnd2024/derive/features";
 import type { Choice, Dnd2024Sheet, Dnd2024SheetV2, InventoryItem, LevelEntry } from "@/lib/rules/dnd2024/sheet";
 import { upgradeSheet } from "@/lib/rules/dnd2024/upgrade";
 import { B, buildCatalog as build, ref } from "./fixtureCatalog";
@@ -424,6 +425,43 @@ describe("derive", () => {
       s.levels[1].choices = [boon];
       expect(derive(s, entries).abilities.str.score).toBe(21);
     });
+    it("Ataque adicional de una subclase no se acumula con el de una clase", () => {
+      const sub = "subclass:college of valor|bard|xphb";
+      const valorAttack = "subclassFeature:extra attack|bard|xphb|valor|xphb|6";
+      entries.set(`${B}:${sub}`, {
+        ...entries.get(`${B}:item:greataxe|xphb`)!, ref: ref(sub), name: "College of Valor", nameEs: null,
+        data: { features: [{ ref: ref(valorAttack), level: 6 }], spells: [], progressions: { feats: [], optionalFeatures: [] } },
+      });
+      // Bárbaro 5 (Ataque adicional) y después Bardo 6 del Colegio del valor
+      entries.set(`${B}:class:bard|xphb`, { ...entries.get(`${B}:class:cleric|xphb`)!, ref: ref("class:bard|xphb"), name: "Bard" });
+      const s = multi([["barbarian", 4], ["bard", 6]], { 8: [{ type: "subclass", source: "class:subclass", value: named(sub) }] });
+      const count = (r: ReturnType<typeof derive>) => r.features.filter((g) => g.source === "class" || g.source === "subclass")
+        .map((g) => [g.source, g.features.filter((f) => /^[^:]*:extra attack\|/.test(f.ref.key)).length]);
+      expect(count(derive(s, entries))).toEqual([["class", 1], ["class", 0], ["subclass", 0]]);
+      // Al revés (Bardo del valor primero), el de la subclase es el que se muestra
+      const t = v2(entries);
+      t.levels = [];
+      for (let n = 1; n <= 6; n++) {
+        t.levels.push({
+          n, class: named("class:bard|xphb"), classLevel: n, hp: { method: "average", value: 5 },
+          choices: n === 3 ? [{ type: "subclass", source: "class:subclass", value: named(sub) }] : [],
+        });
+      }
+      for (let k = 1; k <= 5; k++) {
+        t.levels.push({ n: 6 + k, class: named("class:barbarian|xphb"), classLevel: k, hp: { method: "average", value: 7 }, choices: [] });
+      }
+      expect(count(derive(t, entries))).toEqual([["class", 0], ["subclass", 1], ["class", 0]]);
+    });
+    it("una dote elegida, sustituida y vuelta a elegir aparece una vez, con el último nivel", () => {
+      const s = multi([["fighter", 3]], {
+        2: [{ type: "feat", source: "fs", value: [named("feat:archery|xphb")] }],
+        3: [{ type: "feat", source: "fs", value: [named("feat:defense|xphb")], replaced: [named("feat:archery|xphb")] }],
+        // (copias nuevas, no los mismos objetos)
+        4: [{ type: "feat", source: "fs", value: [named("feat:archery|xphb")], replaced: [named("feat:defense|xphb")] }],
+      });
+      const feats = derive(s, entries).features.find((g) => g.source === "feat")!.features;
+      expect(feats.filter((f) => f.name !== "Magic Initiate; Cleric").map((f) => [f.name, f.level])).toEqual([["Archery", 4]]);
+    });
     it("una dote sustituida deja de aparecer", () => {
       const s = multi([["fighter", 2]], {
         2: [{ type: "feat", source: "fs", value: [named("feat:archery|xphb")] }],
@@ -432,6 +470,30 @@ describe("derive", () => {
       const feats = derive(s, entries).features.find((g) => g.source === "feat")!.features.map((f) => f.name);
       expect(feats).toContain("Defense");
       expect(feats).not.toContain("Archery");
+    });
+  });
+
+  describe("valores de la tabla de clase", () => {
+    const entries = build(["class-rogue.json", "class-monk.json", "class-barbarian.json"]);
+    const columns = (cls: string) =>
+      (entries.get(`${B}:class:${cls}|xphb`)!.data as { table: { columns: { label: string }[] } }).table.columns.map((c) => c.label);
+    it("las columnas de FEATURE_COLUMNS coinciden con las del importador (Ataque furtivo, Artes marciales, Furias)", () => {
+      expect(columns("rogue")).toContain(FEATURE_COLUMNS["sneak attack"]);
+      expect(columns("monk")).toContain(FEATURE_COLUMNS["martial arts"]);
+      expect(columns("monk")).toContain(FEATURE_COLUMNS["unarmored movement"]);
+      expect(columns("barbarian")).toContain(FEATURE_COLUMNS.rage);
+    });
+    it("Ataque furtivo y Artes marciales muestran el valor de su nivel", () => {
+      const s = v2(entries);
+      const level = (cls: string) => {
+        const t = structuredClone(s);
+        t.levels = [1, 2, 3].map((n) => ({
+          n, class: { ref: ref(`class:${cls}|xphb`), name: cls }, classLevel: n, hp: { method: "average" as const, value: 5 }, choices: [],
+        }));
+        return derive(t, entries).features.find((g) => g.source === "class")!.features;
+      };
+      expect(level("rogue").find((f) => f.ref.key.startsWith("classFeature:sneak attack|"))?.value).toBe("2d6");
+      expect(level("monk").find((f) => f.ref.key.startsWith("classFeature:martial arts|"))?.value).toBe("1d6");
     });
   });
 });
