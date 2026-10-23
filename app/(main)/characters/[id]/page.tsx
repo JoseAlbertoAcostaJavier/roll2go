@@ -9,12 +9,13 @@ import { loadCharacterFor } from "@/lib/characterAccess";
 import { booksByIds } from "@/lib/rules/books";
 import { derive } from "@/lib/rules/dnd2024/derive";
 import { refKey } from "@/lib/rules/dnd2024/equipmentRefs";
-import type { BackgroundData } from "@/lib/rules/types";
+import type { BackgroundData, ItemData } from "@/lib/rules/types";
 import SheetHeader from "@/app/components/characters/sheet/SheetHeader";
 import SheetTabs, { isSheetTab, SHEET_TABS, type SheetTab } from "@/app/components/characters/sheet/SheetTabs";
 import InfoTab from "@/app/components/characters/sheet/InfoTab";
 import BackgroundTab from "@/app/components/characters/sheet/BackgroundTab";
 import FeaturesTab from "@/app/components/characters/sheet/FeaturesTab";
+import EquipmentTab, { type ItemInfo } from "@/app/components/characters/sheet/EquipmentTab";
 import type { CharacterStatus } from "@/app/components/characters/sheet/StatusBadge";
 
 type Props = {
@@ -63,6 +64,13 @@ export default async function CharacterPage({ params, searchParams }: Props) {
   // Atribución del SRD si se usa contenido de un libro con esa licencia
   const usedBooks = [...new Set([...entries.values()].map((e) => e.ref.book))];
   const attributions = [...new Set((await booksByIds(usedBooks)).filter((b) => b.license === "srd" && b.attribution).map((b) => b.attribution))];
+
+  // Datos del catálogo de cada línea del inventario: peso y si se puede equipar (armadura, escudo o arma)
+  const itemInfo: Record<string, ItemInfo> = {};
+  for (const line of sheet.inventory.items) {
+    const data = line.ref ? (entries.get(refKey(line.ref))?.data as ItemData | undefined) : undefined;
+    itemInfo[line.id] = { weight: data?.weight ?? 0, equippable: !!(data?.armor || data?.weapon) };
+  }
 
   const base = `/characters/${id}`;
   // Las pestañas inactivas se ocultan en pantalla, pero se imprimen todas seguidas
@@ -118,9 +126,19 @@ export default async function CharacterPage({ params, searchParams }: Props) {
         {panelTitle("rasgos")}
         <FeaturesTab groups={d.features} entries={entries} />
       </section>
-      {/* La pestaña Equipo llega en la siguiente tarea */}
-      <section {...panel("equipo")} className={tab === "equipo" ? "" : "hidden"}>
-        <p className="text-sm text-muted">Próximamente.</p>
+      <section {...panel("equipo")}>
+        {panelTitle("equipo")}
+        <EquipmentTab
+          characterId={id}
+          isOwner={isOwner}
+          inventory={sheet.inventory}
+          info={itemInfo}
+          capacity={d.weight.capacity}
+          armorWarning={d.armorWarning}
+          systemId={c.systemId as string}
+          campaignId={c.campaign ? String(c.campaign) : null}
+          books={(c.books ?? []) as string[]}
+        />
       </section>
 
       {attributions.map((a) => (

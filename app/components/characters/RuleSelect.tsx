@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, ChevronDown } from "lucide-react";
 import type { EntryOption } from "@/lib/rules/catalog";
 import type { Ref } from "@/lib/rules/types";
@@ -10,14 +10,18 @@ import useDismiss from "../useDismiss";
 
 const sameRef = (a: Ref | null, b: Ref) => !!a && a.book === b.book && a.key === b.key;
 const displayName = (o: EntryOption) => o.nameEs ?? o.name;
+// Espera tras la última tecla antes de buscar en el servidor
+const SEARCH_DELAY = 250;
 
-// Desplegable con búsqueda (combobox accesible) para elegir una entrada de reglas
+/* Desplegable con búsqueda (combobox accesible) para elegir una entrada de reglas. Con `loadOptions` la búsqueda
+   se hace en remoto (con espera) en vez de filtrar `options` en local. */
 export default function RuleSelect({
-  id, label, options, value, onChange, disabled, placeholder = "Selecciona una opción",
+  id, label, options, value, onChange, disabled, placeholder = "Selecciona una opción", loadOptions,
 }: {
   id: string;
   label: string;
   options: EntryOption[];
+  loadOptions?: (q: string) => Promise<EntryOption[]>;
   value: Ref | null;
   onChange: (ref: Ref | null) => void;
   disabled?: boolean;
@@ -29,12 +33,34 @@ export default function RuleSelect({
   const box = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const selected = options.find((o) => sameRef(value, o.ref)) ?? null;
+  // Búsqueda remota: resultado de la última consulta y la entrada elegida (ya no está en `options`)
+  const [remote, setRemote] = useState<{ q: string; list: EntryOption[] } | null>(null);
+  const [picked, setPicked] = useState<EntryOption | null>(null);
+
+  useEffect(() => {
+    if (!open || !loadOptions) return;
+    let stale = false;
+    const t = setTimeout(() => {
+      loadOptions(query.trim())
+        .catch(() => [] as EntryOption[])
+        .then((list) => {
+          if (!stale) setRemote({ q: query, list });
+        });
+    }, SEARCH_DELAY);
+    return () => {
+      stale = true;
+      clearTimeout(t);
+    };
+  }, [open, query, loadOptions]);
+
+  const loading = !!loadOptions && open && remote?.q !== query;
+  const selected = options.find((o) => sameRef(value, o.ref)) ?? (picked && sameRef(value, picked.ref) ? picked : null);
   const filtered = useMemo(() => {
+    if (loadOptions) return remote?.list ?? [];
     const q = normalizeName(query.trim());
     if (!q) return options;
     return options.filter((o) => normalizeName(displayName(o)).includes(q) || normalizeName(o.name).includes(q));
-  }, [options, query]);
+  }, [options, query, loadOptions, remote]);
 
   const listId = `${id}-list`;
   const optionId = (i: number) => `${id}-opt-${i}`;
@@ -53,6 +79,7 @@ export default function RuleSelect({
   }
 
   function choose(o: EntryOption) {
+    setPicked(o);
     onChange(o.ref);
     close();
     inputRef.current?.focus();
@@ -121,7 +148,8 @@ export default function RuleSelect({
           aria-label={label}
           className="animate-pop absolute z-30 mt-1 max-h-64 w-full overflow-y-auto rounded-md border border-line bg-panel py-1 shadow-lg"
         >
-          {filtered.length === 0 && <li className="px-3 py-2 text-sm text-muted">Sin resultados</li>}
+          {loading && filtered.length === 0 && <li className="px-3 py-2 text-sm text-muted">Buscando…</li>}
+          {!loading && filtered.length === 0 && <li className="px-3 py-2 text-sm text-muted">Sin resultados</li>}
           {filtered.map((o, i) => (
             <li
               key={`${o.ref.book}:${o.ref.key}`}
