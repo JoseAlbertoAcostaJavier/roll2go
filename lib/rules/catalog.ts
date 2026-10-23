@@ -7,7 +7,7 @@ import { Campaign } from "@/lib/Campaign";
 import { escapeRegex } from "@/lib/utils";
 import { visibleBooksOf } from "@/lib/rules/books";
 import { pickBooks } from "@/lib/rules/pickBooks";
-import { normalizeName } from "@/lib/rules/schemas";
+import { normalizeName, validateEntryData } from "@/lib/rules/schemas";
 import type { EntryKind, Ref } from "@/lib/rules/types";
 
 export { pickBooks };
@@ -88,7 +88,8 @@ const toOption = (d: EntryDoc, bookName: string, withData: boolean): EntryOption
 type Cached = { entries: { sort: string; option: EntryOption }[] };
 
 /* Listado de un libro. La clave de caché incluye todos los argumentos y la etiqueta `book:<id>` permite
-   invalidar un libro entero al editarlo. */
+   invalidar un libro entero al editarlo. Se omiten las entradas cuyo `data` no es válido para su tipo (p. ej. las
+   de usuario aún sin rellenar), para que el asistente no ofrezca opciones con las que no puede trabajar. */
 function listBookEntries(bookId: string, kind: EntryKind, parent: string, q: string) {
   return unstable_cache(
     async (): Promise<Cached> => {
@@ -100,12 +101,14 @@ function listBookEntries(bookId: string, kind: EntryKind, parent: string, q: str
       if (parent) filter["parent.key"] = parent;
       if (q) filter.nameLower = { $regex: "^" + escapeRegex(q) };
       const docs = (await BookEntry.find(filter)
-        .select(withData ? "-description -descriptionEs -foundry" : "-description -descriptionEs -foundry -data")
+        .select("-description -descriptionEs -foundry")
         .sort({ nameLower: 1 })
         .limit(MAX_RESULTS)
         .lean()) as unknown as EntryDoc[];
       return {
-        entries: docs.map((d) => ({ sort: d.nameLower, option: toOption(d, book.name, withData) })),
+        entries: docs
+          .filter((d) => validateEntryData(kind, d.data).ok)
+          .map((d) => ({ sort: d.nameLower, option: toOption(d, book.name, withData) })),
       };
     },
     ["rules-entries", bookId, kind, parent, q],

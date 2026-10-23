@@ -65,9 +65,8 @@ export async function POST(req: NextRequest, { params }: Ctx) {
     book: id,
     kind,
     name,
-    // La clave de una entrada de usuario solo debe ser única dentro de su libro.
-    // Clave estable por libro; para entradas de usuario se genera con un sufijo único
-    key: `${normalizeName(name).replace(/\s+/g, "-")}|${new mongoose.Types.ObjectId().toHexString()}`,
+    // Clave única dentro del libro, con el tipo delante como las importadas: `spell:bola-de-fuego|<id>`
+    key: `${kind}:${normalizeName(name).replace(/\s+/g, "-")}|${new mongoose.Types.ObjectId().toHexString()}`,
     nameLower: normalizeName(name),
     description: cleanText(String(body?.description ?? "")).slice(0, MAX_ENTRY_DESCRIPTION),
     data: {}, // fase 2: aquí irá la validación por tipo
