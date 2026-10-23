@@ -8,7 +8,7 @@
 
 **Tech Stack:** Next.js 16.3, React 19, Mongoose 9, Tailwind 4, vitest, tsx.
 
-**Spec:** `docs/superpowers/specs/2026-10-23-subir-nivel-design.md`
+**Spec:** `docs/superpowers/specs/2026-10-23-subir-nivel-design.md` (incluido el anexo §8)
 
 ## Global Constraints
 
@@ -23,10 +23,10 @@
 
 ## Review Focus
 
-- **Elección enviada que no estaba pendiente, o que falta** → 400 con el campo. Prueba en la Tarea 3.
-- **Subir en una clase nueva sin cumplir el requisito por la API** → 400. Prueba en la Tarea 3.
-- **Borrar nivel con el personaje a nivel 1** → 400 «El nivel 1 no se puede borrar». Prueba en la Tarea 4.
-- **Dos pestañas suben de nivel a la vez** → la segunda falla porque `n` no coincide (el cuerpo lleva `expectedLevel`; si no es el nivel actual + 1 → 409). Prueba en la Tarea 4.
+- **Elección enviada que no estaba pendiente, o que falta** → 400 con el campo. Prueba en la Tarea 4.
+- **Subir en una clase nueva sin cumplir el requisito por la API** → 400. Prueba en la Tarea 4.
+- **Borrar nivel con el personaje a nivel 1** → 400 «El nivel 1 no se puede borrar». Prueba en la Tarea 5.
+- **Dos pestañas suben de nivel a la vez** → la segunda falla porque `n` no coincide (el cuerpo lleva `expectedLevel`; si no es el nivel actual + 1 → 409). Prueba en la Tarea 5.
 - **Rasgo XPHB con elección en texto sin especificación** → el informe del importador lo lista y la lista queda vacía. Prueba en la Tarea 2.
 
 ---
@@ -82,7 +82,40 @@
 
 ---
 
-### Tarea 3: `validateLevel`, tirada de dado de golpe y `derive` multiclase
+### Tarea 3: Creador — elecciones de nivel 1, maestrías, pronombres, nombres e interfaz
+
+**Files:**
+- Modify: `app/components/characters/CharacterCreator.tsx` (y `fields/`), `app/components/characters/AbilityScores.tsx`, `app/api/dice/ability-rolls/route.ts`, `lib/rules/dnd2024/rolls.ts`, `lib/rules/dnd2024/validate.ts`, `lib/rules/dnd2024/sheet.ts` (`weaponMasteries`, `rolls.dice`), `lib/rules/dnd2024/derive/attacks.ts` y `derive/index.ts` (maestría desde `weaponMasteries`), `lib/Character.ts` (`pronouns`), `app/api/characters/route.ts` y `app/api/characters/[id]/route.ts` (pronombres), `app/components/characters/sheet/SheetHeader.tsx` (pronombres), `app/(main)/characters/[id]/edit/*` (pronombres y generador), `scripts/import-5etools.ts`, `lib/rules/import/normalize.ts` (`nameTable`), `lib/rules/types.ts`, `lib/rules/schemas.ts`, `lib/BookEntry.ts`, `lib/rules/dnd2024/labels.ts` (propiedades de maestría en español: Hendir, Rozar, Mellar, Empujar, Ralentizar, Derribar, Vejar, Debilitar — comprobar con el SRD 5.2.1 en español)
+- Create: `app/components/characters/ClassBadge.tsx`, `app/components/characters/fields/SkillPicker.tsx` (fila de desplegables), `app/components/characters/fields/PronounsField.tsx`, `app/components/characters/NameGeneratorButton.tsx`, `app/components/characters/ClassFeaturesSection.tsx`, `app/api/rules/names/route.ts`, `lib/rules/dnd2024/names.ts`, `lib/rules/dnd2024/masteries.ts`, `app/api/characters/[id]/masteries/route.ts`, `app/components/characters/sheet/MasteriesEditor.tsx`
+- Test: `tests/dnd2024/names.test.ts`, `tests/dnd2024/masteries.test.ts`, `tests/dnd2024/validate.test.ts`, `tests/dnd2024/rolls.test.ts`, `tests/rules/normalize.test.ts`
+
+**Interfaces:**
+- Consumes: `pendingChoices`, `PendingChoice` (Tarea 2).
+- Produces:
+  - `sheet.weaponMasteries: Ref[]`; `sheet.rolls: { values: number[]; token: string; dice?: number[][] } | null`; `Character.pronouns: ("he" | "she" | "they")[]` (por defecto `[]`).
+  - `rollAbilityScoresDetailed(rng?): { values: number[]; dice: number[][] }` (cada `dice[i]` son los 4 dados en el orden tirado); `POST /api/dice/ability-rolls` devuelve `{ values, token, dice }`.
+  - `type NameTableData = { species: string; tables: { option: string; gender: "male" | "female" | "family" | "other"; names: string[] }[] }`; `generateName(tables: NameTableData, pronouns: ("he" | "she" | "they")[], rng?): string`; `GET /api/rules/names?species=<identifier>&pronouns=he,they` → `{ name }`.
+  - `validateMasteries(refs: Ref[], ctx: { allowed: number; entries: Map<string, CatalogEntry>; proficientWith: (item: CatalogEntry) => boolean }): { ok: true } | { ok: false; error: string }`; `PATCH /api/characters/[id]/masteries` `{ masteries: Ref[] }` → `{ weaponMasteries }`.
+  - `validateSheet` exige en `levels[0].choices` exactamente las elecciones de `pendingChoices(hoja, clase, 1)` y rellena `weaponMasteries` con las `weaponMastery` elegidas.
+
+- [ ] **Paso 1: Pruebas que fallan**:
+  - `generateName` (fragmentos reales de `names.json` en `tests/fixtures/5etools/names.json`): `["he"]` → nombre de la tabla masculina + apellido/clan si hay tabla `family`; `["she"]` → femenina; `["they"]` o `["he","she"]` → de cualquiera de las dos; especie sin tabla (`goliath`) → tablas de Humano.
+  - Normalizador: fragmento Dwarf → `nameTable` con `gender` `female`/`male`/`family`; Elf «Female Adult» → `female`.
+  - `validateSheet`: Clérigo 1 sin Orden divina → error en `levels.0.choices`; con ella → ok; Bárbaro 1 con 1 maestría → error (exige 2); con 2 → ok y `weaponMasteries.length === 2`.
+  - `validateMasteries`: 3 armas con `allowed` 2 → error; arma a distancia → error; arma sin propiedad de maestría → error; arma sin competencia → error.
+  - `rollAbilityScoresDetailed`: cada `values[i]` es la suma de los 3 dados más altos de `dice[i]`, y `dice[i].length === 4`.
+- [ ] **Paso 2: Ejecutar** → FAIL.
+- [ ] **Paso 3: Implementar** según el anexo §8 de la spec:
+  - creador: etiqueta «Escoger clase inicial»; `ClassBadge` circular (`/images/classes/<identifier>.webp`, respaldo a círculo vacío con `onError`); sección **Rasgos de clase** (`ClassFeaturesSection`: rasgos automáticos plegables + un desplegable por elección pendiente); Legado oculto si la especie no tiene legados; `SkillPicker` en habilidades de especie y de clase; tiradas sin arrastre, asignadas con desplegables y con tooltip (ratón y foco) de los 4 dados: descartado atenuado, 1 en rojo, 6 en verde; `PronounsField` y 🎲 junto a Nombre;
+  - Editar: pronombres y 🎲; cabecera de la ficha con los pronombres («Él/Elle»);
+  - ficha: `MasteriesEditor` en la pestaña Rasgos (dueño) con «Espada corta (Vejar)»; ataques con la etiqueta de maestría desde `weaponMasteries`;
+  - importación de `names.json` a un libro oficial `XGE` («Guía de Xanathar para todo», `license.type: "official"`) como `nameTable`; reimportar.
+- [ ] **Paso 4: Ejecutar** → PASS; tsc/eslint limpios; navegador (sesión del usuario): crear un Clérigo 1 eligiendo Orden divina y un Bárbaro 1 con 2 maestrías, generar nombres con distintos pronombres, ver los dados al pasar el ratón por una tirada, cambiar maestrías en la ficha de «Kael Prueba» y revertir. Borrar después los personajes creados para la prueba.
+- [ ] **Paso 5: Commit** `feat(characters): elecciones de nivel 1, maestrías, pronombres y nombres`.
+
+---
+
+### Tarea 4: `validateLevel`, tirada de dado de golpe y `derive` multiclase
 
 **Files:**
 - Create: `lib/rules/dnd2024/validateLevel.ts`, `app/api/dice/hit-die/route.ts`
@@ -105,7 +138,7 @@
 
 ---
 
-### Tarea 4: Rutas de niveles y notificación
+### Tarea 5: Rutas de niveles y notificación
 
 **Files:**
 - Create: `app/api/characters/[id]/levels/route.ts` (`POST`), `app/api/characters/[id]/levels/last/route.ts` (`DELETE`), `lib/rules/dnd2024/levelOps.ts`
@@ -127,11 +160,11 @@
 
 ---
 
-### Tarea 5: Asistente `/characters/[id]/level-up`
+### Tarea 6: Asistente `/characters/[id]/level-up`
 
 **Files:**
-- Create: `app/(main)/characters/[id]/level-up/page.tsx`, `app/components/characters/levelup/LevelUpWizard.tsx`, `ClassCard.tsx`, `steps/ClassStep.tsx`, `steps/FeaturesStep.tsx`, `steps/SubclassStep.tsx`, `steps/AsiStep.tsx`, `steps/PickStep.tsx` (feat/optionalFeature/featureOption), `steps/ChipsStep.tsx` (skills/expertise/weaponMastery), `steps/HpStep.tsx`, `steps/ConfirmStep.tsx`
-- Modify: `app/components/characters/sheet/SheetHeader.tsx` (**Borrar nivel** con confirmación, dueño y nivel ≥ 2)
+- Create: `app/(main)/characters/[id]/level-up/page.tsx`, `app/components/characters/levelup/LevelUpWizard.tsx`, `ClassCard.tsx`, `steps/ClassStep.tsx`, `steps/FeaturesStep.tsx`, `steps/SubclassStep.tsx`, `steps/AsiStep.tsx`, `steps/PickStep.tsx` (feat/optionalFeature/featureOption), `steps/ChoiceRowsStep.tsx` (skills/expertise/weaponMastery con el `SkillPicker` de la Tarea 3: fila de desplegables), `steps/HpStep.tsx`, `steps/ConfirmStep.tsx`
+- Modify: `app/components/characters/sheet/SheetHeader.tsx` (volver a mostrar **Subir de nivel**, que la rama de la ficha ocultó; **Borrar nivel** con confirmación, dueño y nivel ≥ 2)
 
 **Interfaces:**
 - Consumes: `pendingChoices`, `meetsMulticlass` (cliente: el servidor pasa las entradas necesarias serializadas), `POST /api/dice/hit-die`, `POST .../levels`, `DELETE .../levels/last`, `RuleSelect`, `AbilityScores`.
@@ -142,7 +175,7 @@
 
 ---
 
-### Tarea 6: Rehacer creación
+### Tarea 7: Rehacer creación
 
 **Files:**
 - Create: `app/(main)/characters/[id]/recreate/page.tsx`, `app/api/characters/[id]/creation/route.ts` (`PUT`)
@@ -157,7 +190,7 @@
 
 ---
 
-### Tarea 7: Verificación de extremo a extremo
+### Tarea 8: Verificación de extremo a extremo
 
 - [ ] `npx vitest run`, tsc, eslint limpios; reimportación sin errores e informe sin rasgos «choose» pendientes.
 - [ ] Navegador con la sesión del usuario: subir y borrar niveles en dos personajes, multiclase, notificación al DM (si el usuario no es el DM, comprobar en base de datos), vista de lectura del DM, móvil.

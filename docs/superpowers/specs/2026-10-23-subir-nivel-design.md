@@ -155,3 +155,29 @@ El asistente y `validateLevel` usan la misma función: el servidor exige exactam
 - Rasgos de 5etools con elecciones solo en texto que no estén en `featureChoices`: el importador los lista para revisión; mientras tanto el rasgo se muestra sin elección.
 - Subclases de clase con nivel distinto a 3 en homebrew: se lee del rasgo «X Subclass», no se asume 3.
 - `derive` y `pendingChoices` dependen de muchas entradas del catálogo: cargarlas en lote por clase y nivel.
+
+## 8. Anexo (aprobado el 2026-10-23): creador — elecciones de nivel 1, maestrías, pronombres, nombres e interfaz
+
+Peticiones del usuario tras probar el creador. Se implementan en la rama `feat/subir-nivel`, después de `pendingChoices` (plan, Tarea 3).
+
+### 8.1 Elecciones de clase de nivel 1
+- Tras **«Escoger clase inicial»** (nuevo nombre de «Clase en el nivel 1»), el creador muestra la sección **Rasgos de clase**: los rasgos automáticos de nivel 1 (plegables) y un desplegable por cada elección de `pendingChoices(hoja, clase, 1)` (Orden divina/primigenia, Estilo de combate, Pericia, Maestrías con armas…).
+- Se guardan en `levels[0].choices`; `validateSheet` exige exactamente las pendientes, como `validateLevel`.
+
+### 8.2 Maestrías con armas
+- `sheet.weaponMasteries: Ref[]` guarda las maestrías **actuales**; se inicializa con las elecciones `weaponMastery` del historial y crece al subir de nivel.
+- En la ficha (dueño, pestaña Rasgos) **Cambiar maestrías** permite reemplazar las armas libremente (Roll2Go no registra descansos; la regla de 2024 es cambiar una tras cada descanso largo). Servidor: número = progresión de la clase al nivel actual; armas cuerpo a cuerpo sencillas o marciales con propiedad de maestría y con competencia. `PATCH /api/characters/[id]/masteries`.
+- Las opciones se muestran como «Espada corta (Vejar)» con el nombre de la propiedad en español. Los ataques toman la etiqueta de maestría de `weaponMasteries`.
+
+### 8.3 Pronombres
+- `Character.pronouns: ("he" | "she" | "they")[]` (selección múltiple: Él, Ella, Elle; por defecto vacío). En el creador, en Editar y en la cabecera de la ficha («Él/Elle»).
+
+### 8.4 Generador de nombres
+- Botón 🎲 junto a Nombre (creador y Editar): genera «Nombre Apellido/Clan» según la especie elegida y los pronombres. Él → tabla masculina; Ella → femenina; Elle o varios → al azar entre las tablas de ambos géneros. Especies sin tabla (Goliat, Aasimar…) usan las de Humano.
+- Datos: `names.json` de 5etools (fuente XGE) importado a un libro oficial `XGE` («Guía de Xanathar para todo», `license.type: "official"`) como entradas `kind: "nameTable"` con `data = { species: string; tables: { option: string; gender: "male" | "female" | "family" | "other"; names: string[] }[] }`. `GET /api/rules/names?species=<identifier>&pronouns=he,they` devuelve `{ name }` generado en el servidor.
+
+### 8.5 Interfaz del creador
+- Icono de clase en un **círculo** (como Nivel20): `<img src="/images/classes/<identifier>.webp">` con respaldo a un círculo vacío si la imagen no carga; el usuario añadirá los archivos más adelante.
+- El campo **Legado** solo aparece si la especie tiene legados.
+- Habilidades de especie y de clase, y las elecciones de habilidades/pericias/maestrías del asistente de subir de nivel: **una fila de desplegables**, uno por elección; las ya elegidas no aparecen en los demás.
+- **Tiradas**: se quita el arrastre (tenía un fallo visual); se asignan con desplegables. Al pasar el ratón o enfocar una tirada se muestran sus 4 dados: el descartado atenuado, los 1 en rojo y los 6 en verde. `POST /api/dice/ability-rolls` devuelve también `dice: number[][]` (no firmados, solo para mostrar), que se guardan en `sheet.rolls.dice`.
