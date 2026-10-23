@@ -3,7 +3,10 @@
 // Jugador 2024 esa lista debe quedar vacía: cada rasgo está en `FEATURE_CHOICES` o en `NOT_A_CHOICE`.
 // Solo importa tipos: lo usa también el script de importación.
 
-/** Elección escrita a mano. Sin `from`: cualquier habilidad (o, en la pericia, cualquiera en la que tenga competencia). */
+/**
+ * Elección escrita a mano. Sin `from`: cualquier habilidad (o, en la pericia, cualquiera en la que tenga competencia).
+ * En `featureOption`, `from` lleva ids estables (`option:…`) con su nombre en `FEATURE_OPTION_LABELS`.
+ */
 export type ChoiceSpec = { type: "skills" | "expertise" | "featureOption"; count: number; from?: string[] };
 
 const BARBARIAN_SKILLS = ["animal handling", "athletics", "intimidation", "nature", "perception", "survival"];
@@ -11,6 +14,9 @@ const FIGHTER_SKILLS = [
   "acrobatics", "animal handling", "athletics", "history", "insight", "intimidation", "persuasion", "perception",
   "survival",
 ];
+
+// Ids de las opciones escritas a mano: `option:<rasgo>:<opción>`
+const optionIds = (feature: string, options: string[]) => options.map((o) => `option:${feature}:${o}`);
 
 /** Clave del rasgo (`classFeature:…|xphb|N` o `subclassFeature:…`) → elecciones que pide. */
 export const FEATURE_CHOICES: Record<string, ChoiceSpec[]> = {
@@ -26,7 +32,7 @@ export const FEATURE_CHOICES: Record<string, ChoiceSpec[]> = {
     type: "expertise", count: 1, from: ["arcana", "history", "investigation", "medicine", "nature", "religion"],
   }],
   "subclassFeature:aspect of the wilds|barbarian|xphb|wild heart|xphb|6": [
-    { type: "featureOption", count: 1, from: ["Búho", "Pantera", "Salmón"] },
+    { type: "featureOption", count: 1, from: optionIds("aspect-of-the-wilds", ["owl", "panther", "salmon"]) },
   ],
   "subclassFeature:bonus proficiencies|bard|xphb|lore|xphb|3": [{ type: "skills", count: 3 }],
   // Además, una herramienta de artesano (sin elección en la hoja todavía)
@@ -35,15 +41,34 @@ export const FEATURE_CHOICES: Record<string, ChoiceSpec[]> = {
     { type: "skills", count: 1, from: ["deception", "performance", "persuasion"] },
   ],
   "subclassFeature:hunter's prey|ranger|xphb|hunter|xphb|3": [
-    { type: "featureOption", count: 1, from: ["Asesino de colosos", "Rompehordas"] },
+    { type: "featureOption", count: 1, from: optionIds("hunters-prey", ["colossus-slayer", "horde-breaker"]) },
   ],
   "subclassFeature:defensive tactics|ranger|xphb|hunter|xphb|7": [
-    { type: "featureOption", count: 1, from: ["Escapar de la horda", "Defensa contra ataques múltiples"] },
+    { type: "featureOption", count: 1, from: optionIds("defensive-tactics", ["escape-the-horde", "multiattack-defense"]) },
   ],
   "subclassFeature:elemental affinity|sorcerer|xphb|draconic|xphb|6": [
-    { type: "featureOption", count: 1, from: ["Ácido", "Frío", "Fuego", "Relámpago", "Veneno"] },
+    { type: "featureOption", count: 1, from: optionIds("elemental-affinity", ["acid", "cold", "fire", "lightning", "poison"]) },
   ],
 };
+
+/** Nombre en español de cada opción escrita a mano (se guarda como `{ ref: { book: "builtin", key: id }, name }`). */
+export const FEATURE_OPTION_LABELS: Record<string, string> = {
+  "option:aspect-of-the-wilds:owl": "Búho",
+  "option:aspect-of-the-wilds:panther": "Pantera",
+  "option:aspect-of-the-wilds:salmon": "Salmón",
+  "option:hunters-prey:colossus-slayer": "Asesino de colosos",
+  "option:hunters-prey:horde-breaker": "Rompehordas",
+  "option:defensive-tactics:escape-the-horde": "Escapar de la horda",
+  "option:defensive-tactics:multiattack-defense": "Defensa contra ataques múltiples",
+  "option:elemental-affinity:acid": "Ácido",
+  "option:elemental-affinity:cold": "Frío",
+  "option:elemental-affinity:fire": "Fuego",
+  "option:elemental-affinity:lightning": "Relámpago",
+  "option:elemental-affinity:poison": "Veneno",
+};
+
+/** Clases (`nombre|fuente`) cuyo estilo de combate se puede cambiar por otro cada vez que se gana un nivel de la clase. */
+export const REPLACEABLE_FIGHTING_STYLE: ReadonlySet<string> = new Set(["fighter|xphb"]);
 
 const CLASSES = [
   "barbarian", "bard", "cleric", "druid", "fighter", "monk", "paladin", "ranger", "rogue", "sorcerer", "warlock", "wizard",
