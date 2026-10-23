@@ -33,9 +33,17 @@ const uniq = <T>(list: T[]) => [...new Set(list)];
 // "item:explorer's pack|xphb" → "explorer's pack"
 const bareName = (key: string) => key.replace(/^[^:]*:/, "").split("|")[0];
 
-// Defensa sin armadura: característica que suma a 10 + DES, por clase (nombre de la clave sin tipo ni libro)
-const UNARMORED: Record<string, Ability> = { barbarian: "con", monk: "wis" };
+// Defensa sin armadura: característica que suma a 10 + DES, por clase (nombre de la clave sin tipo ni libro), y si
+// admite escudo (la del Bárbaro sí; la del Monje no)
+const UNARMORED: Record<string, { ability: Ability; shield: boolean }> = {
+  barbarian: { ability: "con", shield: true },
+  monk: { ability: "wis", shield: false },
+};
 const SHIELD_BONUS = 2;
+// PG extra por nivel de personaje: Dureza enana (especie) y la dote Duro (dote de origen del trasfondo)
+const HP_PER_LEVEL: Record<string, number> = { "species:dwarf|xphb": 1, "feat:tough|xphb": 2 };
+// La dote Alerta suma el bonificador de competencia a la iniciativa
+const ALERT_FEAT = "feat:alert|xphb";
 
 const proficiencyOf = (level: number) => Math.ceil(Math.max(level, 1) / 4) + 1;
 
@@ -120,19 +128,25 @@ export function derive(sheet: Dnd2024Sheet, entries: Map<string, CatalogEntry>):
   }
   let ac = bodyArmor;
   if (!hasBodyArmor) {
-    const extra = first ? UNARMORED[bareName(first.sheet.ref.key)] : undefined;
-    ac = 10 + abilities.dex.mod + (extra ? abilities[extra].mod : 0);
+    const unarmored = first ? UNARMORED[bareName(first.sheet.ref.key)] : undefined;
+    const extra = unarmored && (unarmored.shield || !shield) ? abilities[unarmored.ability].mod : 0;
+    ac = 10 + abilities.dex.mod + extra;
   }
   if (shield) ac += SHIELD_BONUS;
 
   const totalLevel = sheet.classes.reduce((sum, c) => sum + c.level, 0);
+  const proficiencyBonus = proficiencyOf(totalLevel);
+
+  // Rasgos que dependen de la especie (clave guardada) y de la dote de origen del trasfondo
+  const featKey = backgroundData?.feat?.key ?? "";
+  if (hpMax > 0) hpMax += ((HP_PER_LEVEL[sheet.species.ref.key] ?? 0) + (HP_PER_LEVEL[featKey] ?? 0)) * totalLevel;
 
   return {
     abilities,
-    proficiencyBonus: proficiencyOf(totalLevel),
+    proficiencyBonus,
     hpMax,
     ac,
-    initiative: abilities.dex.mod,
+    initiative: abilities.dex.mod + (featKey === ALERT_FEAT ? proficiencyBonus : 0),
     speed: lineageData?.speed ?? speciesData?.speed ?? 30,
     darkvision: Math.max(speciesData?.darkvision ?? 0, lineageData?.darkvision ?? 0),
     saves: firstData?.saves ?? [],

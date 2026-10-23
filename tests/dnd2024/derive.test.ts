@@ -111,6 +111,32 @@ describe("derive", () => {
     expect(r.gold).toBe(8);
   });
 
+  describe("rasgos de especie y dote de origen", () => {
+    // Cambia la dote de origen del Acólito
+    const withFeat = (key: string) => {
+      const entries = build();
+      const bg = entries.get(`${B}:background:acolyte|xphb`)!;
+      entries.set(`${B}:background:acolyte|xphb`, { ...bg, data: { ...(bg.data as object), feat: ref(key) } });
+      return entries;
+    };
+    it("Dureza enana: +1 PG por nivel", () => {
+      const s = sheet();
+      s.species = { ref: ref("species:dwarf|xphb"), name: "Enano" };
+      s.lineage = null;
+      expect(derive(s, build()).hpMax).toBe(14);
+      s.classes[0].level = 3;
+      // 12 + 1 + 2 × (7 + 1) = 29, más 3 de Dureza enana
+      expect(derive(s, build()).hpMax).toBe(32);
+    });
+    it("Duro: +2 PG por nivel", () => {
+      expect(derive(sheet(), withFeat("feat:tough|xphb")).hpMax).toBe(15);
+    });
+    it("Alerta suma el bonificador de competencia a la iniciativa", () => {
+      expect(derive(sheet(), withFeat("feat:alert|xphb")).initiative).toBe(4);
+      expect(derive(sheet(), build()).initiative).toBe(2);
+    });
+  });
+
   describe("armadura", () => {
     const withGear = (...keys: string[]) => {
       const entries = build();
@@ -140,6 +166,15 @@ describe("derive", () => {
       expect(derive(s, entries).ac).toBe(10 + 2 + 1);
       s.classes[0].ref = ref("class:fighter|xphb");
       expect(derive(s, entries).ac).toBe(12);
+    });
+    it("con escudo, la Defensa sin armadura del Monje no se aplica y la del Bárbaro sí", () => {
+      const entries = withGear("item:shield|xphb");
+      const barb = entries.get(`${B}:class:barbarian|xphb`)!;
+      entries.set(`${B}:class:monk|xphb`, { ...barb, ref: ref("class:monk|xphb") });
+      const s = sheet();
+      expect(derive(s, entries).ac).toBe(10 + 2 + 1 + 2);
+      s.classes[0].ref = ref("class:monk|xphb");
+      expect(derive(s, entries).ac).toBe(10 + 2 + 2);
     });
   });
 });
