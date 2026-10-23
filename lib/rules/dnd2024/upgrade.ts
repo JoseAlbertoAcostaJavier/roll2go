@@ -1,10 +1,10 @@
 // Conversión de la hoja v1 (una clase con sus elecciones) a la v2 (historial de niveles e inventario). Función pura:
 // la usan la creación, la migración (`npm run migrate:levels`) y las páginas que aún abren personajes v1.
 import type { CatalogEntry } from "@/lib/rules/catalog";
-import type { BackgroundData, ClassData } from "@/lib/rules/types";
-import { refKey } from "./equipmentRefs";
+import type { BackgroundData, ClassData, Ref } from "@/lib/rules/types";
+import { loadEquipmentEntries, refKey } from "./equipmentRefs";
 import { startingInventory } from "./inventory";
-import type { AnySheet, Choice, Dnd2024Sheet, Dnd2024SheetV2, LevelEntry } from "./sheet";
+import type { AnySheet, Dnd2024Sheet, Dnd2024SheetV2, LevelEntry, Named } from "./sheet";
 
 const SKILLS_SOURCE = "class:skills";
 const SUBCLASS_SOURCE = "class:subclass";
@@ -20,6 +20,37 @@ export function summarizeClasses(levels: LevelEntry[]): Dnd2024SheetV2["classesS
     summary.set(key, row);
   }
   return [...summary.values()];
+}
+
+/**
+ * Entradas que necesita upgradeSheet para guardar la conversión: la clase, el trasfondo y los objetos del equipo
+ * elegido (con el contenido de los paquetes), sin filtrar por libros. Las que ya no existen quedan fuera.
+ */
+export async function loadUpgradeEntries(
+  sheet: Dnd2024Sheet,
+  resolve: (ref: Ref) => Promise<CatalogEntry | null>,
+): Promise<Map<string, CatalogEntry>> {
+  const entries = new Map<string, CatalogEntry>();
+  const cls = sheet.classes?.[0];
+  const refs = [cls?.ref, sheet.background?.ref].filter((r): r is Ref => !!r);
+  for (const r of refs) {
+    const e = await resolve(r);
+    if (e) entries.set(refKey(r), e);
+  }
+  const klass = cls ? (entries.get(refKey(cls.ref))?.data as ClassData | undefined) : undefined;
+  const bg = entries.get(refKey(sheet.background.ref))?.data as BackgroundData | undefined;
+  const options = [klass?.equipment?.[cls?.equipment ?? ""] ?? [], bg?.equipment?.[sheet.background.equipment] ?? []];
+  await loadEquipmentEntries(options, entries, resolve);
+  return entries;
+}
+
+/**
+ * Nombres guardados de la clase y el trasfondo de una hoja v1 que no están en `entries`. Si falta alguno, la
+ * conversión no se guarda: quedaría con 0 PG o sin el equipo inicial en el inventario.
+ */
+export function missingForUpgrade(sheet: Dnd2024Sheet, entries: Map<string, CatalogEntry>): string[] {
+  const named: Named[] = [sheet.classes?.[0], sheet.background].filter((n) => !!n);
+  return named.filter((n) => !entries.has(refKey(n.ref))).map((n) => n.name);
 }
 
 /** Convierte una hoja v1 en v2; una v2 se devuelve tal cual. `entries` debe tener la clase, el trasfondo y su equipo. */
@@ -64,33 +95,6 @@ export function upgradeSheet(
     prepared: {},
     spellbookExtra: [],
     slotsUsed: {},
-  };
-}
-
-const isSkills = (c: Choice): c is Extract<Choice, { type: "skills" }> => c.type === "skills";
-
-/** Vista v1 de cualquier hoja, para las partes de la ficha que aún leen la v1 (cabecera e información). */
-export function toV1View(sheet: AnySheet): Dnd2024Sheet {
-  if (sheet.version === 1) return sheet;
-  /* eslint-disable @typescript-eslint/no-unused-vars */
-  const {
-    version: _version, levels, classesSummary, inventory: _inventory, prepared: _prepared,
-    spellbookExtra: _spellbookExtra, slotsUsed: _slotsUsed, ...rest
-  } = sheet;
-  /* eslint-enable @typescript-eslint/no-unused-vars */
-  const first = levels[0];
-  const skills = first?.choices.find(isSkills)?.value ?? [];
-  return {
-    ...rest,
-    version: 1,
-    // Las elecciones de nivel 1 (habilidades y equipo) son de la primera clase
-    classes: classesSummary.map((s, i) => ({
-      ...s.class,
-      level: s.level,
-      subclass: s.subclass,
-      skills: i === 0 ? skills : [],
-      equipment: i === 0 ? (first?.equipment ?? "") : "",
-    })),
   };
 }
 

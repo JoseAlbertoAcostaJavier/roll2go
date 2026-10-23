@@ -4,7 +4,7 @@ import { rateLimit, tooManyRequests } from "@/lib/rateLimit";
 import { cleanText } from "@/lib/utils";
 import { Character } from "@/lib/Character";
 import { CampaignImage } from "@/lib/CampaignImage";
-import { loadCharacterFor } from "@/lib/characterAccess";
+import { OUTDATED_SHEET_ERROR, loadCharacterFor } from "@/lib/characterAccess";
 import { MAX_IMAGE, readImage, storeImage } from "@/lib/campaignInput";
 import { ALIGNMENTS } from "@/lib/rules/dnd2024/alignments";
 import { MAX_XP, TEXT_LIMITS } from "@/lib/rules/dnd2024/validate";
@@ -38,7 +38,7 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
 
   const found = await loadCharacterFor(session.id, id, "write");
   if (!found) return notFound();
-  const { character, sheet } = found;
+  const { character } = found;
 
   const errors: Record<string, string> = {};
   const set: Record<string, unknown> = {};
@@ -82,6 +82,8 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
   if (image.error) errors.image = image.error;
 
   if (Object.keys(errors).length > 0) return NextResponse.json({ errors }, { status: 400 });
+  const writesSheet = Object.keys(sheetSet).length > 0;
+  if (writesSheet && found.outdated) return NextResponse.json({ error: OUTDATED_SHEET_ERROR }, { status: 409 });
 
   // Todo es válido: se guardan las imágenes nuevas y, si el guardado va bien, se borran las sustituidas
   const created: unknown[] = []; // se borran si algo falla
@@ -103,11 +105,20 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     await swap("portraitId", portrait.image, text(form.get("removePortrait")) === "true");
     await swap("imageId", image.image, text(form.get("removeImage")) === "true");
 
-    // Una hoja v1 se guarda ya convertida a v2
-    await Character.updateOne(
-      { _id: id },
-      { $set: { ...set, sheet: { ...sheet, ...sheetSet } }, ...(Object.keys(unset).length ? { $unset: unset } : {}) },
-    );
+    // Solo los campos que cambian (`sheet.notes`…), para no pisar otros cambios de la hoja hechos a la vez
+    const toSet = { ...set, ...Object.fromEntries(Object.entries(sheetSet).map(([k, v]) => [`sheet.${k}`, v])) };
+    const update = {
+      ...(Object.keys(toSet).length ? { $set: toSet } : {}),
+      ...(Object.keys(unset).length ? { $unset: unset } : {}),
+    };
+    if (Object.keys(update).length) {
+      const res = await Character.updateOne({ _id: id, ...(writesSheet ? { "sheet.version": 2 } : {}) }, update);
+      // La hoja cambió de versión entre la carga y el guardado
+      if (res.matchedCount === 0) {
+        if (created.length) await CampaignImage.deleteMany({ _id: { $in: created } });
+        return NextResponse.json({ error: OUTDATED_SHEET_ERROR }, { status: 409 });
+      }
+    }
   } catch (err) {
     if (created.length) await CampaignImage.deleteMany({ _id: { $in: created } });
     console.error("Error al editar el personaje:", err);

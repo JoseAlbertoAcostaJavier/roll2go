@@ -4,16 +4,22 @@ import mongoose from "mongoose";
 import { connectDB } from "@/lib/mongodb";
 import { Campaign } from "@/lib/Campaign";
 import { Character } from "@/lib/Character";
-import { NotFoundError, getEntries, usableBooks } from "@/lib/rules/catalog";
+import { NotFoundError, getEntries, getEntry, usableBooks } from "@/lib/rules/catalog";
 import type { AnySheet, Dnd2024SheetV2 } from "@/lib/rules/dnd2024/sheet";
 import { loadSheetEntries } from "@/lib/rules/dnd2024/sheetEntries";
-import { upgradeSheet } from "@/lib/rules/dnd2024/upgrade";
+import { loadUpgradeEntries, missingForUpgrade, upgradeSheet } from "@/lib/rules/dnd2024/upgrade";
 
 const newId = () => new mongoose.Types.ObjectId().toHexString();
 
+/** Respuesta de las rutas que escriben en la hoja cuando sigue en v1 (no se pudo convertir) o cambió de versión. */
+export const OUTDATED_SHEET_ERROR =
+  "Este personaje es de una versión anterior y no se puede editar: falta su clase o su trasfondo en el catálogo.";
+
 /**
- * Personaje al que `userId` puede acceder, con su hoja en v2 (una v1 se convierte en memoria; quien escribe guarda
- * el resultado), los libros que puede usar y las entradas del catálogo de la hoja. null = 404.
+ * Personaje al que `userId` puede acceder, con su hoja en v2, los libros que puede usar y las entradas del catálogo
+ * de la hoja. null = 404. Para leer, una v1 se convierte en memoria; para escribir, se convierte y se guarda antes
+ * (como `npm run migrate:levels`), así los ids de las líneas del inventario son estables. Si no se puede convertir,
+ * `outdated` es true y las rutas no deben escribir en la hoja.
  */
 export async function loadCharacterFor(userId: string, id: string, mode: "read" | "write") {
   if (!mongoose.isValidObjectId(id)) return null;
@@ -28,8 +34,21 @@ export async function loadCharacterFor(userId: string, id: string, mode: "read" 
     if (!member) return null;
   }
 
-  const stored = character.sheet as AnySheet | undefined;
+  let stored = character.sheet as AnySheet | undefined;
   if (stored?.version !== 1 && stored?.version !== 2) return null;
+
+  if (mode === "write" && stored.version === 1) {
+    // Sin filtrar por libros, como la migración: son las elecciones que ya hizo el personaje
+    const upgradeEntries = await loadUpgradeEntries(stored, getEntry);
+    if (missingForUpgrade(stored, upgradeEntries).length === 0) {
+      const upgraded = upgradeSheet(stored, upgradeEntries, newId);
+      await Character.updateOne({ _id: character._id, "sheet.version": 1 }, { $set: { sheet: upgraded } });
+      // Se sigue con lo guardado (la nuestra o la de otra petición que se adelantó)
+      const fresh = await Character.findById(character._id).select("sheet").lean();
+      if (!fresh) return null;
+      stored = fresh.sheet as AnySheet;
+    }
+  }
 
   // Libros del personaje: su filtro propio o, si no tiene, todos los que le corresponden por sistema y campaña
   const owner = String(character.owner);
@@ -46,5 +65,5 @@ export async function loadCharacterFor(userId: string, id: string, mode: "read" 
 
   const entries = await loadSheetEntries(stored, books, getEntries);
   const sheet: Dnd2024SheetV2 = upgradeSheet(stored, entries, newId);
-  return { character, sheet, books, entries };
+  return { character, sheet, books, entries, outdated: stored.version === 1 };
 }

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { derive } from "@/lib/rules/dnd2024/derive";
 import type { Dnd2024Sheet, LevelEntry } from "@/lib/rules/dnd2024/sheet";
-import { summarizeClasses, toV1View, upgradeSheet } from "@/lib/rules/dnd2024/upgrade";
+import { loadUpgradeEntries, missingForUpgrade, summarizeClasses, upgradeSheet } from "@/lib/rules/dnd2024/upgrade";
 import { B, buildCatalog, ref } from "./fixtureCatalog";
 
 const counter = () => {
@@ -99,11 +99,37 @@ describe("summarizeClasses", () => {
   });
 });
 
-describe("toV1View", () => {
-  it("una v2 da la misma vista v1 y los mismos valores derivados", () => {
+describe("missingForUpgrade", () => {
+  it("vacío si están la clase y el trasfondo", () => {
+    expect(missingForUpgrade(v1(), catalog)).toEqual([]);
+  });
+  it("nombres guardados de la clase o el trasfondo que faltan", () => {
+    const entries = buildCatalog();
+    entries.delete(`${B}:class:barbarian|xphb`);
+    expect(missingForUpgrade(v1(), entries)).toEqual(["Bárbaro"]);
+    entries.delete(`${B}:background:acolyte|xphb`);
+    expect(missingForUpgrade(v1(), entries)).toEqual(["Bárbaro", "Acólito"]);
+  });
+});
+
+describe("loadUpgradeEntries", () => {
+  it("carga la clase, el trasfondo y el equipo elegido con el contenido de los paquetes", async () => {
+    const asked: string[] = [];
+    const entries = await loadUpgradeEntries(v1(), async (r) => {
+      asked.push(r.key);
+      return catalog.get(`${r.book}:${r.key}`) ?? null;
+    });
+    expect(asked.slice(0, 2)).toEqual(["class:barbarian|xphb", "background:acolyte|xphb"]);
+    expect(entries.has(`${B}:item:greataxe|xphb`)).toBe(true);
+    expect(entries.has(`${B}:item:explorer's pack|xphb`)).toBe(true);
+    // Con estas entradas la conversión es la misma que con todo el catálogo
+    expect(upgradeSheet(v1(), entries, counter())).toEqual(upgradeSheet(v1(), catalog, counter()));
+  });
+});
+
+describe("conversión y valores derivados", () => {
+  it("una v1 y su v2 dan los mismos valores derivados", () => {
     const original = v1();
-    const upgraded = upgradeSheet(original, catalog, counter());
-    expect(toV1View(upgraded)).toEqual(original);
-    expect(derive(upgraded, catalog)).toEqual(derive(original, catalog));
+    expect(derive(upgradeSheet(original, catalog, counter()), catalog)).toEqual(derive(original, catalog));
   });
 });
