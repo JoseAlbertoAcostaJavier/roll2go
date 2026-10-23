@@ -6,6 +6,7 @@ import { Campaign } from "@/lib/Campaign";
 import { Character } from "@/lib/Character";
 import { requireUser } from "@/lib/currentUser";
 import { visibleBooksOf } from "@/lib/rules/books";
+import { classesOf } from "@/lib/rules/dnd2024/upgrade";
 import { system as rpgSystems } from "@/lib/systems";
 import { accentInsensitive, first } from "@/lib/utils";
 import CharacterCard, { type CharacterCardData } from "@/app/components/characters/CharacterCard";
@@ -55,14 +56,15 @@ export default async function CharactersPage({
       { name: rx },
       { "sheet.species.name": rx },
       { "sheet.lineage.name": rx },
-      { "sheet.classes.name": rx },
+      { "sheet.classesSummary.class.name": rx },
+      { "sheet.classes.name": rx }, // hojas v1 aún sin migrar
       { campaign: { $in: named.map((c) => c._id) } },
     ];
   }
 
   const [characters, books] = await Promise.all([
     Character.find(filter)
-      .select("name systemId status campaign portraitId sheet.species sheet.lineage sheet.classes")
+      .select("name systemId status campaign portraitId sheet.species sheet.lineage sheet.classes sheet.classesSummary")
       .sort(sort === "name" ? { name: 1 } : { updatedAt: -1 })
       .collation({ locale: "es", strength: 2 })
       .limit(100)
@@ -82,9 +84,9 @@ export default async function CharactersPage({
 
   const cards: CharacterCardData[] = characters.map((c) => {
     const s = c.sheet ?? {};
-    const cls = s.classes?.[0];
+    const cls = classesOf(s)[0];
     const species = s.species?.name ? `${s.species.name}${s.lineage?.name ? ` (${s.lineage.name})` : ""}` : "";
-    const klass = cls?.name ? `${cls.name}${cls.level ? ` ${cls.level}` : ""}` : "";
+    const klass = cls?.class?.name ? `${cls.class.name}${cls.level ? ` ${cls.level}` : ""}` : "";
     const campaignId = c.campaign ? String(c.campaign) : "";
     const campaignName = campaignNames.get(campaignId);
     return {

@@ -1,7 +1,8 @@
 // Valores derivados de una hoja de D&D 2024. Función pura, sin acceso a datos ni a Next: la usan el resumen del
 // asistente, la ficha y el exportador a Foundry.
 import type { CatalogEntry } from "@/lib/rules/catalog";
-import type { Dnd2024Sheet, Named } from "@/lib/rules/dnd2024/sheet";
+import type { AnySheet, Named } from "@/lib/rules/dnd2024/sheet";
+import { toV1View } from "@/lib/rules/dnd2024/upgrade";
 import {
   ABILITIES,
   type Ability, type BackgroundData, type ClassData, type Equipment, type ItemData, type LineageData,
@@ -47,7 +48,9 @@ const ALERT_FEAT = "feat:alert|xphb";
 
 const proficiencyOf = (level: number) => Math.ceil(Math.max(level, 1) / 4) + 1;
 
-export function derive(sheet: Dnd2024Sheet, entries: Map<string, CatalogEntry>): Derived {
+export function derive(input: AnySheet, entries: Map<string, CatalogEntry>): Derived {
+  // Por ahora el cálculo trabaja sobre la vista v1 (una clase con sus elecciones de nivel 1)
+  const sheet = toV1View(input);
   const missing: string[] = [];
   const lookup = (n: Named): CatalogEntry | null => {
     const e = entries.get(entryKey(n.ref)) ?? null;

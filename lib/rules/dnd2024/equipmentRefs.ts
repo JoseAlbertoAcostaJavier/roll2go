@@ -17,3 +17,21 @@ export function equipmentRefs(options: Pack[][], lookup: (key: string) => Catalo
   for (const packs of options) for (const p of packs) if (p.ref) visit(p.ref);
   return [...found.values()];
 }
+
+/** Carga en `entries` los objetos de las opciones de equipo y, por tandas, el contenido de los paquetes. */
+export async function loadEquipmentEntries(
+  options: Pack[][],
+  entries: Map<string, CatalogEntry>,
+  resolve: (ref: Ref) => Promise<CatalogEntry | null>,
+): Promise<void> {
+  const tried = new Set<string>();
+  // Un paquete dentro de otro es raro: con unas pocas tandas basta
+  for (let i = 0; i < 4; i++) {
+    const pending = equipmentRefs(options, (k) => entries.get(k))
+      .filter((r) => !tried.has(refKey(r)) && !entries.has(refKey(r)));
+    if (pending.length === 0) return;
+    pending.forEach((r) => tried.add(refKey(r)));
+    const found = await Promise.all(pending.map(resolve));
+    found.forEach((e, j) => e && entries.set(refKey(pending[j]), e));
+  }
+}

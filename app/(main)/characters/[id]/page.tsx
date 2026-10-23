@@ -12,7 +12,8 @@ import { system as rpgSystems } from "@/lib/systems";
 import { booksByIds, visibleBooksOf } from "@/lib/rules/books";
 import { getEntry, type CatalogEntry } from "@/lib/rules/catalog";
 import { derive } from "@/lib/rules/dnd2024/derive";
-import type { Dnd2024Sheet } from "@/lib/rules/dnd2024/sheet";
+import type { AnySheet, Dnd2024Sheet } from "@/lib/rules/dnd2024/sheet";
+import { toV1View } from "@/lib/rules/dnd2024/upgrade";
 import { alignmentName } from "@/lib/rules/dnd2024/alignments";
 import { equipmentRefs, refKey } from "@/lib/rules/dnd2024/equipmentRefs";
 import { ABILITY_NAMES, proficiencyName, skillName, toolName } from "@/lib/rules/dnd2024/labels";
@@ -85,9 +86,11 @@ export default async function CharacterPage({ params }: Props) {
   const found = await loadCharacter(id, user.id);
   if (!found) notFound();
   const { c, campaign } = found;
-  const sheet = c.sheet as Dnd2024Sheet;
+  const stored = c.sheet as AnySheet | undefined;
   const system = rpgSystems.find((s) => s.id === c.systemId);
-  const isDnd2024 = c.systemId === "dnd-2024" && sheet?.version === 1;
+  const isDnd2024 = c.systemId === "dnd-2024" && (stored?.version === 1 || stored?.version === 2);
+  // Hasta que la ficha lea la v2, se muestra su vista v1 (los mismos valores)
+  const sheet = (isDnd2024 ? toV1View(stored!) : stored) as Dnd2024Sheet;
 
   const visible = (await visibleBooksOf(String(c.owner), c.systemId)).map((b) => b.id);
   const { entries, feat } = isDnd2024 ? await loadEntries(sheet, visible) : { entries: new Map(), feat: undefined };

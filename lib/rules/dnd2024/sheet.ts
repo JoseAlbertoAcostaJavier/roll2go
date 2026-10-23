@@ -26,3 +26,61 @@ export type Dnd2024Sheet = {
   xp: number;
   hp: { max: number | null; current: number | null; temp: number };
 };
+
+/** Elección hecha al subir un nivel. `source` es la clave del rasgo o de la progresión que la pide. */
+export type Choice =
+  | { type: "subclass"; source: string; value: Named }
+  | { type: "asi"; source: string; value: { abilities: Partial<Record<Ability, 1 | 2>> } | { feat: Named } }
+  | { type: "feat"; source: string; value: Named[] }
+  | { type: "optionalFeature"; source: string; value: Named[]; replaced?: Named[] }
+  | { type: "weaponMastery"; source: string; value: Ref[] }
+  | { type: "featureOption"; source: string; value: Named }
+  | { type: "skills"; source: string; value: string[] }
+  | { type: "expertise"; source: string; value: string[] }
+  // La forma de las elecciones de conjuros llega con la parte 5
+  | { type: "spells"; source: string; value: unknown };
+
+/** Una entrada por nivel de personaje, en orden. */
+export type LevelEntry = {
+  /** Nivel total tras esta entrada (1..20). */
+  n: number;
+  /** Clase en la que sube. */
+  class: Named;
+  /** Nivel en esa clase tras esta entrada. */
+  classLevel: number;
+  hp: { method: "max" | "average" | "roll"; value: number; token?: string };
+  choices: Choice[];
+  /** Solo en el nivel 1: letra de la opción de equipo inicial de la clase. */
+  equipment?: string;
+};
+
+export type Coins = { cp: number; sp: number; ep: number; gp: number; pp: number };
+
+export type InventoryItem = {
+  /** Id propio de la línea (ObjectId en texto). */
+  id: string;
+  /** Objeto del catálogo, o null si es personalizado. */
+  ref: Ref | null;
+  /** Copia del nombre o nombre libre. */
+  name: string;
+  quantity: number;
+  /** Solo para armaduras, escudos y armas. */
+  equipped: boolean;
+  notes: string;
+};
+
+export type Inventory = { items: InventoryItem[]; coins: Coins; other: string };
+
+/** Hoja v2: las clases salen del historial de niveles y el equipo inicial se vuelca al inventario. */
+export type Dnd2024SheetV2 = Omit<Dnd2024Sheet, "version" | "classes"> & {
+  version: 2;
+  levels: LevelEntry[];
+  /** Copia calculada desde `levels` para el listado y la búsqueda de personajes. */
+  classesSummary: { class: Named; level: number; subclass: Named | null }[];
+  inventory: Inventory;
+  prepared: Record<string, Ref[]>;
+  spellbookExtra: Named[];
+  slotsUsed: Record<string, number>;
+};
+
+export type AnySheet = Dnd2024Sheet | Dnd2024SheetV2;
