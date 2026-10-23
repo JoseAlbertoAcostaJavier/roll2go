@@ -13,6 +13,7 @@
   --color-brand-hover: #c22d37;
   --color-brand-dark: #8f1d25;
   --color-brand-soft: #f27474;
+  --color-success: #6fd08c;
 
   /* Animaciones: animate-fade-up (aparecer subiendo), animate-fade-in, animate-pop (menús y chips) */
   --animate-fade-up: fade-up 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) both;

@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
+import mongoose from "mongoose";
 import { sessionOf } from "@/lib/campaignApi";
 import { rateLimit, tooManyRequests } from "@/lib/rateLimit";
 import { BookEntry, ENTRY_KINDS } from "@/lib/BookEntry";
 import { MAX_BOOK_NAME, MAX_ENTRIES_PER_BOOK, MAX_ENTRY_DESCRIPTION, loadBook } from "@/lib/bookAccess";
 import { cleanText, escapeRegex } from "@/lib/utils";
+import { normalizeName } from "@/lib/rules/schemas";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -17,10 +20,11 @@ export async function GET(req: NextRequest, { params }: Ctx) {
   if (!found) return NextResponse.json({ error: "Libro no encontrado." }, { status: 404 });
 
   const kind = req.nextUrl.searchParams.get("kind");
-  const q = (req.nextUrl.searchParams.get("q") ?? "").trim().toLowerCase().slice(0, MAX_BOOK_NAME);
+  const q = (req.nextUrl.searchParams.get("q") ?? "").trim().slice(0, MAX_BOOK_NAME);
   const filter: Record<string, unknown> = { book: id };
+  const qNorm = normalizeName(q);
   if (kind && isKind(kind)) filter.kind = kind;
-  if (q) filter.nameLower = { $regex: "^" + escapeRegex(q) };
+  if (qNorm) filter.nameLower = { $regex: "^" + escapeRegex(qNorm) };
 
   const entries = await BookEntry.find(filter)
     .select("-description") // el listado no necesita el texto completo
@@ -61,9 +65,12 @@ export async function POST(req: NextRequest, { params }: Ctx) {
     book: id,
     kind,
     name,
-    nameLower: name.toLowerCase(),
+    // Clave única dentro del libro, con el tipo delante como las importadas: `spell:bola-de-fuego|<id>`
+    key: `${kind}:${normalizeName(name).replace(/\s+/g, "-")}|${new mongoose.Types.ObjectId().toHexString()}`,
+    nameLower: normalizeName(name),
     description: cleanText(String(body?.description ?? "")).slice(0, MAX_ENTRY_DESCRIPTION),
     data: {}, // fase 2: aquí irá la validación por tipo
   });
+  revalidateTag(`book:${id}`, "max");
   return NextResponse.json({ id: String(entry._id) }, { status: 201 });
 }

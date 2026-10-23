@@ -18,7 +18,7 @@ const UserSchema = new mongoose.Schema(
     verifyTokenExpires: { type: Date, select: false },
     resetTokenHash: { type: String, select: false, index: true, sparse: true },
     resetTokenExpires: { type: Date, select: false },
-    // Libros de reglas que el usuario posee (ids de lib/books.ts). Se editarán desde el perfil.
+    // Libros de reglas que el usuario posee (ids de `Book`). Se editarán desde el perfil.
     ownedBooks: { type: [String], default: [] },
 
     // Perfil público

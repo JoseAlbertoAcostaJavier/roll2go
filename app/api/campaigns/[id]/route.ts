@@ -5,7 +5,7 @@ import { sessionOf } from "@/lib/campaignApi";
 import { rateLimit, tooManyRequests } from "@/lib/rateLimit";
 import { Campaign } from "@/lib/Campaign";
 import { CampaignImage } from "@/lib/CampaignImage";
-import { User } from "@/lib/User";
+import { booksByIds, visibleBooksOf } from "@/lib/rules/books";
 import { parseCampaignForm, storeImage } from "@/lib/campaignInput";
 import { deleteCampaignData } from "@/lib/accountCleanup";
 type Ctx = { params: Promise<{ id: string }> };
@@ -40,10 +40,13 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
   }).select("+privateNotes");
   if (!campaign) return notFound();
 
-  // Los libros que ya estaban aprobados se pueden conservar aunque el DM ya no los tenga en su perfil
-  const me = await User.findById(session.id).select("ownedBooks");
+  // Los libros que ya estaban aprobados se pueden conservar aunque ya no sean visibles para el DM
+  const visibleBooks = [
+    ...(await visibleBooksOf(session.id)),
+    ...(await booksByIds((campaign.allowedBooks ?? []) as string[])),
+  ];
   const parsed = await parseCampaignForm(form, {
-    ownedBooks: [...(me?.ownedBooks ?? []), ...(campaign.allowedBooks ?? [])],
+    visibleBooks,
     lockedSystemId: campaign.systemId, // el sistema no se puede cambiar
   });
   if (Object.keys(parsed.errors).length > 0) {

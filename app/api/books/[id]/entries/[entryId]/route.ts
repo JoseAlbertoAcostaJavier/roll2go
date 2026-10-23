@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import mongoose from "mongoose";
 import { sessionOf } from "@/lib/campaignApi";
 import { rateLimit, tooManyRequests } from "@/lib/rateLimit";
 import { BookEntry } from "@/lib/BookEntry";
 import { MAX_BOOK_NAME, MAX_ENTRY_DESCRIPTION, loadBook } from "@/lib/bookAccess";
 import { cleanText } from "@/lib/utils";
+import { normalizeName } from "@/lib/rules/schemas";
 
 type Ctx = { params: Promise<{ id: string; entryId: string }> };
 
@@ -41,7 +43,7 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
     if (!name || name.length > MAX_BOOK_NAME)
       return NextResponse.json({ error: "Nombre no válido." }, { status: 400 });
     update.name = name;
-    update.nameLower = name.toLowerCase();
+    update.nameLower = normalizeName(name);
   }
   if (typeof body?.description === "string")
     update.description = cleanText(body.description).slice(0, MAX_ENTRY_DESCRIPTION);
@@ -50,6 +52,7 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
 
   const res = await BookEntry.updateOne({ _id: entryId, book: id }, { $set: update });
   if (!res.matchedCount) return notFound();
+  revalidateTag(`book:${id}`, "max");
   return NextResponse.json({ ok: true });
 }
 
@@ -62,5 +65,6 @@ export async function DELETE(req: NextRequest, { params }: Ctx) {
   const found = await loadBook(id, session.id);
   if (!found?.canEdit) return notFound();
   await BookEntry.deleteOne({ _id: entryId, book: id });
+  revalidateTag(`book:${id}`, "max");
   return NextResponse.json({ ok: true });
 }

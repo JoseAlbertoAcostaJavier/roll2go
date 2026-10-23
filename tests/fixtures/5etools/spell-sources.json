@@ -1,0 +1,16 @@
+{
+	"XPHB": {
+		"Fireball": {
+			"class": [
+				{
+					"name": "Sorcerer",
+					"source": "XPHB"
+				},
+				{
+					"name": "Wizard",
+					"source": "XPHB"
+				}
+			]
+		}
+	}
+}

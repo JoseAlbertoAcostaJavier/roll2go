@@ -16,6 +16,8 @@ const linkClass = "text-brand-soft underline hover:text-white";
 function render(nodes: BbNode[]): ReactNode[] {
   return nodes.map((n, i) => {
     if (n.type === "text") return n.text;
+    if (n.type === "ref")
+      return <span key={i} className="font-semibold text-brand-soft">{render(n.children)}</span>;
 
     switch (n.tag) {
       case "b":

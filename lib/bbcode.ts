@@ -1,9 +1,11 @@
 export type BbNode =
   | { type: "text"; text: string }
-  | { type: "el"; tag: string; arg?: string; children: BbNode[] };
+  | { type: "el"; tag: string; arg?: string; children: BbNode[] }
+  // Referencia a una regla: [ref=tipo:clave]texto[/ref]
+  | { type: "ref"; target: string; children: BbNode[] };
 
-// Etiquetas admitidas: [b] [i] [url] [img] [video] [list] y [*] (elemento de lista)
-const TOKEN = /\[(\/?)(b|i|url|img|video|list|\*)(?:=([^\]\n]*))?\]/gi;
+// Etiquetas admitidas: [b] [i] [url] [img] [video] [ref] [list] y [*] (elemento de lista)
+const TOKEN = /\[(\/?)(b|i|url|img|video|ref|list|\*)(?:=([^\]\n]*))?\]/gi;
 
 // Convierte el texto BBCode en un árbol. Etiquetas sin cerrar se cierran solas, y las desconocidas se dejan como texto.
 export function parseBbcode(src: string): BbNode[] {
@@ -14,7 +16,11 @@ export function parseBbcode(src: string): BbNode[] {
     (stack.length ? stack[stack.length - 1].children : root).push(node);
   const closeTop = () => {
     const open = stack.pop()!;
-    add({ type: "el", tag: open.tag, arg: open.arg, children: open.children });
+    add(
+      open.tag === "ref"
+        ? { type: "ref", target: open.arg ?? "", children: open.children }
+        : { type: "el", tag: open.tag, arg: open.arg, children: open.children },
+    );
   };
   const closeTo = (i: number) => {
     while (stack.length > i) closeTop();
@@ -141,6 +147,7 @@ export function bbcodeToText(src: string): string {
     nodes
       .map((n) => {
         if (n.type === "text") return n.text;
+        if (n.type === "ref") return walk(n.children);
         if (n.tag === "img" || n.tag === "video") return "";
         if (n.tag === "*") return `\n- ${walk(n.children).trim()}`;
         return walk(n.children);

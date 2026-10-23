@@ -7,4 +7,4 @@ export const cardTitle =
 export const primaryButton =
   "flex items-center gap-2 rounded-md bg-brand px-5 py-2.5 font-heading font-bold text-white transition-colors enabled:hover:bg-brand-hover disabled:opacity-50";
 export const errorClass = "mt-1 text-xs text-brand-soft";
-export const successClass = "text-sm text-[#6fd08c]";
+export const successClass = "text-sm text-success";
