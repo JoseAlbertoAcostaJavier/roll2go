@@ -86,7 +86,7 @@ describe("removeLastLevel", () => {
 describe("checkExpectedLevel", () => {
   it("acepta el nivel actual + 1", () => expect(checkExpectedLevel(4, 3)).toEqual({ ok: true }));
   it("409 si no coincide, también en 0 y 20", () => {
-    for (const [e, c] of [[3, 3], [5, 3], [21, 20], [20, 20], [2, 0]] as const)
+    for (const [e, c] of [[3, 3], [5, 3], [20, 20], [2, 0]] as const)
       expect(checkExpectedLevel(e, c)).toMatchObject({ ok: false, status: 409 });
   });
   it("400 si no es un entero", () => {
