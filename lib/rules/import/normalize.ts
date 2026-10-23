@@ -86,12 +86,13 @@ const ref = (kind: EntryKind, bare: string): Ref => ({ book: BOOK_PLACEHOLDER, k
 /** Quita las etiquetas `{@tag texto|…}` dejando el texto visible. */
 function plainText(s: string): string {
   let out = s;
-  const innermost = /\{@\w+\s+([^{}]*)\}/;
+  const innermost = /\{@(\w+)\s+([^{}]*)\}/;
   for (let guard = 0; guard < 1000; guard++) {
     const m = innermost.exec(out);
     if (!m) break;
-    const parts = m[1].split("|");
-    const shown = parts.length >= 3 && parts[2] ? parts[2] : parts[0];
+    const parts = m[2].split("|");
+    // En `{@filter texto|página|filtros…}` el texto visible es siempre el primero
+    const shown = m[1] !== "filter" && parts.length >= 3 && parts[2] ? parts[2] : parts[0];
     out = out.slice(0, m.index) + shown + out.slice(m.index + m[0].length);
   }
   return out;

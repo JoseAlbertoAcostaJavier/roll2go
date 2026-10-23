@@ -134,16 +134,17 @@ export function derive(input: AnySheet, entries: Map<string, CatalogEntry>): Der
   const armorWarning = (bodyArmor && !armor.includes(bodyArmor.category)) || (shield && !armor.includes(SHIELD))
     ? ARMOR_WARNING : null;
 
-  // Ataques: armas equipadas y sin armas (Monje con su dado de Artes marciales)
+  // Ataques: armas equipadas y sin armas. Las Artes marciales del Monje (su dado y la mejor de FUE y DES, sin armas y
+  // con armas de monje) solo sin armadura de cuerpo ni escudo
+  const monk = summary.findIndex((c) => bareName(c.class.ref.key) === "monk");
+  const martialArts = monk < 0 || bodyArmor || shield ? null
+    : (classData[monk]?.table?.columns.find((c) => MARTIAL_ARTS_COLUMN.test(c.label))?.values[summary[monk].level - 1]
+      || martialArtsFallback(summary[monk].level));
   const masteries = new Set(choices.flatMap((c) => (c.type === "weaponMastery" ? c.value.map((r) => r.key) : [])));
   const attacks = equipped.filter((e) => e.data.weapon).map((e) => weaponAttack(
     { ...e.data, name: e.name }, mods, proficiencyBonus,
-    weaponProficient(e.data, [e.name, bareName(e.key)], weapons), masteries.has(e.key),
+    weaponProficient(e.data, [e.name, bareName(e.key)], weapons), masteries.has(e.key), martialArts,
   ));
-  const monk = summary.findIndex((c) => bareName(c.class.ref.key) === "monk");
-  const martialArts = monk < 0 ? null
-    : (classData[monk]?.table?.columns.find((c) => MARTIAL_ARTS_COLUMN.test(c.label))?.values[summary[monk].level - 1]
-      || martialArtsFallback(summary[monk].level));
   attacks.push(unarmedAttack(mods, proficiencyBonus, martialArts));
 
   const size = sheet.speciesChoices.size ?? (speciesData?.size.length === 1 ? speciesData.size[0] : null);

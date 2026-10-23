@@ -320,3 +320,19 @@ describe("tipos de equipo a elegir", () => {
     expect(data.equipment.B[0].displayName).toBe("Un instrumento musical (a elegir) o un juego (a elegir)");
   });
 });
+
+test("competencias de armas con {@filter}: queda el texto visible", () => {
+  const rogue = {
+    name: "Rogue", source: "XPHB", hd: { number: 1, faces: 8 }, proficiency: ["dex", "int"],
+    primaryAbility: [{ dex: true }],
+    startingEquipment: { defaultData: [{ A: [{ value: 100 }] }] },
+    startingProficiencies: { skills: [{ choose: { from: ["stealth"], count: 1 } }], weapons: [
+      "simple",
+      "Martial weapons that have the {@filter Finesse or Light|items|type=martial weapon|property=finesse;light} property",
+    ] },
+  };
+  const { entries: es, errors: errs } = normalizeAll({ classes: [{ class: [rogue] }] }, "XPHB");
+  expect(errs).toEqual([]);
+  expect((es.find((e) => e.key === "class:rogue|xphb")!.data as ClassData).weapons)
+    .toEqual(["simple", "Martial weapons that have the Finesse or Light property"]);
+});

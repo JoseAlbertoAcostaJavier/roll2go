@@ -248,6 +248,55 @@ describe("derive", () => {
     });
   });
 
+  describe("Monje con armas", () => {
+    // Monje de nivel 5 (Artes marciales 1d8) con FUE 15 y DES 16, una lanza y una espada corta
+    const monkCase = () => {
+      const entries = build();
+      const barb = entries.get(`${B}:class:barbarian|xphb`)!;
+      entries.set(`${B}:class:monk|xphb`, {
+        ...barb, ref: ref("class:monk|xphb"),
+        data: { ...(barb.data as object), weapons: ["simple", "Martial weapons that have the Light property"], equipment: { A: [] } },
+      });
+      const axe = entries.get(`${B}:item:handaxe|xphb`)!;
+      const item = (key: string, name: string, weapon: object) =>
+        entries.set(`${B}:${key}`, { ...axe, ref: ref(key), name, data: { ...(axe.data as object), weapon } });
+      item("item:spear|xphb", "Spear", { damage: "1d6", damageType: "P", properties: ["T", "V"], mastery: "sap", category: "simple" });
+      item("item:shortsword|xphb", "Shortsword", { damage: "1d6", damageType: "P", properties: ["F", "L"], mastery: "vex", category: "martial" });
+      item("item:longsword|xphb", "Longsword", { damage: "1d8", damageType: "S", properties: ["V"], mastery: "sap", category: "martial" });
+      const s = sheet();
+      s.classes[0].ref = ref("class:monk|xphb");
+      s.baseAbilities.dex = 16;
+      const s5 = upgradeSheet(s, entries, () => "x");
+      for (let n = 2; n <= 5; n++) s5.levels.push({ ...s5.levels[0], n, classLevel: n, choices: [] });
+      s5.inventory.items = [
+        line("item:spear|xphb", "Lanza", 1, true), line("item:shortsword|xphb", "Espada corta", 1, true),
+        line("item:longsword|xphb", "Espada larga", 1, true),
+      ];
+      return { s5, entries };
+    };
+    const attack = (r: ReturnType<typeof derive>, name: string) => r.attacks.find((a) => a.name === name)!;
+
+    it("con un arma de monje usa DES y el dado de Artes marciales si es mayor", () => {
+      const { s5, entries } = monkCase();
+      const r = derive(s5, entries);
+      // DES 16 (+3) frente a FUE 15 (+2); competencia +3 a nivel 5
+      expect(attack(r, "Lanza")).toMatchObject({ bonus: 6, damage: "1d8+3 / 1d8+3 (dos manos)" });
+      expect(attack(r, "Espada corta")).toMatchObject({ bonus: 6, damage: "1d8+3" });
+      // La espada larga no es arma de monje ni tiene competencia
+      expect(attack(r, "Espada larga")).toMatchObject({ bonus: 2, damage: "1d8+2 / 1d10+2 (dos manos)" });
+      expect(attack(r, "Ataque sin armas").damage).toBe("1d8+3");
+    });
+    it("con escudo o armadura no se aplican las Artes marciales", () => {
+      const { s5, entries } = monkCase();
+      s5.inventory.items.push(line("item:shield|xphb", "Escudo", 1, true));
+      const r = derive(s5, entries);
+      expect(attack(r, "Lanza")).toMatchObject({ bonus: 5, damage: "1d6+2 / 1d8+2 (dos manos)" });
+      expect(attack(r, "Ataque sin armas")).toMatchObject({ bonus: 5, damage: "3" });
+      s5.inventory.items.at(-1)!.ref = ref("item:studded leather armor|xphb");
+      expect(attack(derive(s5, entries), "Lanza").damage).toBe("1d6+2 / 1d8+2 (dos manos)");
+    });
+  });
+
   describe("peso y capacidad", () => {
     const withPack = (entries: Map<string, CatalogEntry>) => {
       const s = v2(entries);
