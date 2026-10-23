@@ -8,7 +8,7 @@ import type { Derived } from "./derive";
 import { refKey } from "./equipmentRefs";
 import { FEATURE_CHOICES, REPLACEABLE_FIGHTING_STYLE, type ChoiceSpec } from "./featureChoices";
 import { ABILITY_NAMES } from "./labels";
-import type { Choice, Dnd2024SheetV2 } from "./sheet";
+import type { Choice, Dnd2024SheetV2, FeatPickValue, LevelEntry } from "./sheet";
 import { SKILLS_SOURCE, SUBCLASS_SOURCE, summarizeClasses } from "./upgrade";
 
 /**
@@ -210,4 +210,60 @@ export function meetsMulticlass(
     if (!missing.includes(text)) missing.push(text);
   }
   return missing.length ? { ok: false, reason: `Necesitas ${missing.join(" y ")}` } : { ok: true };
+}
+
+/**
+ * Dotes y rasgos opcionales que el personaje conserva de cada elección (por `source`): las elegidas en el historial
+ * menos las que se sustituyeron después.
+ */
+export function heldPicks(levels: LevelEntry[]): Map<string, FeatPickValue[]> {
+  const held = new Map<string, FeatPickValue[]>();
+  for (const l of levels) {
+    for (const c of l.choices) {
+      if (c.type !== "feat" && c.type !== "optionalFeature") continue;
+      const gone = new Set((c.replaced ?? []).map((r) => refKey(r.ref)));
+      held.set(c.source, [...(held.get(c.source) ?? []).filter((p) => !gone.has(refKey(p.ref))), ...c.value]);
+    }
+  }
+  return held;
+}
+
+/** Dotes de las elecciones `feat` (estilos de combate, dones épicos…) que conserva, con el nivel total en que se ganaron. */
+export function heldFeats(levels: LevelEntry[]): (FeatPickValue & { level: number })[] {
+  const held = heldPicks(levels);
+  return levels.flatMap((l) => l.choices.flatMap((c) => (c.type !== "feat" ? [] : c.value
+    .filter((f) => held.get(c.source)?.includes(f))
+    .map((f) => ({ ...f, level: l.n })))));
+}
+
+/** Lo que piden los prerrequisitos de las dotes: nivel total, características, armaduras y lanzamiento de conjuros. */
+export type FeatPrerequisiteCtx = {
+  level: number;
+  abilities: Record<Ability, number>;
+  armor: string[];
+  spellcasting: boolean;
+};
+
+const ABILITY_CODES: Record<string, Ability> = { STR: "str", DEX: "dex", CON: "con", INT: "int", WIS: "wis", CHA: "cha" };
+
+/**
+ * Comprueba el texto de prerrequisitos que guarda el importador («Level 4+, STR 13+; or Level 4+, DEX 13+»): basta
+ * una de las alternativas separadas por «; or ». Las partes que no se pueden comprobar (rasgos, otros requisitos
+ * escritos en texto) se dan por cumplidas.
+ */
+export function meetsFeatPrerequisite(text: string | undefined, ctx: FeatPrerequisiteCtx): boolean {
+  if (!text) return true;
+  const part = (bit: string): boolean => {
+    const level = /^Level (\d+)\+$/.exec(bit);
+    if (level) return ctx.level >= Number(level[1]);
+    const abilities = bit.split(" or ").map((a) => /^([A-Z]{3}) (\d+)\+$/.exec(a.trim()));
+    if (abilities.every((m) => m && ABILITY_CODES[m[1]])) {
+      return abilities.some((m) => ctx.abilities[ABILITY_CODES[m![1]]] >= Number(m![2]));
+    }
+    if (bit === "Spellcasting") return ctx.spellcasting;
+    const armor = /^(light|medium|heavy|shield) armor$/.exec(bit);
+    if (armor) return ctx.armor.includes(armor[1]);
+    return true;
+  };
+  return text.split("; or ").some((alt) => alt.split(", ").every((bit) => part(bit.trim())));
 }

@@ -10,12 +10,34 @@ export type FeatureGroup = {
   ref: Ref | null;
   /** Nivel en la clase (bloques de clase y subclase). */
   level?: number;
-  /** `value`: valor actual de la tabla de clase (llega con la tabla en la parte 4). */
+  /** `value`: valor actual de la tabla de clase (usos de Furia, dado de Artes marciales…). */
   features: { ref: Ref; name: string; level: number; value?: string }[];
 };
 
 /** Dote del personaje con el nivel total en que se obtuvo. */
 export type FeatPick = { ref: Ref; name: string | null; level: number };
+
+// Columna de la tabla de clase (etiqueta en español del importador) con el valor de cada rasgo, por su nombre en la
+// clave del rasgo
+const FEATURE_COLUMNS: Record<string, string> = {
+  rage: "Furias",
+  "bardic inspiration": "Dado de inspiración bárdica",
+  "channel divinity": "Canalizar divinidad",
+  "wild shape": "Forma salvaje",
+  "second wind": "Nuevas energías",
+  "weapon mastery": "Maestría con armas",
+  "martial arts": "Artes marciales",
+  "monk's focus": "Puntos de concentración",
+  "unarmored movement": "Movimiento sin armadura",
+  "favored enemy": "Enemigo predilecto",
+  "sneak attack": "Ataque furtivo",
+  "font of magic": "Puntos de hechicería",
+  "eldritch invocations": "Invocaciones",
+};
+// Ataque adicional no se acumula entre clases (spec de subir de nivel §4.2): solo se muestra el de la primera
+const EXTRA_ATTACK = "classFeature:extra attack|";
+// Celda vacía o «—» (0 en la tabla): sin valor
+const EMPTY_CELL = new Set(["", "—"]);
 
 const capitalize = (s: string) => (s ? s[0].toUpperCase() + s.slice(1) : s);
 // "classFeature:danger sense|barbarian|xphb|2" → "Danger sense"
@@ -35,14 +57,24 @@ export function featureGroups(
   const upTo = (list: LevelFeature[] | undefined, level: number) =>
     (list ?? []).filter((f) => f.level <= level).map((f) => ({ ref: f.ref, name: entryName(f.ref, null), level: f.level }));
 
+  // Valor de la tabla de la clase para el rasgo en el nivel de clase actual
+  const tableValue = (data: ClassData | undefined, ref: Ref, level: number) => {
+    const label = FEATURE_COLUMNS[ref.key.replace(/^[^:]*:/, "").split("|")[0]];
+    const cell = label ? data?.table?.columns.find((c) => c.label === label)?.values[level - 1] : undefined;
+    return cell === undefined || EMPTY_CELL.has(cell) ? {} : { value: cell };
+  };
+  let extraAttack = false;
+
   const groups: FeatureGroup[] = [];
   if (sheet.species) groups.push({ title: sheet.species.name, source: "species", ref: sheet.species.ref, features: [] });
   if (sheet.lineage) groups.push({ title: sheet.lineage.name, source: "lineage", ref: sheet.lineage.ref, features: [] });
   for (const c of classes) {
     const data = entries.get(refKey(c.class.ref))?.data as ClassData | undefined;
-    groups.push({
-      title: c.class.name, source: "class", ref: c.class.ref, level: c.level, features: upTo(data?.features, c.level),
-    });
+    const features = upTo(data?.features, c.level)
+      .filter((f) => !(f.ref.key.startsWith(EXTRA_ATTACK) && extraAttack))
+      .map((f) => ({ ...f, ...tableValue(data, f.ref, c.level) }));
+    if (features.some((f) => f.ref.key.startsWith(EXTRA_ATTACK))) extraAttack = true;
+    groups.push({ title: c.class.name, source: "class", ref: c.class.ref, level: c.level, features });
     if (!c.subclass) continue;
     const sub = entries.get(refKey(c.subclass.ref))?.data as SubclassData | undefined;
     groups.push({

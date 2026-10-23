@@ -1,5 +1,7 @@
 import { beforeAll, describe, expect, it } from "vitest";
-import { rollAbilityScoresDetailed, signRolls, verifyRolls } from "@/lib/rules/dnd2024/rolls";
+import {
+  rollAbilityScoresDetailed, rollHitDie, signHitDie, signRolls, verifyHitDie, verifyRolls,
+} from "@/lib/rules/dnd2024/rolls";
 
 const H = 3600 * 1000;
 beforeAll(() => {
@@ -49,5 +51,32 @@ describe("rollAbilityScoresDetailed", () => {
     for (const [k, d] of dice.entries()) {
       expect(values[k]).toBe(d.reduce((s, n) => s + n, 0) - Math.min(...d));
     }
+  });
+});
+
+describe("dado de golpe", () => {
+  const now = 1_700_000_000_000;
+
+  it("acepta el token propio con el mismo dado y valor", () => {
+    expect(verifyHitDie("u1", 12, 9, signHitDie("u1", 12, 9, now), now + H)).toBe(true);
+  });
+  it("rechaza otro usuario, otro valor, otro dado y token caducado", () => {
+    const token = signHitDie("u1", 12, 9, now);
+    expect(verifyHitDie("u2", 12, 9, token, now)).toBe(false);
+    expect(verifyHitDie("u1", 12, 10, token, now)).toBe(false);
+    expect(verifyHitDie("u1", 10, 9, token, now)).toBe(false);
+    expect(verifyHitDie("u1", 12, 9, token, now + 25 * H)).toBe(false);
+  });
+  it("rechaza valores fuera del dado aunque estén firmados, y dados que no existen", () => {
+    expect(verifyHitDie("u1", 12, 13, signHitDie("u1", 12, 13, now), now)).toBe(false);
+    expect(verifyHitDie("u1", 12, 0, signHitDie("u1", 12, 0, now), now)).toBe(false);
+    expect(verifyHitDie("u1", 7, 3, signHitDie("u1", 7, 3, now), now)).toBe(false);
+  });
+  it("un token de tiradas de característica no vale como dado de golpe", () => {
+    expect(verifyHitDie("u1", 12, 9, signRolls("u1", [9], now), now)).toBe(false);
+  });
+  it("rollHitDie da valores de 1 al dado", () => {
+    expect(rollHitDie(8, () => 0)).toBe(1);
+    expect(rollHitDie(8, () => 0.999)).toBe(8);
   });
 });

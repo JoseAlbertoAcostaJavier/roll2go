@@ -28,11 +28,17 @@ export type Dnd2024Sheet = {
   hp: { max: number | null; current: number | null; temp: number };
 };
 
-/** Elección hecha al subir un nivel. `source` es la clave del rasgo o de la progresión que la pide. */
+/** Dote elegida; `ability`: la característica que sube en 1 si la dote da esa mejora. */
+export type FeatPickValue = Named & { ability?: Ability };
+
+/**
+ * Elección hecha al subir un nivel. `source` es la clave del rasgo o de la progresión que la pide. `replaced`: dote o
+ * rasgo opcional de esa misma elección que se sustituye por uno de los de `value`.
+ */
 export type Choice =
   | { type: "subclass"; source: string; value: Named }
-  | { type: "asi"; source: string; value: { abilities: Partial<Record<Ability, 1 | 2>> } | { feat: Named } }
-  | { type: "feat"; source: string; value: Named[] }
+  | { type: "asi"; source: string; value: { abilities: Partial<Record<Ability, 1 | 2>> } | { feat: Named; ability?: Ability } }
+  | { type: "feat"; source: string; value: FeatPickValue[]; replaced?: Named[] }
   | { type: "optionalFeature"; source: string; value: Named[]; replaced?: Named[] }
   | { type: "weaponMastery"; source: string; value: Ref[] }
   | { type: "featureOption"; source: string; value: Named }

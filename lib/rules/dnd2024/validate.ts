@@ -8,8 +8,8 @@ import {
 import { POINT_BUY_TOTAL, STANDARD_ARRAY, checkBackgroundBonus, pointBuyCost } from "./abilities";
 import { weaponProficient } from "./derive/attacks";
 import { FEATURE_OPTION_LABELS } from "./featureChoices";
-import { FEAT_CATEGORIES } from "./labels";
-import { pendingChoices, type PendingChoice } from "./levels";
+import { ABILITY_NAMES, FEAT_CATEGORIES } from "./labels";
+import { meetsFeatPrerequisite, pendingChoices, type FeatPrerequisiteCtx, type PendingChoice } from "./levels";
 import { meleeOnlySource, validateMasteries } from "./masteries";
 import { abilityRollValue, verifyRolls } from "./rolls";
 import { bareName, loadEquipmentEntries, refKey } from "./equipmentRefs";
@@ -287,7 +287,7 @@ export async function validateSheet(input: unknown, ctx: ValidateCtx): Promise<V
 }
 
 /** Carga en `entries` las referencias que aún no están (las que no existen o no se pueden usar quedan fuera). */
-async function loadInto(
+export async function loadInto(
   entries: Map<string, CatalogEntry>, refs: Ref[], resolve: (ref: Ref) => Promise<CatalogEntry | null>,
 ): Promise<void> {
   const found = await Promise.all(refs.filter((r) => !entries.has(refKey(r))).map((r) => resolve(r)));
@@ -309,9 +309,29 @@ export type ChoicesCtx = {
   level: number;
   /** Subclase elegida en este nivel (se valida aparte; aquí solo se exige si el nivel la pide). */
   subclass: Named | null;
+  /** Ruta del error si falta la subclase (por defecto, la del creador). */
+  subclassPath?: string;
+  /** Si se da, solo se aceptan referencias de estos libros (además de las opciones escritas a mano). */
+  books?: string[];
+  /** Habilidades con pericia antes de estas elecciones. */
+  expertise?: string[];
+  /**
+   * Personaje al subir de nivel: nivel total tras el nuevo, características actuales y claves de sus dotes. Sin él
+   * (creación) no se comprueban prerrequisitos de dotes ni se puede elegir una mejora de característica.
+   */
+  character?: FeatPrerequisiteCtx & { feats: string[] };
+  /** Dotes y rasgos opcionales que conserva de cada elección (`heldPicks`): no se repiten y se pueden sustituir. */
+  held?: Map<string, Named[]>;
+  /** Armas con las que ya tiene maestría. */
+  masteries?: Ref[];
 };
 
 const lower = (s: string) => s.toLowerCase();
+const ABILITY_CAP = 20;
+const EPIC_CAP = 30;
+const ASI_POINTS = 2;
+// La dote «Ability Score Improvement» es la propia mejora: se elige en la otra pestaña
+const ASI_FEAT = "feat:ability score improvement|";
 const asRef = (v: unknown): Ref | null => {
   const r = isObj(v) && isObj(v.ref) ? v.ref : v;
   return isObj(r) && typeof r.book === "string" && typeof r.key === "string" ? { book: r.book, key: r.key } : null;
@@ -343,7 +363,7 @@ export async function checkChoices(
   // Busca una entrada del tipo `kind` en las cargadas o en los libros utilizables
   const load = async (v: unknown, kind: string): Promise<CatalogEntry | null> => {
     const ref = asRef(v);
-    if (!ref || !ref.key.startsWith(`${kind}:`)) return null;
+    if (!ref || !ref.key.startsWith(`${kind}:`) || (ctx.books && !ctx.books.includes(ref.book))) return null;
     const e = ctx.entries.get(refKey(ref)) ?? (await ctx.resolve(ref));
     if (e) ctx.entries.set(refKey(e.ref), e);
     return e;
@@ -351,11 +371,49 @@ export async function checkChoices(
   const named = (e: CatalogEntry): Named => ({ ref: { book: e.ref.book, key: e.ref.key }, name: e.nameEs || e.name });
 
   const proficient = ctx.skills.map(lower);
-  const expertise: string[] = [];
+  const expertise: string[] = (ctx.expertise ?? []).map(lower);
+  // Características que ya suben en este nivel (para el tope)
+  const raised: Partial<Record<Ability, number>> = {};
+  const scoreOf = (a: Ability) => (ctx.character?.abilities[a] ?? 0) + (raised[a] ?? 0);
+  const raise = (a: Ability, v: number) => { raised[a] = (raised[a] ?? 0) + v; };
+
+  // Dote elegida: prerrequisitos, repetición y la característica que sube (si la dote da +1). Devuelve el error o la
+  // característica elegida
+  const checkFeat = (e: CatalogEntry, rawAbility: unknown): { error: string } | { ability?: Ability } => {
+    const d = e.data as FeatData | null;
+    const name = e.nameEs || e.name;
+    if (ctx.character && !meetsFeatPrerequisite(d?.prerequisite, ctx.character)) {
+      return { error: `no cumples los requisitos de ${name}.` };
+    }
+    if (ctx.character && !d?.repeatable && ctx.character.feats.includes(e.ref.key)) return { error: `ya tienes ${name}.` };
+    const from = d?.abilityIncrease ?? [];
+    if (!from.length) return rawAbility === undefined ? {} : { error: `${name} no mejora ninguna característica.` };
+    const ability = (rawAbility ?? (from.length === 1 ? from[0] : undefined)) as Ability;
+    if (!from.includes(ability)) return { error: `elige qué característica mejora ${name}.` };
+    const cap = d?.category === "epicBoon" ? EPIC_CAP : ABILITY_CAP;
+    if (ctx.character && scoreOf(ability) + 1 > cap) return { error: `${ABILITY_NAMES[ability]} no puede pasar de ${cap}.` };
+    raise(ability, 1);
+    return { ability };
+  };
+  // Lo que sustituye (`replaced`): como mucho uno de los que conserva de esta misma elección, si la elección lo permite
+  const replacedOf = (p: PendingChoice, c: Obj): Named[] | null => {
+    if (c.replaced === undefined) return [];
+    const held = ctx.held?.get(p.source) ?? [];
+    const refs = Array.isArray(c.replaced) ? c.replaced.map(asRef) : [null];
+    if (!p.optionalReplace || refs.length > 1 || refs.some((r) => !r)) return null;
+    const found = (refs as Ref[]).map((r) => held.find((h) => refKey(h.ref) === refKey(r)));
+    return found.every(Boolean) ? (found as Named[]) : null;
+  };
+  // La primera elegida que ya tiene (sin contar las que sustituye, que tampoco pueden volver a elegirse)
+  const alreadyHeld = (p: PendingChoice, picked: CatalogEntry[]) => {
+    const held = new Set((ctx.held?.get(p.source) ?? []).map((h) => refKey(h.ref)));
+    return picked.find((e) => held.has(refKey(e.ref)));
+  };
+
   const out: Choice[] = [];
   for (const p of pending) {
     if (p.type === "subclass") {
-      if (!ctx.subclass) err("classes.0.subclass", "Elige una subclase.");
+      if (!ctx.subclass) err(ctx.subclassPath ?? "classes.0.subclass", "Elige una subclase.");
       else out.push({ type: "subclass", source: p.source, value: ctx.subclass });
       continue;
     }
@@ -392,29 +450,69 @@ export async function checkChoices(
         out.push({ type: "featureOption", source: p.source, value: { ref: { book: "builtin", key }, name: FEATURE_OPTION_LABELS[key] } });
       }
     } else if (p.type === "feat") {
-      const picked = Array.isArray(value) ? await Promise.all(value.map((v) => load(v, "feat"))) : [];
-      if (picked.length !== p.count || picked.some((e) => !e)) { bad(chooseN); continue; }
+      const replaced = replacedOf(p, c);
+      if (!replaced) { bad("no puedes sustituir esa dote."); continue; }
+      const list: unknown[] = Array.isArray(value) ? value : [];
+      const picked = await Promise.all(list.map((v) => load(v, "feat")));
+      if (picked.length !== p.count + replaced.length || picked.some((e) => !e)) { bad(chooseN); continue; }
       const feats = picked as CatalogEntry[];
       const categories: (string | undefined)[] = (p.category ?? []).map((k) => FEAT_CATEGORIES[k]).filter(Boolean);
       // (una entrada sin datos válidos cuenta como de otra categoría)
       if (feats.some((e) => !categories.includes((e.data as FeatData | null)?.category))) { bad("dote de otra categoría."); continue; }
       if (new Set(feats.map((e) => refKey(e.ref))).size !== feats.length) { bad("dote repetida."); continue; }
-      out.push({ type: "feat", source: p.source, value: feats.map(named) });
+      const held = alreadyHeld(p, feats);
+      if (held) { bad(`ya tienes ${held.nameEs || held.name}.`); continue; }
+      const checked = feats.map((e, k) => checkFeat(e, isObj(list[k]) ? list[k].ability : undefined));
+      const failed = checked.find((r): r is { error: string } => "error" in r);
+      if (failed) { bad(failed.error); continue; }
+      const featValue = feats.map((e, k) => {
+        const ability = (checked[k] as { ability?: Ability }).ability;
+        return { ...named(e), ...(ability ? { ability } : {}) };
+      });
+      out.push({ type: "feat", source: p.source, value: featValue, ...(replaced.length ? { replaced } : {}) });
+    } else if (p.type === "asi") {
+      if (!ctx.character || !isObj(value)) { bad("elige una mejora."); continue; }
+      if (isObj(value.abilities) && Object.keys(value).length === 1) {
+        // +2 a una característica o +1 a dos, sin pasar de 20
+        const parsed = Object.entries(value.abilities) as [Ability, number][];
+        const valid = parsed.every(([a, v]) => ABILITIES.includes(a) && (v === 1 || v === 2))
+          && parsed.reduce((sum, [, v]) => sum + v, 0) === ASI_POINTS;
+        if (!valid) { bad("+2 a una característica o +1 a dos."); continue; }
+        const over = parsed.find(([a, v]) => scoreOf(a) + v > ABILITY_CAP);
+        if (over) { bad(`${ABILITY_NAMES[over[0]]} no puede pasar de ${ABILITY_CAP}.`); continue; }
+        for (const [a, v] of parsed) raise(a, v);
+        const abilities = Object.fromEntries(parsed) as Partial<Record<Ability, 1 | 2>>;
+        out.push({ type: "asi", source: p.source, value: { abilities } });
+      } else if (has(value, "feat") && Object.keys(value).every((k) => k === "feat" || k === "ability")) {
+        const e = await load(value.feat, "feat");
+        const categories: (string | undefined)[] = (p.category ?? []).map((k) => FEAT_CATEGORIES[k]).filter(Boolean);
+        if (!e || e.ref.key.startsWith(ASI_FEAT)) { bad("elige una dote."); continue; }
+        if (!categories.includes((e.data as FeatData | null)?.category)) { bad("dote de otra categoría."); continue; }
+        const r = checkFeat(e, value.ability);
+        if ("error" in r) { bad(r.error); continue; }
+        out.push({ type: "asi", source: p.source, value: { feat: named(e), ...(r.ability ? { ability: r.ability } : {}) } });
+      } else bad("elige una mejora.");
     } else if (p.type === "optionalFeature") {
+      const replaced = replacedOf(p, c);
+      if (!replaced) { bad("no puedes sustituir esa opción."); continue; }
       const picked = Array.isArray(value) ? await Promise.all(value.map((v) => load(v, "optionalFeature"))) : [];
-      // Sustituir uno que ya tiene solo es posible al subir de nivel
-      if (picked.length !== p.count || picked.some((e) => !e) || c.replaced !== undefined) { bad(chooseN); continue; }
+      if (picked.length !== p.count + replaced.length || picked.some((e) => !e)) { bad(chooseN); continue; }
       const opts = picked as CatalogEntry[];
       const keys = opts.map((e) => e.ref.key);
       if (new Set(keys).size !== keys.length) { bad("opción repetida."); continue; }
+      const held = alreadyHeld(p, opts);
+      if (held) { bad(`ya tienes ${held.nameEs || held.name}.`); continue; }
+      // Los prerrequisitos de pacto o de otro rasgo se cumplen con las elegidas o con las que conserva
+      const gone = replaced.map((r) => r.ref.key);
+      const have = [...keys, ...(ctx.held?.get(p.source) ?? []).map((h) => h.ref.key).filter((k) => !gone.includes(k))];
       const unmet = opts.find((e) => {
         const d = e.data as OptionalFeatureData | null;
         const pre = d?.prerequisite;
         return !d?.featureType?.some((t) => p.featureType?.includes(t)) || (pre?.level ?? 0) > ctx.level
-          || (!!pre?.pact && !keys.includes(pre.pact)) || (!!pre?.feature && !keys.includes(pre.feature));
+          || (!!pre?.pact && !have.includes(pre.pact)) || (!!pre?.feature && !have.includes(pre.feature));
       });
       if (unmet) { bad(`no cumples los requisitos de ${unmet.nameEs || unmet.name}.`); continue; }
-      out.push({ type: "optionalFeature", source: p.source, value: opts.map(named) });
+      out.push({ type: "optionalFeature", source: p.source, value: opts.map(named), ...(replaced.length ? { replaced } : {}) });
     } else if (p.type === "weaponMastery") {
       const refs = Array.isArray(value) ? value.map(asRef) : [];
       if (refs.some((r) => !r)) { bad(chooseN); continue; }
@@ -427,6 +525,12 @@ export async function checkChoices(
         proficientWith: (item) => weaponProficient(item.data as ItemData, [item.name, bareName(item.ref.key)], ctx.weapons),
       });
       if (!checked.ok) { bad(checked.error); continue; }
+      const repeated = weapons.find((w) => ctx.masteries?.some((m) => refKey(m) === refKey(w)));
+      if (repeated) {
+        const e = ctx.entries.get(refKey(repeated));
+        bad(`ya tienes maestría con ${e ? e.nameEs || e.name : "esa arma"}.`);
+        continue;
+      }
       out.push({ type: "weaponMastery", source: p.source, value: weapons });
     } else {
       bad("esta elección todavía no se puede hacer aquí.");

@@ -351,4 +351,87 @@ describe("derive", () => {
       expect(r.classes[0].subclass).toBe("Senda del berserker");
     });
   });
+
+  describe("multiclase y elecciones de nivel", () => {
+    const entries = build(["class-barbarian.json", "class-cleric.json", "class-fighter.json"]);
+    const feat = (key: string, data: object, name: string) =>
+      entries.set(`${B}:${key}`, { ...entries.get(`${B}:item:greataxe|xphb`)!, ref: ref(key), name, nameEs: null, data });
+    feat("feat:great weapon master|xphb", { category: "general", repeatable: false, abilityIncrease: ["str"] }, "Great Weapon Master");
+    feat("feat:boon of combat prowess|xphb", { category: "epicBoon", repeatable: false, abilityIncrease: ["str"] }, "Boon of Combat Prowess");
+    feat("feat:archery|xphb", { category: "fightingStyle", repeatable: false }, "Archery");
+    feat("feat:defense|xphb", { category: "fightingStyle", repeatable: false }, "Defense");
+    const named = (key: string) => ({ ref: ref(key), name: entries.get(`${B}:${key}`)?.name ?? key });
+
+    // Bárbaro 1 de la hoja de prueba y después `[clase, niveles]`; `choices` por nivel total
+    const multi = (more: [string, number][], choices: Record<number, Choice[]> = {}) => {
+      const s = v2(entries);
+      const perClass = new Map<string, number>([["barbarian", 1]]);
+      for (const [name, count] of more) {
+        for (let i = 0; i < count; i++) {
+          const classLevel = (perClass.get(name) ?? 0) + 1;
+          perClass.set(name, classLevel);
+          const n = s.levels.length + 1;
+          s.levels.push({
+            n, class: named(`class:${name}|xphb`), classLevel, hp: { method: "average", value: 5 }, choices: choices[n] ?? [],
+          });
+        }
+      }
+      return s;
+    };
+
+    it("Bárbaro 4 con mejora +2 FUE: FUE sube 2", () => {
+      const r = derive(multi([["barbarian", 3]], { 4: [{ type: "asi", source: "x", value: { abilities: { str: 2 } } }] }), entries);
+      expect(r.abilities.str.score).toBe(17);
+    });
+    it("Bárbaro 3 + Clérigo 1: competencia por nivel total, salvaciones solo de la primera clase y competencias de multiclase", () => {
+      const r = derive(multi([["barbarian", 2], ["cleric", 1]]), entries);
+      expect(r.level).toBe(4);
+      expect(r.proficiencyBonus).toBe(2);
+      expect(r.classes.map((c) => [c.name, c.level])).toEqual([["Bárbaro", 3], ["Cleric", 1]]);
+      expect(r.saves.filter((s) => s.proficient).map((s) => s.ability)).toEqual(["str", "con"]);
+      expect(r.armor).toEqual(["light", "medium", "shield"]);
+      expect(r.weapons).toEqual(["simple", "martial"]);
+      expect(derive(multi([["barbarian", 3], ["cleric", 1]]), entries).proficiencyBonus).toBe(3);
+    });
+    it("habilidades de multiclase y pericia de las elecciones", () => {
+      const r = derive(multi([["barbarian", 1]], {
+        2: [{ type: "skills", source: "multiclass:x", value: ["stealth"] }, { type: "expertise", source: "y", value: ["stealth"] }],
+      }), entries);
+      expect(r.skills.find((s) => s.id === "stealth")).toMatchObject({ proficiency: 2, total: 2 + 4 });
+    });
+    it("el rasgo Furia muestra el valor de la tabla de su nivel", () => {
+      const rage = (r: ReturnType<typeof derive>) =>
+        r.features.find((g) => g.source === "class")!.features.find((f) => f.ref.key.startsWith("classFeature:rage|"));
+      expect(rage(derive(multi([]), entries))?.value).toBe("2");
+      expect(rage(derive(multi([["barbarian", 2]]), entries))?.value).toBe("3");
+    });
+    it("Ataque adicional no se acumula: solo aparece en la primera clase que lo da", () => {
+      const r = derive(multi([["barbarian", 4], ["fighter", 5]]), entries);
+      const extra = r.features.filter((g) => g.source === "class")
+        .map((g) => g.features.filter((f) => f.ref.key.startsWith("classFeature:extra attack|")).length);
+      expect(extra).toEqual([1, 0]);
+    });
+    it("dotes de nivel: suben su característica (tope 20; dones épicos hasta 30) y aparecen en los rasgos", () => {
+      const gwm: Choice = { type: "asi", source: "x", value: { feat: named("feat:great weapon master|xphb"), ability: "str" } };
+      const s = multi([["barbarian", 3]], { 4: [gwm] });
+      const r = derive(s, entries);
+      expect(r.abilities.str.score).toBe(16);
+      expect(r.features.find((g) => g.source === "feat")!.features.map((f) => [f.name, f.level]))
+        .toContainEqual(["Great Weapon Master", 4]);
+      s.baseAbilities.str = 20;
+      expect(derive(s, entries).abilities.str.score).toBe(20);
+      const boon: Choice = { type: "feat", source: "y", value: [{ ...named("feat:boon of combat prowess|xphb"), ability: "str" }] };
+      s.levels[1].choices = [boon];
+      expect(derive(s, entries).abilities.str.score).toBe(21);
+    });
+    it("una dote sustituida deja de aparecer", () => {
+      const s = multi([["fighter", 2]], {
+        2: [{ type: "feat", source: "fs", value: [named("feat:archery|xphb")] }],
+        3: [{ type: "feat", source: "fs", value: [named("feat:defense|xphb")], replaced: [named("feat:archery|xphb")] }],
+      });
+      const feats = derive(s, entries).features.find((g) => g.source === "feat")!.features.map((f) => f.name);
+      expect(feats).toContain("Defense");
+      expect(feats).not.toContain("Archery");
+    });
+  });
 });
