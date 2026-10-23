@@ -11,6 +11,7 @@ export const NOTIFICATION_TYPES = [
   "campaign_post",
   "character_created",
   "character_import_request",
+  "character_level_up",
   "book_like",
 ] as const;
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
@@ -61,6 +62,7 @@ export function emailPrefFor(type: NotificationType): EmailPref | null {
     case "campaign_joined":
     case "character_created":
     case "character_import_request":
+    case "character_level_up":
       return "dm";
     case "system":
     case "book_like":
@@ -73,7 +75,7 @@ type CampaignRef = { id: string; name: string } | null;
 
 // Texto y enlace de una notificación (se usan en la campana y en el correo)
 export function describeNotification(
-  n: { type: NotificationType; count?: number; text?: string; post?: string },
+  n: { type: NotificationType; count?: number; text?: string; post?: string; character?: string },
   actor: Actor,
   campaign: CampaignRef,
 ): { text: string; href: string } {
@@ -141,6 +143,12 @@ export function describeNotification(
       return {
         text: `${who} solicita importar un personaje a ${where}`,
         href: `${campaignHref}/characters`,
+      };
+    case "character_level_up":
+      // `text` es «{personaje} a nivel N»
+      return {
+        text: `${who} ha subido a ${n.text ?? "un personaje"}`,
+        href: n.character ? `/characters/${n.character}` : `${campaignHref}/characters`,
       };
     case "book_like":
       return {
