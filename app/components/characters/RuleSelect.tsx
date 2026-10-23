@@ -34,7 +34,7 @@ export default function RuleSelect({
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Búsqueda remota: resultado de la última consulta y la entrada elegida (ya no está en `options`)
-  const [remote, setRemote] = useState<{ q: string; list: EntryOption[] } | null>(null);
+  const [remote, setRemote] = useState<{ q: string; list: EntryOption[]; failed: boolean } | null>(null);
   const [picked, setPicked] = useState<EntryOption | null>(null);
 
   useEffect(() => {
@@ -42,9 +42,12 @@ export default function RuleSelect({
     let stale = false;
     const t = setTimeout(() => {
       loadOptions(query.trim())
-        .catch(() => [] as EntryOption[])
-        .then((list) => {
-          if (!stale) setRemote({ q: query, list });
+        .then((list) => ({ list, failed: false }))
+        .catch(() => ({ list: [] as EntryOption[], failed: true }))
+        .then((r) => {
+          if (stale) return;
+          setRemote({ q: query, ...r });
+          setActive(0);
         });
     }, SEARCH_DELAY);
     return () => {
@@ -103,6 +106,11 @@ export default function RuleSelect({
     } else if (e.key === "End" && open) {
       e.preventDefault();
       setActive(Math.max(filtered.length - 1, 0));
+    } else if (e.key === "Escape" && open) {
+      // Cierra solo la lista: que el diálogo que la contiene no lo vea como un Escape propio
+      e.preventDefault();
+      e.stopPropagation();
+      close();
     } else if (e.key === "Tab") {
       close();
     }
@@ -149,7 +157,11 @@ export default function RuleSelect({
           className="animate-pop absolute z-30 mt-1 max-h-64 w-full overflow-y-auto rounded-md border border-line bg-panel py-1 shadow-lg"
         >
           {loading && filtered.length === 0 && <li className="px-3 py-2 text-sm text-muted">Buscando…</li>}
-          {!loading && filtered.length === 0 && <li className="px-3 py-2 text-sm text-muted">Sin resultados</li>}
+          {!loading && filtered.length === 0 && (
+            <li className="px-3 py-2 text-sm text-muted">
+              {loadOptions && remote?.failed ? "No se pudo buscar. Inténtalo de nuevo." : "Sin resultados"}
+            </li>
+          )}
           {filtered.map((o, i) => (
             <li
               key={`${o.ref.book}:${o.ref.key}`}

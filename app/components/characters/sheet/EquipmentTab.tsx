@@ -162,12 +162,13 @@ export default function EquipmentTab({ characterId, isOwner, inventory, info, ca
                         ) : "-"}
                       </td>
                       <td className="py-2 pr-3">
-                        {data?.equippable ? (
+                        {data?.equippable && readOnly ? (
+                          <span className={l.equipped ? "" : "text-muted"}>{l.equipped ? "Sí" : "—"}</span>
+                        ) : data?.equippable ? (
                           <input
                             type="checkbox"
                             className="h-4 w-4 accent-brand"
                             checked={l.equipped}
-                            disabled={readOnly}
                             aria-label={`Equipar ${l.name}`}
                             onChange={(e) => toggleEquipped(l.id, e.target.checked)}
                           />
@@ -272,9 +273,11 @@ function NotesField({ label, value, onCommit }: { label: string; value: string; 
 function CoinsEditor({ coins, readOnly, onCommit }: { coins: Coins; readOnly: boolean; onCommit: (c: Coins) => void }) {
   const [draft, setDraft] = useState<Record<keyof Coins, string>>(() => toDraft(coins));
   const [shown, setShown] = useState(coins);
+  // Solo se repone el campo cuyo valor confirmado cambió, para no pisar lo que se está escribiendo en otro
   if (shown !== coins) {
     setShown(coins);
-    setDraft(toDraft(coins));
+    const changed = COINS.filter(({ key }) => coins[key] !== shown[key]);
+    if (changed.length) setDraft((d) => ({ ...d, ...Object.fromEntries(changed.map(({ key }) => [key, String(coins[key])])) }));
   }
   const commit = () => {
     const next = {} as Coins;

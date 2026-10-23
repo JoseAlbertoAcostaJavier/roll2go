@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { LoaderCircle, Plus } from "lucide-react";
 import type { EntryOption } from "@/lib/rules/catalog";
 import type { Ref } from "@/lib/rules/types";
@@ -29,23 +29,47 @@ export default function AddItemDialog({ systemId, campaignId, books, onAdd }: Pr
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
+  const trigger = useRef<HTMLButtonElement>(null);
+  const form = useRef<HTMLFormElement>(null);
+
+  // Foco dentro del diálogo al abrir (en el campo de búsqueda o de nombre)
   useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    if (open) form.current?.querySelector<HTMLElement>("input")?.focus();
   }, [open]);
 
-  const loadOptions = useCallback(async (q: string): Promise<EntryOption[]> => {
+  function close() {
+    setOpen(false);
+    reset();
+    trigger.current?.focus();
+  }
+
+  // Escape cierra el diálogo (salvo que ya lo haya gastado la lista abierta) y Tab no sale de él
+  function onKeyDown(e: React.KeyboardEvent) {
+    if (e.defaultPrevented) return;
+    if (e.key === "Escape") {
+      e.preventDefault();
+      close();
+    } else if (e.key === "Tab" && form.current) {
+      const items = [...form.current.querySelectorAll<HTMLElement>("button:not(:disabled), input:not(:disabled)")];
+      const [first, last] = [items[0], items[items.length - 1]];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    }
+  }
+
+  async function loadOptions(q: string): Promise<EntryOption[]> {
     const params = new URLSearchParams({ kind: "item", system: systemId, q });
     if (campaignId) params.set("campaign", campaignId);
     else if (books.length) params.set("books", books.join(","));
     const res = await fetch(`/api/rules/entries?${params.toString()}`);
     if (!res.ok) throw new Error("No se pudo buscar.");
     return (await res.json()).entries as EntryOption[];
-  }, [systemId, campaignId, books]);
+  }
 
   function reset() {
     setCustom(false);
@@ -66,8 +90,7 @@ export default function AddItemDialog({ systemId, campaignId, books, onAdd }: Pr
     const message = await onAdd(custom ? { name: name.trim(), quantity: qty } : { ref: ref!, quantity: qty });
     setBusy(false);
     if (message) return setError(message);
-    setOpen(false);
-    reset();
+    close();
   }
 
   const tab = (active: boolean) =>
@@ -76,6 +99,7 @@ export default function AddItemDialog({ systemId, campaignId, books, onAdd }: Pr
   return (
     <>
       <button
+        ref={trigger}
         type="button"
         onClick={() => setOpen(true)}
         className="flex items-center gap-2 rounded-md bg-brand px-4 py-2 font-heading text-sm font-bold text-white transition-colors hover:bg-brand-hover"
@@ -86,6 +110,8 @@ export default function AddItemDialog({ systemId, campaignId, books, onAdd }: Pr
       {open && (
         <div className="fixed inset-0 z-50 flex animate-fade-in items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
           <form
+            ref={form}
+            onKeyDown={onKeyDown}
             role="dialog"
             aria-modal="true"
             aria-labelledby={`${uid}-title`}
@@ -105,7 +131,6 @@ export default function AddItemDialog({ systemId, campaignId, books, onAdd }: Pr
                   <label htmlFor={`${uid}-name`} className={labelClass}>Nombre</label>
                   <input
                     id={`${uid}-name`}
-                    autoFocus
                     className={field}
                     maxLength={MAX_ITEM_NAME}
                     value={name}
@@ -143,7 +168,7 @@ export default function AddItemDialog({ systemId, campaignId, books, onAdd }: Pr
             <div className="flex flex-wrap justify-end gap-3">
               <button
                 type="button"
-                onClick={() => { setOpen(false); reset(); }}
+                onClick={close}
                 className="rounded-md border border-line px-4 py-2.5 text-sm font-semibold text-muted transition-colors hover:text-white"
               >
                 Cancelar
