@@ -38,7 +38,7 @@ export default async function NewCharacterPage({ searchParams }: { searchParams:
     const doc = await Campaign.findOne({ _id: campaignId, members: user.id })
       .select("name systemId characters")
       .lean();
-    if (!doc || doc.systemId !== systemId || !doc.characters?.allowed || !doc.characters?.internal) notFound();
+    if (!doc || doc.systemId !== systemId || !(doc.characters?.allowed === true && doc.characters?.internal === true)) notFound();
     campaign = { id: campaignId, name: doc.name };
   }
 

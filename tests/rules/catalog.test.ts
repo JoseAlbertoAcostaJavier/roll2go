@@ -13,6 +13,10 @@ describe("pickBooks", () => {
     expect(pickBooks({ visible, campaign: null, chosen: ["b", "ajeno"] })).toEqual(["b"]);
   });
 
+  it("chosen sin ningún libro visible se ignora", () => {
+    expect(pickBooks({ visible, campaign: null, chosen: ["ajeno", "otro"] })).toEqual(visible);
+  });
+
   it("sin campaña ni chosen devuelve visible", () => {
     expect(pickBooks({ visible, campaign: null, chosen: [] })).toEqual(visible);
   });

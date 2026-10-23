@@ -62,7 +62,7 @@ export async function POST(req: NextRequest) {
       .lean();
     if (!doc) return notFound();
     if (doc.systemId !== systemId) errors.campaign = "La campaña es de otro sistema de juego.";
-    else if (!doc.characters?.allowed || !doc.characters?.internal)
+    else if (!(doc.characters?.allowed === true && doc.characters?.internal === true))
       errors.campaign = "Esta campaña no admite personajes creados desde Roll2Go.";
     campaign = doc;
   }
@@ -119,8 +119,9 @@ export async function POST(req: NextRequest) {
       owner: session.id,
       name,
       systemId,
-      // Solo se guarda el filtro propio del personaje; si manda el de la campaña, no hace falta
-      books: chosen.length > 0 && !campaign?.restrictBooks ? books : [],
+      // Solo se guarda el filtro propio del personaje; si manda el de la campaña o se ignoró por no tener
+      // ningún libro visible, no hace falta
+      books: !campaign?.restrictBooks && books.some((id) => chosen.includes(id)) ? books : [],
       ...(campaign ? { campaign: campaign._id, origin: "internal" } : {}),
       status,
       portraitId,

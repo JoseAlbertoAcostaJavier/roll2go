@@ -7,7 +7,7 @@ import { Character } from "@/lib/Character";
 import { requireUser } from "@/lib/currentUser";
 import { visibleBooksOf } from "@/lib/rules/books";
 import { system as rpgSystems } from "@/lib/systems";
-import { escapeRegex, first } from "@/lib/utils";
+import { accentInsensitive, first } from "@/lib/utils";
 import CharacterCard, { type CharacterCardData } from "@/app/components/characters/CharacterCard";
 import NewCharacterDialog from "@/app/components/characters/NewCharacterDialog";
 
@@ -48,7 +48,7 @@ export default async function CharactersPage({
   const filter: Record<string, unknown> = { owner: user.id };
   if (status !== "all") filter.status = status;
   if (q) {
-    const rx = { $regex: escapeRegex(q), $options: "i" };
+    const rx = { $regex: accentInsensitive(q), $options: "i" }; // sin distinguir tildes ni mayúsculas
     // Para buscar por campaña se averiguan antes los ids por nombre (también las que ya no están activas)
     const named = await Campaign.find({ members: user.id, name: rx }).select("_id").lean();
     filter.$or = [
@@ -100,7 +100,7 @@ export default async function CharactersPage({
 
   const systems = rpgSystems.map((s) => ({ id: s.id, name: s.name, creator: s.creator }));
   const dialogCampaigns = myCampaigns
-    .filter((c) => c.characters?.allowed !== false && c.characters?.internal !== false)
+    .filter((c) => c.characters?.allowed === true && c.characters?.internal === true)
     .map((c) => ({
       id: String(c._id),
       name: c.name as string,
