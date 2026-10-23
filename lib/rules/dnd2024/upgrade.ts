@@ -69,7 +69,7 @@ export function upgradeSheet(
 
 const isSkills = (c: Choice): c is Extract<Choice, { type: "skills" }> => c.type === "skills";
 
-/** Vista v1 de cualquier hoja, para el cálculo actual (`derive`) hasta que pase a leer la v2. */
+/** Vista v1 de cualquier hoja, para las partes de la ficha que aún leen la v1 (cabecera e información). */
 export function toV1View(sheet: AnySheet): Dnd2024Sheet {
   if (sheet.version === 1) return sheet;
   /* eslint-disable @typescript-eslint/no-unused-vars */

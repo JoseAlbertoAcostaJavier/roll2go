@@ -104,3 +104,20 @@ const TOOL_NAMES: Record<string, string> = {
 
 /** Nombre en español de una herramienta (id de 5etools o elección "a elegir"); si no se conoce, el original. */
 export const toolName = (id: string) => CHOICE_LABELS[id] ?? TOOL_NAMES[id.toLowerCase()] ?? id;
+
+// Armas: tipos de daño, propiedades y maestrías (códigos e ids de 5etools)
+const DAMAGE_TYPE_NAMES: Record<string, string> = {
+  A: "ácido", B: "contundente", C: "frío", F: "fuego", I: "veneno", L: "relámpago", N: "necrótico", O: "fuerza",
+  P: "perforante", R: "radiante", S: "cortante", T: "trueno", Y: "psíquico",
+};
+const WEAPON_PROPERTY_NAMES: Record<string, string> = {
+  A: "Munición", AF: "Munición (futurista)", BF: "Ráfaga", F: "Sutil", H: "Pesada", L: "Ligera", LD: "Carga",
+  R: "Alcance", RLD: "Recarga", S: "Especial", T: "Arrojadiza", V: "Versátil", "2H": "A dos manos",
+};
+const MASTERY_NAMES: Record<string, string> = {
+  cleave: "Hendir", graze: "Rozar", nick: "Mellar", push: "Empujar", sap: "Debilitar", slow: "Ralentizar",
+  topple: "Derribar", vex: "Incordiar",
+};
+export const damageTypeName = (code: string) => DAMAGE_TYPE_NAMES[code] ?? code;
+export const weaponPropertyName = (code: string) => WEAPON_PROPERTY_NAMES[code] ?? code;
+export const masteryName = (id: string) => MASTERY_NAMES[id.toLowerCase()] ?? capitalize(id);

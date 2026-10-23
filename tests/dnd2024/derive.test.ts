@@ -1,38 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
-import path from "node:path";
 import type { CatalogEntry } from "@/lib/rules/catalog";
 import { derive } from "@/lib/rules/dnd2024/derive";
-import type { Dnd2024Sheet } from "@/lib/rules/dnd2024/sheet";
-import { BOOK_PLACEHOLDER, normalizeAll, type RawFiles } from "@/lib/rules/import/normalize";
-
-const fixture = (f: string) =>
-  JSON.parse(readFileSync(path.join(import.meta.dirname, "../fixtures/5etools", f), "utf8"));
-const files: RawFiles = {
-  races: fixture("races.json"),
-  backgrounds: fixture("backgrounds.json"),
-  feats: fixture("feats.json"),
-  items: fixture("items.json"),
-  itemsBase: fixture("items-base.json"),
-  spells: [fixture("spells.json")],
-  spellSources: fixture("spell-sources.json"),
-  classes: [fixture("class-barbarian.json")],
-};
-
-const B = "libro-prueba";
-// Como el importador: sustituye el marcador de libro por el id del libro
-const withBook = <T,>(v: T): T =>
-  JSON.parse(JSON.stringify(v).replaceAll(JSON.stringify(BOOK_PLACEHOLDER), JSON.stringify(B)));
-const toEntry = (e: ReturnType<typeof normalizeAll>["entries"][number]): CatalogEntry => ({
-  ref: { book: B, key: e.key }, name: e.name, nameEs: null, bookName: "Libro", srd52: e.srd52,
-  data: withBook(e.data), description: e.description, descriptionEs: "", identifier: e.identifier,
-  parent: e.parent ? { book: B, key: e.parent.key } : null, foundry: null,
-});
-const build = () => new Map(normalizeAll(files, "XPHB").entries.map((e) => {
-  const c = toEntry(e);
-  return [`${B}:${c.ref.key}`, c] as const;
-}));
-const ref = (key: string) => ({ book: B, key });
+import type { Choice, Dnd2024Sheet, Dnd2024SheetV2, InventoryItem, LevelEntry } from "@/lib/rules/dnd2024/sheet";
+import { upgradeSheet } from "@/lib/rules/dnd2024/upgrade";
+import { B, buildCatalog as build, ref } from "./fixtureCatalog";
 
 const sheet = (): Dnd2024Sheet => ({
   version: 1,
@@ -51,6 +22,18 @@ const sheet = (): Dnd2024Sheet => ({
   hp: { max: null, current: null, temp: 0 },
 });
 
+// Hoja v2 del mismo personaje; `more` añade niveles de Bárbaro (2, 3…) con sus elecciones
+const v2 = (entries = build(), ...more: Choice[][]): Dnd2024SheetV2 => {
+  let i = 0;
+  const s = upgradeSheet(sheet(), entries, () => `id${++i}`);
+  more.forEach((choices, j) => s.levels.push({
+    n: j + 2, class: s.levels[0].class, classLevel: j + 2, hp: { method: "average", value: 7 }, choices,
+  } satisfies LevelEntry));
+  return s;
+};
+const line = (key: string, name: string, quantity = 1, equipped = false): InventoryItem =>
+  ({ id: key, ref: ref(key), name, quantity, equipped, notes: "" });
+
 describe("derive", () => {
   const d = derive(sheet(), build());
 
@@ -59,36 +42,41 @@ describe("derive", () => {
     expect(d.abilities.int.score).toBe(13);
     expect(d.abilities.str.mod).toBe(2);
     expect(d.proficiencyBonus).toBe(2);
-    expect(d.hpMax).toBe(13);
+    expect(d.hp).toEqual({ max: 13, current: 13, temp: 0 });
     expect(d.ac).toBe(13);
     expect(d.initiative).toBe(2);
+    expect(d.level).toBe(1);
+    expect(d.classes).toEqual([{ name: "Bárbaro", level: 1, subclass: null, ref: ref("class:barbarian|xphb") }]);
   });
   it("velocidad y visión en la oscuridad del legado", () => {
     expect(d.speed).toBe(30);
     expect(d.darkvision).toBe(120);
   });
-  it("competencias", () => {
-    expect(d.saves).toEqual(["str", "con"]);
-    expect(d.skills).toEqual(expect.arrayContaining(["insight", "religion", "perception", "athletics", "intimidation"]));
+  it("salvaciones: las 6, con competencia en las de la clase", () => {
+    expect(d.saves).toHaveLength(6);
+    expect(d.saves.filter((s) => s.proficient).map((s) => s.ability)).toEqual(["str", "con"]);
+    expect(d.saves.find((s) => s.ability === "str")?.total).toBe(4);
+    expect(d.saves.find((s) => s.ability === "dex")?.total).toBe(2);
+  });
+  it("habilidades: las 18, con competencia de especie, trasfondo y clase", () => {
+    expect(d.skills).toHaveLength(18);
+    expect(d.skills.filter((s) => s.proficiency === 1).map((s) => s.id).sort())
+      .toEqual(["athletics", "insight", "intimidation", "perception", "religion"]);
+    expect(d.skills.find((s) => s.id === "athletics")).toEqual({ id: "athletics", ability: "str", proficiency: 1, total: 4 });
+    expect(d.skills.find((s) => s.id === "stealth")).toEqual({ id: "stealth", ability: "dex", proficiency: 0, total: 2 });
+  });
+  it("pericia: competencia 2 y bonificador doble", () => {
+    const r = derive(v2(build(), [{ type: "expertise", source: "x", value: ["athletics"] }]), build());
+    expect(r.skills.find((s) => s.id === "athletics")).toMatchObject({ proficiency: 2, total: 2 + 4 });
+  });
+  it("otras competencias e idiomas", () => {
     expect(d.armor).toEqual(["light", "medium", "shield"]);
     expect(d.weapons).toEqual(["simple", "martial"]);
     expect(d.tools).toEqual(["calligrapher's supplies"]);
-  });
-  it("equipo y oro de clase y trasfondo, con el paquete expandido", () => {
-    expect(d.gold).toBe(23);
-    const names = d.equipment.map((e) => e.name);
-    expect(names).toEqual(expect.arrayContaining(["Greataxe", "Handaxe", "Book (Prayers)", "backpack", "torch"]));
-    expect(names).not.toContain("Explorer's Pack");
-    expect(d.equipment.find((e) => e.name === "Handaxe")?.quantity).toBe(4);
-    expect(d.equipment.find((e) => e.name === "torch")?.quantity).toBe(10);
-  });
-  it("la opción B da solo oro", () => {
     const s = sheet();
-    s.classes[0].equipment = "B";
-    s.background.equipment = "B";
-    const r = derive(s, build());
-    expect(r.gold).toBe(125);
-    expect(r.equipment).toEqual([]);
+    s.languages = "Común, Élfico\nInfracomún";
+    expect(derive(s, build()).languages).toEqual(["Común", "Élfico", "Infracomún"]);
+    expect(d.languages).toEqual([]);
   });
 
   it("con la especie borrada anota el nombre guardado y calcula el resto", () => {
@@ -96,7 +84,7 @@ describe("derive", () => {
     entries.delete(`${B}:species:elf|xphb`);
     const r = derive(sheet(), entries);
     expect(r.missing).toContain("Elfo");
-    expect(r.hpMax).toBe(13);
+    expect(r.hp.max).toBe(13);
     expect(r.ac).toBe(13);
     expect(r.speed).toBe(30);
     expect(r.darkvision).toBe(120);
@@ -106,9 +94,40 @@ describe("derive", () => {
     entries.delete(`${B}:class:barbarian|xphb`);
     const r = derive(sheet(), entries);
     expect(r.missing).toContain("Bárbaro");
-    expect(r.hpMax).toBe(0);
+    expect(r.hp.max).toBe(1); // sin dado de golpe conocido, solo la CON
     expect(r.ac).toBe(13); // la Defensa sin armadura sale de la clave guardada
-    expect(r.gold).toBe(8);
+    expect(r.attacks.map((a) => a.name)).toEqual(["Ataque sin armas"]);
+  });
+  it("una hoja v2 con la clase borrada conserva los PG guardados", () => {
+    const s = v2(build(), []);
+    const entries = build();
+    entries.delete(`${B}:class:barbarian|xphb`);
+    expect(derive(s, entries).hp.max).toBe(12 + 7 + 2 * 1);
+  });
+
+  describe("niveles", () => {
+    it("nivel total, nivel por clase y PG por entrada", () => {
+      const r = derive(v2(build(), [], [], []), build());
+      expect(r.level).toBe(4);
+      expect(r.classes[0].level).toBe(4);
+      expect(r.proficiencyBonus).toBe(2);
+      expect(r.hp.max).toBe(12 + 7 * 3 + 4 * 1);
+      expect(derive(v2(build(), [], [], [], []), build()).proficiencyBonus).toBe(3);
+    });
+    it("mejora de característica suma con tope 20", () => {
+      const asi = (value: Extract<Choice, { type: "asi" }>["value"]): Choice[] => [{ type: "asi", source: "x", value }];
+      const r = derive(v2(build(), [], [], asi({ abilities: { str: 2 } })), build());
+      expect(r.abilities.str.score).toBe(17);
+      const s = v2(build(), [], [], asi({ abilities: { str: 2, wis: 1 } }));
+      s.baseAbilities.str = 19;
+      expect(derive(s, build()).abilities.str.score).toBe(20);
+      expect(derive(s, build()).abilities.wis.score).toBe(13);
+    });
+    it("PG actuales y temporales guardados", () => {
+      const s = v2();
+      s.hp = { max: null, current: 5, temp: 3 };
+      expect(derive(s, build()).hp).toEqual({ max: 13, current: 5, temp: 3 });
+    });
   });
 
   describe("rasgos de especie y dote de origen", () => {
@@ -123,13 +142,15 @@ describe("derive", () => {
       const s = sheet();
       s.species = { ref: ref("species:dwarf|xphb"), name: "Enano" };
       s.lineage = null;
-      expect(derive(s, build()).hpMax).toBe(14);
-      s.classes[0].level = 3;
-      // 12 + 1 + 2 × (7 + 1) = 29, más 3 de Dureza enana
-      expect(derive(s, build()).hpMax).toBe(32);
+      expect(derive(s, build()).hp.max).toBe(14);
+      const s3 = v2(build(), [], []);
+      s3.species = s.species;
+      s3.lineage = null;
+      // 12 + 7 + 7 + 3 × CON 1, más 3 de Dureza enana
+      expect(derive(s3, build()).hp.max).toBe(32);
     });
     it("Duro: +2 PG por nivel", () => {
-      expect(derive(sheet(), withFeat("feat:tough|xphb")).hpMax).toBe(15);
+      expect(derive(sheet(), withFeat("feat:tough|xphb")).hp.max).toBe(15);
     });
     it("Alerta suma el bonificador de competencia a la iniciativa", () => {
       expect(derive(sheet(), withFeat("feat:alert|xphb")).initiative).toBe(4);
@@ -155,6 +176,21 @@ describe("derive", () => {
     it("armadura ligera suma DES completo", () => {
       expect(derive(sheet(), withGear("item:studded leather armor|xphb")).ac).toBe(14);
     });
+    it("solo cuenta la armadura equipada", () => {
+      const s = v2();
+      s.inventory.items.push(line("item:chain mail|xphb", "Cota de malla"));
+      expect(derive(s, build()).ac).toBe(13);
+      s.inventory.items.at(-1)!.equipped = true;
+      expect(derive(s, build()).ac).toBe(16);
+    });
+    it("aviso sin competencia con la armadura equipada", () => {
+      const s = v2();
+      s.inventory.items.push(line("item:chain mail|xphb", "Cota de malla", 1, true));
+      expect(derive(s, build()).armorWarning).toBe("Sin competencia con esta armadura");
+      s.inventory.items.at(-1)!.equipped = false;
+      s.inventory.items.push(line("item:studded leather armor|xphb", "Cuero tachonado", 1, true));
+      expect(derive(s, build()).armorWarning).toBeNull();
+    });
     it("el Monje usa SAB y una clase sin Defensa usa solo DES", () => {
       const entries = build();
       const barb = entries.get(`${B}:class:barbarian|xphb`)!;
@@ -175,6 +211,88 @@ describe("derive", () => {
       expect(derive(s, entries).ac).toBe(10 + 2 + 1 + 2);
       s.classes[0].ref = ref("class:monk|xphb");
       expect(derive(s, entries).ac).toBe(10 + 2 + 2);
+    });
+  });
+
+  describe("ataques", () => {
+    it("una fila por arma equipada y el ataque sin armas siempre", () => {
+      expect(d.attacks.map((a) => a.name)).toEqual(["Greataxe", "Handaxe", "Ataque sin armas"]);
+      expect(d.attacks[0]).toMatchObject({ bonus: 4, damage: "1d12+2", damageType: "cortante", mastery: null });
+      expect(d.attacks[2]).toMatchObject({ bonus: 4, damage: "3", damageType: "contundente" });
+      const s = v2();
+      for (const i of s.inventory.items) i.equipped = false;
+      expect(derive(s, build()).attacks.map((a) => a.name)).toEqual(["Ataque sin armas"]);
+    });
+    it("maestría con las armas elegidas", () => {
+      const r = derive(v2(build(), [{ type: "weaponMastery", source: "x", value: [ref("item:greataxe|xphb")] }]), build());
+      expect(r.attacks[0].mastery).toBe("Hendir");
+      expect(r.attacks[1].mastery).toBeNull();
+    });
+    it("Monje: dado de Artes marciales de la tabla y la mejor de FUE y DES", () => {
+      const entries = build();
+      const barb = entries.get(`${B}:class:barbarian|xphb`)!;
+      const monk = { ...barb, ref: ref("class:monk|xphb"), data: { ...(barb.data as object), equipment: { A: [] } } };
+      entries.set(`${B}:class:monk|xphb`, monk);
+      const s = sheet();
+      s.classes[0].ref = ref("class:monk|xphb");
+      s.baseAbilities.dex = 16;
+      const unarmed = (r: ReturnType<typeof derive>) => r.attacks.find((a) => a.name === "Ataque sin armas")!;
+      // Sin tabla en el catálogo: 1d6 a nivel 1
+      expect(unarmed(derive(s, entries))).toMatchObject({ bonus: 5, damage: "1d6+3" });
+      const values = ["1d6", "1d6", "1d6", "1d6", "1d8", ...Array(15).fill("1d10")];
+      entries.set(`${B}:class:monk|xphb`, { ...monk, data: { ...monk.data, table: { columns: [{ label: "Artes marciales", values }] } } });
+      expect(unarmed(derive(s, entries)).damage).toBe("1d6+3");
+      const s5 = upgradeSheet(s, entries, () => "x");
+      for (let n = 2; n <= 5; n++) s5.levels.push({ ...s5.levels[0], n, classLevel: n, choices: [] });
+      expect(unarmed(derive(s5, entries)).damage).toBe("1d8+3");
+    });
+  });
+
+  describe("peso y capacidad", () => {
+    const withPack = (entries: Map<string, CatalogEntry>) => {
+      const s = v2(entries);
+      s.inventory.items = [line("item:explorer's pack|xphb", "Paquete de explorador"), line("item:greataxe|xphb", "Hacha", 1, true)];
+      return s;
+    };
+    it("suma el peso de cada línea por su cantidad", () => {
+      expect(derive(withPack(build()), build()).weight).toEqual({ total: 55 + 7, capacity: 225, over: false });
+      const s = withPack(build());
+      s.inventory.items[1].quantity = 2;
+      expect(derive(s, build()).weight.total).toBe(55 + 14);
+    });
+    it("capacidad FUE × 15, doble si es Grande; aviso al superarla", () => {
+      const s = withPack(build());
+      s.speciesChoices.size = "L";
+      expect(derive(s, build()).weight.capacity).toBe(450);
+      s.speciesChoices.size = null;
+      s.baseAbilities.str = 4;
+      expect(derive(s, build()).weight).toEqual({ total: 62, capacity: 60, over: true });
+    });
+  });
+
+  describe("rasgos", () => {
+    it("bloques de especie, legado, clase y dotes", () => {
+      expect(d.features.map((g) => [g.source, g.title])).toEqual([
+        ["species", "Elfo"], ["lineage", "Drow"], ["class", "Bárbaro"], ["feat", "Dotes"],
+      ]);
+      const cls = d.features[2];
+      expect(cls.level).toBe(1);
+      expect(cls.features.map((f) => f.name)).toEqual(["Rage", "Unarmored Defense", "Weapon Mastery"]);
+      expect(d.features[3].features).toEqual([
+        { ref: ref("feat:magic initiate; cleric|xphb"), name: "Magic Initiate; Cleric", level: 1 },
+      ]);
+    });
+    it("rasgos de clase hasta su nivel y de la subclase elegida", () => {
+      const berserker = { ref: ref("subclass:path of the berserker|barbarian|xphb"), name: "Senda del berserker" };
+      const r = derive(v2(build(), [], [{ type: "subclass", source: "x", value: berserker }]), build());
+      const cls = r.features.find((g) => g.source === "class")!;
+      expect(cls.features.map((f) => f.level)).toEqual([1, 1, 1, 2, 2, 3, 3]);
+      // Sin la entrada del rasgo en el catálogo, el nombre sale de la clave
+      expect(cls.features[3].name).toBe("Danger sense");
+      const sub = r.features.find((g) => g.source === "subclass")!;
+      expect(sub).toMatchObject({ title: "Senda del berserker", level: 3, ref: berserker.ref });
+      expect(sub.features.every((f) => f.level <= 3)).toBe(true);
+      expect(r.classes[0].subclass).toBe("Senda del berserker");
     });
   });
 });

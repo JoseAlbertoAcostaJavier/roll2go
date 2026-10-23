@@ -13,7 +13,7 @@ import { booksByIds, visibleBooksOf } from "@/lib/rules/books";
 import { getEntry, type CatalogEntry } from "@/lib/rules/catalog";
 import { derive } from "@/lib/rules/dnd2024/derive";
 import type { AnySheet, Dnd2024Sheet } from "@/lib/rules/dnd2024/sheet";
-import { toV1View } from "@/lib/rules/dnd2024/upgrade";
+import { toV1View, upgradeSheet } from "@/lib/rules/dnd2024/upgrade";
 import { alignmentName } from "@/lib/rules/dnd2024/alignments";
 import { equipmentRefs, refKey } from "@/lib/rules/dnd2024/equipmentRefs";
 import { ABILITY_NAMES, proficiencyName, skillName, toolName } from "@/lib/rules/dnd2024/labels";
@@ -51,8 +51,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return { title: found?.c.name ?? "Personaje" };
 }
 
-// Carga las entradas de la hoja con los libros que ve el dueño; las que ya no existen quedan fuera del mapa
-async function loadEntries(sheet: Dnd2024Sheet, books: string[]) {
+// Carga las entradas de la hoja con los libros que ve el dueño; las que ya no existen quedan fuera del mapa.
+// `inventory`: objetos del inventario de una hoja v2.
+async function loadEntries(sheet: Dnd2024Sheet, books: string[], inventory: Ref[]) {
   const entries = new Map<string, CatalogEntry>();
   const tried = new Set<string>();
   const load = async (refs: Ref[]) => {
@@ -77,6 +78,7 @@ async function loadEntries(sheet: Dnd2024Sheet, books: string[]) {
     const added = await load(equipmentRefs(options, (k) => entries.get(k)));
     if (added === 0) break;
   }
+  await load(inventory);
   return { entries, feat: bg?.feat ? entries.get(refKey(bg.feat)) : undefined };
 }
 
@@ -93,8 +95,16 @@ export default async function CharacterPage({ params }: Props) {
   const sheet = (isDnd2024 ? toV1View(stored!) : stored) as Dnd2024Sheet;
 
   const visible = (await visibleBooksOf(String(c.owner), c.systemId)).map((b) => b.id);
-  const { entries, feat } = isDnd2024 ? await loadEntries(sheet, visible) : { entries: new Map(), feat: undefined };
-  const d = isDnd2024 ? derive(sheet, entries) : null;
+  const inventoryRefs = stored?.version === 2 ? stored.inventory.items.flatMap((i) => (i.ref ? [i.ref] : [])) : [];
+  const { entries, feat } = isDnd2024
+    ? await loadEntries(sheet, visible, inventoryRefs)
+    : { entries: new Map<string, CatalogEntry>(), feat: undefined };
+  // Una hoja v1 se convierte en memoria, con ids provisionales para las líneas del inventario
+  let lineId = 0;
+  const v2 = isDnd2024 ? upgradeSheet(stored!, entries, () => `tmp${++lineId}`) : null;
+  const d = v2 ? derive(v2, entries) : null;
+  const gold = v2 ? v2.inventory.coins.gp + v2.inventory.coins.pp * 10 + v2.inventory.coins.ep / 2
+    + v2.inventory.coins.sp / 10 + v2.inventory.coins.cp / 100 : 0;
 
   // Atribución del SRD si se usa contenido de un libro con esa licencia
   const usedBooks = [...new Set([...entries.values()].map((e) => e.ref.book))];
@@ -171,7 +181,7 @@ export default async function CharacterPage({ params }: Props) {
             <h2 className={cardTitle}>Resumen</h2>
             <dl className="grid grid-cols-2 gap-2 sm:grid-cols-3">
               {[
-                { label: "PG", value: String(d.hpMax) },
+                { label: "PG", value: String(d.hp.max) },
                 { label: "CA", value: String(d.ac) },
                 { label: "Iniciativa", value: fmtMod(d.initiative) },
                 { label: "Velocidad", value: `${d.speed} pies` },
@@ -205,9 +215,9 @@ export default async function CharacterPage({ params }: Props) {
             <h2 className={cardTitle}>Competencias</h2>
             <dl className="grid gap-x-4 gap-y-2 text-sm sm:grid-cols-[auto_1fr]">
               <dt className="font-semibold">Salvaciones</dt>
-              <dd className="text-muted">{d.saves.map((a) => ABILITY_NAMES[a]).join(", ") || "—"}</dd>
+              <dd className="text-muted">{d.saves.filter((s) => s.proficient).map((s) => ABILITY_NAMES[s.ability]).join(", ") || "—"}</dd>
               <dt className="font-semibold">Habilidades</dt>
-              <dd className="text-muted">{d.skills.map(skillName).join(", ") || "—"}</dd>
+              <dd className="text-muted">{d.skills.filter((s) => s.proficiency > 0).map((s) => skillName(s.id)).join(", ") || "—"}</dd>
               <dt className="font-semibold">Armaduras</dt>
               <dd className="text-muted">{d.armor.map(proficiencyName).join(", ") || "—"}</dd>
               <dt className="font-semibold">Armas</dt>
@@ -219,15 +229,15 @@ export default async function CharacterPage({ params }: Props) {
 
           <section className={`${card} animate-fade-up`} style={{ animationDelay: "150ms" }}>
             <h2 className={cardTitle}>Equipo</h2>
-            {d.equipment.length === 0 && !d.gold ? (
+            {!v2 || (v2.inventory.items.length === 0 && !gold) ? (
               <p className="text-sm text-muted">Sin equipo.</p>
             ) : (
               <ul className="space-y-1 text-sm">
-                {d.equipment.map((e) => (
-                  <li key={e.name}>{e.quantity > 1 ? `${e.quantity}× ` : ""}{e.name}</li>
+                {v2.inventory.items.map((e) => (
+                  <li key={e.id}>{e.quantity > 1 ? `${e.quantity}× ` : ""}{e.name}</li>
                 ))}
-                {d.gold > 0 && (
-                  <li className="font-semibold">{d.gold.toLocaleString("es-ES", { maximumFractionDigits: 2 })} po</li>
+                {gold > 0 && (
+                  <li className="font-semibold">{gold.toLocaleString("es-ES", { maximumFractionDigits: 2 })} po</li>
                 )}
               </ul>
             )}
