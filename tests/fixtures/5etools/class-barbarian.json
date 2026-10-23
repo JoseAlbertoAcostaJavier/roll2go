@@ -124,7 +124,209 @@
 				"Epic Boon|Barbarian|XPHB|19",
 				"Primal Champion|Barbarian|XPHB|20"
 			],
-			"subclassTitle": "Barbarian Subclass"
+			"subclassTitle": "Barbarian Subclass",
+			"featProgression": [
+				{
+					"name": "Epic Boon",
+					"category": [
+						"EB"
+					],
+					"progression": {
+						"19": 1
+					}
+				}
+			],
+			"itemMasteriesProgression": {
+				"1": 2,
+				"4": 3,
+				"10": 4
+			},
+			"multiclassing": {
+				"proficienciesGained": {
+					"weapons": [
+						"martial"
+					],
+					"armor": [
+						"shield"
+					],
+					"armorProficiencies": [
+						{
+							"shield": true
+						}
+					]
+				}
+			},
+			"classTableGroups": [
+				{
+					"colLabels": [
+						"Rages",
+						"Rage Damage",
+						"Weapon Mastery"
+					],
+					"rows": [
+						[
+							"2",
+							{
+								"type": "bonus",
+								"value": 2
+							},
+							"2"
+						],
+						[
+							"2",
+							{
+								"type": "bonus",
+								"value": 2
+							},
+							"2"
+						],
+						[
+							"3",
+							{
+								"type": "bonus",
+								"value": 2
+							},
+							"2"
+						],
+						[
+							"3",
+							{
+								"type": "bonus",
+								"value": 2
+							},
+							"3"
+						],
+						[
+							"3",
+							{
+								"type": "bonus",
+								"value": 2
+							},
+							"3"
+						],
+						[
+							"4",
+							{
+								"type": "bonus",
+								"value": 2
+							},
+							"3"
+						],
+						[
+							"4",
+							{
+								"type": "bonus",
+								"value": 2
+							},
+							"3"
+						],
+						[
+							"4",
+							{
+								"type": "bonus",
+								"value": 2
+							},
+							"3"
+						],
+						[
+							"4",
+							{
+								"type": "bonus",
+								"value": 3
+							},
+							"3"
+						],
+						[
+							"4",
+							{
+								"type": "bonus",
+								"value": 3
+							},
+							"4"
+						],
+						[
+							"4",
+							{
+								"type": "bonus",
+								"value": 3
+							},
+							"4"
+						],
+						[
+							"5",
+							{
+								"type": "bonus",
+								"value": 3
+							},
+							"4"
+						],
+						[
+							"5",
+							{
+								"type": "bonus",
+								"value": 3
+							},
+							"4"
+						],
+						[
+							"5",
+							{
+								"type": "bonus",
+								"value": 3
+							},
+							"4"
+						],
+						[
+							"5",
+							{
+								"type": "bonus",
+								"value": 3
+							},
+							"4"
+						],
+						[
+							"5",
+							{
+								"type": "bonus",
+								"value": 4
+							},
+							"4"
+						],
+						[
+							"6",
+							{
+								"type": "bonus",
+								"value": 4
+							},
+							"4"
+						],
+						[
+							"6",
+							{
+								"type": "bonus",
+								"value": 4
+							},
+							"4"
+						],
+						[
+							"6",
+							{
+								"type": "bonus",
+								"value": 4
+							},
+							"4"
+						],
+						[
+							"6",
+							{
+								"type": "bonus",
+								"value": 4
+							},
+							"4"
+						]
+					]
+				}
+			]
 		}
 	],
 	"subclass": [

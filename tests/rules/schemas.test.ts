@@ -18,6 +18,20 @@ const barbarianData: ClassData = {
   asiLevels: [4, 8, 12, 16],
   spellcasting: null,
   features: [{ ref: { book: "b", key: "rage" }, level: 1 }],
+  progressions: {
+    feats: [{ category: ["EB"], levels: { 19: 1 } }],
+    optionalFeatures: [],
+    weaponMastery: { 1: 2, 4: 3, 10: 4 },
+    cantrips: null,
+    prepared: null,
+    spellbook: null,
+  },
+  table: { columns: [{ label: "Furias", values: Array(20).fill("2") }] },
+  multiclass: {
+    requirements: { abilities: ["str"], any: false },
+    proficiencies: { armor: ["shield"], weapons: ["martial"], tools: [], skills: null },
+  },
+  subclassTitle: "Senda primitiva",
 };
 
 describe("validateEntryData", () => {
@@ -72,6 +86,33 @@ describe("validateEntryData", () => {
   test("classFeature exige level y className", () => {
     expect(validateEntryData("classFeature", { level: 1, className: "Bárbaro" }).ok).toBe(true);
     expect(validateEntryData("classFeature", { className: "Bárbaro" }).ok).toBe(false);
+  });
+  test("class: progresiones, tabla y multiclase", () => {
+    const withData = (extra: Record<string, unknown>) => validateEntryData("class", { ...barbarianData, ...extra });
+    expect(withData({ table: { columns: [{ label: "Furias", values: ["2"] }] } }).ok).toBe(false);
+    expect(withData({ progressions: { ...barbarianData.progressions, weaponMastery: { 21: 2 } } }).ok).toBe(false);
+    expect(withData({ progressions: { ...barbarianData.progressions, cantrips: Array(20).fill(3) } }).ok).toBe(true);
+    expect(withData({ progressions: { ...barbarianData.progressions, optionalFeatures: [{ name: "Metamagic", levels: { 2: 2 } }] } }).ok)
+      .toBe(false);
+    expect(withData({ multiclass: { requirements: { abilities: ["str"], any: false },
+      proficiencies: { armor: [], weapons: [], tools: [], skills: { count: 1, from: ["stealth"] } } } }).ok).toBe(true);
+    const withoutTitle: Record<string, unknown> = { ...barbarianData };
+    delete withoutTitle.subclassTitle;
+    expect(validateEntryData("class", withoutTitle).ok).toBe(false);
+  });
+  test("classFeature con opciones y mejora de característica", () => {
+    const options = [{ book: "b", key: "classFeature:protector|cleric|xphb|1" }];
+    expect(validateEntryData("classFeature", { level: 1, className: "Cleric", options }).ok).toBe(true);
+    expect(validateEntryData("subclassFeature", { level: 4, className: "Cleric", subclassName: "X", asi: true }).ok).toBe(true);
+    expect(validateEntryData("classFeature", { level: 4, className: "Cleric", asi: false }).ok).toBe(false);
+    expect(validateEntryData("classFeature", { level: 1, className: "Cleric", options: ["x"] }).ok).toBe(false);
+  });
+  test("optionalFeature exige featureType", () => {
+    const pact = { book: "b", key: "optionalFeature:pact of the blade|xphb" };
+    expect(validateEntryData("optionalFeature", { featureType: ["EI"], prerequisite: { level: 5, pact: pact.key } }).ok).toBe(true);
+    expect(validateEntryData("optionalFeature", { featureType: ["MM"] }).ok).toBe(true);
+    expect(validateEntryData("optionalFeature", { prerequisite: { level: 5 } }).ok).toBe(false);
+    expect(validateEntryData("optionalFeature", { featureType: ["EI"], prerequisite: { spell: "x" } }).ok).toBe(false);
   });
   test("item con paquete y arma", () => {
     const r = validateEntryData("item", { type: "weapon", weight: 7, value: 3000,

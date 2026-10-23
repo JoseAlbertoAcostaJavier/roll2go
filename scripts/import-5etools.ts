@@ -13,7 +13,7 @@ try {
 import { connectDB } from "../lib/mongodb";
 import { Book } from "../lib/Book";
 import { BookEntry } from "../lib/BookEntry";
-import { BOOK_PLACEHOLDER, normalizeAll, type RawFiles } from "../lib/rules/import/normalize";
+import { BOOK_PLACEHOLDER, normalizeAll, textChoiceFeatures, type RawFiles } from "../lib/rules/import/normalize";
 import { planImport } from "../lib/rules/import/plan";
 import { matchFoundry, type FoundryFiles } from "../lib/rules/import/foundry";
 import { normalizeName } from "../lib/rules/schemas";
@@ -75,6 +75,7 @@ function loadRaw(data: string, srdOnly: boolean): RawFiles {
     spellSources: j("spells/sources.json"),
     classes: readAll(path.join(data, "class"), "class-"),
     classFluff: srdOnly ? [] : readAll(path.join(data, "class"), "fluff-class-"),
+    optionalFeatures: j("optionalfeatures.json"),
   };
 }
 
@@ -89,6 +90,9 @@ function loadFoundry(data: string): FoundryFiles {
     spells: j("spells/foundry.json"),
   };
 }
+
+// Rasgos cuya elección en texto ya está especificada a mano (habilidades, pericia…)
+const SPECIFIED_CHOICES: ReadonlySet<string> = new Set<string>();
 
 const count = (xs: string[]) => {
   const m = new Map<string, number>();
@@ -186,6 +190,10 @@ async function main() {
     if (["spell", "item", "classFeature", "subclassFeature"].includes(kind)) console.log(`  ${kind}: ${keys.length}`);
     else console.log(`  ${kind} (${keys.length}): ${keys.join(", ")}`);
   }
+  const textChoices = textChoiceFeatures(upserts, SPECIFIED_CHOICES);
+  console.log(`\nRasgos con elección en texto sin especificación: ${textChoices.length}`);
+  for (const key of textChoices) console.log(`  ${key}`);
+
   console.log("\nLa caché del catálogo se renueva en 1 hora (o borra .next/cache).");
 
   await mongoose.disconnect();

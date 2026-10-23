@@ -20,7 +20,7 @@ const files: RawFiles = {
 };
 
 // Vocabulario de la interfaz: no son entradas del catálogo y no llevan fuente
-const VOCABULARY = ["ability", "alignment", "school", "condition"];
+const VOCABULARY = ["ability", "alignment", "school", "condition", "subclassTitle"];
 // Formato de clave de entrada: `tipo:nombre|fuente` (las subclases y rasgos llevan más tramos)
 const KEY_FORMAT = /^[a-zA-Z]+:[^|]+(\|[^|]+)+$/;
 
@@ -36,7 +36,9 @@ describe("diccionario es.json", () => {
   test("las claves de entradas tienen un tipo conocido y el formato del normalizador", () => {
     const bad = entryKeys.filter((k) => {
       const kind = k.split(":")[0];
-      const formatOk = known.has(k) || (KEY_FORMAT.test(k) && k === k.toLowerCase());
+      // El tipo puede llevar mayúsculas (`optionalFeature`); el resto de la clave va en minúsculas
+      const rest = k.slice(kind.length);
+      const formatOk = known.has(k) || (KEY_FORMAT.test(k) && rest === rest.toLowerCase());
       return !(ENTRY_KINDS as readonly string[]).includes(kind) || !formatOk;
     });
     expect(bad).toEqual([]);

@@ -58,7 +58,39 @@ const exactly = (n: number, c: Check): Check => (v, p, e) => {
   c(v, p, e);
 };
 
-const feature = shape({ level: int(1, 20), className: str, "subclassName?": str });
+const feature = shape({
+  level: int(1, 20), className: str, "subclassName?": str, "options?": arrayOf(ref), "asi?": oneOf(true),
+});
+
+/** Número acumulado por nivel de clase: claves de 1 a 20 y valores enteros. */
+const levelCounts: Check = (v, p, e) => {
+  if (!isObj(v)) { e.push(`${p}: debe ser un objeto`); return; }
+  for (const [level, count] of Object.entries(v)) {
+    if (!/^\d+$/.test(level) || Number(level) < 1 || Number(level) > 20) e.push(`${p}.${level}: el nivel debe estar entre 1 y 20`);
+    else int(0, 100)(count, `${p}.${level}`, e);
+  }
+};
+/** Un valor por nivel de clase (20). */
+const perLevel = (c: Check): Check => exactly(20, arrayOf(c));
+
+const progressions = shape({
+  feats: arrayOf(shape({ category: strings, levels: levelCounts })),
+  optionalFeatures: arrayOf(shape({ name: str, featureType: strings, levels: levelCounts })),
+  weaponMastery: nullable(levelCounts),
+  cantrips: nullable(perLevel(int(0, 100))),
+  prepared: nullable(perLevel(int(0, 100))),
+  spellbook: nullable(perLevel(int(0, 100))),
+});
+const classTable = shape({ columns: arrayOf(shape({ label: str, values: perLevel(str) })) });
+const multiclass = shape({
+  requirements: shape({ abilities, any: bool }),
+  proficiencies: shape({
+    armor: strings,
+    weapons: strings,
+    tools: strings,
+    skills: nullable(shape({ count: int(1, 20), from: strings })),
+  }),
+});
 
 const checks: { [K in EntryKind]: Check } = {
   species: shape({
@@ -88,6 +120,10 @@ const checks: { [K in EntryKind]: Check } = {
       table: arrayOf(arrayOf(num)),
     })),
     features: arrayOf(levelFeature),
+    progressions,
+    table: classTable,
+    multiclass,
+    subclassTitle: str,
   }),
   subclass: shape({ features: arrayOf(levelFeature), spells: arrayOf(shape({ level: int(1, 20), ref })) }),
   classFeature: feature,
@@ -126,6 +162,10 @@ const checks: { [K in EntryKind]: Check } = {
   }),
   language: shape({ type: oneOf("standard", "rare") }),
   skill: shape({ ability }),
+  optionalFeature: shape({
+    featureType: strings,
+    "prerequisite?": shape({ "level?": int(1, 20), "spell?": ref, "pact?": str, "feature?": str }),
+  }),
 };
 
 export function validateEntryData<K extends EntryKind>(
