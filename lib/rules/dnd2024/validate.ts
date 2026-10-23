@@ -21,8 +21,8 @@ export type ValidateCtx = {
 };
 export type ValidateResult = { ok: true; sheet: Dnd2024SheetV2 } | { ok: false; errors: Record<string, string> };
 
-const TEXT_LIMITS = { alignment: 40, appearance: 500, age: 500, languages: 500, notes: 10000 } as const;
-const MAX_XP = 355000;
+export const TEXT_LIMITS = { alignment: 40, appearance: 500, age: 500, languages: 500, notes: 10000 } as const;
+export const MAX_XP = 355000;
 type Size = "S" | "M" | "L";
 const SIZES: Size[] = ["S", "M", "L"];
 
