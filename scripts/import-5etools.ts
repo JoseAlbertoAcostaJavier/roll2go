@@ -59,7 +59,9 @@ function readAll<T>(dir: string, prefix: string): T[] {
     .map((f) => JSON.parse(readFileSync(path.join(dir, f), "utf8")) as T);
 }
 
-function loadRaw(data: string): RawFiles {
+// El texto de presentación de las clases (`fluff`) no está en el SRD: con --srd-only no se usa y la descripción
+// de la clase es un resumen hecho con sus datos
+function loadRaw(data: string, srdOnly: boolean): RawFiles {
   const j = <T>(f: string) => readJson<T>(path.join(data, f)) as T;
   return {
     races: j("races.json"),
@@ -72,6 +74,7 @@ function loadRaw(data: string): RawFiles {
     spells: readAll(path.join(data, "spells"), "spells-"),
     spellSources: j("spells/sources.json"),
     classes: readAll(path.join(data, "class"), "class-"),
+    classFluff: srdOnly ? [] : readAll(path.join(data, "class"), "fluff-class-"),
   };
 }
 
@@ -98,7 +101,7 @@ async function main() {
   const source = args.source.toUpperCase();
   const dict = es as Record<string, string>;
 
-  const { entries, errors } = normalizeAll(loadRaw(args.data), source);
+  const { entries, errors } = normalizeAll(loadRaw(args.data, args.srdOnly), source);
   const foundry = matchFoundry(entries, loadFoundry(args.data));
 
   await connectDB();
@@ -183,7 +186,7 @@ async function main() {
     if (["spell", "item", "classFeature", "subclassFeature"].includes(kind)) console.log(`  ${kind}: ${keys.length}`);
     else console.log(`  ${kind} (${keys.length}): ${keys.join(", ")}`);
   }
-  console.log("\nLa caché del catálogo se renueva en 1 hora o al reiniciar el servidor.");
+  console.log("\nLa caché del catálogo se renueva en 1 hora (o borra .next/cache).");
 
   await mongoose.disconnect();
 }

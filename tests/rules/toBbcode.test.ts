@@ -12,6 +12,11 @@ describe("inlineTags", () => {
     expect(inlineTags("{@condition Blinded}")).toBe("[ref=condition:blinded|xphb]Blinded[/ref]");
     expect(inlineTags("{@condition Blinded||ciego}")).toBe("[ref=condition:blinded|xphb]ciego[/ref]");
   });
+  it("filter, book y 5etools muestran siempre el primer segmento", () => {
+    expect(inlineTags("{@filter trucos|spells|level=0|class=Wizard}")).toBe("[ref=filter:trucos|spells]trucos[/ref]");
+    expect(inlineTags("{@book capítulo 7|XPHB|7}")).toBe("[ref=book:capítulo 7|xphb]capítulo 7[/ref]");
+    expect(inlineTags("{@5etools tabla|tables.html|extra}")).toBe("[ref=5etools:tabla|tables.html]tabla[/ref]");
+  });
   it("destaca dados y CD", () => {
     expect(inlineTags("{@dice 1d8} y {@dc 15}")).toBe("[b]1d8[/b] y [b]CD 15[/b]");
     expect(inlineTags("{@damage 2d6|fuego}")).toBe("[b]fuego[/b]");

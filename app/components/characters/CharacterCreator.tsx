@@ -15,7 +15,7 @@ import { checkBackgroundBonus } from "@/lib/rules/dnd2024/abilities";
 import { totalsWithinLimit } from "@/lib/rules/dnd2024/assign";
 import { ALIGNMENTS } from "@/lib/rules/dnd2024/alignments";
 import { equipmentRefs, refKey } from "@/lib/rules/dnd2024/equipmentRefs";
-import { ABILITY_NAMES, sizeName, skillName } from "@/lib/rules/dnd2024/labels";
+import { ABILITY_NAMES, sizeName, skillName, toolName } from "@/lib/rules/dnd2024/labels";
 import AbilityScores from "./AbilityScores";
 import CharacterSummary, { type MissingItem } from "./CharacterSummary";
 import RuleSelect from "./RuleSelect";
@@ -721,7 +721,7 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
                 <dt className="font-semibold">Habilidades</dt>
                 <dd className="text-muted">{bgData.skills.map(skillName).join(", ") || "—"}</dd>
                 <dt className="font-semibold">Herramientas</dt>
-                <dd className="text-muted">{bgData.tools.join(", ") || "—"}</dd>
+                <dd className="text-muted">{bgData.tools.map(toolName).join(", ") || "—"}</dd>
               </dl>
               <h3 className="mb-2 mt-5 text-sm font-semibold">Equipo inicial</h3>
               <EquipmentChoice

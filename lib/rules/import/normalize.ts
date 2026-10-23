@@ -9,6 +9,7 @@ import type {
 } from "../types";
 import { normalizeName, validateEntryData } from "../schemas";
 import { entriesToBbcode } from "./toBbcode";
+import { ABILITY_NAMES, CHOICE_LABELS, proficiencyName, skillName, toolName } from "../dnd2024/labels";
 
 export const BOOK_PLACEHOLDER = "__BOOK__";
 
@@ -40,6 +41,8 @@ export type RawFiles = {
   spellSources?: Record<string, Record<string, { class?: { name: string; source: string }[] }>>;
   /** Un elemento por `class/class-*.json`. */
   classes?: { class?: unknown[]; subclass?: unknown[]; classFeature?: unknown[]; subclassFeature?: unknown[] }[];
+  /** Un elemento por `class/fluff-class-*.json` (texto de presentación de cada clase). */
+  classFluff?: { classFluff?: unknown[] }[];
 };
 
 /** Datos de contexto que necesitan algunos normalizadores. */
@@ -50,6 +53,8 @@ export type NormalizeContext = {
   spellClasses: Map<string, string[]>;
   /** `nombre corto|clase|fuente de la clase|fuente` en minúsculas → subclase. */
   subclasses: Map<string, { key: string; name: string }>;
+  /** Clave de la clase → descripción (BBCode) sacada de su `fluff`. */
+  classFluff: Map<string, string>;
 };
 
 // ---------- utilidades ----------
@@ -226,6 +231,9 @@ const collectStrings = (v: unknown): string[] =>
     : Array.isArray(v) ? v.flatMap(collectStrings)
       : isObj(v) && !("choose" in v) && !("all" in v) ? Object.values(v).flatMap(collectStrings) : [];
 
+/** Código de 5etools (`setGaming`, `anyGamingSet`…) → texto en español; si no se conoce, el código. */
+const choiceLabel = (code: string) => CHOICE_LABELS[code] ?? code;
+
 /** Elemento de equipo inicial de 5etools → `Pack`. */
 function toPack(p: unknown): Pack | null {
   if (typeof p === "string") return { ref: ref("item", cleanRefKey(p)) };
@@ -234,7 +242,11 @@ function toPack(p: unknown): Pack | null {
   if (typeof p.item === "string") pack.ref = ref("item", cleanRefKey(p.item));
   if (typeof p.value === "number") pack.value = p.value;
   if (typeof p.quantity === "number") pack.quantity = p.quantity;
-  const label = str(p.displayName) || str(p.special) || str(p.equipmentType) || asArr(p.equipmentTypes).map(str).join(" / ");
+  const label = str(p.displayName) || str(p.special) || choiceLabel(str(p.equipmentType))
+    || asArr(p.equipmentTypes).map((t, i) => {
+      const l = choiceLabel(str(t));
+      return i && l ? l[0].toLowerCase() + l.slice(1) : l; // "Un juego (a elegir) o un instrumento…"
+    }).join(" o ");
   if (label) pack.displayName = label;
   return Object.keys(pack).length ? pack : null;
 }
@@ -514,6 +526,35 @@ function featureRef(f: unknown, field: "classFeature" | "subclassFeature"): Leve
 
 const PROGRESSION: Record<string, "full" | "half" | "pact"> = { full: "full", "1/2": "half", artificer: "half", pact: "pact" };
 
+/** Resumen en español de una clase sin descripción propia ni `fluff`: dado de golpe, competencias y rasgos de nivel 1. */
+function classSummary(raw: Rec, data: EntryData["class"], anySkills: boolean): string {
+  const list = (xs: string[]) => xs.join(", ") || "—";
+  // [{ str: true }, { dex: true }] → "Fuerza o Destreza"; [{ dex: true, wis: true }] → "Destreza y Sabiduría"
+  const primary = asArr(raw.primaryAbility)
+    .map((p) => (isObj(p) ? ABILITIES.filter((a) => p[a] === true).map((a) => ABILITY_NAMES[a]).join(" y ") : ""))
+    .filter(Boolean)
+    .join(" o ");
+  const skills = anySkills
+    ? `elige ${data.skills.count} cualesquiera`
+    : `elige ${data.skills.count} entre ${data.skills.from.map(skillName).join(", ")}`;
+  // "Rage|Barbarian|XPHB|1" → "Rage" (los rasgos aún no tienen traducción)
+  const level1 = asArr(raw.classFeatures)
+    .map((f) => (typeof f === "string" ? f : isObj(f) ? str(f.classFeature) : "").split("|"))
+    .filter((parts) => parts[parts.length - 1] === "1")
+    .map((parts) => plainText(parts[0]));
+  const lines: [string, string][] = [
+    ["Dado de golpe", `d${data.hitDie}`],
+    ["Característica principal", primary || "—"],
+    ["Salvaciones", list(data.saves.map((a) => ABILITY_NAMES[a]))],
+    ["Habilidades", skills],
+    ["Armaduras", list(data.armor.map(proficiencyName))],
+    ["Armas", list(data.weapons.map(proficiencyName))],
+    ["Herramientas", list(data.tools.map(toolName))],
+    ["Rasgos de nivel 1", list(level1)],
+  ];
+  return lines.map(([k, v]) => `[b]${k}:[/b] ${v}`).join("\n");
+}
+
 export function normalizeClass(raw: Rec, ctx: NormalizeContext): NormalizedEntry {
   const prof = isObj(raw.startingProficiencies) ? raw.startingProficiencies : {};
   const skillBlock = asArr(prof.skills)[0];
@@ -532,7 +573,8 @@ export function normalizeClass(raw: Rec, ctx: NormalizeContext): NormalizedEntry
   const hd = isObj(raw.hd) ? raw.hd.faces : undefined;
   const ability = raw.spellcastingAbility;
   const spellTable = asArr(raw.classTableGroups).find((g) => isObj(g) && Array.isArray(g.rowsSpellProgression));
-  return entry<"class">(header("class", raw, keyOf("class", str(raw.name), str(raw.source))), {
+  const key = keyOf("class", str(raw.name), str(raw.source));
+  const data: EntryData["class"] = {
     hitDie: hd as EntryData["class"]["hitDie"],
     primaryAbility: ABILITIES.filter((a) => asArr(raw.primaryAbility).some((p) => isObj(p) && p[a] === true)),
     saves: asArr(raw.proficiency).map(str) as Ability[],
@@ -551,7 +593,11 @@ export function normalizeClass(raw: Rec, ctx: NormalizeContext): NormalizedEntry
       }
       : null,
     features,
-  });
+  };
+  // Descripción: la propia, si no la del `fluff` y, si tampoco hay, un resumen hecho con los datos
+  const head = header("class", raw, key);
+  head.description ||= ctx.classFluff.get(key) || classSummary(raw, data, isObj(skillBlock) && typeof skillBlock.any === "number");
+  return entry<"class">(head, data);
 }
 
 /** Clave de subclase: `subclass:nombre|clase|fuente de la clase` (+ `|fuente` si es otra). */
@@ -639,7 +685,18 @@ export function normalizeAll(files: RawFiles, source: string): {
     skillNames: skills.map((s) => lower(str(s.name))),
     spellClasses: new Map(),
     subclasses: new Map(),
+    classFluff: new Map(),
   };
+  for (const f of files.classFluff ?? []) {
+    for (const x of asArr(f.classFluff)) {
+      if (!isObj(x) || lower(str(x.source)) !== src) continue;
+      // Suele ser una sola sección con el nombre de la clase: se omite ese título
+      const body = asArr(x.entries);
+      const only = body.length === 1 && isObj(body[0]) && body[0].type === "section" ? body[0] : null;
+      const text = entriesToBbcode(only ? asArr(only.entries) : body);
+      if (text) ctx.classFluff.set(keyOf("class", str(x.name), str(x.source)), text);
+    }
+  }
   for (const [spellSource, byName] of Object.entries(files.spellSources ?? {})) {
     for (const [name, info] of Object.entries(byName)) {
       ctx.spellClasses.set(keyOf("spell", name, spellSource), (info.class ?? []).map((c) => lower(c.name)));

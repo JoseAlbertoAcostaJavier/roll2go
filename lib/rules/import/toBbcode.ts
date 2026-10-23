@@ -40,6 +40,9 @@ const ABILITIES: Record<string, string> = {
   cha: "Carisma",
 };
 
+// En estas etiquetas los segmentos tras el primero son parámetros (`level=0`, capítulos…), no el texto a mostrar
+const FIRST_SEGMENT_TAGS = new Set(["filter", "book", "5etools"]);
+
 const bold = (s: string) => `[b]${s}[/b]`;
 
 function convertTag(name: string, rawArgs: string): string {
@@ -79,7 +82,8 @@ function convertTag(name: string, rawArgs: string): string {
     const source = (args[1] || DEFAULT_SOURCE).toLowerCase();
     // La clave va dentro de [ref=...], que no admite ] ni saltos de línea
     const key = `${first.toLowerCase()}|${source}`.replace(/[\]\n]/g, "");
-    return `[ref=${type}:${key}]${args[2] || first}[/ref]`;
+    const shown = FIRST_SEGMENT_TAGS.has(tag) ? first : args[2] || first;
+    return `[ref=${type}:${key}]${shown}[/ref]`;
   }
 
   return first; // etiqueta desconocida: texto plano

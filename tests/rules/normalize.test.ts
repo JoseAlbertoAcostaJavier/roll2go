@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { inlineTags } from "@/lib/rules/import/toBbcode";
 import {
-  normalizeAll, expandVersions, resolveCopy, toIdentifier,
+  normalizeAll, normalizeBackground, expandVersions, resolveCopy, toIdentifier,
   type NormalizedEntry, type RawFiles,
 } from "@/lib/rules/import/normalize";
 import type {
@@ -95,6 +95,27 @@ describe("clase (Bárbaro)", () => {
     expect(data.subclassLevel).toBe(3);
     expect(data.asiLevels).toEqual([4, 8, 12, 16]);
     expect(data.spellcasting).toBeNull();
+  });
+  test("sin fluff, la descripción es un resumen en español", () => {
+    const description = find("class", "class:barbarian|xphb")!.description;
+    expect(description).toContain("[b]Dado de golpe:[/b] d12");
+    expect(description).toContain("[b]Característica principal:[/b] Fuerza");
+    expect(description).toContain("[b]Salvaciones:[/b] Fuerza, Constitución");
+    expect(description).toContain("[b]Habilidades:[/b] elige 2 entre Trato con animales, Atletismo");
+    expect(description).toContain("[b]Armaduras:[/b] Armadura ligera, Armadura intermedia, Escudos");
+    expect(description).toContain("[b]Rasgos de nivel 1:[/b] Rage, Unarmored Defense, Weapon Mastery");
+  });
+  test("con fluff, la descripción es su texto (sin el título de la sección)", () => {
+    const withFluff = normalizeAll({
+      ...files,
+      classFluff: [{
+        classFluff: [{
+          name: "Barbarian", source: "XPHB",
+          entries: [{ type: "section", name: "Barbarian", entries: ["Barbarians are {@b mighty} warriors."] }],
+        }],
+      }],
+    }, "XPHB").entries.find((e) => e.key === "class:barbarian|xphb")!;
+    expect(withFluff.description).toBe("Barbarians are [b]mighty[/b] warriors.");
   });
   test("rasgos y equipo", () => {
     expect(data.features[0]).toEqual({ ref: { book: "__BOOK__", key: "classFeature:rage|barbarian|xphb|1" }, level: 1 });
@@ -281,4 +302,21 @@ describe("herencias", () => {
 
 test("sin errores en los fragmentos reales", () => {
   expect(errors).toEqual([]);
+});
+
+describe("tipos de equipo a elegir", () => {
+  test("los códigos de 5etools pasan a texto en español", () => {
+    const bg = normalizeBackground({
+      name: "Guard", source: "XPHB",
+      startingEquipment: [{
+        A: [{ equipmentType: "setGaming" }, { equipmentType: "toolArtisan" }, { equipmentType: "codigoRaro" }],
+        B: [{ equipmentTypes: ["instrumentMusical", "setGaming"] }],
+      }],
+    });
+    const data = bg.data as BackgroundData;
+    expect(data.equipment.A.map((p) => p.displayName)).toEqual([
+      "Un juego (a elegir)", "Unas herramientas de artesano (a elegir)", "codigoRaro",
+    ]);
+    expect(data.equipment.B[0].displayName).toBe("Un instrumento musical (a elegir) o un juego (a elegir)");
+  });
 });

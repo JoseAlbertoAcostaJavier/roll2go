@@ -15,7 +15,7 @@ import { derive } from "@/lib/rules/dnd2024/derive";
 import type { Dnd2024Sheet } from "@/lib/rules/dnd2024/sheet";
 import { alignmentName } from "@/lib/rules/dnd2024/alignments";
 import { equipmentRefs, refKey } from "@/lib/rules/dnd2024/equipmentRefs";
-import { ABILITY_NAMES, proficiencyName, skillName } from "@/lib/rules/dnd2024/labels";
+import { ABILITY_NAMES, proficiencyName, skillName, toolName } from "@/lib/rules/dnd2024/labels";
 import { ABILITIES, type BackgroundData, type ClassData, type Ref } from "@/lib/rules/types";
 import Bbcode from "@/app/components/Bbcode";
 import { card, cardTitle } from "@/app/components/formStyles";
@@ -210,7 +210,7 @@ export default async function CharacterPage({ params }: Props) {
               <dt className="font-semibold">Armas</dt>
               <dd className="text-muted">{d.weapons.map(proficiencyName).join(", ") || "—"}</dd>
               <dt className="font-semibold">Herramientas</dt>
-              <dd className="text-muted">{d.tools.join(", ") || "—"}</dd>
+              <dd className="text-muted">{d.tools.map(toolName).join(", ") || "—"}</dd>
             </dl>
           </section>
 
