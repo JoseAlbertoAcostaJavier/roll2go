@@ -23,6 +23,71 @@
 			"dmgType": "S",
 			"axe": true,
 			"weapon": true
+		},
+		{
+			"name": "Handaxe",
+			"source": "XPHB",
+			"srd52": true,
+			"basicRules2024": true,
+			"edition": "one",
+			"rarity": "none",
+			"type": "M|XPHB",
+			"weight": 2,
+			"value": 500,
+			"weaponCategory": "simple",
+			"property": [
+				"L|XPHB",
+				"Th|XPHB"
+			],
+			"range": "20/60",
+			"mastery": [
+				"Vex|XPHB"
+			],
+			"dmg1": "1d6",
+			"dmgType": "S",
+			"axe": true,
+			"weapon": true
+		},
+		{
+			"name": "Chain Mail",
+			"source": "XPHB",
+			"srd52": true,
+			"basicRules2024": true,
+			"edition": "one",
+			"rarity": "none",
+			"type": "HA|XPHB",
+			"weight": 55,
+			"value": 7500,
+			"ac": 16,
+			"strengthReq": "13",
+			"stealth": true,
+			"armor": true
+		},
+		{
+			"name": "Studded Leather Armor",
+			"source": "XPHB",
+			"srd52": true,
+			"basicRules2024": true,
+			"edition": "one",
+			"rarity": "none",
+			"type": "LA|XPHB",
+			"weight": 13,
+			"value": 4500,
+			"ac": 12,
+			"armor": true
+		},
+		{
+			"name": "Shield",
+			"source": "XPHB",
+			"srd52": true,
+			"basicRules2024": true,
+			"edition": "one",
+			"rarity": "none",
+			"type": "S|XPHB",
+			"weight": 6,
+			"value": 1000,
+			"ac": 2,
+			"armor": true
 		}
 	]
 }
