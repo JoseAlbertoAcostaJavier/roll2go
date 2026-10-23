@@ -6,7 +6,7 @@
 import { ABILITIES } from "../types";
 import type {
   Ability, ClassTable, EntryData, EntryKind, Equipment, FeatureData, LevelCounts, LevelFeature, MulticlassData,
-  OptionalFeatureData, Pack, Ref, SpellGrant,
+  NameGender, OptionalFeatureData, Pack, Ref, SpellGrant,
 } from "../types";
 import { normalizeName, validateEntryData } from "../schemas";
 import { entriesToBbcode } from "./toBbcode";
@@ -47,6 +47,8 @@ export type RawFiles = {
   optionalFeatures?: { optionalfeature?: unknown[] };
   /** Un elemento por `class/fluff-class-*.json` (texto de presentación de cada clase). */
   classFluff?: { classFluff?: unknown[] }[];
+  /** `names.json`: tablas de nombres por especie (Guía de Xanathar para todo). */
+  names?: { name?: unknown[] };
 };
 
 /** Datos de contexto que necesitan algunos normalizadores. */
@@ -856,6 +858,25 @@ export function normalizeOptionalFeature(raw: Rec): NormalizedEntry {
     header("optionalFeature", raw, keyOf("optionalFeature", str(raw.name), str(raw.source))), data);
 }
 
+// «Female», «Female Adult», «Arabic, Female» → female; «Clan» y «Family» son apellidos; el resto («Child»,
+// «Virtue», «Duergar Clan»…), otra tabla
+function nameGender(option: string): NameGender {
+  const o = lower(option);
+  if (/\bfemale\b/.test(o)) return "female";
+  if (/\bmale\b/.test(o)) return "male";
+  return o === "clan" || o === "family" ? "family" : "other";
+}
+
+export function normalizeNameTable(raw: Rec): NormalizedEntry {
+  const head = header("nameTable", raw, keyOf("nameTable", str(raw.name), str(raw.source)), { description: "" });
+  const tables = asArr(raw.tables).filter(isObj).map((t) => ({
+    option: str(t.option),
+    gender: nameGender(str(t.option)),
+    names: [...new Set(asArr(t.table).map((r) => (isObj(r) ? str(r.result).trim() : "")).filter(Boolean))],
+  }));
+  return entry<"nameTable">(head, { species: head.identifier, tables });
+}
+
 /**
  * Rasgos de clase y subclase cuyo texto pide elegir («choose», «of your choice») sin un bloque `options`, sin ser una
  * mejora de característica y sin una especificación escrita a mano (`specified`: claves de rasgo). El importador los
@@ -965,5 +986,6 @@ export function normalizeAll(files: RawFiles, source: string): {
   for (const o of fromSource("optionalFeature", files.optionalFeatures?.optionalfeature)) {
     run("optionalFeature", o, () => normalizeOptionalFeature(o));
   }
+  for (const n of fromSource("nameTable", files.names?.name)) run("nameTable", n, () => normalizeNameTable(n));
   return { entries, errors };
 }

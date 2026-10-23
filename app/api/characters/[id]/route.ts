@@ -7,6 +7,7 @@ import { CampaignImage } from "@/lib/CampaignImage";
 import { OUTDATED_SHEET_ERROR, loadCharacterFor } from "@/lib/characterAccess";
 import { MAX_IMAGE, readImage, storeImage } from "@/lib/campaignInput";
 import { ALIGNMENTS } from "@/lib/rules/dnd2024/alignments";
+import { parsePronouns } from "@/lib/rules/dnd2024/names";
 import { MAX_XP, TEXT_LIMITS } from "@/lib/rules/dnd2024/validate";
 
 type Ctx = { params: Promise<{ id: string }> };
@@ -18,8 +19,8 @@ const MAX_BACKSTORY = 100000;
 const text = (v: FormDataEntryValue | null) => (typeof v === "string" ? v : "");
 const notFound = () => NextResponse.json({ error: "Personaje no encontrado." }, { status: 404 });
 
-// Edita los datos del personaje (multipart/form-data, solo el dueño). Se cambia lo que llega: `name`, `status`,
-// `alignment`, `age`, `appearance`, `languages`, `backstory`, `notes`, `xp`, `portrait`, `image`, y las marcas
+// Edita los datos del personaje (multipart/form-data, solo el dueño). Se cambia lo que llega: `name`, `pronouns`,
+// `status`, `alignment`, `age`, `appearance`, `languages`, `backstory`, `notes`, `xp`, `portrait`, `image`, y las marcas
 // `removePortrait` / `removeImage`. Mismos límites que el alta. Responde { ok: true } o 400 { errors }.
 export async function PATCH(req: NextRequest, { params }: Ctx) {
   const { id } = await params;
@@ -55,6 +56,11 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     const status = text(form.get("status")) as (typeof STATUSES)[number];
     if (!STATUSES.includes(status)) errors.status = "Estado no válido.";
     else set.status = status;
+  }
+  if (form.has("pronouns")) {
+    const pronouns = parsePronouns(text(form.get("pronouns")));
+    if (!pronouns) errors.pronouns = "Pronombres no válidos.";
+    else set.pronouns = pronouns;
   }
   if (form.has("backstory")) {
     const backstory = cleanText(text(form.get("backstory")));

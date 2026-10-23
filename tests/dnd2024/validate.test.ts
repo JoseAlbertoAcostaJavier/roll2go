@@ -3,6 +3,7 @@ import type { CatalogEntry } from "@/lib/rules/catalog";
 import { validateSheet } from "@/lib/rules/dnd2024/validate";
 import { signRolls } from "@/lib/rules/dnd2024/rolls";
 import type { Ref } from "@/lib/rules/types";
+import { B as FB, buildCatalog, ref as fref } from "./fixtureCatalog";
 
 beforeAll(() => {
   process.env.AUTH_SECRET = "secreto-de-prueba";
@@ -35,7 +36,8 @@ const catalog = new Map<string, CatalogEntry>(
     entry("class:fighter|xphb", {
       skills: { count: 2, from: ["Acrobatics", "Athletics", "Insight", "Perception"] },
       equipment: { A: [{ ref: { book: B, key: "item:longsword|xphb" } }], B: [], C: [{ value: 15500 }] },
-      subclassLevel: 3, hitDie: 10,
+      subclassLevel: 3, hitDie: 10, features: [],
+      progressions: { feats: [], optionalFeatures: [], weaponMastery: null, cantrips: null, prepared: null, spellbook: null },
     }, { name: "Fighter", nameEs: "Guerrero" }),
   ].map((e) => [e.ref.key, e]),
 );
@@ -55,7 +57,8 @@ const valid = (): Sheet => ({
   lineage: named("lineage:drow|xphb"),
   background: { ...named("background:acolyte|xphb"), abilities: { int: 2, wis: 1 }, equipment: "A" },
   classes: [{
-    ...named("class:fighter|xphb"), level: 1, subclass: null, skills: ["Athletics", "Acrobatics"], equipment: "C",
+    ...named("class:fighter|xphb"), level: 1, subclass: null, equipment: "C",
+    choices: [{ type: "skills", source: "class:skills", value: ["Athletics", "Acrobatics"] }],
   }],
   abilityMethod: "standard",
   baseAbilities: { str: 15, dex: 14, con: 13, int: 12, wis: 10, cha: 8 },
@@ -144,10 +147,10 @@ describe("validateSheet", () => {
   });
   it("habilidades y equipo de clase", async () => {
     // repite una del trasfondo
-    expect(await errorsOf((s) => { s.classes[0].skills = ["Athletics", "Insight"]; })).toHaveProperty("classes.0.skills");
-    expect(await errorsOf((s) => { s.classes[0].skills = ["Athletics"]; })).toHaveProperty("classes.0.skills");
-    expect(await errorsOf((s) => { s.classes[0].skills = ["Athletics", "Athletics"]; })).toHaveProperty("classes.0.skills");
-    expect(await errorsOf((s) => { s.classes[0].skills = ["Athletics", "Stealth"]; })).toHaveProperty("classes.0.skills");
+    expect(await errorsOf((s) => { s.classes[0].choices[0].value = ["Athletics", "Insight"]; })).toHaveProperty(["levels.0.choices.class:skills"]);
+    expect(await errorsOf((s) => { s.classes[0].choices[0].value = ["Athletics"]; })).toHaveProperty(["levels.0.choices.class:skills"]);
+    expect(await errorsOf((s) => { s.classes[0].choices[0].value = ["Athletics", "Athletics"]; })).toHaveProperty(["levels.0.choices.class:skills"]);
+    expect(await errorsOf((s) => { s.classes[0].choices[0].value = ["Athletics", "Stealth"]; })).toHaveProperty(["levels.0.choices.class:skills"]);
     expect(await errorsOf((s) => { s.classes[0].equipment = "D"; })).toHaveProperty("classes.0.equipment");
   });
   it("las habilidades de clase no repiten las de la especie (fijas o elegidas)", async () => {
@@ -156,13 +159,13 @@ describe("validateSheet", () => {
       s.lineage = null;
       s.speciesChoices = { skills: ["Perception"], size: "M" };
     };
-    expect(await errorsOf((s) => { human(s); s.classes[0].skills = ["Athletics", "Perception"]; }))
-      .toHaveProperty("classes.0.skills");
+    expect(await errorsOf((s) => { human(s); s.classes[0].choices[0].value = ["Athletics", "Perception"]; }))
+      .toHaveProperty(["levels.0.choices.class:skills"]);
     expect((await run((s) => { human(s); })).ok).toBe(true);
     const dwarf = (s: Sheet) => { s.species = named("species:dwarf|xphb"); s.lineage = null; };
     expect((await run(dwarf)).ok).toBe(true);
-    expect(await errorsOf((s) => { dwarf(s); s.classes[0].skills = ["Athletics", "Perception"]; }))
-      .toHaveProperty("classes.0.skills");
+    expect(await errorsOf((s) => { dwarf(s); s.classes[0].choices[0].value = ["Athletics", "Perception"]; }))
+      .toHaveProperty(["levels.0.choices.class:skills"]);
   });
   it("la habilidad elegida de especie no repite una del trasfondo", async () => {
     expect(await errorsOf((s) => {
@@ -216,5 +219,88 @@ describe("validateSheet", () => {
     expect(await errorsOf((s) => { s.xp = 1.5; })).toHaveProperty("xp");
     const r = await run((s) => { s.notes = "a\u0000b"; });
     expect(r.ok && r.sheet.notes).toBe("ab");
+  });
+});
+
+describe("validateSheet: elecciones de clase de nivel 1", () => {
+  const cat = buildCatalog(["class-barbarian.json", "class-cleric.json"]);
+  const fctx = {
+    userId: "u1",
+    books: [FB],
+    resolve: async (r: Ref) => (r.book === FB ? (cat.get(`${FB}:${r.key}`) ?? null) : null),
+    hasLineages: async () => true,
+    makeId: () => "id1",
+  };
+  const fnamed = (key: string) => ({ ref: fref(key), name: "cliente" });
+  const skills = (value: string[]) => ({ type: "skills", source: "class:skills", value });
+  const sheetFor = (cls: string, choices: unknown[]): Sheet => ({
+    version: 1,
+    species: fnamed("species:elf|xphb"),
+    lineage: fnamed("lineage:drow|xphb"),
+    background: { ...fnamed("background:acolyte|xphb"), abilities: { wis: 2, int: 1 }, equipment: "A" },
+    classes: [{ ...fnamed(`class:${cls}|xphb`), level: 1, subclass: null, equipment: "A", choices }],
+    abilityMethod: "standard",
+    baseAbilities: { str: 15, dex: 14, con: 13, int: 12, wis: 10, cha: 8 },
+    rolls: null,
+    speciesChoices: { skills: ["perception"], size: null },
+    alignment: "", appearance: "", age: "", languages: "", notes: "", xp: 0,
+    hp: { max: null, current: null, temp: 0 },
+  });
+  const order = (key: string) => ({ type: "featureOption", source: "classFeature:divine order|cleric|xphb|1", value: fnamed(key) });
+  const errs = (r: Awaited<ReturnType<typeof validateSheet>>) => (r.ok ? {} : r.errors);
+  const choiceErrors = (r: Awaited<ReturnType<typeof validateSheet>>) =>
+    Object.keys(errs(r)).filter((k) => k.startsWith("levels.0.choices"));
+
+  it("Clérigo 1 sin Orden divina → error en levels.0.choices", async () => {
+    const r = await validateSheet(sheetFor("cleric", [skills(["history", "medicine"])]), fctx);
+    expect(errs(r)).toHaveProperty("levels.0.choices");
+  });
+  it("Clérigo 1 con Orden divina → ok, con el nombre del catálogo", async () => {
+    const r = await validateSheet(sheetFor("cleric", [skills(["history", "medicine"]), order("classFeature:protector|cleric|xphb|1")]), fctx);
+    if (!r.ok) throw new Error(JSON.stringify(r.errors));
+    expect(r.sheet.levels[0].choices).toEqual([
+      { type: "skills", source: "class:skills", value: ["history", "medicine"] },
+      { type: "featureOption", source: "classFeature:divine order|cleric|xphb|1", value: { ref: fref("classFeature:protector|cleric|xphb|1"), name: "Protector" } },
+    ]);
+    expect(r.sheet.weaponMasteries).toEqual([]);
+  });
+  it("Orden divina con una opción que no es suya, o elección que no estaba pendiente → error", async () => {
+    expect(choiceErrors(await validateSheet(sheetFor("cleric", [skills(["history", "medicine"]), order("classFeature:rage|barbarian|xphb|1")]), fctx))).not.toEqual([]);
+    expect(choiceErrors(await validateSheet(sheetFor("cleric", [
+      skills(["history", "medicine"]), order("classFeature:protector|cleric|xphb|1"),
+      { type: "expertise", source: "classFeature:expertise|rogue|xphb|1", value: ["history"] },
+    ]), fctx))).not.toEqual([]);
+  });
+  it("habilidades de clase: número, lista y sin repetir las del trasfondo o la especie", async () => {
+    const withSkills = (s: string[]) => validateSheet(sheetFor("cleric", [skills(s), order("classFeature:protector|cleric|xphb|1")]), fctx);
+    expect(choiceErrors(await withSkills(["history"]))).not.toEqual([]);
+    expect(choiceErrors(await withSkills(["history", "stealth"]))).not.toEqual([]);
+    expect(choiceErrors(await withSkills(["history", "insight"]))).not.toEqual([]);
+  });
+  const mastery = (...keys: string[]) => ({
+    type: "weaponMastery", source: "progression:weapon mastery|barbarian|xphb", value: keys.map((k) => fref(`item:${k}|xphb`)),
+  });
+  const barbarian = (...extra: unknown[]) => sheetFor("barbarian", [skills(["athletics", "nature"]), ...extra]);
+  it("Bárbaro 1 con 1 maestría → error (exige 2)", async () => {
+    expect(choiceErrors(await validateSheet(barbarian(mastery("greataxe")), fctx))).not.toEqual([]);
+    expect(errs(await validateSheet(barbarian(), fctx))).toHaveProperty("levels.0.choices");
+  });
+  it("Bárbaro 1 con 2 maestrías → ok y weaponMasteries con las dos", async () => {
+    const r = await validateSheet(barbarian(mastery("greataxe", "handaxe")), fctx);
+    if (!r.ok) throw new Error(JSON.stringify(r.errors));
+    expect(r.sheet.weaponMasteries).toHaveLength(2);
+    expect(r.sheet.weaponMasteries).toEqual([fref("item:greataxe|xphb"), fref("item:handaxe|xphb")]);
+  });
+  it("tiradas: guarda los dados si cuadran con los valores", async () => {
+    const values = [15, 14, 13, 12, 10, 8];
+    const dice = [[6, 5, 4, 1], [5, 5, 4, 2], [6, 4, 3, 1], [4, 4, 4, 3], [5, 3, 2, 1], [3, 3, 2, 1]];
+    const s = barbarian(mastery("greataxe", "handaxe"));
+    s.abilityMethod = "roll";
+    s.rolls = { values, token: signRolls("u1", values), dice };
+    const r = await validateSheet(s, fctx);
+    expect(r.ok && r.sheet.rolls).toEqual({ values, token: s.rolls.token, dice });
+    s.rolls = { ...s.rolls, dice: [[6, 6, 6, 6], ...dice.slice(1)] };
+    const bad = await validateSheet(s, fctx);
+    expect(bad.ok && bad.sheet.rolls?.dice).toBeUndefined();
   });
 });

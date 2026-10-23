@@ -7,8 +7,12 @@ import { Campaign } from "@/lib/Campaign";
 import { requireUser } from "@/lib/currentUser";
 import { loadCharacterFor } from "@/lib/characterAccess";
 import { booksByIds } from "@/lib/rules/books";
+import { listMasteryWeapons } from "@/lib/rules/catalog";
 import { derive } from "@/lib/rules/dnd2024/derive";
+import { weaponProficient } from "@/lib/rules/dnd2024/derive/attacks";
 import { refKey } from "@/lib/rules/dnd2024/equipmentRefs";
+import { currentMasteries, isMasteryWeapon, masteryCount, masteryLabel } from "@/lib/rules/dnd2024/masteries";
+import { parsePronouns, pronounsText } from "@/lib/rules/dnd2024/names";
 import type { BackgroundData, ItemData } from "@/lib/rules/types";
 import SheetHeader from "@/app/components/characters/sheet/SheetHeader";
 import SheetTabs, { isSheetTab, SHEET_TABS, type SheetTab } from "@/app/components/characters/sheet/SheetTabs";
@@ -16,6 +20,7 @@ import InfoTab from "@/app/components/characters/sheet/InfoTab";
 import BackgroundTab from "@/app/components/characters/sheet/BackgroundTab";
 import FeaturesTab from "@/app/components/characters/sheet/FeaturesTab";
 import EquipmentTab, { type ItemInfo } from "@/app/components/characters/sheet/EquipmentTab";
+import MasteriesEditor from "@/app/components/characters/sheet/MasteriesEditor";
 import type { CharacterStatus } from "@/app/components/characters/sheet/StatusBadge";
 
 type Props = {
@@ -72,6 +77,21 @@ export default async function CharacterPage({ params, searchParams }: Props) {
     itemInfo[line.id] = { weight: data?.weight ?? 0, equippable: !!(data?.armor || data?.weapon) };
   }
 
+  // Maestrías con armas: las actuales y, para cambiarlas, las armas cuerpo a cuerpo con maestría y competencia
+  const allowedMasteries = masteryCount(sheet, entries);
+  const masteryRefs = currentMasteries(sheet);
+  const masteryWeapons = allowedMasteries > 0 || masteryRefs.length > 0 ? await listMasteryWeapons(found.books) : [];
+  const weaponLabel = (w: (typeof masteryWeapons)[number]) =>
+    masteryLabel(w.nameEs ?? w.name, (w.data as ItemData | null)?.weapon?.mastery);
+  const masteryOptions = masteryWeapons
+    .filter((w) => isMasteryWeapon(w.data as ItemData)
+      && weaponProficient(w.data as ItemData, [w.name, w.ref.key.replace(/^[^:]*:/, "").split("|")[0]], d.weapons))
+    .map((w) => ({ id: refKey(w.ref), label: weaponLabel(w) }));
+  const masteryCurrent = masteryRefs.map((r) => {
+    const w = masteryWeapons.find((x) => refKey(x.ref) === refKey(r));
+    return { id: refKey(r), label: w ? weaponLabel(w) : r.key.replace(/^[^:]*:/, "").split("|")[0] };
+  });
+
   const base = `/characters/${id}`;
   // Las pestañas inactivas se ocultan en pantalla, pero se imprimen todas seguidas
   const panel = (t: SheetTab) => ({
@@ -89,6 +109,7 @@ export default async function CharacterPage({ params, searchParams }: Props) {
       <SheetHeader
         id={id}
         name={c.name}
+        pronouns={pronounsText(parsePronouns(((c.pronouns ?? []) as string[]).join(",")) ?? [])}
         portraitUrl={c.portraitId ? `/api/images/${c.portraitId}` : null}
         status={(c.status ?? "active") as CharacterStatus}
         summary={[species, classes].filter(Boolean).join(" ")}
@@ -124,6 +145,13 @@ export default async function CharacterPage({ params, searchParams }: Props) {
       </section>
       <section {...panel("rasgos")}>
         {panelTitle("rasgos")}
+        <MasteriesEditor
+          characterId={id}
+          isOwner={isOwner}
+          allowed={allowedMasteries}
+          current={masteryCurrent}
+          options={masteryOptions}
+        />
         <FeaturesTab groups={d.features} entries={entries} />
       </section>
       <section {...panel("equipo")}>

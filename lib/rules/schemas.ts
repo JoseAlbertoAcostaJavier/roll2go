@@ -172,6 +172,10 @@ const checks: { [K in EntryKind]: Check } = {
     featureType: strings,
     "prerequisite?": shape({ "level?": int(1, 20), "spell?": ref, "pact?": str, "feature?": str }),
   }),
+  nameTable: shape({
+    species: str,
+    tables: arrayOf(shape({ option: str, gender: oneOf("male", "female", "family", "other"), names: strings })),
+  }),
 };
 
 export function validateEntryData<K extends EntryKind>(

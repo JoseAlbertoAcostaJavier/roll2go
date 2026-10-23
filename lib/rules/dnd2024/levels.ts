@@ -37,6 +37,9 @@ const GENERAL_FEATS = ["G"];
 const FIGHTING_STYLE = "FS";
 const EPIC_BOON = "EB";
 
+// Clases y subclases importadas antes de las progresiones (catálogo sin reimportar o en caché): sin elecciones de ellas
+const NO_PROGRESSIONS: Pick<ClassData["progressions"], "feats" | "optionalFeatures"> = { feats: [], optionalFeatures: [] };
+
 const FEAT_LABELS: Record<string, string> = { FS: "Estilo de combate", EB: "Don épico", G: "Dote general" };
 const OPTIONAL_LABELS: Record<string, string> = {
   Metamagic: "Metamagia",
@@ -45,7 +48,7 @@ const OPTIONAL_LABELS: Record<string, string> = {
 };
 
 /** Número acumulado en un nivel: el del mayor nivel de la progresión que no lo supera. */
-function countAt(counts: LevelCounts | null | undefined, level: number): number {
+export function countAt(counts: LevelCounts | null | undefined, level: number): number {
   let best = 0;
   let value = 0;
   for (const [l, n] of Object.entries(counts ?? {})) {
@@ -66,7 +69,7 @@ const bareKey = (key: string) => key.replace(/^[^:]*:/, "");
  * que se gana la subclase, `opts.subclass` es la elegida, para pedir también lo que da su primer rasgo.
  */
 export function pendingChoices(
-  sheet: Dnd2024SheetV2,
+  sheet: Pick<Dnd2024SheetV2, "levels">,
   classRef: Ref,
   newClassLevel: number,
   entries: Map<string, CatalogEntry>,
@@ -108,8 +111,8 @@ export function pendingChoices(
 
   // 3 y 4. Dotes y rasgos opcionales de las progresiones de la clase y de su subclase (por nivel de clase)
   const owners = [
-    { bare: bareKey(classRef.key), progressions: data.progressions },
-    ...(subclass && subData ? [{ bare: bareKey(subclass.ref.key), progressions: subData.progressions }] : []),
+    { bare: bareKey(classRef.key), progressions: data.progressions ?? NO_PROGRESSIONS },
+    ...(subclass && subData ? [{ bare: bareKey(subclass.ref.key), progressions: subData.progressions ?? NO_PROGRESSIONS }] : []),
   ];
   // Con `count: 0` y `optionalReplace`, el nivel no da ninguno nuevo pero puede sustituir uno de los que ya tiene
   for (const [i, { bare, progressions }] of owners.entries()) {
@@ -140,8 +143,8 @@ export function pendingChoices(
   }
 
   // 5. Maestrías con armas
-  const masteries = countAt(data.progressions.weaponMastery, newClassLevel)
-    - countAt(data.progressions.weaponMastery, newClassLevel - 1);
+  const masteries = countAt(data.progressions?.weaponMastery, newClassLevel)
+    - countAt(data.progressions?.weaponMastery, newClassLevel - 1);
   if (masteries > 0) {
     out.push({
       type: "weaponMastery", source: `progression:weapon mastery|${bareKey(classRef.key)}`, count: masteries,

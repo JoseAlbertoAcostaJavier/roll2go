@@ -11,6 +11,8 @@ const secondaryButton =
 export type SheetHeaderProps = {
   id: string;
   name: string;
+  /** «Él/Elle»; vacío si no los indica. */
+  pronouns: string;
   portraitUrl: string | null;
   status: CharacterStatus;
   /** «Especie (Legado) Clase N / Clase M». */
@@ -79,7 +81,10 @@ export default function SheetHeader(p: SheetHeaderProps) {
             <StatusBadge status={p.status} isOwner={p.isOwner} />
           </div>
           <div className="min-w-0">
-            <h1 className="break-words font-heading text-3xl font-extrabold">{p.name}</h1>
+            <h1 className="break-words font-heading text-3xl font-extrabold">
+              {p.name}
+              {p.pronouns && <span className="ml-2 align-middle font-body text-base font-normal text-muted">({p.pronouns})</span>}
+            </h1>
             {p.summary && <p className="text-muted">{p.summary}</p>}
             <p className="mt-1 flex flex-wrap items-center gap-x-3 text-sm">
               {p.campaign ? (

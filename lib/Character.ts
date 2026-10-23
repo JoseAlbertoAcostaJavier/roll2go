@@ -9,6 +9,8 @@ const CharacterSchema = new Schema(
       index: true,
     }, // el jugador
     name: { type: String, required: true, trim: true, maxlength: 80 },
+    // Él, Ella, Elle (selección múltiple; vacío = sin indicar)
+    pronouns: { type: [{ type: String, enum: ["he", "she", "they"] }], default: [] },
     systemId: { type: String, required: true }, // id de lib/systems.ts
     books: { type: [String], default: [] }, // libros de reglas que usa (ids de `Book`)
 

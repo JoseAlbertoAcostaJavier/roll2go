@@ -16,7 +16,8 @@ export type Dnd2024Sheet = {
   classes: (Named & { level: number; subclass: Named | null; skills: string[]; equipment: string })[];
   abilityMethod: AbilityMethod;
   baseAbilities: Record<Ability, number>;
-  rolls: { values: number[]; token: string } | null;
+  /** `dice`: los 4 dados de cada tirada, sin firmar (solo para mostrarlos). */
+  rolls: { values: number[]; token: string; dice?: number[][] } | null;
   speciesChoices: { skills: string[]; size: "S" | "M" | "L" | null };
   alignment: string;
   appearance: string;
@@ -81,6 +82,11 @@ export type Dnd2024SheetV2 = Omit<Dnd2024Sheet, "version" | "classes"> & {
   prepared: Record<string, Ref[]>;
   spellbookExtra: Named[];
   slotsUsed: Record<string, number>;
+  /**
+   * Armas con maestría actuales: empiezan con las elecciones `weaponMastery` del historial y se pueden cambiar en la
+   * ficha. Las hojas guardadas antes no lo tienen: ver `currentMasteries`.
+   */
+  weaponMasteries: Ref[];
 };
 
 export type AnySheet = Dnd2024Sheet | Dnd2024SheetV2;

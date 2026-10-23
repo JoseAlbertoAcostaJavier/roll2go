@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from "vitest";
-import { signRolls, verifyRolls } from "@/lib/rules/dnd2024/rolls";
+import { rollAbilityScoresDetailed, signRolls, verifyRolls } from "@/lib/rules/dnd2024/rolls";
 
 const H = 3600 * 1000;
 beforeAll(() => {
@@ -25,5 +25,29 @@ describe("rolls", () => {
     expect(verifyRolls("u1", values, "abc.def", now)).toBe(false);
     const sig = token().split(".")[1];
     expect(verifyRolls("u1", values, `${now + 1000 * H}.${sig}`, now)).toBe(false);
+  });
+});
+
+describe("rollAbilityScoresDetailed", () => {
+  it("seis tiradas de 4 dados; cada valor suma los 3 más altos", () => {
+    let i = 0;
+    const faces = [0, 0.99, 0.5, 0.2, 0.3, 0.7, 0.1, 0.9];
+    const { values, dice } = rollAbilityScoresDetailed(() => faces[i++ % faces.length]);
+    expect(values).toHaveLength(6);
+    expect(dice).toHaveLength(6);
+    // Los dados en el orden en que salen: 1, 6, 4, 2 → 12 (sin el 1)
+    expect(dice[0]).toEqual([1, 6, 4, 2]);
+    expect(values[0]).toBe(12);
+    for (const [k, d] of dice.entries()) {
+      expect(d).toHaveLength(4);
+      expect(d.every((n) => n >= 1 && n <= 6)).toBe(true);
+      expect(values[k]).toBe([...d].sort((a, b) => b - a).slice(0, 3).reduce((s, n) => s + n, 0));
+    }
+  });
+  it("con Math.random también cuadra", () => {
+    const { values, dice } = rollAbilityScoresDetailed();
+    for (const [k, d] of dice.entries()) {
+      expect(values[k]).toBe(d.reduce((s, n) => s + n, 0) - Math.min(...d));
+    }
   });
 });

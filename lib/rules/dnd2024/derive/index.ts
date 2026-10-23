@@ -4,6 +4,7 @@
 import type { CatalogEntry } from "@/lib/rules/catalog";
 import { refKey } from "@/lib/rules/dnd2024/equipmentRefs";
 import type { AnySheet, Named } from "@/lib/rules/dnd2024/sheet";
+import { currentMasteries } from "@/lib/rules/dnd2024/masteries";
 import { summarizeClasses, upgradeSheet } from "@/lib/rules/dnd2024/upgrade";
 import type {
   Ability, BackgroundData, ClassData, ItemData, LineageData, Ref, SpeciesData,
@@ -140,7 +141,8 @@ export function derive(input: AnySheet, entries: Map<string, CatalogEntry>): Der
   const martialArts = monk < 0 || bodyArmor || shield ? null
     : (classData[monk]?.table?.columns.find((c) => MARTIAL_ARTS_COLUMN.test(c.label))?.values[summary[monk].level - 1]
       || martialArtsFallback(summary[monk].level));
-  const masteries = new Set(choices.flatMap((c) => (c.type === "weaponMastery" ? c.value.map((r) => r.key) : [])));
+  // Maestrías actuales (se pueden cambiar en la ficha); en hojas anteriores, las elegidas al subir de nivel
+  const masteries = new Set(currentMasteries(sheet).map((r) => r.key));
   const attacks = equipped.filter((e) => e.data.weapon).map((e) => weaponAttack(
     { ...e.data, name: e.name }, mods, proficiencyBonus,
     weaponProficient(e.data, [e.name, bareName(e.key)], weapons), masteries.has(e.key), martialArts,

@@ -124,7 +124,7 @@ const WEAPON_PROPERTY_NAMES: Record<string, string> = {
 };
 const MASTERY_NAMES: Record<string, string> = {
   cleave: "Hendir", graze: "Rozar", nick: "Mellar", push: "Empujar", sap: "Debilitar", slow: "Ralentizar",
-  topple: "Derribar", vex: "Incordiar",
+  topple: "Derribar", vex: "Vejar",
 };
 export const damageTypeName = (code: string) => DAMAGE_TYPE_NAMES[code] ?? code;
 export const weaponPropertyName = (code: string) => WEAPON_PROPERTY_NAMES[code] ?? code;

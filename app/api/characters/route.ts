@@ -13,6 +13,7 @@ import { MAX_IMAGE, readImage, storeImage } from "@/lib/campaignInput";
 import { NotFoundError, listEntries, resolveRef, usableBooks } from "@/lib/rules/catalog";
 import { validateSheet } from "@/lib/rules/dnd2024/validate";
 import { ALIGNMENTS } from "@/lib/rules/dnd2024/alignments";
+import { parsePronouns } from "@/lib/rules/dnd2024/names";
 
 const STATUSES = ["active", "retired", "dead"] as const;
 const MAX_NAME = 80;
@@ -22,8 +23,8 @@ const MAX_BOOKS = 50;
 const text = (v: FormDataEntryValue | null) => (typeof v === "string" ? v : "");
 const notFound = () => NextResponse.json({ error: "Campaña no encontrada." }, { status: 404 });
 
-// Crea un personaje: multipart/form-data con `sheet` (JSON), `system`, `name`, `status`, `campaign`, `books`,
-// `backstory`, `portrait` e `image`. Responde 201 { id } o 400 { errors } con los errores por campo.
+// Crea un personaje: multipart/form-data con `sheet` (JSON), `system`, `name`, `pronouns` («he,they»), `status`,
+// `campaign`, `books`, `backstory`, `portrait` e `image`. Responde 201 { id } o 400 { errors } con los errores por campo.
 export async function POST(req: NextRequest) {
   const session = await sessionOf(req);
   if (!session) return NextResponse.json({ error: "Inicia sesión." }, { status: 401 });
@@ -50,6 +51,8 @@ export async function POST(req: NextRequest) {
   if (!STATUSES.includes(status)) errors.status = "Estado no válido.";
   const backstory = cleanText(text(form.get("backstory")));
   if (backstory.length > MAX_BACKSTORY) errors.backstory = "La historia es demasiado larga.";
+  const pronouns = parsePronouns(text(form.get("pronouns")));
+  if (!pronouns) errors.pronouns = "Pronombres no válidos.";
 
   // Campaña: hay que ser miembro (si no, 404) y que admita personajes internos del mismo sistema
   await connectDB();
@@ -120,6 +123,7 @@ export async function POST(req: NextRequest) {
     const character = await Character.create({
       owner: session.id,
       name,
+      pronouns: pronouns ?? [],
       systemId,
       // Solo se guarda el filtro propio del personaje; si manda el de la campaña o se ignoró por no tener
       // ningún libro visible, no hace falta

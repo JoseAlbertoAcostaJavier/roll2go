@@ -7,7 +7,8 @@ import {
   type NormalizedEntry, type RawFiles,
 } from "@/lib/rules/import/normalize";
 import type {
-  BackgroundData, ClassData, FeatureData, ItemData, LineageData, OptionalFeatureData, SpeciesData, SpellData, SubclassData,
+  BackgroundData, ClassData, FeatureData, ItemData, LineageData, NameTableData, OptionalFeatureData, SpeciesData, SpellData,
+  SubclassData,
 } from "@/lib/rules/types";
 
 const fixture = (f: string) =>
@@ -499,4 +500,31 @@ test("rasgos con elección en el texto sin especificar", () => {
     "classFeature:expertise|rogue|xphb|1", "subclassFeature:x|rogue|xphb|y|xphb|3",
     "classFeature:primal knowledge|barbarian|xphb|3",
   ]);
+});
+
+describe("tablas de nombres (names.json, Guía de Xanathar)", () => {
+  const { entries: names, errors: errs } = normalizeAll({ names: fixture("names.json") }, "XGE");
+  const table = (species: string) => names.find((e) => e.key === `nameTable:${species}|xge`);
+
+  test("Enano: femenina, masculina y clan; el clan duergar no es un apellido", () => {
+    expect(errs).toEqual([]);
+    const dwarf = table("dwarf");
+    expect(dwarf).toMatchObject({ kind: "nameTable", name: "Dwarf", identifier: "dwarf" });
+    const data = dwarf!.data as NameTableData;
+    expect(data.species).toBe("dwarf");
+    expect(data.tables.map((t) => [t.option, t.gender])).toEqual([
+      ["Female", "female"], ["Male", "male"], ["Clan", "family"], ["Duergar Clan", "other"],
+    ]);
+    expect(data.tables[0].names).toEqual(["Anbera", "Artin", "Audhild", "Balifra"]);
+  });
+  test("Elfo: «Female Adult» es femenina, «Child» es otra y «Family» son apellidos", () => {
+    const data = table("elf")!.data as NameTableData;
+    expect(data.tables.map((t) => [t.option, t.gender])).toEqual([
+      ["Child", "other"], ["Female Adult", "female"], ["Male Adult", "male"], ["Family", "family"],
+    ]);
+  });
+  test("Humano: «Arabic, Female» es femenina", () => {
+    const data = table("human")!.data as NameTableData;
+    expect(data.tables[0]).toMatchObject({ option: "Arabic, Female", gender: "female" });
+  });
 });

@@ -4,6 +4,8 @@ import { notFound } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
 import { requireUser } from "@/lib/currentUser";
 import { loadCharacterFor } from "@/lib/characterAccess";
+import { refKey } from "@/lib/rules/dnd2024/equipmentRefs";
+import { parsePronouns } from "@/lib/rules/dnd2024/names";
 import CharacterEditForm from "@/app/components/characters/CharacterEditForm";
 import DeleteCharacter from "@/app/components/characters/DeleteCharacter";
 
@@ -15,7 +17,10 @@ export default async function EditCharacterPage({ params }: { params: Promise<{ 
   // Solo el dueño puede editar: para el resto (y si no existe) es un 404
   const found = await loadCharacterFor(user.id, id, "write");
   if (!found) notFound();
-  const { character: c, sheet } = found;
+  const { character: c, sheet, entries } = found;
+  // Identificador de la especie para el generador de nombres ("species:dwarf|xphb" → "dwarf" si ya no está)
+  const speciesIdentifier = entries.get(refKey(sheet.species.ref))?.identifier
+    || sheet.species.ref.key.replace(/^[^:]*:/, "").split("|")[0];
 
   return (
     <div className="mx-auto max-w-3xl px-5 py-10">
@@ -30,8 +35,10 @@ export default async function EditCharacterPage({ params }: { params: Promise<{ 
 
       <CharacterEditForm
         characterId={id}
+        speciesIdentifier={speciesIdentifier}
         initial={{
           name: c.name,
+          pronouns: parsePronouns(((c.pronouns ?? []) as string[]).join(",")) ?? [],
           status: c.status,
           alignment: sheet.alignment,
           age: sheet.age,

@@ -96,6 +96,7 @@ export function upgradeSheet(
     prepared: {},
     spellbookExtra: [],
     slotsUsed: {},
+    weaponMasteries: [],
   };
 }
 

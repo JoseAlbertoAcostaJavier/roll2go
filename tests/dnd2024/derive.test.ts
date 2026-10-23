@@ -223,10 +223,17 @@ describe("derive", () => {
       for (const i of s.inventory.items) i.equipped = false;
       expect(derive(s, build()).attacks.map((a) => a.name)).toEqual(["Ataque sin armas"]);
     });
-    it("maestría con las armas elegidas", () => {
-      const r = derive(v2(build(), [{ type: "weaponMastery", source: "x", value: [ref("item:greataxe|xphb")] }]), build());
+    it("maestría con las armas de weaponMasteries (las actuales, no las elegidas al subir)", () => {
+      const s = v2(build(), [{ type: "weaponMastery", source: "x", value: [ref("item:handaxe|xphb")] }]);
+      s.weaponMasteries = [ref("item:greataxe|xphb")];
+      const r = derive(s, build());
       expect(r.attacks[0].mastery).toBe("Hendir");
       expect(r.attacks[1].mastery).toBeNull();
+    });
+    it("hoja guardada sin weaponMasteries: las elegidas al subir de nivel", () => {
+      const s = v2(build(), [{ type: "weaponMastery", source: "x", value: [ref("item:greataxe|xphb")] }]);
+      delete (s as { weaponMasteries?: unknown }).weaponMasteries;
+      expect(derive(s, build()).attacks[0].mastery).toBe("Hendir");
     });
     it("Monje: dado de Artes marciales de la tabla y la mejor de FUE y DES", () => {
       const entries = build();

@@ -12,7 +12,7 @@ export type Ref = { book: string; key: string };
 
 export type EntryKind =
   | "species" | "lineage" | "class" | "subclass" | "classFeature" | "subclassFeature"
-  | "background" | "feat" | "spell" | "item" | "language" | "skill" | "optionalFeature";
+  | "background" | "feat" | "spell" | "item" | "language" | "skill" | "optionalFeature" | "nameTable";
 
 /** Elemento de equipo: una entrada del catálogo, monedas (pc) o un texto libre. */
 export type Pack = { ref?: Ref; quantity?: number; value?: number; displayName?: string };
@@ -154,6 +154,11 @@ export type ItemData = {
 };
 
 export type LanguageData = { type: "standard" | "rare" };
+
+/** Género de una tabla de nombres; `family` son apellidos o clanes y `other`, el resto (niños, virtudes…). */
+export type NameGender = "male" | "female" | "family" | "other";
+/** Tablas de nombres de una especie (`species` es su identificador: `dwarf`, `half-orc`…). */
+export type NameTableData = { species: string; tables: { option: string; gender: NameGender; names: string[] }[] };
 export type SkillData = { ability: Ability };
 
 export type EntryData = {
@@ -170,4 +175,5 @@ export type EntryData = {
   language: LanguageData;
   skill: SkillData;
   optionalFeature: OptionalFeatureData;
+  nameTable: NameTableData;
 };

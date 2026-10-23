@@ -30,3 +30,12 @@ export function verifyRolls(userId: string, values: number[], token: string, now
   const b = Buffer.from(mac(userId, values, expires));
   return a.length === b.length && timingSafeEqual(a, b);
 }
+
+/** 4d6 sin el menor, seis veces; `dice[i]` son los 4 dados de `values[i]` en el orden en que salieron. */
+export function rollAbilityScoresDetailed(rng: () => number = Math.random): { values: number[]; dice: number[][] } {
+  const dice = Array.from({ length: 6 }, () => Array.from({ length: 4 }, () => Math.floor(rng() * 6) + 1));
+  return { values: dice.map(abilityRollValue), dice };
+}
+
+/** Suma de los 3 dados más altos de una tirada de 4d6. */
+export const abilityRollValue = (d: number[]) => d.reduce((s, n) => s + n, 0) - Math.min(...d);
