@@ -305,6 +305,63 @@
 			"subclassTitle": "Fighter Subclass"
 		}
 	],
+	"subclass": [
+		{
+			"name": "Battle Master",
+			"shortName": "Battle Master",
+			"source": "XPHB",
+			"className": "Fighter",
+			"classSource": "XPHB",
+			"page": 93,
+			"optionalfeatureProgression": [
+				{
+					"name": "Maneuvers",
+					"featureType": [
+						"MV:B"
+					],
+					"progression": {
+						"3": 3,
+						"7": 5,
+						"10": 7,
+						"15": 9
+					}
+				}
+			],
+			"subclassFeatures": [
+				"Battle Master|Fighter|XPHB|Battle Master|XPHB|3",
+				"Know Your Enemy|Fighter|XPHB|Battle Master|XPHB|7",
+				"Improved Combat Superiority|Fighter|XPHB|Battle Master|XPHB|10",
+				"Relentless|Fighter|XPHB|Battle Master|XPHB|15",
+				"Ultimate Combat Superiority|Fighter|XPHB|Battle Master|XPHB|18"
+			]
+		},
+		{
+			"name": "Champion",
+			"shortName": "Champion",
+			"source": "XPHB",
+			"className": "Fighter",
+			"classSource": "XPHB",
+			"page": 96,
+			"featProgression": [
+				{
+					"name": "Fighting Style",
+					"category": [
+						"FS"
+					],
+					"progression": {
+						"7": 1
+					}
+				}
+			],
+			"subclassFeatures": [
+				"Champion|Fighter|XPHB|Champion|XPHB|3",
+				"Additional Fighting Style|Fighter|XPHB|Champion|XPHB|7",
+				"Heroic Warrior|Fighter|XPHB|Champion|XPHB|10",
+				"Superior Critical|Fighter|XPHB|Champion|XPHB|15",
+				"Survivor|Fighter|XPHB|Champion|XPHB|18"
+			]
+		}
+	],
 	"classFeature": [
 		{
 			"name": "Fighting Style",

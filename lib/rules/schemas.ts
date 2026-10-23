@@ -73,9 +73,11 @@ const levelCounts: Check = (v, p, e) => {
 /** Un valor por nivel de clase (20). */
 const perLevel = (c: Check): Check => exactly(20, arrayOf(c));
 
+const featProgressions = arrayOf(shape({ category: strings, levels: levelCounts }));
+const optionalFeatureProgressions = arrayOf(shape({ name: str, featureType: strings, levels: levelCounts }));
 const progressions = shape({
-  feats: arrayOf(shape({ category: strings, levels: levelCounts })),
-  optionalFeatures: arrayOf(shape({ name: str, featureType: strings, levels: levelCounts })),
+  feats: featProgressions,
+  optionalFeatures: optionalFeatureProgressions,
   weaponMastery: nullable(levelCounts),
   cantrips: nullable(perLevel(int(0, 100))),
   prepared: nullable(perLevel(int(0, 100))),
@@ -125,7 +127,11 @@ const checks: { [K in EntryKind]: Check } = {
     multiclass,
     subclassTitle: str,
   }),
-  subclass: shape({ features: arrayOf(levelFeature), spells: arrayOf(shape({ level: int(1, 20), ref })) }),
+  subclass: shape({
+    features: arrayOf(levelFeature),
+    spells: arrayOf(shape({ level: int(1, 20), ref })),
+    progressions: shape({ feats: featProgressions, optionalFeatures: optionalFeatureProgressions }),
+  }),
   classFeature: feature,
   subclassFeature: feature,
   background: shape({

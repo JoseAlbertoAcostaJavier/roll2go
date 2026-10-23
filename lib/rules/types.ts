@@ -97,6 +97,8 @@ export type ClassData = {
 export type SubclassData = {
   features: LevelFeature[];
   spells: { level: number; ref: Ref }[];
+  /** Dotes y rasgos opcionales propios de la subclase (estilo de combate del Campeón, maniobras…). */
+  progressions: Pick<ClassProgressions, "feats" | "optionalFeatures">;
 };
 
 export type FeatureData = {

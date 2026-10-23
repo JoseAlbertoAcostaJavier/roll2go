@@ -409,6 +409,37 @@ describe("progresiones, tabla, multiclase y rasgos opcionales", () => {
     expect(get("optionalFeature:careful spell|xphb").data).toEqual({ featureType: ["MM"] });
     expect(r.entries.filter((e) => e.kind === "optionalFeature")).toHaveLength(4);
   });
+  test("progresiones de subclase: maniobras del Maestro de batalla y estilo del Campeón", () => {
+    const battleMaster = get("subclass:battle master|fighter|xphb").data as SubclassData;
+    expect(battleMaster.progressions).toEqual({
+      feats: [],
+      optionalFeatures: [{ name: "Maneuvers", featureType: ["MV:B"], levels: { 3: 3, 7: 5, 10: 7, 15: 9 } }],
+    });
+    const champion = get("subclass:champion|fighter|xphb").data as SubclassData;
+    expect(champion.progressions).toEqual({ feats: [{ category: ["FS"], levels: { 7: 1 } }], optionalFeatures: [] });
+  });
+});
+
+test("opciones de rasgo de subclase y dentro de listas (`items`)", () => {
+  const { entries: es, errors: errs } = normalizeAll({
+    classes: [{
+      subclassFeature: [{
+        name: "Elección", source: "XPHB", className: "Fighter", classSource: "XPHB",
+        subclassShortName: "Champion", subclassSource: "XPHB", level: 3,
+        entries: [{ type: "list", items: [{ type: "options", count: 1, entries: [
+          { type: "refSubclassFeature", subclassFeature: "Uno|Fighter|XPHB|Champion|XPHB|3" },
+          { type: "refSubclassFeature", subclassFeature: "Dos|Fighter|XPHB|Champion|XPHB|3|XTEST" },
+          { type: "refOptionalfeature", optionalfeature: "Parry|XPHB" },
+        ] }] }],
+      }],
+    }],
+  }, "XPHB");
+  expect(errs).toEqual([]);
+  expect((es[0].data as FeatureData).options?.map((o) => o.key)).toEqual([
+    "subclassFeature:uno|fighter|xphb|champion|xphb|3",
+    "subclassFeature:dos|fighter|xphb|champion|xphb|3|xtest",
+    "optionalFeature:parry|xphb",
+  ]);
 });
 
 describe("progresiones escritas a mano", () => {

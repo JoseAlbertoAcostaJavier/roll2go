@@ -100,6 +100,14 @@ describe("validateEntryData", () => {
     delete withoutTitle.subclassTitle;
     expect(validateEntryData("class", withoutTitle).ok).toBe(false);
   });
+  test("subclass exige sus progresiones", () => {
+    const sub = { features: [], spells: [] };
+    const maneuvers = { name: "Maneuvers", featureType: ["MV:B"], levels: { 3: 3, 7: 5 } };
+    expect(validateEntryData("subclass", { ...sub, progressions: { feats: [], optionalFeatures: [maneuvers] } }).ok).toBe(true);
+    expect(validateEntryData("subclass", sub).ok).toBe(false);
+    expect(validateEntryData("subclass", { ...sub, progressions: { feats: [{ category: ["FS"], levels: { 0: 1 } }],
+      optionalFeatures: [] } }).ok).toBe(false);
+  });
   test("classFeature con opciones y mejora de característica", () => {
     const options = [{ book: "b", key: "classFeature:protector|cleric|xphb|1" }];
     expect(validateEntryData("classFeature", { level: 1, className: "Cleric", options }).ok).toBe(true);
@@ -138,7 +146,8 @@ describe("validateEntryData", () => {
     expect(validateEntryData("lineage", grant(17)).ok).toBe(true);
     expect(validateEntryData("lineage", grant(0)).ok).toBe(false);
     expect(validateEntryData("lineage", grant(21)).ok).toBe(false);
-    const oath = (level: number) => ({ features: [], spells: [{ level, ref: { book: "b", key: "commune|xphb" } }] });
+    const oath = (level: number) => ({ features: [], spells: [{ level, ref: { book: "b", key: "commune|xphb" } }],
+      progressions: { feats: [], optionalFeatures: [] } });
     expect(validateEntryData("subclass", oath(17)).ok).toBe(true);
     expect(validateEntryData("subclass", oath(0)).ok).toBe(false);
   });

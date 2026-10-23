@@ -577,13 +577,20 @@ function levelCounts(progression: unknown): LevelCounts {
 const perLevel = (v: unknown): number[] | null =>
   Array.isArray(v) && v.length ? v.map((n) => (typeof n === "number" ? n : 0)) : null;
 
-function classProgressions(raw: Rec): EntryData["class"]["progressions"] {
+/** Dotes y rasgos opcionales por nivel (de una clase o de una subclase). */
+function choiceProgressions(raw: Rec): EntryData["subclass"]["progressions"] {
   return {
     feats: asArr(raw.featProgression).filter(isObj)
       .map((p) => ({ category: asArr(p.category).map(str), levels: levelCounts(p.progression) })),
     optionalFeatures: asArr(raw.optionalfeatureProgression).filter(isObj).map((p) => ({
       name: str(p.name), featureType: asArr(p.featureType).map(str), levels: levelCounts(p.progression),
     })),
+  };
+}
+
+function classProgressions(raw: Rec): EntryData["class"]["progressions"] {
+  return {
+    ...choiceProgressions(raw),
     weaponMastery: isObj(raw.itemMasteriesProgression) ? levelCounts(raw.itemMasteriesProgression) : null,
     cantrips: perLevel(raw.cantripProgression),
     prepared: perLevel(raw.preparedSpellsProgression),
@@ -613,7 +620,10 @@ const TABLE_LABELS: Record<string, string> = {
   "Slot Level": "Nivel de espacio",
 };
 
-/** Celda de la tabla de clase → texto: `{ type: "bonus", value: 2 }` → «+2», dados → «1d6», 0 → «—» (como el libro). */
+/**
+ * Celda de la tabla de clase → texto: `{ type: "bonus", value: 2 }` → «+2», dados → «1d6», 0 → «—» (como el libro).
+ * Quien lea los valores como números debe tratar «—» como 0.
+ */
 function tableCell(v: unknown): string {
   if (typeof v === "number") return v === 0 ? "—" : String(v);
   if (typeof v === "string") return plainText(v);
@@ -745,6 +755,7 @@ export function normalizeSubclass(raw: Rec): NormalizedEntry {
     features: asArr(raw.subclassFeatures).map((f) => featureRef(f, "subclassFeature"))
       .filter((x): x is LevelFeature => x !== null),
     spells: spellGrants(asArr(raw.additionalSpells)).map(({ level, ref: r }) => ({ level, ref: r })),
+    progressions: choiceProgressions(raw),
   });
 }
 
@@ -754,12 +765,25 @@ const classFeatureKey = (name: string, className: string, classSource: string, l
   return prefixed("classFeature", `${name}|${className}|${classSource}|${level}${sourceSuffix}`);
 };
 
-/** Elemento de un bloque `options`: `refClassFeature` (`"Protector|Cleric|XPHB|1|XPHB"`) o `refOptionalfeature`. */
+/** Clave de rasgo de subclase: `subclassFeature:nombre|clase|fuente|subclase|fuente de la subclase|nivel` (+ `|fuente`). */
+const subclassFeatureKey = (parts: string[], source: string) => {
+  const sourceSuffix = !source || lower(source) === lower(parts[4]) ? "" : `|${source}`;
+  return prefixed("subclassFeature", parts.join("|") + sourceSuffix);
+};
+
+/**
+ * Elemento de un bloque `options`: `refClassFeature` (`"Protector|Cleric|XPHB|1|XPHB"`), `refSubclassFeature`
+ * (`"Nombre|Clase|XPHB|Subclase|XPHB|3"`) o `refOptionalfeature`.
+ */
 function optionRef(o: unknown): Ref | null {
   if (!isObj(o)) return null;
   if (o.type === "refClassFeature") {
     const [name, className, classSource, level, source] = str(o.classFeature).split("|");
     return level ? { book: BOOK_PLACEHOLDER, key: classFeatureKey(name, className, classSource, level, source ?? "") } : null;
+  }
+  if (o.type === "refSubclassFeature") {
+    const parts = str(o.subclassFeature).split("|");
+    return parts.length >= 6 ? { book: BOOK_PLACEHOLDER, key: subclassFeatureKey(parts.slice(0, 6), parts[6] ?? "") } : null;
   }
   if (o.type === "refOptionalfeature" && str(o.optionalfeature)) return ref("optionalFeature", cleanRefKey(str(o.optionalfeature)));
   return null;
@@ -775,7 +799,10 @@ function featureExtras(raw: Rec): Pick<FeatureData, "options" | "asi"> {
         const r = optionRef(o);
         if (r) options.push(r);
       }
-    } else if (isObj(v)) walk(v.entries);
+    } else if (isObj(v)) {
+      walk(v.entries);
+      walk(v.items); // listas (`type: "list"`) con bloques dentro
+    }
   };
   walk(raw.entries);
   return {
@@ -792,9 +819,8 @@ export function normalizeClassFeature(raw: Rec): NormalizedEntry {
 }
 
 export function normalizeSubclassFeature(raw: Rec, ctx: NormalizeContext): NormalizedEntry {
-  const sourceSuffix = lower(str(raw.source)) === lower(str(raw.subclassSource)) ? "" : `|${str(raw.source)}`;
-  const key = prefixed("subclassFeature", [raw.name, raw.className, raw.classSource, raw.subclassShortName,
-    raw.subclassSource, raw.level].map(String).join("|") + sourceSuffix);
+  const key = subclassFeatureKey([raw.name, raw.className, raw.classSource, raw.subclassShortName,
+    raw.subclassSource, raw.level].map(String), str(raw.source));
   const sub = ctx.subclasses.get(subclassLookup(
     str(raw.subclassShortName), str(raw.className), str(raw.classSource), str(raw.subclassSource)));
   return entry<"subclassFeature">(header("subclassFeature", raw, key, {
