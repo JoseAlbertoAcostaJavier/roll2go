@@ -18,6 +18,11 @@ const entry = (key: string, data: unknown, extra: Partial<CatalogEntry> = {}): C
 const catalog = new Map<string, CatalogEntry>(
   [
     entry("species:elf|xphb", { size: ["M"], hasLineages: true, skills: { fixed: [] } }, { name: "Elf", nameEs: "Elfo" }),
+    entry("species:dwarf|xphb", {
+      size: ["M"], hasLineages: false, skills: { fixed: ["Perception"] },
+    }),
+    // Tiene legados, pero ninguno en los libros utilizables
+    entry("species:gnome|xphb", { size: ["S"], hasLineages: true, skills: { fixed: [] } }),
     entry("species:human|xphb", {
       size: ["M", "S"], hasLineages: false, skills: { fixed: [], choose: { count: 1, from: ["Perception", "Insight"] } },
     }),
@@ -36,6 +41,8 @@ const ctx = {
   userId: "u1",
   books: [B],
   resolve: async (r: Ref) => (r.book === B ? (catalog.get(r.key) ?? null) : null),
+  hasLineages: async (species: Ref) =>
+    [...catalog.values()].some((e) => e.ref.key.startsWith("lineage:") && e.parent?.key === species.key && e.parent.book === species.book),
 };
 const named = (key: string, book = B) => ({ ref: { book, key }, name: "cliente" });
 
@@ -85,6 +92,10 @@ describe("validateSheet", () => {
     expect(await errorsOf((s) => { s.lineage = named("lineage:other|xphb"); })).toHaveProperty("lineage");
     expect(await errorsOf((s) => { s.lineage = null; })).toHaveProperty("lineage");
   });
+  it("sin legados en los libros utilizables no se exige legado", async () => {
+    const r = await run((s) => { s.species = named("species:gnome|xphb"); s.lineage = null; });
+    expect(r.ok).toBe(true);
+  });
   it("referencias fuera de books, inexistentes o de otro tipo", async () => {
     expect(await errorsOf((s) => { s.species = named("species:elf|xphb", "otro"); })).toHaveProperty("species");
     expect(await errorsOf((s) => { s.species = named("species:nope|xphb"); })).toHaveProperty("species");
@@ -95,9 +106,9 @@ describe("validateSheet", () => {
     expect(await errorsOf((s) => { human(s); })).toHaveProperty("speciesChoices.skills");
     expect(await errorsOf((s) => { human(s); s.speciesChoices.skills = ["Stealth"]; }))
       .toHaveProperty("speciesChoices.skills");
-    expect(await errorsOf((s) => { human(s); s.speciesChoices = { skills: ["Insight"], size: null }; }))
+    expect(await errorsOf((s) => { human(s); s.speciesChoices = { skills: ["Perception"], size: null }; }))
       .toHaveProperty("speciesChoices.size");
-    expect((await run((s) => { human(s); s.speciesChoices = { skills: ["Insight"], size: "S" }; })).ok).toBe(true);
+    expect((await run((s) => { human(s); s.speciesChoices = { skills: ["Perception"], size: "S" }; })).ok).toBe(true);
     expect(await errorsOf((s) => { s.speciesChoices.skills = ["Insight"]; })).toHaveProperty("speciesChoices.skills");
   });
   it("trasfondo: bonificación, total y equipo", async () => {
@@ -116,6 +127,34 @@ describe("validateSheet", () => {
     expect(await errorsOf((s) => { s.classes[0].skills = ["Athletics", "Athletics"]; })).toHaveProperty("classes.0.skills");
     expect(await errorsOf((s) => { s.classes[0].skills = ["Athletics", "Stealth"]; })).toHaveProperty("classes.0.skills");
     expect(await errorsOf((s) => { s.classes[0].equipment = "D"; })).toHaveProperty("classes.0.equipment");
+  });
+  it("las habilidades de clase no repiten las de la especie (fijas o elegidas)", async () => {
+    const human = (s: Sheet) => {
+      s.species = named("species:human|xphb");
+      s.lineage = null;
+      s.speciesChoices = { skills: ["Perception"], size: "M" };
+    };
+    expect(await errorsOf((s) => { human(s); s.classes[0].skills = ["Athletics", "Perception"]; }))
+      .toHaveProperty("classes.0.skills");
+    expect((await run((s) => { human(s); })).ok).toBe(true);
+    const dwarf = (s: Sheet) => { s.species = named("species:dwarf|xphb"); s.lineage = null; };
+    expect((await run(dwarf)).ok).toBe(true);
+    expect(await errorsOf((s) => { dwarf(s); s.classes[0].skills = ["Athletics", "Perception"]; }))
+      .toHaveProperty("classes.0.skills");
+  });
+  it("la habilidad elegida de especie no repite una del trasfondo", async () => {
+    expect(await errorsOf((s) => {
+      s.species = named("species:human|xphb");
+      s.lineage = null;
+      s.speciesChoices = { skills: ["Insight"], size: "M" };
+    })).toHaveProperty("speciesChoices.skills");
+  });
+  it("al crear, los PG deben llegar vacíos", async () => {
+    expect((await run((s) => { delete s.hp; })).ok).toBe(true);
+    expect(await errorsOf((s) => { s.hp = { max: 10, current: null, temp: 0 }; })).toHaveProperty("hp");
+    expect(await errorsOf((s) => { s.hp = { max: null, current: 5, temp: 0 }; })).toHaveProperty("hp");
+    expect(await errorsOf((s) => { s.hp = { max: null, current: null, temp: 3 }; })).toHaveProperty("hp");
+    expect(await errorsOf((s) => { s.hp = "x"; })).toHaveProperty("hp");
   });
   it("métodos de características", async () => {
     expect(await errorsOf((s) => { s.baseAbilities.str = 14; })).toHaveProperty("baseAbilities");

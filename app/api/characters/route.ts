@@ -10,7 +10,7 @@ import { CampaignImage } from "@/lib/CampaignImage";
 import { Character } from "@/lib/Character";
 import { notify } from "@/lib/notify";
 import { MAX_IMAGE, readImage, storeImage } from "@/lib/campaignInput";
-import { NotFoundError, resolveRef, usableBooks } from "@/lib/rules/catalog";
+import { NotFoundError, listEntries, resolveRef, usableBooks } from "@/lib/rules/catalog";
 import { validateSheet } from "@/lib/rules/dnd2024/validate";
 import { ALIGNMENTS } from "@/lib/rules/dnd2024/alignments";
 
@@ -87,6 +87,9 @@ export async function POST(req: NextRequest) {
     userId: session.id,
     books,
     resolve: (ref) => resolveRef(ref, books),
+    // Legados de la especie en su mismo libro (como los muestra el asistente)
+    hasLineages: async (species) =>
+      (await listEntries({ books, kind: "lineage", parent: species.key })).some((l) => l.ref.book === species.book),
   });
   if (!result.ok) Object.assign(errors, result.errors);
   else if (result.sheet.alignment && !ALIGNMENTS.some((a) => a.id === result.sheet.alignment))

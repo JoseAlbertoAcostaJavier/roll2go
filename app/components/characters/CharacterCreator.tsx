@@ -245,15 +245,15 @@ function EquipmentChoice({
 }
 
 function SkillChecks({
-  name, from, count, value, onChange, locked = [],
+  name, from, count, value, onChange, locked = {},
 }: {
   name: string;
   from: string[];
   count: number;
   value: string[];
   onChange: (skills: string[]) => void;
-  /** Habilidades que ya da otra fuente: se muestran desactivadas. */
-  locked?: string[];
+  /** Habilidades que ya da otra fuente, con el texto de esa fuente: se muestran desactivadas. */
+  locked?: Record<string, string>;
 }) {
   const full = value.length >= count;
   return (
@@ -263,7 +263,8 @@ function SkillChecks({
       </legend>
       <div className="grid gap-2 sm:grid-cols-2">
         {from.map((s) => {
-          const isLocked = locked.includes(s);
+          const lockedBy = locked[s];
+          const isLocked = lockedBy !== undefined;
           const checked = value.includes(s);
           return (
             <label key={s} className="flex cursor-pointer items-center gap-2 text-sm has-disabled:cursor-not-allowed has-disabled:opacity-50">
@@ -275,7 +276,7 @@ function SkillChecks({
                 onChange={() => onChange(checked ? value.filter((x) => x !== s) : [...value, s])}
               />
               {skillName(s)}
-              {isLocked && <span className="text-xs text-muted">(del trasfondo)</span>}
+              {isLocked && <span className="text-xs text-muted">({lockedBy})</span>}
             </label>
           );
         })}
@@ -350,6 +351,16 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
   const classOpt = findOption(props.classes, form.klass);
   const classData = classOpt?.data as ClassData | undefined;
   const hasLineages = !!speciesData?.hasLineages && lineageOptions.length > 0;
+
+  // Habilidades que ya dan otras fuentes: no se pueden volver a elegir
+  const { fixedLocked, classLocked } = useMemo(() => {
+    const fixed: Record<string, string> = {};
+    for (const s of speciesData?.skills.fixed ?? []) fixed[s] = "de la especie";
+    for (const s of bgData?.skills ?? []) fixed[s] = "del trasfondo";
+    const forClass: Record<string, string> = { ...fixed };
+    for (const s of form.speciesSkills) forClass[s] ??= "de la especie";
+    return { fixedLocked: fixed, classLocked: forClass };
+  }, [speciesData, bgData, form.speciesSkills]);
 
   // ---- entradas que se piden al servidor ----
   const [cacheRefs, setCacheRefs] = useState<Ref[]>([]);
@@ -439,14 +450,29 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
   // ---- cambios con efectos en cadena ----
   function chooseSpecies(ref: Ref | null) {
     if (sameRef(ref, form.species)) return;
-    update({ species: ref, lineage: null, speciesSkills: [], size: null }, "species", "lineage", "speciesChoices.skills", "speciesChoices.size");
+    const data = findOption(props.species, ref)?.data as SpeciesData | undefined;
+    // Las habilidades de clase no pueden repetir las fijas de la nueva especie
+    const classSkills = form.classSkills.filter((s) => !data?.skills.fixed.includes(s));
+    update(
+      { species: ref, lineage: null, speciesSkills: [], size: null, classSkills },
+      "species", "lineage", "speciesChoices.skills", "speciesChoices.size", "classes.0.skills",
+    );
   }
   function chooseBackground(ref: Ref | null) {
     if (sameRef(ref, form.background)) return;
     const data = findOption(props.backgrounds, ref)?.data as BackgroundData | undefined;
-    // Las habilidades de clase no pueden repetir las del nuevo trasfondo
+    // Las habilidades de especie y de clase no pueden repetir las del nuevo trasfondo
+    const speciesSkills = form.speciesSkills.filter((s) => !data?.skills.includes(s));
     const classSkills = form.classSkills.filter((s) => !data?.skills.includes(s));
-    update({ background: ref, bonus: {}, bgEquipment: "", classSkills }, "background", "background.abilities", "background.equipment", "classes.0.skills");
+    update(
+      { background: ref, bonus: {}, bgEquipment: "", speciesSkills, classSkills },
+      "background", "background.abilities", "background.equipment", "speciesChoices.skills", "classes.0.skills",
+    );
+  }
+  function chooseSpeciesSkills(skills: string[]) {
+    // Una habilidad elegida para la especie deja de estar disponible como habilidad de clase
+    const classSkills = form.classSkills.filter((s) => !skills.includes(s));
+    update({ speciesSkills: skills, classSkills }, "speciesChoices.skills", "classes.0.skills");
   }
   function chooseClass(ref: Ref | null) {
     if (sameRef(ref, form.klass)) return;
@@ -561,7 +587,13 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
                 value={form.lineage}
                 onChange={(ref) => update({ lineage: ref }, "lineage")}
                 disabled={!hasLineages}
-                placeholder={form.species && !hasLineages ? "Esta especie no tiene legados" : "Selecciona una opción"}
+                placeholder={
+                  !form.species || hasLineages
+                    ? "Selecciona una opción"
+                    : speciesData?.hasLineages
+                      ? "No hay legados disponibles con los libros elegidos"
+                      : "Esta especie no tiene legados"
+                }
               />
               <FieldError errors={errors} keys={["lineage"]} />
               {form.lineage && <Description entry={cache[refKey(form.lineage)]} />}
@@ -574,7 +606,8 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
                   from={speciesData.skills.choose.from}
                   count={speciesData.skills.choose.count}
                   value={form.speciesSkills}
-                  onChange={(skills) => update({ speciesSkills: skills }, "speciesChoices.skills")}
+                  onChange={chooseSpeciesSkills}
+                  locked={fixedLocked}
                 />
                 <FieldError errors={errors} keys={["speciesChoices.skills"]} />
               </div>
@@ -718,7 +751,7 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
                 count={classData.skills.count}
                 value={form.classSkills}
                 onChange={(skills) => update({ classSkills: skills }, "classes.0.skills")}
-                locked={bgData?.skills ?? []}
+                locked={classLocked}
               />
               <div>
                 <h3 className="mb-2 text-sm font-semibold">Equipo inicial</h3>

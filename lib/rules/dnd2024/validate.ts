@@ -12,6 +12,8 @@ export type ValidateCtx = {
   userId: string;
   books: string[];
   resolve: (ref: Ref) => Promise<CatalogEntry | null>;
+  /** Si la especie tiene algún legado en los libros utilizables (si no hay ninguno, no se exige elegirlo). */
+  hasLineages: (species: Ref) => Promise<boolean>;
 };
 export type ValidateResult = { ok: true; sheet: Dnd2024Sheet } | { ok: false; errors: Record<string, string> };
 
@@ -61,7 +63,7 @@ export async function validateSheet(input: unknown, ctx: ValidateCtx): Promise<V
   let lineage: Named | null = null;
   if (species && speciesEntry) {
     if (input.lineage == null) {
-      if (species.hasLineages) err("lineage", "Elige un legado.");
+      if (species.hasLineages && (await ctx.hasLineages(speciesEntry.ref))) err("lineage", "Elige un legado.");
     } else if (!species.hasLineages) {
       err("lineage", "Esta especie no tiene legados.");
     } else {
@@ -120,6 +122,12 @@ export async function validateSheet(input: unknown, ctx: ValidateCtx): Promise<V
     else bgEquipment = eq;
   }
 
+  // Habilidades que ya dan el trasfondo y la especie: las elegidas no pueden repetirlas
+  const fixedSkills = [...(bg?.skills ?? []), ...(species?.skills.fixed ?? [])];
+  if (speciesSkills.some((s) => fixedSkills.includes(s)))
+    err("speciesChoices.skills", "Una habilidad de especie repite una del trasfondo.");
+  const takenSkills = [...fixedSkills, ...speciesSkills];
+
   // Clase (por ahora, una sola clase de nivel 1)
   const classes: Dnd2024Sheet["classes"] = [];
   if (!Array.isArray(input.classes) || input.classes.length !== 1) err("classes", "Elige una clase.");
@@ -149,8 +157,8 @@ export async function validateSheet(input: unknown, ctx: ValidateCtx): Promise<V
         err("classes.0.skills", `Elige exactamente ${cls.skills.count} habilidades de clase.`);
       else if (!skills.every((s) => cls.skills.from.includes(s)))
         err("classes.0.skills", "Alguna habilidad no está en la lista de la clase.");
-      else if (bg && skills.some((s) => bg.skills.includes(s)))
-        err("classes.0.skills", "Una habilidad de clase repite una del trasfondo.");
+      else if (skills.some((s) => takenSkills.includes(s)))
+        err("classes.0.skills", "Una habilidad de clase repite una del trasfondo o de la especie.");
       const eq = raw.equipment;
       if (typeof eq !== "string" || !has(cls.equipment, eq)) err("classes.0.equipment", "Elige el equipo de la clase.");
       if (ok && !errors["classes.0.skills"] && !errors["classes.0.equipment"])
@@ -198,9 +206,9 @@ export async function validateSheet(input: unknown, ctx: ValidateCtx): Promise<V
   const xp = input.xp ?? 0;
   if (!isInt(xp) || xp < 0 || xp > MAX_XP) err("xp", `Los puntos de experiencia van de 0 a ${MAX_XP}.`);
 
-  const rawHp = isObj(input.hp) ? input.hp : { max: null, current: null, temp: 0 };
-  const hpOk = (v: unknown) => v === null || (isInt(v) && v >= 0 && v <= 10000);
-  if (!hpOk(rawHp.max) || !hpOk(rawHp.current) || !isInt(rawHp.temp) || rawHp.temp < 0 || rawHp.temp > 10000)
+  // Al crear, los PG se calculan (derive); los valores propios llegarán con la edición de la ficha
+  const rawHp = input.hp ?? { max: null, current: null, temp: 0 };
+  if (!isObj(rawHp) || rawHp.max !== null || rawHp.current !== null || rawHp.temp !== 0 || Object.keys(rawHp).length !== 3)
     err("hp", "Puntos de golpe no válidos.");
 
   if (Object.keys(errors).length) return { ok: false, errors };
@@ -225,7 +233,7 @@ export async function validateSheet(input: unknown, ctx: ValidateCtx): Promise<V
       languages: text.languages,
       notes: text.notes,
       xp: xp as number,
-      hp: { max: rawHp.max as number | null, current: rawHp.current as number | null, temp: rawHp.temp as number },
+      hp: { max: null, current: null, temp: 0 },
     },
   };
 }
