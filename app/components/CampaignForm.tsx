@@ -39,7 +39,7 @@ const linkButton = "mt-2 flex items-center gap-1 text-sm text-brand-soft hover:u
 
 /* Selector de imagen con vista previa y validación de tipo y tamaño.
    currentUrl: imagen que ya tiene la campaña (al editar). onRemove(true) = hay que borrar la actual. */
-function ImagePicker({
+export function ImagePicker({
   id, label, hint, maxMB, previewClass, currentUrl, onFile, onRemove, error,
 }: {
   id: string; label: string; hint: string; maxMB: number; previewClass: string;

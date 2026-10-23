@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { getCampaignAccess } from "@/lib/campaignAccess";
 import { Character } from "@/lib/Character";
 import UserLink from "@/app/components/UserLink";
@@ -8,7 +9,7 @@ export default async function CampaignCharactersPage({ params }: { params: Promi
   const { campaign } = await getCampaignAccess(id);
 
   const characters = await Character.find({ campaign: campaign._id })
-    .select("name owner origin")
+    .select("name owner origin sheet.species.name sheet.classes.name sheet.classes.level")
     .sort({ createdAt: 1 })
     .lean();
 
@@ -25,7 +26,18 @@ export default async function CampaignCharactersPage({ params }: { params: Promi
         <ul className="grid grid-cols-[repeat(auto-fill,minmax(min(240px,100%),1fr))] gap-3">
           {characters.map((c) => (
             <li key={String(c._id)} className="rounded-lg border border-line bg-surface p-4">
-              <p className="font-heading font-bold">{c.name}</p>
+              <p className="font-heading font-bold">
+                <Link href={`/characters/${c._id}`} className="hover:text-brand-soft hover:underline">{c.name}</Link>
+              </p>
+              {(() => {
+                // "Especie · Clase N"
+                const s = c.sheet ?? {};
+                const cls = s.classes?.[0];
+                const text = [s.species?.name, cls?.name ? `${cls.name}${cls.level ? ` ${cls.level}` : ""}` : ""]
+                  .filter(Boolean)
+                  .join(" · ");
+                return text ? <p className="text-sm text-muted">{text}</p> : null;
+              })()}
               {(() => {
                 const owner = ownerCards.get(String(c.owner));
                 return owner ? <UserLink user={owner} size={24} className="mt-1 text-sm" /> : <p className="text-sm text-muted">Desconocido</p>;

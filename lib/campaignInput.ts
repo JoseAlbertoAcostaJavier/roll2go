@@ -3,7 +3,7 @@ import type { BookOption } from "@/lib/rules/books";
 import { detectImageType } from "@/lib/images";
 import { CampaignImage } from "@/lib/CampaignImage";
 
-const MAX_IMAGE = 2 * 1024 * 1024; // 2 MB
+export const MAX_IMAGE = 2 * 1024 * 1024; // 2 MB
 const MAX_LOGO = 1 * 1024 * 1024; // 1 MB
 
 const text = (v: FormDataEntryValue | null) => (typeof v === "string" ? v : "");
@@ -12,7 +12,7 @@ const flag = (v: FormDataEntryValue | null) => v === "true";
 export type NewImage = { data: Buffer; contentType: string };
 
 // Lee y valida un archivo de imagen. Si no se ha enviado archivo, no hay imagen ni error.
-async function readImage(
+export async function readImage(
   entry: FormDataEntryValue | null,
   maxBytes: number,
 ): Promise<{ image?: NewImage; error?: string }> {
