@@ -12,14 +12,14 @@ export type NewItem = { ref?: Ref; name?: string; quantity: number };
 
 type Props = {
   systemId: string;
-  campaignId: string | null;
+  /** Libros que puede usar el personaje, ya calculados (sirven aunque el dueño haya dejado la campaña). */
   books: string[];
   /** Devuelve un mensaje de error o null si se añadió. */
   onAdd: (item: NewItem) => Promise<string | null>;
 };
 
 // Diálogo «Añadir»: objeto del catálogo (búsqueda en remoto) o personalizado
-export default function AddItemDialog({ systemId, campaignId, books, onAdd }: Props) {
+export default function AddItemDialog({ systemId, books, onAdd }: Props) {
   const uid = useId();
   const [open, setOpen] = useState(false);
   const [custom, setCustom] = useState(false);
@@ -64,8 +64,7 @@ export default function AddItemDialog({ systemId, campaignId, books, onAdd }: Pr
 
   async function loadOptions(q: string): Promise<EntryOption[]> {
     const params = new URLSearchParams({ kind: "item", system: systemId, q });
-    if (campaignId) params.set("campaign", campaignId);
-    else if (books.length) params.set("books", books.join(","));
+    if (books.length) params.set("books", books.join(","));
     const res = await fetch(`/api/rules/entries?${params.toString()}`);
     if (!res.ok) throw new Error("No se pudo buscar.");
     return (await res.json()).entries as EntryOption[];

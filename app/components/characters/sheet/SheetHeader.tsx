@@ -2,10 +2,9 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ChevronLeft, CircleArrowUp, CircleCheck, Pencil, Printer, User as UserIcon, X } from "lucide-react";
+import { ChevronLeft, CircleCheck, Pencil, Printer, User as UserIcon, X } from "lucide-react";
 import StatusBadge, { type CharacterStatus } from "./StatusBadge";
 
-const MAX_LEVEL = 20;
 const secondaryButton =
   "flex items-center gap-2 rounded-md border border-line px-3 py-2 text-sm font-semibold transition-colors hover:border-brand hover:text-white";
 
@@ -27,11 +26,23 @@ export type SheetHeaderProps = {
 export default function SheetHeader(p: SheetHeaderProps) {
   const [notice, setNotice] = useState(p.notice);
 
-  // Al imprimir (botón o Ctrl+P) se despliegan todos los rasgos plegados
+  // Al imprimir (botón o Ctrl+P) se despliegan todos los rasgos plegados; al terminar se vuelven a plegar
   useEffect(() => {
-    const openAll = () => document.querySelectorAll("main details").forEach((d) => d.setAttribute("open", ""));
+    let closed: HTMLDetailsElement[] = [];
+    const openAll = () => {
+      closed = [...document.querySelectorAll<HTMLDetailsElement>("main details:not([open])")];
+      closed.forEach((d) => (d.open = true));
+    };
+    const restore = () => {
+      closed.forEach((d) => (d.open = false));
+      closed = [];
+    };
     window.addEventListener("beforeprint", openAll);
-    return () => window.removeEventListener("beforeprint", openAll);
+    window.addEventListener("afterprint", restore);
+    return () => {
+      window.removeEventListener("beforeprint", openAll);
+      window.removeEventListener("afterprint", restore);
+    };
   }, []);
 
   // Al descartar el aviso se quita también de la dirección, para que no vuelva al recargar
@@ -84,14 +95,8 @@ export default function SheetHeader(p: SheetHeaderProps) {
         </div>
 
         <div className="flex flex-wrap items-center gap-2 print:hidden">
-          {p.isOwner && p.level < MAX_LEVEL && (
-            <Link
-              href={`/characters/${p.id}/level-up`}
-              className="flex items-center gap-2 rounded-md bg-brand px-3 py-2 text-sm font-heading font-bold text-white transition-colors hover:bg-brand-hover"
-            >
-              <CircleArrowUp size={16} aria-hidden="true" /> Subir de nivel
-            </Link>
-          )}
+          {/* «Subir de nivel» (solo dueño, oculto a nivel 20) vuelve con la página /characters/[id]/level-up, en el
+              plan de la parte 4 (spec §3.2); hasta entonces no se muestra para no enlazar a un 404 */}
           {p.isOwner && (
             <Link href={`/characters/${p.id}/edit`} className={secondaryButton}>
               <Pencil size={16} aria-hidden="true" /> Editar

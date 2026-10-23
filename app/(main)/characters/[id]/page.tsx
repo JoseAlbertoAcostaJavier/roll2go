@@ -136,8 +136,7 @@ export default async function CharacterPage({ params, searchParams }: Props) {
           capacity={d.weight.capacity}
           armorWarning={d.armorWarning}
           systemId={c.systemId as string}
-          campaignId={c.campaign ? String(c.campaign) : null}
-          books={(c.books ?? []) as string[]}
+          books={found.books}
         />
       </section>
 

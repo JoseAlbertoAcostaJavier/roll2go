@@ -19,7 +19,7 @@ type Props = {
   capacity: number;
   armorWarning: string | null;
   systemId: string;
-  campaignId: string | null;
+  /** Libros que puede usar el personaje (calculados en el servidor). */
   books: string[];
 };
 
@@ -40,7 +40,7 @@ const clampInt = (v: string, max: number, fallback: number) => {
 const toDraft = (c: Coins) => ({ cp: String(c.cp), sp: String(c.sp), ep: String(c.ep), gp: String(c.gp), pp: String(c.pp) });
 
 // Pestaña Equipo: inventario, monedas, peso y otras posesiones. Edita el dueño; el resto solo lee.
-export default function EquipmentTab({ characterId, isOwner, inventory, info, capacity, armorWarning, systemId, campaignId, books }: Props) {
+export default function EquipmentTab({ characterId, isOwner, inventory, info, capacity, armorWarning, systemId, books }: Props) {
   const router = useRouter();
   const [inv, setInv] = useState(inventory);
   const [error, setError] = useState("");
@@ -114,7 +114,6 @@ export default function EquipmentTab({ characterId, isOwner, inventory, info, ca
             <div className="print:hidden">
               <AddItemDialog
                 systemId={systemId}
-                campaignId={campaignId}
                 books={books}
                 onAdd={(item: NewItem) => send({ op: "add", ...item })}
               />
