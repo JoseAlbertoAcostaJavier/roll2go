@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { toolName } from "@/lib/rules/dnd2024/labels";
+import { distanceText, toolName } from "@/lib/rules/dnd2024/labels";
 
 describe("toolName", () => {
   it("traduce herramientas y elecciones genéricas", () => {
@@ -11,5 +11,13 @@ describe("toolName", () => {
   });
   it("deja igual lo que no conoce", () => {
     expect(toolName("Choose one kit")).toBe("Choose one kit");
+  });
+});
+
+describe("distanceText", () => {
+  it("pies con su equivalencia en metros", () => {
+    expect(distanceText(30)).toBe("30 pies (9 m)");
+    expect(distanceText(25)).toBe("25 pies (7,5 m)");
+    expect(distanceText(60)).toBe("60 pies (18 m)");
   });
 });

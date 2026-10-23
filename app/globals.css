@@ -67,3 +67,32 @@
 @media (prefers-reduced-motion: reduce) {
   *, ::before, ::after { transition: none !important; animation: none !important; }
 }
+/* Impresión (ficha de personaje): solo el contenido de la página, en claro, sin navegación ni botones.
+   Las pestañas inactivas llevan `hidden print:block` para imprimirse todas seguidas. */
+@media print {
+  :root {
+    --color-surface: #fff;
+    --color-panel: #fff;
+    --color-line: #bbb;
+    --color-fg: #111;
+    --color-muted: #555;
+    --color-brand-soft: #8f1d25;
+    --color-success: #1f6b37;
+    --color-white: #111;
+  }
+  html {
+    color-scheme: light;
+  }
+  /* Barra de navegación, pie y asistente del layout principal */
+  body > :not(main) {
+    display: none !important;
+  }
+  button,
+  nav {
+    display: none !important;
+  }
+  * {
+    animation: none !important;
+    box-shadow: none !important;
+  }
+}

@@ -5,6 +5,14 @@ export const ABILITY_NAMES: Record<Ability, string> = {
   str: "Fuerza", dex: "Destreza", con: "Constitución", int: "Inteligencia", wis: "Sabiduría", cha: "Carisma",
 };
 
+export const ABILITY_ABBR: Record<Ability, string> = {
+  str: "FUE", dex: "DES", con: "CON", int: "INT", wis: "SAB", cha: "CAR",
+};
+
+// Distancias en pies con su equivalencia en metros (5 pies = 1,5 m): "30 pies (9 m)"
+export const metersText = (feet: number) => `${(Math.round(feet * 0.3 * 10) / 10).toLocaleString("es-ES")} m`;
+export const distanceText = (feet: number) => `${feet} pies (${metersText(feet)})`;
+
 export const SKILL_NAMES: Record<string, string> = {
   acrobatics: "Acrobacias",
   "animal handling": "Trato con animales",
