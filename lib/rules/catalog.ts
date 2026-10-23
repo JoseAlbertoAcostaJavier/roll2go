@@ -133,28 +133,51 @@ export async function listEntries(opts: {
     .map((e) => e.option);
 }
 
+type FullEntryDoc = EntryDoc & {
+  description?: string;
+  descriptionEs?: string;
+  identifier?: string;
+  parent?: { book: unknown; key: string };
+  foundry?: unknown;
+};
+
+const toEntry = (d: FullEntryDoc, bookName: string): CatalogEntry => ({
+  ...toOption(d, bookName, true),
+  description: d.description ?? "",
+  descriptionEs: d.descriptionEs ?? "",
+  identifier: d.identifier ?? "",
+  parent: d.parent ? { book: String(d.parent.book), key: d.parent.key } : null,
+  foundry: d.foundry ?? null,
+});
+
+const validRef = (ref: Ref) => mongoose.isValidObjectId(ref.book) && typeof ref.key === "string";
+
 // Entrada completa por referencia, sin comprobar visibilidad (quien llama debe haberla comprobado)
 export async function getEntry(ref: Ref): Promise<CatalogEntry | null> {
-  if (!mongoose.isValidObjectId(ref.book) || typeof ref.key !== "string") return null;
+  if (!validRef(ref)) return null;
   await connectDB();
   const doc = await BookEntry.findOne({ book: ref.book, key: ref.key }).lean();
   if (!doc) return null;
   const book = await Book.findById(ref.book).select("name").lean();
-  const d = doc as unknown as EntryDoc & {
-    description?: string;
-    descriptionEs?: string;
-    identifier?: string;
-    parent?: { book: unknown; key: string };
-    foundry?: unknown;
-  };
-  return {
-    ...toOption(d, book?.name ?? "", true),
-    description: d.description ?? "",
-    descriptionEs: d.descriptionEs ?? "",
-    identifier: d.identifier ?? "",
-    parent: d.parent ? { book: String(d.parent.book), key: d.parent.key } : null,
-    foundry: d.foundry ?? null,
-  };
+  return toEntry(doc as unknown as FullEntryDoc, book?.name ?? "");
+}
+
+const BATCH_SIZE = 200;
+
+/** Como getEntry para varias referencias: una consulta por lote de 200. Las que no existen no aparecen. */
+export async function getEntries(refs: Ref[]): Promise<CatalogEntry[]> {
+  const valid = refs.filter(validRef);
+  if (valid.length === 0) return [];
+  await connectDB();
+  const batches: Ref[][] = [];
+  for (let i = 0; i < valid.length; i += BATCH_SIZE) batches.push(valid.slice(i, i + BATCH_SIZE));
+  const docs = (await Promise.all(batches.map((b) =>
+    BookEntry.find({ $or: b.map((r) => ({ book: r.book, key: r.key })) }).lean(),
+  ))).flat() as unknown as FullEntryDoc[];
+  const bookIds = [...new Set(docs.map((d) => String(d.book)))];
+  const books = await Book.find({ _id: { $in: bookIds } }).select("name").lean();
+  const bookName = new Map(books.map((b) => [String(b._id), b.name as string]));
+  return docs.map((d) => toEntry(d, bookName.get(String(d.book)) ?? ""));
 }
 
 // Como getEntry, pero solo si el libro de la referencia está entre los permitidos

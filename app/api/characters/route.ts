@@ -83,10 +83,12 @@ export async function POST(req: NextRequest) {
   } catch {
     // JSON mal formado: validateSheet lo rechaza como hoja no válida
   }
+  // La hoja se guarda en v2; el equipo inicial se carga con los mismos libros para volcarlo al inventario
   const result = await validateSheet(rawSheet, {
     userId: session.id,
     books,
     resolve: (ref) => resolveRef(ref, books),
+    makeId: () => new mongoose.Types.ObjectId().toHexString(),
     // Legados de la especie en su mismo libro (como los muestra el asistente)
     hasLineages: async (species) =>
       (await listEntries({ books, kind: "lineage", parent: species.key })).some((l) => l.ref.book === species.book),

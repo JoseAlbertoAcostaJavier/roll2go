@@ -26,7 +26,7 @@ export default function CharacterSummary({
   const d = useMemo(() => derive(sheet, entries), [sheet, entries]);
 
   const stats: { label: string; value: string }[] = [
-    { label: "PG", value: hasClass ? String(d.hpMax) : "—" },
+    { label: "PG", value: hasClass ? String(d.hp.max) : "—" },
     { label: "CA", value: String(d.ac) },
     { label: "Iniciativa", value: fmtMod(d.initiative) },
     { label: "Velocidad", value: hasSpecies ? `${d.speed} pies` : "—" },

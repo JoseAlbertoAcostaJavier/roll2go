@@ -17,6 +17,7 @@ const entry = (key: string, data: unknown, extra: Partial<CatalogEntry> = {}): C
 });
 const catalog = new Map<string, CatalogEntry>(
   [
+    entry("item:longsword|xphb", { weapon: { category: "martial" } }, { name: "Longsword", nameEs: "Espada larga" }),
     entry("species:elf|xphb", { size: ["M"], hasLineages: true, skills: { fixed: [] } }, { name: "Elf", nameEs: "Elfo" }),
     entry("species:dwarf|xphb", {
       size: ["M"], hasLineages: false, skills: { fixed: ["Perception"] },
@@ -33,7 +34,8 @@ const catalog = new Map<string, CatalogEntry>(
     }),
     entry("class:fighter|xphb", {
       skills: { count: 2, from: ["Acrobatics", "Athletics", "Insight", "Perception"] },
-      equipment: { A: [], B: [], C: [] }, subclassLevel: 3,
+      equipment: { A: [{ ref: { book: B, key: "item:longsword|xphb" } }], B: [], C: [{ value: 15500 }] },
+      subclassLevel: 3, hitDie: 10,
     }, { name: "Fighter", nameEs: "Guerrero" }),
   ].map((e) => [e.ref.key, e]),
 );
@@ -43,6 +45,7 @@ const ctx = {
   resolve: async (r: Ref) => (r.book === B ? (catalog.get(r.key) ?? null) : null),
   hasLineages: async (species: Ref) =>
     [...catalog.values()].some((e) => e.ref.key.startsWith("lineage:") && e.parent?.key === species.key && e.parent.book === species.book),
+  makeId: () => "id1",
 };
 const named = (key: string, book = B) => ({ ref: { book, key }, name: "cliente" });
 
@@ -77,9 +80,28 @@ describe("validateSheet", () => {
     expect(r.ok).toBe(true);
     if (!r.ok) return;
     expect(r.sheet.species.name).toBe("Elfo");
-    expect(r.sheet.classes[0].name).toBe("Guerrero");
     expect(r.sheet.lineage?.name).toBe("lineage:drow|xphb");
-    expect(r.sheet.classes[0].equipment).toBe("C");
+  });
+  it("devuelve la hoja v2: nivel 1 en el historial y el equipo en el inventario", async () => {
+    const r = await run(() => {});
+    if (!r.ok) throw new Error("hoja no válida");
+    expect(r.sheet.version).toBe(2);
+    expect(r.sheet).not.toHaveProperty("classes");
+    expect(r.sheet.classesSummary).toEqual([
+      { class: { ref: { book: B, key: "class:fighter|xphb" }, name: "Guerrero" }, level: 1, subclass: null },
+    ]);
+    expect(r.sheet.levels[0]).toMatchObject({
+      n: 1, classLevel: 1, hp: { method: "max", value: 10 }, equipment: "C",
+      choices: [{ type: "skills", source: "class:skills", value: ["Athletics", "Acrobatics"] }],
+    });
+    expect(r.sheet.inventory).toEqual({ items: [], coins: { cp: 0, sp: 0, ep: 0, gp: 155, pp: 0 }, other: "" });
+  });
+  it("vuelca los objetos del equipo elegido, cargados del catálogo", async () => {
+    const r = await run((s) => { s.classes[0].equipment = "A"; });
+    if (!r.ok) throw new Error("hoja no válida");
+    expect(r.sheet.inventory.items).toEqual([{
+      id: "id1", ref: { book: B, key: "item:longsword|xphb" }, name: "Espada larga", quantity: 1, equipped: true, notes: "",
+    }]);
   });
   it("rechaza lo que no es un objeto", async () => {
     expect((await validateSheet(null, ctx)).ok).toBe(false);

@@ -9,7 +9,8 @@
     "lint": "eslint",
     "test": "vitest run",
     "import:5etools": "tsx scripts/import-5etools.ts",
-    "migrate:books": "tsx scripts/migrate-book-ids.ts"
+    "migrate:books": "tsx scripts/migrate-book-ids.ts",
+    "migrate:levels": "tsx scripts/migrate-levels.ts"
   },
   "dependencies": {
     "@google/genai": "^2.24.0",

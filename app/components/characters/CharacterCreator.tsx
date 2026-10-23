@@ -3,9 +3,7 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { LoaderCircle } from "lucide-react";
-import BbcodeEditor from "@/app/components/BbcodeEditor";
 import Bbcode from "@/app/components/Bbcode";
-import { ImagePicker } from "@/app/components/CampaignForm";
 import { CLASS_ICONS } from "@/app/components/icons/classes";
 import { card, cardTitle, errorClass, field, labelClass, primaryButton } from "@/app/components/formStyles";
 import type { CatalogEntry, EntryOption } from "@/lib/rules/catalog";
@@ -13,14 +11,17 @@ import { ABILITIES, type Ability, type BackgroundData, type ClassData, type Equi
 import type { AbilityMethod, Dnd2024Sheet } from "@/lib/rules/dnd2024/sheet";
 import { checkBackgroundBonus } from "@/lib/rules/dnd2024/abilities";
 import { totalsWithinLimit } from "@/lib/rules/dnd2024/assign";
-import { ALIGNMENTS } from "@/lib/rules/dnd2024/alignments";
 import { equipmentRefs, refKey } from "@/lib/rules/dnd2024/equipmentRefs";
 import { ABILITY_NAMES, sizeName, skillName, toolName } from "@/lib/rules/dnd2024/labels";
 import AbilityScores from "./AbilityScores";
 import CharacterSummary, { type MissingItem } from "./CharacterSummary";
 import RuleSelect from "./RuleSelect";
+import FieldError from "./fields/FieldError";
+import ImageFields from "./fields/ImageFields";
+import InfoFields from "./fields/InfoFields";
+import StatusField from "./fields/StatusField";
+import { LIMITS, STATUSES, type Status } from "./fields/constants";
 
-type Status = "active" | "retired" | "dead";
 type Size = "S" | "M" | "L";
 type Base = Record<Ability, number | null>;
 
@@ -61,15 +62,6 @@ type Props = {
   backgrounds: EntryOption[];
 };
 
-const STATUSES: { id: Status; label: string; description: string }[] = [
-  { id: "active", label: "En activo", description: "¡En plena forma! Aparecerás en el listado principal de personajes. ¡Todo listo para la aventura!" },
-  { id: "retired", label: "Retirado", description: "Ha colgado las armas. No aparecerá en el listado principal." },
-  { id: "dead", label: "Fallecido", description: "Descanse en paz. No aparecerá en el listado principal." },
-];
-
-const LIMITS = { name: 80, alignment: 40, appearance: 500, age: 500, languages: 500, notes: 10000 };
-const MAX_XP = 355000;
-const IMAGE_MB = 2;
 
 const emptyForm = (): FormState => ({
   name: "", status: "active",
@@ -182,12 +174,6 @@ const asEntry = (o: EntryOption): CatalogEntry => ({
 });
 
 // ---------- piezas de la interfaz ----------
-
-function FieldError({ errors, keys }: { errors: Record<string, string>; keys: string[] }) {
-  const k = keys.find((x) => errors[x]);
-  if (!k) return null;
-  return <p className={errorClass} role="alert" data-field-error>{errors[k]}</p>;
-}
 
 function Description({ entry }: { entry: CatalogEntry | null | undefined }) {
   if (entry === undefined)
@@ -648,56 +634,14 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
               <FieldError errors={errors} keys={["campaign"]} />
             </div>
 
-            <div className="grid gap-5 sm:grid-cols-2">
-              <ImagePicker
-                id="portrait"
-                label="Retrato"
-                hint={`PNG, JPG o WebP. Máximo ${IMAGE_MB} MB.`}
-                maxMB={IMAGE_MB}
-                previewClass="h-24 w-24"
-                onFile={setPortrait}
-                onRemove={() => {}}
-                error={errors.portrait}
-              />
-              <ImagePicker
-                id="image"
-                label="Imagen"
-                hint={`PNG, JPG o WebP. Máximo ${IMAGE_MB} MB.`}
-                maxMB={IMAGE_MB}
-                previewClass="h-24 w-32"
-                onFile={setImage}
-                onRemove={() => {}}
-                error={errors.image}
-              />
-            </div>
+            <ImageFields errors={errors} onPortrait={setPortrait} onImage={setImage} />
           </div>
         </section>
 
         {/* 2. Estado */}
         <section id="estado" {...section(1)}>
           <h2 className={cardTitle}>Estado</h2>
-          <div role="radiogroup" aria-label="Estado" className="grid gap-3 sm:grid-cols-3">
-            {STATUSES.map((s) => (
-              <label
-                key={s.id}
-                className={`flex cursor-pointer flex-col gap-1 rounded-md border p-3 text-sm transition-colors ${form.status === s.id ? "border-brand bg-brand/10" : "border-line hover:border-brand"}`}
-              >
-                <span className="flex items-center gap-2 font-semibold">
-                  <input
-                    type="radio"
-                    name="status"
-                    value={s.id}
-                    checked={form.status === s.id}
-                    onChange={() => update({ status: s.id }, "status")}
-                    className="accent-brand"
-                  />
-                  {s.label}
-                </span>
-                <span className="text-muted">{s.description}</span>
-              </label>
-            ))}
-          </div>
-          <FieldError errors={errors} keys={["status"]} />
+          <StatusField value={form.status} onChange={(status) => update({ status }, "status")} errors={errors} />
         </section>
 
         {/* 3. Trasfondo */}
@@ -789,62 +733,7 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
         {/* 6. Información */}
         <section id="informacion" {...section(5)}>
           <h2 className={cardTitle}>Información</h2>
-          <div className="space-y-5">
-            <div>
-              <label htmlFor="alignment" className={labelClass}>Alineamiento</label>
-              <select id="alignment" className={field} value={form.alignment} onChange={(e) => update({ alignment: e.target.value }, "alignment")}>
-                <option value="">Sin alineamiento</option>
-                {ALIGNMENTS.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
-              </select>
-              {form.alignment && (
-                <p className="mt-1 text-sm text-muted">{ALIGNMENTS.find((a) => a.id === form.alignment)?.description}</p>
-              )}
-              <FieldError errors={errors} keys={["alignment"]} />
-            </div>
-            <div className="grid gap-5 sm:grid-cols-2">
-              <div>
-                <label htmlFor="age" className={labelClass}>Edad</label>
-                <input id="age" className={field} maxLength={LIMITS.age} value={form.age} onChange={(e) => update({ age: e.target.value }, "age")} />
-                <FieldError errors={errors} keys={["age"]} />
-              </div>
-              <div>
-                <label htmlFor="xp" className={labelClass}>Puntos de experiencia</label>
-                <input
-                  id="xp"
-                  type="number"
-                  inputMode="numeric"
-                  min={0}
-                  max={MAX_XP}
-                  step={1}
-                  className={field}
-                  value={form.xp}
-                  placeholder="0"
-                  onChange={(e) => update({ xp: e.target.value }, "xp")}
-                />
-                <FieldError errors={errors} keys={["xp"]} />
-              </div>
-            </div>
-            <div>
-              <label htmlFor="appearance" className={labelClass}>Apariencia</label>
-              <textarea id="appearance" rows={3} className={field} maxLength={LIMITS.appearance} value={form.appearance} onChange={(e) => update({ appearance: e.target.value }, "appearance")} />
-              <FieldError errors={errors} keys={["appearance"]} />
-            </div>
-            <div>
-              <label htmlFor="backstory" className={labelClass}>Historia</label>
-              <BbcodeEditor id="backstory" value={form.backstory} onChange={(v) => update({ backstory: v }, "backstory")} />
-              <FieldError errors={errors} keys={["backstory"]} />
-            </div>
-            <div>
-              <label htmlFor="languages" className={labelClass}>Idiomas</label>
-              <input id="languages" className={field} maxLength={LIMITS.languages} value={form.languages} onChange={(e) => update({ languages: e.target.value }, "languages")} />
-              <FieldError errors={errors} keys={["languages"]} />
-            </div>
-            <div>
-              <label htmlFor="notes" className={labelClass}>Notas</label>
-              <textarea id="notes" rows={4} className={field} maxLength={LIMITS.notes} value={form.notes} onChange={(e) => update({ notes: e.target.value }, "notes")} />
-              <FieldError errors={errors} keys={["notes"]} />
-            </div>
-          </div>
+          <InfoFields values={form} errors={errors} onChange={update} />
         </section>
 
         <div className="flex flex-wrap items-center justify-end gap-3">

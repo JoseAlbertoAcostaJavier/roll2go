@@ -3,13 +3,14 @@ import { getCampaignAccess } from "@/lib/campaignAccess";
 import { Character } from "@/lib/Character";
 import UserLink from "@/app/components/UserLink";
 import { loadUserCards } from "@/lib/userCards";
+import { classesOf } from "@/lib/rules/dnd2024/upgrade";
 
 export default async function CampaignCharactersPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const { campaign } = await getCampaignAccess(id);
 
   const characters = await Character.find({ campaign: campaign._id })
-    .select("name owner origin sheet.species.name sheet.classes.name sheet.classes.level")
+    .select("name owner origin sheet.species.name sheet.classes.name sheet.classes.level sheet.classesSummary")
     .sort({ createdAt: 1 })
     .lean();
 
@@ -32,8 +33,8 @@ export default async function CampaignCharactersPage({ params }: { params: Promi
               {(() => {
                 // "Especie · Clase N"
                 const s = c.sheet ?? {};
-                const cls = s.classes?.[0];
-                const text = [s.species?.name, cls?.name ? `${cls.name}${cls.level ? ` ${cls.level}` : ""}` : ""]
+                const cls = classesOf(s)[0];
+                const text = [s.species?.name, cls?.class?.name ? `${cls.class.name}${cls.level ? ` ${cls.level}` : ""}` : ""]
                   .filter(Boolean)
                   .join(" · ");
                 return text ? <p className="text-sm text-muted">{text}</p> : null;

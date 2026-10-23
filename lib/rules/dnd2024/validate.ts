@@ -6,7 +6,9 @@ import {
 } from "@/lib/rules/types";
 import { POINT_BUY_TOTAL, STANDARD_ARRAY, checkBackgroundBonus, pointBuyCost } from "./abilities";
 import { verifyRolls } from "./rolls";
-import { ABILITY_METHODS, type AbilityMethod, type Dnd2024Sheet, type Named } from "./sheet";
+import { loadEquipmentEntries, refKey } from "./equipmentRefs";
+import { ABILITY_METHODS, type AbilityMethod, type Dnd2024Sheet, type Dnd2024SheetV2, type Named } from "./sheet";
+import { upgradeSheet } from "./upgrade";
 
 export type ValidateCtx = {
   userId: string;
@@ -14,11 +16,13 @@ export type ValidateCtx = {
   resolve: (ref: Ref) => Promise<CatalogEntry | null>;
   /** Si la especie tiene algún legado en los libros utilizables (si no hay ninguno, no se exige elegirlo). */
   hasLineages: (species: Ref) => Promise<boolean>;
+  /** Id de cada línea del inventario inicial (un ObjectId en texto). */
+  makeId: () => string;
 };
-export type ValidateResult = { ok: true; sheet: Dnd2024Sheet } | { ok: false; errors: Record<string, string> };
+export type ValidateResult = { ok: true; sheet: Dnd2024SheetV2 } | { ok: false; errors: Record<string, string> };
 
-const TEXT_LIMITS = { alignment: 40, appearance: 500, age: 500, languages: 500, notes: 10000 } as const;
-const MAX_XP = 355000;
+export const TEXT_LIMITS = { alignment: 40, appearance: 500, age: 500, languages: 500, notes: 10000 } as const;
+export const MAX_XP = 355000;
 type Size = "S" | "M" | "L";
 const SIZES: Size[] = ["S", "M", "L"];
 
@@ -130,6 +134,7 @@ export async function validateSheet(input: unknown, ctx: ValidateCtx): Promise<V
 
   // Clase (por ahora, una sola clase de nivel 1)
   const classes: Dnd2024Sheet["classes"] = [];
+  let classEntry: CatalogEntry | null = null;
   if (!Array.isArray(input.classes) || input.classes.length !== 1) err("classes", "Elige una clase.");
   else {
     const raw: unknown = input.classes[0];
@@ -161,8 +166,10 @@ export async function validateSheet(input: unknown, ctx: ValidateCtx): Promise<V
         err("classes.0.skills", "Una habilidad de clase repite una del trasfondo o de la especie.");
       const eq = raw.equipment;
       if (typeof eq !== "string" || !has(cls.equipment, eq)) err("classes.0.equipment", "Elige el equipo de la clase.");
-      if (ok && !errors["classes.0.skills"] && !errors["classes.0.equipment"])
+      if (ok && !errors["classes.0.skills"] && !errors["classes.0.equipment"]) {
         classes.push({ ...named(cEntry), level: 1, subclass, skills: skills as string[], equipment: eq as string });
+        classEntry = cEntry;
+      }
     }
   }
 
@@ -212,28 +219,34 @@ export async function validateSheet(input: unknown, ctx: ValidateCtx): Promise<V
     err("hp", "Puntos de golpe no válidos.");
 
   if (Object.keys(errors).length) return { ok: false, errors };
-  if (!speciesEntry || !bgEntry || classes.length !== 1)
+  if (!speciesEntry || !bgEntry || !classEntry || classes.length !== 1)
     return { ok: false, errors: { sheet: "Hoja de personaje no válida." } };
 
-  return {
-    ok: true,
-    sheet: {
-      version: 1,
-      species: named(speciesEntry),
-      lineage,
-      background: { ...named(bgEntry), abilities: bonus, equipment: bgEquipment },
-      classes,
-      abilityMethod: method,
-      baseAbilities: base,
-      rolls,
-      speciesChoices: { skills: speciesSkills, size },
-      alignment: text.alignment,
-      appearance: text.appearance,
-      age: text.age,
-      languages: text.languages,
-      notes: text.notes,
-      xp: xp as number,
-      hp: { max: null, current: null, temp: 0 },
-    },
+  // Se guarda en v2: el nivel 1 en el historial y el equipo inicial volcado al inventario
+  const entries = new Map<string, CatalogEntry>([
+    [refKey(classEntry.ref), classEntry],
+    [refKey(bgEntry.ref), bgEntry],
+  ]);
+  const classEquipment = (classEntry.data as ClassData).equipment[classes[0].equipment] ?? [];
+  await loadEquipmentEntries([classEquipment, bg?.equipment[bgEquipment] ?? []], entries, ctx.resolve);
+
+  const sheet: Dnd2024Sheet = {
+    version: 1,
+    species: named(speciesEntry),
+    lineage,
+    background: { ...named(bgEntry), abilities: bonus, equipment: bgEquipment },
+    classes,
+    abilityMethod: method,
+    baseAbilities: base,
+    rolls,
+    speciesChoices: { skills: speciesSkills, size },
+    alignment: text.alignment,
+    appearance: text.appearance,
+    age: text.age,
+    languages: text.languages,
+    notes: text.notes,
+    xp: xp as number,
+    hp: { max: null, current: null, temp: 0 },
   };
+  return { ok: true, sheet: upgradeSheet(sheet, entries, ctx.makeId) };
 }
