@@ -39,10 +39,21 @@ const toOption = (b: BookDoc): BookOption => ({
   attribution: b.license?.attribution ?? "",
 });
 
-// Libros oficiales (owner null) y públicos de un sistema, por nombre
+// Solo los libros que se ofrecen como libros de reglas (no los de apoyo, como el de las tablas de nombres)
+export const LISTED = { listed: { $ne: false } } as const;
+
+/** Filtro de los libros que ve un usuario: oficiales públicos y listados, y los suyos (opcionalmente de un sistema). */
+export function visibleBooksFilter(userId: string, systemId?: string): Record<string, unknown> {
+  return {
+    $or: [{ owner: null, visibility: "public", ...LISTED }, { owner: userId }],
+    ...(systemId ? { systemId } : {}),
+  };
+}
+
+// Libros oficiales (owner null), públicos y listados de un sistema, por nombre
 export async function officialBooksOf(systemId: string): Promise<BookOption[]> {
   await connectDB();
-  const docs = await Book.find({ owner: null, visibility: "public", systemId })
+  const docs = await Book.find({ owner: null, visibility: "public", systemId, ...LISTED })
     .sort({ name: 1 })
     .lean();
   return docs.map(toOption);
@@ -51,11 +62,7 @@ export async function officialBooksOf(systemId: string): Promise<BookOption[]> {
 // Libros que el usuario puede ver: oficiales públicos + los suyos (opcionalmente de un sistema)
 export async function visibleBooksOf(userId: string, systemId?: string): Promise<BookOption[]> {
   await connectDB();
-  const filter: Record<string, unknown> = {
-    $or: [{ owner: null, visibility: "public" }, { owner: userId }],
-  };
-  if (systemId) filter.systemId = systemId;
-  const docs = await Book.find(filter).sort({ name: 1 }).lean();
+  const docs = await Book.find(visibleBooksFilter(userId, systemId)).sort({ name: 1 }).lean();
   return docs.map(toOption);
 }
 

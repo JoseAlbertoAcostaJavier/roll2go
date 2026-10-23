@@ -25,6 +25,8 @@ import es from "../lib/rules/i18n/es.json";
 const SRD_ATTRIBUTION =
   'This work includes material from the System Reference Document 5.2 ("SRD 5.2") by Wizards of the Coast LLC, available at https://www.dndbeyond.com/srd. The SRD 5.2 is licensed under the Creative Commons Attribution 4.0 International License, available at https://creativecommons.org/licenses/by/4.0/legalcode.';
 const BOOK_NAMES: Record<string, string> = { XPHB: "Manual del Jugador 2024", XGE: "Guía de Xanathar para todo" };
+// Libros de apoyo que no se ofrecen como libros de reglas (de la Guía de Xanathar solo se importan las tablas de nombres)
+const UNLISTED = new Set(["XGE"]);
 const BATCH = 500;
 
 function fail(msg: string): never {
@@ -134,6 +136,7 @@ async function main() {
         $set: {
           systemId: "dnd-2024",
           visibility: "public",
+          listed: !UNLISTED.has(source),
           license: args.srdOnly
             ? { type: "srd", attribution: SRD_ATTRIBUTION, sourceUrl: "https://www.dndbeyond.com/srd" }
             : { type: "official", attribution: "", sourceUrl: "" },

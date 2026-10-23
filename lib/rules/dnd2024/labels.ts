@@ -1,5 +1,10 @@
 // Nombres en español de los identificadores que guarda el catálogo en minúsculas e inglés (habilidades, etc.).
-import type { Ability } from "@/lib/rules/types";
+import type { Ability, FeatData } from "@/lib/rules/types";
+
+/** Categoría de dote de 5etools (y de las elecciones de `pendingChoices`) → `FeatData.category`. */
+export const FEAT_CATEGORIES: Record<string, FeatData["category"]> = {
+  O: "origin", G: "general", FS: "fightingStyle", "FS:P": "fightingStyle", "FS:R": "fightingStyle", EB: "epicBoon",
+};
 
 export const ABILITY_NAMES: Record<Ability, string> = {
   str: "Fuerza", dex: "Destreza", con: "Constitución", int: "Inteligencia", wis: "Sabiduría", cha: "Carisma",

@@ -18,7 +18,7 @@ export default function MasteriesEditor({
   allowed: number;
   /** Las actuales, con su etiqueta («Espada corta (Vejar)»). */
   current: PickerOption[];
-  /** Armas cuerpo a cuerpo con maestría y con competencia. */
+  /** Armas con maestría y con competencia (del Bárbaro, solo cuerpo a cuerpo). */
   options: PickerOption[];
 }) {
   const router = useRouter();

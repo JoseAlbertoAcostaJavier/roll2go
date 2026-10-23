@@ -6,20 +6,17 @@ import { OUTDATED_SHEET_ERROR, loadCharacterFor } from "@/lib/characterAccess";
 import { getEntries } from "@/lib/rules/catalog";
 import { derive } from "@/lib/rules/dnd2024/derive";
 import { weaponProficient } from "@/lib/rules/dnd2024/derive/attacks";
-import { refKey } from "@/lib/rules/dnd2024/equipmentRefs";
-import { masteryCount, validateMasteries } from "@/lib/rules/dnd2024/masteries";
-import type { ItemData, Ref } from "@/lib/rules/types";
+import { bareName, isRef, refKey } from "@/lib/rules/dnd2024/equipmentRefs";
+import { masteryCount, masteryMeleeOnly, validateMasteries } from "@/lib/rules/dnd2024/masteries";
+import type { ItemData } from "@/lib/rules/types";
 
 type Ctx = { params: Promise<{ id: string }> };
 
 const MAX_REFS = 50;
-const isRef = (v: unknown): v is Ref =>
-  typeof v === "object" && v !== null && typeof (v as Ref).book === "string" && typeof (v as Ref).key === "string";
-// "item:longsword|xphb" → "longsword"
-const bareName = (key: string) => key.replace(/^[^:]*:/, "").split("|")[0];
 
 // Cambia las armas con maestría { masteries: Ref[] }. Solo el dueño. Tantas como da la progresión de sus clases;
-// armas cuerpo a cuerpo sencillas o marciales con maestría y con competencia. Responde { weaponMasteries }.
+// armas sencillas o marciales con maestría y con competencia (del Bárbaro, solo cuerpo a cuerpo). Responde
+// { weaponMasteries }.
 export async function PATCH(req: NextRequest, { params }: Ctx) {
   const { id } = await params;
   const session = await sessionOf(req);
@@ -52,6 +49,7 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
   const result = validateMasteries(masteries, {
     allowed: masteryCount(found.sheet, entries),
     entries,
+    meleeOnly: masteryMeleeOnly(found.sheet, entries),
     proficientWith: (item) => weaponProficient(item.data as ItemData, [item.name, bareName(item.ref.key)], weapons),
   });
   if (!result.ok) return NextResponse.json({ error: result.error }, { status: 400 });

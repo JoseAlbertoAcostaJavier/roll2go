@@ -2,7 +2,7 @@
 // Funciones puras: las usan el creador, la ficha y las rutas que las guardan.
 import type { CatalogEntry } from "@/lib/rules/catalog";
 import type { ClassData, ItemData, Ref } from "@/lib/rules/types";
-import { refKey } from "./equipmentRefs";
+import { isRef, refKey } from "./equipmentRefs";
 import { masteryName } from "./labels";
 import { countAt } from "./levels";
 import type { Dnd2024SheetV2 } from "./sheet";
@@ -10,11 +10,21 @@ import { summarizeClasses } from "./upgrade";
 
 const MELEE_TYPE = "M";
 const CATEGORIES = ["simple", "martial"];
+const MASTERY_SOURCE = "progression:weapon mastery|";
+// "class:barbarian|xphb" → "barbarian|xphb"
+const bareKey = (key: string) => key.replace(/^[^:]*:/, "");
 
-/** Arma cuerpo a cuerpo, sencilla o marcial, con propiedad de maestría. */
-export function isMasteryWeapon(data: ItemData | undefined): boolean {
+/** Clases (`nombre|fuente`) cuyas maestrías solo pueden ser de armas cuerpo a cuerpo; las demás, de cualquier arma. */
+export const MELEE_ONLY_MASTERY: ReadonlySet<string> = new Set(["barbarian|xphb"]);
+
+/** Si la elección `weaponMastery` con este `source` («progression:weapon mastery|barbarian|xphb») es solo cuerpo a cuerpo. */
+export const meleeOnlySource = (source: string) =>
+  source.startsWith(MASTERY_SOURCE) && MELEE_ONLY_MASTERY.has(source.slice(MASTERY_SOURCE.length));
+
+/** Arma sencilla o marcial con propiedad de maestría (con `meleeOnly`, además cuerpo a cuerpo). */
+export function isMasteryWeapon(data: ItemData | undefined, meleeOnly = false): boolean {
   const w = data?.weapon;
-  return !!w?.mastery && data?.type === MELEE_TYPE && CATEGORIES.includes(w.category.toLowerCase());
+  return !!w?.mastery && CATEGORIES.includes(w.category.toLowerCase()) && (!meleeOnly || data?.type === MELEE_TYPE);
 }
 
 /** «Espada corta (Vejar)». */
@@ -29,22 +39,36 @@ export function masteryCount(sheet: Pick<Dnd2024SheetV2, "levels">, entries: Map
   }, 0);
 }
 
+/**
+ * Si las maestrías de la hoja solo pueden ser cuerpo a cuerpo: cuando todas las clases que las dan lo exigen (un
+ * Bárbaro que entra en Guerrero ya puede elegir armas a distancia).
+ */
+export function masteryMeleeOnly(sheet: Pick<Dnd2024SheetV2, "levels">, entries: Map<string, CatalogEntry>): boolean {
+  const granting = summarizeClasses(sheet.levels).filter((c) => {
+    const data = entries.get(refKey(c.class.ref))?.data as ClassData | undefined;
+    return countAt(data?.progressions?.weaponMastery, c.level) > 0;
+  });
+  return granting.length > 0 && granting.every((c) => MELEE_ONLY_MASTERY.has(bareKey(c.class.ref.key)));
+}
+
 /** Maestrías actuales; las hojas guardadas antes de `weaponMasteries` toman las elegidas al subir de nivel. */
 export function currentMasteries(sheet: Pick<Dnd2024SheetV2, "levels"> & { weaponMasteries?: Ref[] }): Ref[] {
   return sheet.weaponMasteries
     ?? sheet.levels.flatMap((l) => l.choices.flatMap((c) => (c.type === "weaponMastery" ? c.value : [])));
 }
 
-const isRef = (v: unknown): v is Ref =>
-  typeof v === "object" && v !== null && typeof (v as Ref).book === "string" && typeof (v as Ref).key === "string";
-
 /**
- * Comprueba una lista de maestrías: exactamente `allowed` armas distintas del catálogo, cuerpo a cuerpo, sencillas o
- * marciales, con propiedad de maestría y con las que el personaje tiene competencia.
+ * Comprueba una lista de maestrías: exactamente `allowed` armas distintas del catálogo, sencillas o marciales, con
+ * propiedad de maestría y con las que el personaje tiene competencia; con `meleeOnly` (Bárbaro), cuerpo a cuerpo.
  */
 export function validateMasteries(
   refs: Ref[],
-  ctx: { allowed: number; entries: Map<string, CatalogEntry>; proficientWith: (item: CatalogEntry) => boolean },
+  ctx: {
+    allowed: number;
+    entries: Map<string, CatalogEntry>;
+    proficientWith: (item: CatalogEntry) => boolean;
+    meleeOnly?: boolean;
+  },
 ): { ok: true } | { ok: false; error: string } {
   if (!Array.isArray(refs) || !refs.every(isRef)) return { ok: false, error: "Maestrías no válidas." };
   if (new Set(refs.map(refKey)).size !== refs.length) return { ok: false, error: "Hay un arma repetida." };
@@ -54,7 +78,7 @@ export function validateMasteries(
     const data = item?.data as ItemData | undefined;
     if (!item || !data?.weapon) return { ok: false, error: "Arma no disponible." };
     const name = item.nameEs ?? item.name;
-    if (data.type !== MELEE_TYPE) return { ok: false, error: `${name}: solo armas cuerpo a cuerpo.` };
+    if (ctx.meleeOnly && data.type !== MELEE_TYPE) return { ok: false, error: `${name}: solo armas cuerpo a cuerpo.` };
     if (!isMasteryWeapon(data)) return { ok: false, error: `${name} no tiene propiedad de maestría.` };
     if (!ctx.proficientWith(item)) return { ok: false, error: `No tienes competencia con ${name}.` };
   }

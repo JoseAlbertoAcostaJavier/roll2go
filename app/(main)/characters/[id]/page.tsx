@@ -10,8 +10,10 @@ import { booksByIds } from "@/lib/rules/books";
 import { listMasteryWeapons } from "@/lib/rules/catalog";
 import { derive } from "@/lib/rules/dnd2024/derive";
 import { weaponProficient } from "@/lib/rules/dnd2024/derive/attacks";
-import { refKey } from "@/lib/rules/dnd2024/equipmentRefs";
-import { currentMasteries, isMasteryWeapon, masteryCount, masteryLabel } from "@/lib/rules/dnd2024/masteries";
+import { bareName, refKey } from "@/lib/rules/dnd2024/equipmentRefs";
+import {
+  currentMasteries, isMasteryWeapon, masteryCount, masteryLabel, masteryMeleeOnly,
+} from "@/lib/rules/dnd2024/masteries";
 import { parsePronouns, pronounsText } from "@/lib/rules/dnd2024/names";
 import type { BackgroundData, ItemData } from "@/lib/rules/types";
 import SheetHeader from "@/app/components/characters/sheet/SheetHeader";
@@ -77,19 +79,20 @@ export default async function CharacterPage({ params, searchParams }: Props) {
     itemInfo[line.id] = { weight: data?.weight ?? 0, equippable: !!(data?.armor || data?.weapon) };
   }
 
-  // Maestrías con armas: las actuales y, para cambiarlas, las armas cuerpo a cuerpo con maestría y competencia
+  // Maestrías con armas: las actuales y, para cambiarlas, las armas con maestría y competencia (del Bárbaro, solo
+  // cuerpo a cuerpo)
   const allowedMasteries = masteryCount(sheet, entries);
   const masteryRefs = currentMasteries(sheet);
   const masteryWeapons = allowedMasteries > 0 || masteryRefs.length > 0 ? await listMasteryWeapons(found.books) : [];
   const weaponLabel = (w: (typeof masteryWeapons)[number]) =>
     masteryLabel(w.nameEs ?? w.name, (w.data as ItemData | null)?.weapon?.mastery);
   const masteryOptions = masteryWeapons
-    .filter((w) => isMasteryWeapon(w.data as ItemData)
-      && weaponProficient(w.data as ItemData, [w.name, w.ref.key.replace(/^[^:]*:/, "").split("|")[0]], d.weapons))
+    .filter((w) => isMasteryWeapon(w.data as ItemData, masteryMeleeOnly(sheet, entries))
+      && weaponProficient(w.data as ItemData, [w.name, bareName(w.ref.key)], d.weapons))
     .map((w) => ({ id: refKey(w.ref), label: weaponLabel(w) }));
   const masteryCurrent = masteryRefs.map((r) => {
     const w = masteryWeapons.find((x) => refKey(x.ref) === refKey(r));
-    return { id: refKey(r), label: w ? weaponLabel(w) : r.key.replace(/^[^:]*:/, "").split("|")[0] };
+    return { id: refKey(r), label: w ? weaponLabel(w) : bareName(r.key) };
   });
 
   const base = `/characters/${id}`;

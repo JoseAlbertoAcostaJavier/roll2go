@@ -8,10 +8,11 @@ import {
 import { POINT_BUY_TOTAL, STANDARD_ARRAY, checkBackgroundBonus, pointBuyCost } from "./abilities";
 import { weaponProficient } from "./derive/attacks";
 import { FEATURE_OPTION_LABELS } from "./featureChoices";
+import { FEAT_CATEGORIES } from "./labels";
 import { pendingChoices, type PendingChoice } from "./levels";
-import { validateMasteries } from "./masteries";
+import { meleeOnlySource, validateMasteries } from "./masteries";
 import { abilityRollValue, verifyRolls } from "./rolls";
-import { loadEquipmentEntries, refKey } from "./equipmentRefs";
+import { bareName, loadEquipmentEntries, refKey } from "./equipmentRefs";
 import {
   ABILITY_METHODS, type AbilityMethod, type Choice, type Dnd2024Sheet, type Dnd2024SheetV2, type Named,
 } from "./sheet";
@@ -310,11 +311,7 @@ export type ChoicesCtx = {
   subclass: Named | null;
 };
 
-// Categoría de dote de `PendingChoice.category` → `FeatData.category`
-const FEAT_CATEGORIES: Record<string, FeatData["category"]> = { O: "origin", G: "general", FS: "fightingStyle", EB: "epicBoon" };
 const lower = (s: string) => s.toLowerCase();
-// "item:longsword|xphb" → "longsword"
-const bareName = (key: string) => key.replace(/^[^:]*:/, "").split("|")[0];
 const asRef = (v: unknown): Ref | null => {
   const r = isObj(v) && isObj(v.ref) ? v.ref : v;
   return isObj(r) && typeof r.book === "string" && typeof r.key === "string" ? { book: r.book, key: r.key } : null;
@@ -398,8 +395,9 @@ export async function checkChoices(
       const picked = Array.isArray(value) ? await Promise.all(value.map((v) => load(v, "feat"))) : [];
       if (picked.length !== p.count || picked.some((e) => !e)) { bad(chooseN); continue; }
       const feats = picked as CatalogEntry[];
-      const categories = (p.category ?? []).map((k) => FEAT_CATEGORIES[k]);
-      if (feats.some((e) => !categories.includes((e.data as FeatData).category))) { bad("dote de otra categoría."); continue; }
+      const categories: (string | undefined)[] = (p.category ?? []).map((k) => FEAT_CATEGORIES[k]).filter(Boolean);
+      // (una entrada sin datos válidos cuenta como de otra categoría)
+      if (feats.some((e) => !categories.includes((e.data as FeatData | null)?.category))) { bad("dote de otra categoría."); continue; }
       if (new Set(feats.map((e) => refKey(e.ref))).size !== feats.length) { bad("dote repetida."); continue; }
       out.push({ type: "feat", source: p.source, value: feats.map(named) });
     } else if (p.type === "optionalFeature") {
@@ -410,9 +408,9 @@ export async function checkChoices(
       const keys = opts.map((e) => e.ref.key);
       if (new Set(keys).size !== keys.length) { bad("opción repetida."); continue; }
       const unmet = opts.find((e) => {
-        const d = e.data as OptionalFeatureData;
-        const pre = d.prerequisite;
-        return !d.featureType.some((t) => p.featureType?.includes(t)) || (pre?.level ?? 0) > ctx.level
+        const d = e.data as OptionalFeatureData | null;
+        const pre = d?.prerequisite;
+        return !d?.featureType?.some((t) => p.featureType?.includes(t)) || (pre?.level ?? 0) > ctx.level
           || (!!pre?.pact && !keys.includes(pre.pact)) || (!!pre?.feature && !keys.includes(pre.feature));
       });
       if (unmet) { bad(`no cumples los requisitos de ${unmet.nameEs || unmet.name}.`); continue; }
@@ -425,6 +423,7 @@ export async function checkChoices(
       const checked = validateMasteries(weapons, {
         allowed: p.count,
         entries: ctx.entries,
+        meleeOnly: meleeOnlySource(p.source),
         proficientWith: (item) => weaponProficient(item.data as ItemData, [item.name, bareName(item.ref.key)], ctx.weapons),
       });
       if (!checked.ok) { bad(checked.error); continue; }

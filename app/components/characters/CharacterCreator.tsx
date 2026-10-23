@@ -13,7 +13,7 @@ import {
 import type { AbilityMethod, Dnd2024Sheet } from "@/lib/rules/dnd2024/sheet";
 import { checkBackgroundBonus } from "@/lib/rules/dnd2024/abilities";
 import { totalsWithinLimit } from "@/lib/rules/dnd2024/assign";
-import { equipmentRefs, refKey } from "@/lib/rules/dnd2024/equipmentRefs";
+import { bareName, equipmentRefs, refKey } from "@/lib/rules/dnd2024/equipmentRefs";
 import { ABILITY_NAMES, sizeName, skillName, toolName } from "@/lib/rules/dnd2024/labels";
 import { pendingChoices } from "@/lib/rules/dnd2024/levels";
 import { PRONOUNS, type Pronoun } from "@/lib/rules/dnd2024/names";
@@ -96,8 +96,6 @@ const defaultBase = (m: AbilityMethod) => (m === "pointBuy" ? 8 : m === "manual"
 const sameRef = (a: Ref | null, b: Ref | null) => !!a && !!b && a.book === b.book && a.key === b.key;
 const findOption = (list: EntryOption[], ref: Ref | null) => (ref ? list.find((o) => sameRef(o.ref, ref)) ?? null : null);
 const nameOf = (e: { nameEs: string | null; name: string }) => e.nameEs ?? e.name;
-// "item:explorer's pack|xphb" → "explorer's pack"
-const bareName = (key: string) => key.replace(/^[^:]*:/, "").split("|")[0];
 const letters = (eq: Equipment | undefined) => Object.keys(eq ?? {}).sort();
 const fmtGold = (copper: number) => `${(copper / 100).toLocaleString("es-ES", { maximumFractionDigits: 2 })} po`;
 

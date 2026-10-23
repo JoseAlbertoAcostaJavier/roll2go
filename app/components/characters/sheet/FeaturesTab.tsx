@@ -1,7 +1,7 @@
 import { Award, ChevronDown, Dna, Sparkles } from "lucide-react";
 import type { CatalogEntry } from "@/lib/rules/catalog";
 import type { FeatureGroup } from "@/lib/rules/dnd2024/derive";
-import { refKey } from "@/lib/rules/dnd2024/equipmentRefs";
+import { bareName, refKey } from "@/lib/rules/dnd2024/equipmentRefs";
 import type { Ref } from "@/lib/rules/types";
 import Bbcode from "@/app/components/Bbcode";
 import { card } from "@/app/components/formStyles";
@@ -9,8 +9,6 @@ import { CLASS_ICONS } from "@/app/components/icons/classes";
 
 type Props = { groups: FeatureGroup[]; entries: Map<string, CatalogEntry> };
 
-// "class:barbarian|xphb" → "barbarian"
-const bareName = (key: string) => key.replace(/^[^:]*:/, "").split("|")[0];
 const descriptionOf = (e: CatalogEntry | undefined) => (e ? e.descriptionEs || e.description : "");
 
 function Description({ entry, missing }: { entry: CatalogEntry | undefined; missing?: string }) {

@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { unstable_cache } from "next/cache";
 import { sessionOf } from "@/lib/campaignApi";
 import { connectDB } from "@/lib/mongodb";
+import { Book } from "@/lib/Book";
 import { BookEntry } from "@/lib/BookEntry";
 import { rateLimit, tooManyRequests } from "@/lib/rateLimit";
-import { visibleBooksOf } from "@/lib/rules/books";
 import { generateName, nameTableFor, PRONOUNS, type Pronoun } from "@/lib/rules/dnd2024/names";
 import { validateEntryData } from "@/lib/rules/schemas";
 import type { NameTableData } from "@/lib/rules/types";
@@ -39,9 +39,11 @@ export async function GET(req: NextRequest) {
   const pronouns = (sp.get("pronouns") ?? "").split(",")
     .filter((p): p is Pronoun => PRONOUNS.some((x) => x.id === p));
 
-  // Las tablas de los libros que ve el usuario (no dependen de los libros elegidos para el personaje)
-  const books = await visibleBooksOf(session.id, SYSTEM);
-  const tables = (await Promise.all(books.map((b) => bookNameTables(b.id)))).flat();
+  // Las tablas de los libros oficiales del sistema, aunque no se ofrezcan como libros de reglas (la Guía de Xanathar
+  // solo aporta las tablas de nombres); no dependen de los libros elegidos para el personaje
+  await connectDB();
+  const books = await Book.find({ owner: null, visibility: "public", systemId: SYSTEM }).select("_id").lean();
+  const tables = (await Promise.all(books.map((b) => bookNameTables(String(b._id))))).flat();
   const table = nameTableFor(tables, species);
   const name = table ? generateName(table, [...new Set(pronouns)]) : "";
   if (!name) return NextResponse.json({ error: "No hay tablas de nombres disponibles." }, { status: 404 });

@@ -4,11 +4,11 @@ import { ChevronDown, LoaderCircle } from "lucide-react";
 import Bbcode from "@/app/components/Bbcode";
 import type { CatalogEntry, EntryOption } from "@/lib/rules/catalog";
 import { weaponProficient } from "@/lib/rules/dnd2024/derive/attacks";
-import { refKey } from "@/lib/rules/dnd2024/equipmentRefs";
+import { bareName, refKey } from "@/lib/rules/dnd2024/equipmentRefs";
 import { FEATURE_OPTION_LABELS } from "@/lib/rules/dnd2024/featureChoices";
-import { SKILL_NAMES, skillName } from "@/lib/rules/dnd2024/labels";
+import { FEAT_CATEGORIES, SKILL_NAMES, skillName } from "@/lib/rules/dnd2024/labels";
 import type { PendingChoice } from "@/lib/rules/dnd2024/levels";
-import { isMasteryWeapon, masteryLabel } from "@/lib/rules/dnd2024/masteries";
+import { isMasteryWeapon, masteryLabel, meleeOnlySource } from "@/lib/rules/dnd2024/masteries";
 import type { Choice } from "@/lib/rules/dnd2024/sheet";
 import type { ClassData, FeatData, ItemData, OptionalFeatureData, Ref } from "@/lib/rules/types";
 import FieldError from "./fields/FieldError";
@@ -19,17 +19,13 @@ export type ChoiceValues = Record<string, string[]>;
 
 type Cache = Record<string, CatalogEntry | null>;
 
-// Categoría de dote de las elecciones → `FeatData.category`
-const FEAT_CATEGORIES: Record<string, FeatData["category"]> = { O: "origin", G: "general", FS: "fightingStyle", EB: "epicBoon" };
 const ALL_SKILLS = Object.keys(SKILL_NAMES);
 const nameOf = (e: { nameEs: string | null; name: string }) => e.nameEs ?? e.name;
 // "classFeature:protector|cleric|xphb|1" → "Protector"
 const nameFromKey = (key: string) => {
-  const bare = key.replace(/^[^:]*:/, "").split("|")[0];
+  const bare = bareName(key);
   return bare ? bare[0].toUpperCase() + bare.slice(1) : key;
 };
-// "item:longsword|xphb" → "longsword"
-const bareName = (key: string) => key.replace(/^[^:]*:/, "").split("|")[0];
 
 /** `libro:clave` → referencia (los ids de libro no llevan «:»). */
 export function refFromKey(k: string): Ref {
@@ -119,7 +115,7 @@ export default function ClassFeaturesSection({
       }
       case "weaponMastery":
         return weapons
-          .filter((w) => isMasteryWeapon(w.data as ItemData)
+          .filter((w) => isMasteryWeapon(w.data as ItemData, meleeOnlySource(p.source))
             && weaponProficient(w.data as ItemData, [w.name, bareName(w.ref.key)], classData.weapons))
           .map((w) => ({ id: refKey(w.ref), label: masteryLabel(nameOf(w), (w.data as ItemData).weapon?.mastery) }));
       case "featureOption":

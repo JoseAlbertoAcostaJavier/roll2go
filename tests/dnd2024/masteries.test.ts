@@ -19,7 +19,8 @@ for (const e of [
 ]) catalog.set(`${B}:${e.ref.key}`, e);
 
 const martial = (item: CatalogEntry) => ["simple", "martial"].includes((item.data as ItemData).weapon?.category ?? "");
-const ctx = (allowed: number, proficientWith = martial) => ({ allowed, entries: catalog, proficientWith });
+const ctx = (allowed: number, proficientWith = martial, meleeOnly = true) =>
+  ({ allowed, entries: catalog, proficientWith, meleeOnly });
 const items = (...names: string[]) => names.map((n) => ref(`item:${n}|xphb`));
 
 describe("validateMasteries", () => {
@@ -31,7 +32,8 @@ describe("validateMasteries", () => {
     expect(validateMasteries(items("greataxe", "greataxe"), ctx(2)).ok).toBe(false);
     expect(validateMasteries(items("greataxe"), ctx(2)).ok).toBe(false);
   });
-  it("arma a distancia → error", () => {
+  it("armas a distancia: sí, salvo con meleeOnly (Bárbaro)", () => {
+    expect(validateMasteries(items("greataxe", "longbow"), ctx(2, martial, false))).toEqual({ ok: true });
     expect(validateMasteries(items("greataxe", "longbow"), ctx(2))).toMatchObject({ ok: false, error: expect.stringMatching(/cuerpo a cuerpo/) });
   });
   it("arma sin propiedad de maestría, o que no es sencilla ni marcial → error", () => {

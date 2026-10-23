@@ -10,7 +10,7 @@ import type {
 } from "../types";
 import { normalizeName, validateEntryData } from "../schemas";
 import { entriesToBbcode } from "./toBbcode";
-import { ABILITY_NAMES, CHOICE_LABELS, proficiencyName, skillName, toolName } from "../dnd2024/labels";
+import { ABILITY_NAMES, CHOICE_LABELS, FEAT_CATEGORIES, proficiencyName, skillName, toolName } from "../dnd2024/labels";
 import es from "../i18n/es.json";
 
 export const BOOK_PLACEHOLDER = "__BOOK__";
@@ -359,10 +359,6 @@ export function normalizeBackground(raw: Rec): NormalizedEntry {
     equipment: toEquipment(asArr(raw.startingEquipment)[0]),
   });
 }
-
-const FEAT_CATEGORIES: Record<string, EntryData["feat"]["category"]> = {
-  O: "origin", G: "general", FS: "fightingStyle", "FS:P": "fightingStyle", "FS:R": "fightingStyle", EB: "epicBoon",
-};
 
 /** Texto breve en inglés de los requisitos de una dote (se traducirá con el diccionario). */
 function prerequisiteText(pre: unknown): string | undefined {

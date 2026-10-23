@@ -2,7 +2,7 @@
 // usan el resumen del asistente, la ficha, la subida de nivel y el exportador a Foundry. Recorre el historial de
 // niveles (`levels`) y el inventario de la hoja v2; una v1 se convierte antes en memoria.
 import type { CatalogEntry } from "@/lib/rules/catalog";
-import { refKey } from "@/lib/rules/dnd2024/equipmentRefs";
+import { bareName, refKey } from "@/lib/rules/dnd2024/equipmentRefs";
 import type { AnySheet, Named } from "@/lib/rules/dnd2024/sheet";
 import { currentMasteries } from "@/lib/rules/dnd2024/masteries";
 import { summarizeClasses, upgradeSheet } from "@/lib/rules/dnd2024/upgrade";
@@ -57,8 +57,6 @@ type ClassExtras = {
 };
 
 const uniq = <T>(list: T[]) => [...new Set(list)];
-// "class:monk|xphb" → "monk"
-const bareName = (key: string) => key.replace(/^[^:]*:/, "").split("|")[0];
 const proficiencyOf = (level: number) => Math.ceil(Math.max(level, 1) / 4) + 1;
 
 // La dote Alerta suma el bonificador de competencia a la iniciativa

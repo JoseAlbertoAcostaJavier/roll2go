@@ -2,11 +2,9 @@
 // cada línea lo da quien llama (`makeId`, un ObjectId en texto en el servidor).
 import type { CatalogEntry } from "@/lib/rules/catalog";
 import type { ItemData, Pack } from "@/lib/rules/types";
-import { refKey } from "./equipmentRefs";
+import { bareName, refKey } from "./equipmentRefs";
 import type { Inventory, InventoryItem } from "./sheet";
 
-// "item:explorer's pack|xphb" → "explorer's pack"
-const bareName = (key: string) => key.replace(/^[^:]*:/, "").split("|")[0];
 
 export function startingInventory(
   choices: { pack: Pack[] }[],

@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { labelClass } from "@/app/components/formStyles";
 
 export type PickerOption = { id: string; label: string };
@@ -24,6 +25,12 @@ export default function SkillPicker({
 }) {
   const slots = Array.from({ length: count }, (_, i) => value[i] ?? "");
   const chosen = slots.filter(Boolean).length;
+
+  // Lo elegido que ya no está entre las opciones (p. ej. una habilidad que ahora da el trasfondo) deja de estarlo
+  const stale = slots.some((v) => v && !options.some((o) => o.id === v));
+  useEffect(() => {
+    if (stale) onChange(slots.map((v) => (v && options.some((o) => o.id === v) ? v : "")));
+  }, [stale]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function set(i: number, v: string) {
     const next = [...slots];

@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
 import { requireUser } from "@/lib/currentUser";
 import { loadCharacterFor } from "@/lib/characterAccess";
-import { refKey } from "@/lib/rules/dnd2024/equipmentRefs";
+import { bareName, refKey } from "@/lib/rules/dnd2024/equipmentRefs";
 import { parsePronouns } from "@/lib/rules/dnd2024/names";
 import CharacterEditForm from "@/app/components/characters/CharacterEditForm";
 import DeleteCharacter from "@/app/components/characters/DeleteCharacter";
@@ -20,7 +20,7 @@ export default async function EditCharacterPage({ params }: { params: Promise<{ 
   const { character: c, sheet, entries } = found;
   // Identificador de la especie para el generador de nombres ("species:dwarf|xphb" → "dwarf" si ya no está)
   const speciesIdentifier = entries.get(refKey(sheet.species.ref))?.identifier
-    || sheet.species.ref.key.replace(/^[^:]*:/, "").split("|")[0];
+    || bareName(sheet.species.ref.key);
 
   return (
     <div className="mx-auto max-w-3xl px-5 py-10">

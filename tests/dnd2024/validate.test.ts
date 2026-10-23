@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import type { CatalogEntry } from "@/lib/rules/catalog";
-import { validateSheet } from "@/lib/rules/dnd2024/validate";
+import { checkChoices, validateSheet } from "@/lib/rules/dnd2024/validate";
 import { signRolls } from "@/lib/rules/dnd2024/rolls";
 import type { Ref } from "@/lib/rules/types";
 import { B as FB, buildCatalog, ref as fref } from "./fixtureCatalog";
@@ -223,7 +223,19 @@ describe("validateSheet", () => {
 });
 
 describe("validateSheet: elecciones de clase de nivel 1", () => {
-  const cat = buildCatalog(["class-barbarian.json", "class-cleric.json"]);
+  const cat = buildCatalog(["class-barbarian.json", "class-cleric.json", "class-fighter.json", "class-rogue.json"]);
+  // Armas y un estilo de combate que no están en los fixtures
+  const extra = (key: string, data: unknown, name: string) =>
+    cat.set(`${FB}:${key}`, { ...cat.get(`${FB}:item:greataxe|xphb`)!, ref: fref(key), name, nameEs: null, data });
+  extra("item:longbow|xphb", {
+    type: "R", weight: 2, value: 5000,
+    weapon: { damage: "1d8", damageType: "P", properties: ["A", "H", "2H"], mastery: "slow", category: "martial" },
+  }, "Longbow");
+  extra("item:shortsword|xphb", {
+    type: "M", weight: 2, value: 1000,
+    weapon: { damage: "1d6", damageType: "P", properties: ["F", "L"], mastery: "vex", category: "martial" },
+  }, "Shortsword");
+  extra("feat:archery|xphb", { category: "fightingStyle", repeatable: false }, "Archery");
   const fctx = {
     userId: "u1",
     books: [FB],
@@ -302,5 +314,78 @@ describe("validateSheet: elecciones de clase de nivel 1", () => {
     s.rolls = { ...s.rolls, dice: [[6, 6, 6, 6], ...dice.slice(1)] };
     const bad = await validateSheet(s, fctx);
     expect(bad.ok && bad.sheet.rolls?.dice).toBeUndefined();
+  });
+
+  const weaponMastery = (cls: string, ...keys: string[]) => ({
+    type: "weaponMastery", source: `progression:weapon mastery|${cls}|xphb`, value: keys.map((k) => fref(`item:${k}|xphb`)),
+  });
+  const fightingStyle = (key: string) => ({ type: "feat", source: "progression:fs|fighter|xphb", value: [fnamed(key)] });
+  it("Guerrero 1: puede elegir un arco largo como maestría (solo el Bárbaro está limitado a cuerpo a cuerpo)", async () => {
+    const r = await validateSheet(sheetFor("fighter", [
+      skills(["athletics", "history"]), fightingStyle("feat:archery|xphb"),
+      weaponMastery("fighter", "greataxe", "handaxe", "longbow"),
+    ]), fctx);
+    if (!r.ok) throw new Error(JSON.stringify(r.errors));
+    expect(r.sheet.weaponMasteries).toContainEqual(fref("item:longbow|xphb"));
+    expect(r.sheet.levels[0].choices[1]).toEqual({
+      type: "feat", source: "progression:fs|fighter|xphb", value: [{ ref: fref("feat:archery|xphb"), name: "Archery" }],
+    });
+  });
+  it("Bárbaro 1 con un arco largo → error (solo cuerpo a cuerpo)", async () => {
+    const r = await validateSheet(barbarian(mastery("greataxe", "longbow")), fctx);
+    expect(errs(r)["levels.0.choices.progression:weapon mastery|barbarian|xphb"]).toMatch(/cuerpo a cuerpo/);
+  });
+  it("Guerrero 1: una dote que no es estilo de combate → error de validación", async () => {
+    const r = await validateSheet(sheetFor("fighter", [
+      skills(["athletics", "history"]), fightingStyle("feat:magic initiate; cleric|xphb"),
+      weaponMastery("fighter", "greataxe", "handaxe", "longbow"),
+    ]), fctx);
+    expect(errs(r)["levels.0.choices.progression:fs|fighter|xphb"]).toMatch(/categoría/);
+  });
+  it("Pícaro 1: habilidades de clase y pericia entre ellas", async () => {
+    const rogue = (expertise: string[], ...weapons: string[]) => sheetFor("rogue", [
+      skills(["stealth", "acrobatics", "deception", "sleight of hand"]),
+      { type: "expertise", source: "classFeature:expertise|rogue|xphb|1", value: expertise },
+      weaponMastery("rogue", ...(weapons.length ? weapons : ["handaxe", "shortsword"])),
+    ]);
+    const ok = await validateSheet(rogue(["stealth", "insight"]), fctx);
+    if (!ok.ok) throw new Error(JSON.stringify(ok.errors));
+    expect(ok.sheet.levels[0].choices.map((c) => c.type)).toEqual(["skills", "weaponMastery", "expertise"]);
+    // Pericia en una habilidad sin competencia, o repetida
+    const expertiseKey = "levels.0.choices.classFeature:expertise|rogue|xphb|1";
+    expect(choiceErrors(await validateSheet(rogue(["stealth", "athletics"]), fctx))).toEqual([expertiseKey]);
+    expect(choiceErrors(await validateSheet(rogue(["stealth", "stealth"]), fctx))).toEqual([expertiseKey]);
+    // Un arma marcial sin Sutil ni Ligera: sin competencia
+    const r = await validateSheet(rogue(["stealth", "insight"], "handaxe", "greataxe"), fctx);
+    expect(errs(r)["levels.0.choices.progression:weapon mastery|rogue|xphb"]).toMatch(/competencia/);
+  });
+});
+
+describe("checkChoices: opciones escritas a mano", () => {
+  const pending = [{
+    type: "featureOption" as const, source: "subclassFeature:hunter's prey|ranger|xphb|hunter|xphb|3", count: 1,
+    from: ["option:hunters-prey:colossus-slayer", "option:hunters-prey:horde-breaker"], label: "Presa del cazador",
+  }];
+  const cctx = {
+    path: "levels.0.choices", entries: new Map(), resolve: async () => null, skills: [], weapons: [], level: 1, subclass: null,
+  };
+  const pick = (book: string, key: string) =>
+    checkChoices(pending, [{ type: "featureOption", source: pending[0].source, value: { ref: { book, key }, name: "x" } }], cctx);
+  it("acepta un id de la lista con libro builtin y pone el nombre en español", async () => {
+    expect(await pick("builtin", "option:hunters-prey:horde-breaker")).toEqual({
+      errors: {},
+      choices: [{
+        type: "featureOption", source: pending[0].source,
+        value: { ref: { book: "builtin", key: "option:hunters-prey:horde-breaker" }, name: "Rompehordas" },
+      }],
+    });
+  });
+  it("rechaza ids de otro rasgo, de otro libro o inexistentes", async () => {
+    const cases = [["builtin", "option:elemental-affinity:fire"], ["b1", "option:hunters-prey:horde-breaker"], ["builtin", "option:nope"]];
+    for (const [book, key] of cases) {
+      const r = await pick(book, key);
+      expect(r.choices).toEqual([]);
+      expect(Object.keys(r.errors)).toEqual([`levels.0.choices.${pending[0].source}`]);
+    }
   });
 });
