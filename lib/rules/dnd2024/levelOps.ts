@@ -8,6 +8,16 @@ import { summarizeClasses } from "./upgrade";
 
 const masteriesOf = (entry: LevelEntry) => entry.choices.flatMap((c) => (c.type === "weaponMastery" ? c.value : []));
 
+/** Comprueba el `expectedLevel` del cuerpo: no entero → 400; distinto del nivel actual + 1 → 409 (el personaje cambió). */
+export function checkExpectedLevel(
+  expected: unknown, current: number,
+): { ok: true } | { ok: false; status: 400 | 409; error: string } {
+  if (!Number.isInteger(expected)) return { ok: false, status: 400, error: "Nivel esperado no válido." };
+  if (expected !== current + 1)
+    return { ok: false, status: 409, error: "El personaje ha cambiado de nivel; recarga la página." };
+  return { ok: true };
+}
+
 /**
  * Hoja con el nivel nuevo. Los PG actuales suben con el máximo si estaban al máximo; las maestrías que elige el nivel
  * se añaden a las de la hoja (que parten de las del historial si todavía no las guardaba).

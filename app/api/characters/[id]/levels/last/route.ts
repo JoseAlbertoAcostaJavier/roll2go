@@ -33,8 +33,8 @@ export async function DELETE(req: NextRequest, { params }: Ctx) {
   if (!result.ok) return NextResponse.json({ error: result.error }, { status: 400 });
 
   // Solo lo que cambia, y solo si nadie ha cambiado de nivel entretanto
-  const set: Record<string, unknown> = { "sheet.classesSummary": result.sheet.classesSummary, "sheet.hp": result.sheet.hp };
-  if (result.sheet.weaponMasteries) set["sheet.weaponMasteries"] = result.sheet.weaponMasteries;
+  const set: Record<string, unknown> = { "sheet.classesSummary": result.sheet.classesSummary, "sheet.hp.current": result.sheet.hp.current };
+  if (result.sheet.weaponMasteries && result.sheet.weaponMasteries.length !== found.sheet.weaponMasteries?.length) set["sheet.weaponMasteries"] = result.sheet.weaponMasteries;
   const res = await Character.updateOne(
     { _id: id, "sheet.version": 2, "sheet.levels": { $size: before } },
     { $set: set, $pop: { "sheet.levels": 1 } },

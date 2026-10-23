@@ -7,7 +7,7 @@ import { OUTDATED_SHEET_ERROR, loadCharacterFor } from "@/lib/characterAccess";
 import { notify } from "@/lib/notify";
 import { getEntries, getEntry } from "@/lib/rules/catalog";
 import { derive } from "@/lib/rules/dnd2024/derive";
-import { applyLevel } from "@/lib/rules/dnd2024/levelOps";
+import { applyLevel, checkExpectedLevel } from "@/lib/rules/dnd2024/levelOps";
 import { loadSheetEntries } from "@/lib/rules/dnd2024/sheetEntries";
 import { validateLevel } from "@/lib/rules/dnd2024/validateLevel";
 
@@ -37,8 +37,8 @@ export async function POST(req: NextRequest, { params }: Ctx) {
   const { sheet } = found;
   const before = sheet.levels.length;
   const expected = typeof body === "object" && body !== null ? (body as { expectedLevel?: unknown }).expectedLevel : undefined;
-  if (expected !== before + 1 && before > 0 && before < 20)
-    return NextResponse.json({ error: "El personaje ha cambiado de nivel; recarga la página." }, { status: 409 });
+  const checked = checkExpectedLevel(expected, before);
+  if (!checked.ok) return NextResponse.json({ error: checked.error }, { status: checked.status });
 
   const result = await validateLevel(sheet, body, {
     userId: session.id,
@@ -57,7 +57,7 @@ export async function POST(req: NextRequest, { params }: Ctx) {
   const next = applyLevel(sheet, result.entry, maxBefore, maxAfter);
 
   // Solo lo que cambia, y solo si nadie ha subido de nivel entretanto
-  const set: Record<string, unknown> = { "sheet.classesSummary": next.classesSummary, "sheet.hp": next.hp };
+  const set: Record<string, unknown> = { "sheet.classesSummary": next.classesSummary, "sheet.hp.current": next.hp.current };
   if (next.weaponMasteries) set["sheet.weaponMasteries"] = next.weaponMasteries;
   const res = await Character.updateOne(
     { _id: id, "sheet.version": 2, "sheet.levels": { $size: before } },

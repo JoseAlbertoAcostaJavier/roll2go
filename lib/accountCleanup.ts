@@ -56,6 +56,8 @@ export async function deleteUserData(userId: string) {
   await CampaignLogEntry.deleteMany({ author: userId });
 
   // 3. Sus personajes y sus amistades
+  const myCharacters = await Character.find({ owner: userId }).select("_id").lean();
+  await Notification.deleteMany({ character: { $in: myCharacters.map((c) => c._id) } });
   await Character.deleteMany({ owner: userId });
   await Friendship.deleteMany({
     $or: [{ requester: userId }, { recipient: userId }],

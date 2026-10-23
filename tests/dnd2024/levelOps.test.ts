@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyLevel, removeLastLevel } from "@/lib/rules/dnd2024/levelOps";
+import { applyLevel, checkExpectedLevel, removeLastLevel } from "@/lib/rules/dnd2024/levelOps";
 import type { Dnd2024SheetV2, LevelEntry } from "@/lib/rules/dnd2024/sheet";
 import { ref } from "./fixtureCatalog";
 
@@ -80,5 +80,16 @@ describe("removeLastLevel", () => {
     );
     const r = removeLastLevel(sheet, 12);
     expect(r.ok && r.sheet.weaponMasteries).toEqual([axe]);
+  });
+});
+
+describe("checkExpectedLevel", () => {
+  it("acepta el nivel actual + 1", () => expect(checkExpectedLevel(4, 3)).toEqual({ ok: true }));
+  it("409 si no coincide, también en 0 y 20", () => {
+    for (const [e, c] of [[3, 3], [5, 3], [21, 20], [20, 20], [2, 0]] as const)
+      expect(checkExpectedLevel(e, c)).toMatchObject({ ok: false, status: 409 });
+  });
+  it("400 si no es un entero", () => {
+    for (const e of ["4", 4.5, null, undefined, NaN]) expect(checkExpectedLevel(e, 3)).toMatchObject({ ok: false, status: 400 });
   });
 });
