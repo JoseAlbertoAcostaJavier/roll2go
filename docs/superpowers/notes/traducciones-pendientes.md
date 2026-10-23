@@ -74,3 +74,16 @@ Fuentes usadas para lo que sí está en `es.json`: el SRD 5.2.1 oficial en espa�
 | item:fine wine (bottle)\|xphb | Fine Wine (Bottle) | Vino de calidad (botella) | Igual que el anterior |
 
 Los conjuros (391) y los rasgos de clase y subclase (592) tampoco tienen traducción todavía; quedan fuera de esta lista.
+
+## Nombres a verificar
+
+Estos sí están en `es.json`, pero el nombre solo sale de una reseña (Espada y Escudo), no del SRD oficial. Hay que confirmarlos con el Manual del Jugador 2024 en español.
+
+| clave | nombre inglés | nombre en `es.json` | estado |
+| --- | --- | --- | --- |
+| subclass:soulknife\|rogue\|xphb | Soulknife | Rebanaalmas | verificar |
+| subclass:archfey patron\|warlock\|xphb | Archfey Patron | Patrón feérico | verificar |
+| subclass:great old one patron\|warlock\|xphb | Great Old One Patron | Patrón primigenio | verificar |
+| subclass:clockwork sorcery\|sorcerer\|xphb | Clockwork Sorcery | Hechicería mecánica | verificar |
+| subclass:battle master\|fighter\|xphb | Battle Master | Maestro del combate | verificar |
+| subclass:beast master\|ranger\|xphb | Beast Master | Señor de las bestias | verificar |
