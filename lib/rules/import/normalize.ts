@@ -857,14 +857,16 @@ export function normalizeOptionalFeature(raw: Rec): NormalizedEntry {
 }
 
 /**
- * Rasgos de clase y subclase cuyo texto pide elegir («choose») sin un bloque `options` ni una especificación escrita a
- * mano (`specified`: claves de rasgo). El importador los lista para que no quede ninguna elección sin pedir.
+ * Rasgos de clase y subclase cuyo texto pide elegir («choose», «of your choice») sin un bloque `options`, sin ser una
+ * mejora de característica y sin una especificación escrita a mano (`specified`: claves de rasgo). El importador los
+ * lista para que no quede ninguna elección sin pedir.
  */
 export function textChoiceFeatures(entries: NormalizedEntry[], specified: ReadonlySet<string>): string[] {
   return entries
     .filter((e) => (e.kind === "classFeature" || e.kind === "subclassFeature")
-      && /\bchoose\b/i.test(e.description)
+      && /\bchoose\b|\bof your choice\b/i.test(e.description)
       && !(e.data as FeatureData).options?.length
+      && !(e.data as FeatureData).asi
       && !specified.has(e.key))
     .map((e) => e.key);
 }

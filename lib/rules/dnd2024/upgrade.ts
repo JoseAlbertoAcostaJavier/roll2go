@@ -6,8 +6,9 @@ import { loadEquipmentEntries, refKey } from "./equipmentRefs";
 import { startingInventory } from "./inventory";
 import type { AnySheet, Dnd2024Sheet, Dnd2024SheetV2, LevelEntry, Named } from "./sheet";
 
-const SKILLS_SOURCE = "class:skills";
-const SUBCLASS_SOURCE = "class:subclass";
+// `source` de las habilidades de la primera clase y de la subclase (también los usa `pendingChoices`)
+export const SKILLS_SOURCE = "class:skills";
+export const SUBCLASS_SOURCE = "class:subclass";
 
 /** Clases, niveles y subclases que resultan del historial, en orden de aparición. */
 export function summarizeClasses(levels: LevelEntry[]): Dnd2024SheetV2["classesSummary"] {

@@ -586,6 +586,33 @@
 				"You can use only one Metamagic option on a spell when you cast it unless otherwise noted in one of those options.",
 				"Whenever you gain a Sorcerer level, you can replace one of your Metamagic options with one you don't know. You gain two more options at Sorcerer level 10 and two more at Sorcerer level 17."
 			]
+		},
+		{
+			"name": "Metamagic Options",
+			"source": "XPHB",
+			"page": 141,
+			"srd52": true,
+			"basicRules2024": true,
+			"className": "Sorcerer",
+			"classSource": "XPHB",
+			"level": 2,
+			"entries": [
+				"The following options are available to your Metamagic feature. The options are presented in alphabetical order.",
+				{
+					"type": "options",
+					"count": 2,
+					"entries": [
+						{
+							"type": "refOptionalfeature",
+							"optionalfeature": "Careful Spell|XPHB"
+						},
+						{
+							"type": "refOptionalfeature",
+							"optionalfeature": "Quickened Spell|XPHB"
+						}
+					]
+				}
+			]
 		}
 	]
 }

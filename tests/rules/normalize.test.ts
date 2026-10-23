@@ -492,8 +492,11 @@ test("rasgos con elección en el texto sin especificar", () => {
     feature("subclassFeature:x|rogue|xphb|y|xphb|3", "You CHOOSE one skill."),
     feature("classFeature:rage|barbarian|xphb|1", "Chooses nothing here."),
     feature("classFeature:specified|rogue|xphb|6", "Choose two skills."),
+    feature("classFeature:primal knowledge|barbarian|xphb|3", "Proficiency in another skill of your choice."),
+    feature("classFeature:ability score improvement|rogue|xphb|4", "A feat of your choice.", { asi: true }),
   ];
   expect(textChoiceFeatures(list, new Set(["classFeature:specified|rogue|xphb|6"]))).toEqual([
     "classFeature:expertise|rogue|xphb|1", "subclassFeature:x|rogue|xphb|y|xphb|3",
+    "classFeature:primal knowledge|barbarian|xphb|3",
   ]);
 });

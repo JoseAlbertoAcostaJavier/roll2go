@@ -14,7 +14,8 @@ export const ref = (key: string) => ({ book: B, key });
 const withBook = <T,>(v: T): T =>
   JSON.parse(JSON.stringify(v).replaceAll(JSON.stringify(BOOK_PLACEHOLDER), JSON.stringify(B)));
 
-export function buildCatalog(): Map<string, CatalogEntry> {
+/** `classFiles`: archivos `class-*.json` de los fixtures (por defecto, solo el Bárbaro). */
+export function buildCatalog(classFiles = ["class-barbarian.json"]): Map<string, CatalogEntry> {
   const files: RawFiles = {
     races: fixture("races.json"),
     backgrounds: fixture("backgrounds.json"),
@@ -23,7 +24,8 @@ export function buildCatalog(): Map<string, CatalogEntry> {
     itemsBase: fixture("items-base.json"),
     spells: [fixture("spells.json")],
     spellSources: fixture("spell-sources.json"),
-    classes: [fixture("class-barbarian.json")],
+    classes: classFiles.map(fixture),
+    optionalFeatures: fixture("optionalfeatures.json"),
   };
   return new Map(normalizeAll(files, "XPHB").entries.map((e) => {
     const c: CatalogEntry = {

@@ -17,6 +17,7 @@ import { BOOK_PLACEHOLDER, normalizeAll, textChoiceFeatures, type RawFiles } fro
 import { planImport } from "../lib/rules/import/plan";
 import { matchFoundry, type FoundryFiles } from "../lib/rules/import/foundry";
 import { normalizeName } from "../lib/rules/schemas";
+import { SPECIFIED_CHOICES } from "../lib/rules/dnd2024/featureChoices";
 import es from "../lib/rules/i18n/es.json";
 
 const SRD_ATTRIBUTION =
@@ -90,9 +91,6 @@ function loadFoundry(data: string): FoundryFiles {
     spells: j("spells/foundry.json"),
   };
 }
-
-// Rasgos cuya elección en texto ya está especificada a mano (habilidades, pericia…)
-const SPECIFIED_CHOICES: ReadonlySet<string> = new Set<string>();
 
 const count = (xs: string[]) => {
   const m = new Map<string, number>();
