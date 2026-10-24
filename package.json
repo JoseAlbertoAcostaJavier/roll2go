@@ -10,8 +10,7 @@
     "test": "vitest run",
     "import:5etools": "tsx scripts/import-5etools.ts",
     "migrate:books": "tsx scripts/migrate-book-ids.ts",
-    "migrate:levels": "tsx scripts/migrate-levels.ts",
-    "icons": "tsx scripts/build-icons.ts"
+    "migrate:levels": "tsx scripts/migrate-levels.ts"
   },
   "dependencies": {
     "@google/genai": "^2.24.0",

@@ -1,32 +1,26 @@
 import { describe, expect, it } from "vitest";
-import { iconFileId, iconSrc } from "@/lib/icons";
+import { existsSync } from "node:fs";
+import path from "node:path";
+import { iconSrc } from "@/lib/icons";
 
-describe("iconFileId", () => {
-  it("clases: identificador en minúsculas y corrige «Babarian»", () => {
-    expect(iconFileId("class", "Fighter.svg")).toBe("fighter");
-    expect(iconFileId("class", "Babarian.svg")).toBe("barbarian");
-  });
-  it("escuelas y especies por su nombre", () => {
-    expect(iconFileId("school", "evocation.svg")).toBe("evocation");
-    expect(iconFileId("school", "chronurgy.svg")).toBeNull();
-    expect(iconFileId("species", "Dragonborn.png")).toBe("dragonborn");
-  });
-  it("estados del personaje", () => {
-    expect(iconFileId("status", "Active.svg")).toBe("active");
-    expect(iconFileId("status", "Archived.svg")).toBe("retired");
-    expect(iconFileId("status", "Dead.svg")).toBe("dead");
-    expect(iconFileId("status", "NPC.svg")).toBe("npc");
-    expect(iconFileId("status", "Other.svg")).toBeNull();
-  });
-});
+const onDisk = (src: string | null) => !!src && existsSync(path.join(process.cwd(), "public", src));
 
 describe("iconSrc", () => {
   it("rutas públicas", () => {
-    expect(iconSrc("class", "wizard")).toBe("/images/classes/wizard.webp");
-    expect(iconSrc("school", "V")).toBe("/images/schools/evocation.webp");
+    expect(iconSrc("class", "wizard")).toBe("/assets/icons/classes/wizard.svg");
+    expect(iconSrc("school", "V")).toBe("/assets/icons/schools/evocation.svg");
     expect(iconSrc("school", "X")).toBeNull();
-    expect(iconSrc("species", "elf")).toBe("/images/species/elf.webp");
-    expect(iconSrc("status", "retired")).toBe("/images/status/retired.svg");
+    expect(iconSrc("species", "elf")).toBe("/assets/icons/species/elf.png");
+    expect(iconSrc("status", "retired")).toBe("/assets/icons/status/retired.svg");
     expect(iconSrc("class", "")).toBeNull();
+  });
+
+  it("los archivos de las clases, escuelas, especies y estados del Manual 2024 existen", () => {
+    const classes = ["barbarian", "bard", "cleric", "druid", "fighter", "monk", "paladin", "ranger", "rogue", "sorcerer", "warlock", "wizard"];
+    const species = ["dragonborn", "dwarf", "elf", "gnome", "goliath", "halfling", "human", "orc", "tiefling"];
+    for (const c of classes) expect(onDisk(iconSrc("class", c)), c).toBe(true);
+    for (const s of "ACDEVINT") expect(onDisk(iconSrc("school", s)), s).toBe(true);
+    for (const s of species) expect(onDisk(iconSrc("species", s)), s).toBe(true);
+    for (const s of ["active", "retired", "dead", "npc"]) expect(onDisk(iconSrc("status", s)), s).toBe(true);
   });
 });
