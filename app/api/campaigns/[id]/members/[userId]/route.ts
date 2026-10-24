@@ -59,10 +59,10 @@ export async function DELETE(
         { status: 404 },
       );
     }
-    // Sus personajes siguen existiendo, pero sin campaña
+    // Sus personajes (aprobados o pendientes) siguen existiendo, pero sin campaña
     await Character.updateMany(
       { campaign: ctx.campaign._id, owner: userId },
-      { $unset: { campaign: "", origin: "" } },
+      { $unset: { campaign: "", origin: "", campaignStatus: "" } },
     );
 
     if (!isSelf) {

@@ -23,7 +23,7 @@ export async function deleteCampaignData(campaign: {
 }) {
   await Character.updateMany(
     { campaign: campaign._id },
-    { $unset: { campaign: "", origin: "" } },
+    { $unset: { campaign: "", origin: "", campaignStatus: "" } },
   );
   await HomebrewEntry.deleteMany({ campaign: campaign._id });
   await CampaignLogEntry.deleteMany({ campaign: campaign._id });
