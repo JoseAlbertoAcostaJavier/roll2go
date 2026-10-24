@@ -11,7 +11,7 @@ import { refKey } from "@/lib/rules/dnd2024/equipmentRefs";
 import { FEATURE_OPTION_LABELS } from "@/lib/rules/dnd2024/featureChoices";
 import { ABILITY_NAMES, skillName } from "@/lib/rules/dnd2024/labels";
 import {
-  heldPicks, meetsFeatPrerequisite, meetsMulticlass, pendingChoices, type PendingChoice,
+  heldPicks, meetsFeatPrerequisite, meetsMulticlass, pendingChoices, withBonusCantrips, type PendingChoice,
 } from "@/lib/rules/dnd2024/levels";
 import { currentMasteries, masteryLabel } from "@/lib/rules/dnd2024/masteries";
 import type { Dnd2024SheetV2, LevelEntry } from "@/lib/rules/dnd2024/sheet";
@@ -145,9 +145,12 @@ function Wizard(props: Props & { draftKey: string; draft: string | null }) {
     : null;
   const subclassEntry = chosenSub ?? (owned?.subclass ? entries.get(refKey(owned.subclass.ref)) ?? null : null);
 
-  const pending = classEntry
+  const basePending = classEntry
     ? pendingChoices(sheet, classEntry.ref, classLevel, entries, chosenSub ? { subclass: chosenSub.ref } : {})
     : [];
+  // Las opciones de rasgo elegidas ahora pueden dar un truco más (Taumaturgo, Mago del Druida)
+  const pending = withBonusCantrips(basePending, basePending.filter((p) => p.type === "featureOption")
+    .flatMap((p) => (state.values[p.source] ?? []).filter(Boolean).map((k) => refFromKey(k).key)));
 
   // Estado efectivo: la subclase solo si es de la clase elegida; los PG solo si son del dado de esta clase
   const hp = state.hp && classData && state.hp.die === classData.hitDie ? state.hp : null;
@@ -255,6 +258,13 @@ function Wizard(props: Props & { draftKey: string; draft: string | null }) {
     const held = chosenSpells(sheet, p.spells.class);
     return p.spells.mode === "spellbook" ? { ...held, spells: [...held.spells, ...sheet.spellbookExtra] } : held;
   };
+  // Los que ya tiene por otras vías: siempre preparados (también los que da este nivel), especie, legado y dotes
+  const grantedSpells = [
+    ...derived.spells.blocks.flatMap((b) => b.always.map((a) => a.spell.ref)),
+    ...derived.spells.other.map((o) => o.spell.ref),
+    ...[...(classData?.spells ?? []), ...((subclassEntry?.data as SubclassData | undefined)?.spells ?? [])]
+      .filter((g) => g.level <= classLevel).map((g) => g.ref),
+  ].map(refKey);
   const spellNames = useMemo(() => new Map(props.spells.map((s) => [refKey(s.ref), nameOf(s)])), [props.spells]);
 
   // ---- resumen ----
@@ -421,6 +431,7 @@ function Wizard(props: Props & { draftKey: string; draft: string | null }) {
           pending={p}
           spells={props.spells}
           held={heldSpells(p)}
+          granted={grantedSpells}
           value={state.spells[p.source] ?? emptySpellPick()}
           onChange={(v) => update({ spells: { ...state.spells, [p.source]: v } })}
           characterId={characterId}

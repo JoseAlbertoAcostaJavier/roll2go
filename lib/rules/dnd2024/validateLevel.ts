@@ -129,6 +129,12 @@ export async function validateLevel(
     },
     held: heldPicks(sheet.levels),
     masteries: currentMasteries(sheet),
+    // Los siempre preparados (también los que da este nivel) y los de especie, legado y dotes
+    spellsGranted: [
+      ...derived.spells.blocks.flatMap((b) => b.always.map((a) => a.spell.ref)),
+      ...derived.spells.other.map((o) => o.spell.ref),
+      ...[...(data.spells ?? []), ...(subData?.spells ?? [])].filter((g) => g.level <= classLevel).map((g) => g.ref),
+    ],
     // El libro del Mago también tiene los copiados
     spellsHeld: (cls, mode) => {
       const held = chosenSpells(sheet, cls);

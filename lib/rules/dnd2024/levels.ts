@@ -8,7 +8,7 @@ import type { Derived } from "./derive";
 import { refKey } from "./equipmentRefs";
 import { FEATURE_CHOICES, REPLACEABLE_FIGHTING_STYLE, type ChoiceSpec } from "./featureChoices";
 import { ABILITY_NAMES, optionalFeatureLabel } from "./labels";
-import type { Choice, Dnd2024SheetV2, FeatPickValue, LevelEntry, Named } from "./sheet";
+import type { Choice, Dnd2024SheetV2, FeatPickValue, LevelEntry, Named, SpellChoice } from "./sheet";
 import { maxSpellLevel, spellListOf } from "./spellcasting";
 import { SKILLS_SOURCE, SUBCLASS_SOURCE, summarizeClasses } from "./upgrade";
 
@@ -59,6 +59,55 @@ const EPIC_BOON = "EB";
 const NO_PROGRESSIONS: Pick<ClassData["progressions"], "feats" | "optionalFeatures"> = { feats: [], optionalFeatures: [] };
 
 const FEAT_LABELS: Record<string, string> = { FS: "Estilo de combate", EB: "Don épico", G: "Dote general" };
+
+/** Opciones de rasgo que dan un truco más de la lista de su clase (Taumaturgo del Clérigo, Mago del Druida). */
+export const BONUS_CANTRIPS: Readonly<Record<string, number>> = {
+  "classFeature:thaumaturge|cleric|xphb|1": 1,
+  "classFeature:magician|druid|xphb|1": 1,
+};
+
+/** Trucos de más que dan las opciones de rasgo `options` (claves del catálogo). */
+export const bonusCantrips = (options: string[]) => options.reduce((n, k) => n + (BONUS_CANTRIPS[k] ?? 0), 0);
+
+/** Trucos de más de una clase por las opciones de rasgo elegidas en sus niveles del historial. */
+export function heldBonusCantrips(levels: LevelEntry[], cls: Ref): number {
+  return bonusCantrips(levels.filter((l) => refKey(l.class.ref) === refKey(cls))
+    .flatMap((l) => l.choices.flatMap((c) => (c.type === "featureOption" ? [c.value.ref.key] : []))));
+}
+
+/**
+ * La elección de conjuros de `pending` con los trucos de más de las opciones de rasgo elegidas en ese mismo nivel
+ * (`options`: claves del catálogo, p. ej. el Taumaturgo al crear un Clérigo).
+ */
+export function withBonusCantrips(pending: PendingChoice[], options: string[]): PendingChoice[] {
+  const extra = bonusCantrips(options);
+  if (!extra) return pending;
+  return pending.map((p) => (p.type === "spells" && p.spells
+    ? { ...p, count: p.count + extra, spells: { ...p.spells, cantrips: p.spells.cantrips + extra } }
+    : p));
+}
+
+/** Trucos y conjuros elegidos para una clase en el historial, con las sustituciones aplicadas en orden. */
+export function chosenSpells(sheet: Pick<Dnd2024SheetV2, "levels">, cls: Ref): { cantrips: Named[]; spells: Named[] } {
+  const cantrips: Named[] = [];
+  const spells: Named[] = [];
+  for (const l of sheet.levels) {
+    for (const c of l.choices) {
+      if (c.type !== "spells" || refKey(c.value.class) !== refKey(cls)) continue;
+      const v: SpellChoice = c.value;
+      cantrips.push(...v.cantrips);
+      spells.push(...v.spells);
+      // El truco sustituido sale de los trucos y el conjuro, de los aprendidos
+      for (const [list, swap] of [[cantrips, v.replaceCantrip], [spells, v.replace]] as const) {
+        if (!swap) continue;
+        const i = list.findIndex((s) => refKey(s.ref) === refKey(swap.out.ref));
+        if (i >= 0) list.splice(i, 1);
+        list.push(swap.in);
+      }
+    }
+  }
+  return { cantrips, spells };
+}
 
 /** Número acumulado en un nivel: el del mayor nivel de la progresión que no lo supera. */
 export function countAt(counts: LevelCounts | null | undefined, level: number): number {
@@ -203,7 +252,13 @@ export function pendingChoices(
     const { mode, progression } = caster.casting;
     const at = (list: number[] | null | undefined, level: number) => (level >= 1 ? (list?.[level - 1] ?? 0) : 0);
     const gained = (list: number[] | null | undefined) => Math.max(at(list, newClassLevel) - at(list, newClassLevel - 1), 0);
-    const cantrips = gained(caster.progressions.cantrips);
+    // Con un truco de más de una opción de rasgo (Taumaturgo…), los que le falten hasta su límite (los personajes
+    // creados antes de contarlo los eligen en su siguiente subida)
+    const bonus = heldBonusCantrips(sheet.levels, classRef);
+    const cantrips = bonus > 0
+      ? Math.max(gained(caster.progressions.cantrips),
+        at(caster.progressions.cantrips, newClassLevel) + bonus - chosenSpells(sheet, caster.ref).cantrips.length)
+      : gained(caster.progressions.cantrips);
     const spells = mode === "levelUp" ? gained(caster.progressions.prepared)
       : mode === "spellbook" ? at((caster.progressions as Partial<ClassData["progressions"]>).spellbook, newClassLevel)
       : 0;

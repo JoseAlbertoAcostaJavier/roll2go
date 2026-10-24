@@ -2,7 +2,8 @@
 // (combinados en multiclase y la Magia de pacto aparte) y los conjuros de especie, legado y dotes.
 import type { CatalogEntry } from "@/lib/rules/catalog";
 import { refKey } from "@/lib/rules/dnd2024/equipmentRefs";
-import type { Dnd2024SheetV2, Named, SpellChoice } from "@/lib/rules/dnd2024/sheet";
+import { chosenSpells, heldBonusCantrips } from "@/lib/rules/dnd2024/levels";
+import type { Dnd2024SheetV2, Named } from "@/lib/rules/dnd2024/sheet";
 import { maxSpellLevel, PACT_SLOTS, preparedKey, slotLevels } from "@/lib/rules/dnd2024/spellcasting";
 import { summarizeClasses } from "@/lib/rules/dnd2024/upgrade";
 import type {
@@ -11,6 +12,8 @@ import type {
 } from "@/lib/rules/types";
 import type { AbilityScores } from "./abilities";
 import { characterFeats } from "./features";
+
+export { chosenSpells };
 
 export type OtherSpell = { spell: Named; origin: string };
 
@@ -34,6 +37,8 @@ export type CasterBlock = {
   spellbook: Named[];
   /** Siempre preparados de la clase y de la subclase; no cuentan para el límite. */
   always: OtherSpell[];
+  /** Si la subclase tiene conjuros alternativos (la tierra del Círculo de la Tierra): sus nombres y el elegido. */
+  spellOptions?: { subclass: Ref; names: string[]; current: string | null };
 };
 
 export type Slots = { levels: Record<string, number>; pact: { count: number; level: number } | null };
@@ -84,28 +89,6 @@ function casters(sheet: Dnd2024SheetV2, entries: Map<string, CatalogEntry>): Cas
   return out;
 }
 
-/** Trucos y conjuros elegidos para una clase en el historial, con las sustituciones aplicadas en orden. */
-export function chosenSpells(sheet: Pick<Dnd2024SheetV2, "levels">, cls: Ref): { cantrips: Named[]; spells: Named[] } {
-  const cantrips: Named[] = [];
-  const spells: Named[] = [];
-  for (const l of sheet.levels) {
-    for (const c of l.choices) {
-      if (c.type !== "spells" || refKey(c.value.class) !== refKey(cls)) continue;
-      const v: SpellChoice = c.value;
-      cantrips.push(...v.cantrips);
-      spells.push(...v.spells);
-      // El truco sustituido sale de los trucos y el conjuro, de los aprendidos
-      for (const [list, swap] of [[cantrips, v.replaceCantrip], [spells, v.replace]] as const) {
-        if (!swap) continue;
-        const i = list.findIndex((s) => refKey(s.ref) === refKey(swap.out.ref));
-        if (i >= 0) list.splice(i, 1);
-        list.push(swap.in);
-      }
-    }
-  }
-  return { cantrips, spells };
-}
-
 /** Un bloque por clase o subclase lanzadora, en el orden del historial. */
 export function casterBlocks(
   sheet: Dnd2024SheetV2,
@@ -118,9 +101,16 @@ export function casterBlocks(
     const { cantrips, spells } = chosenSpells(sheet, c.ref);
     const known = mode === "levelUp" ? spells : [];
     // Los de la clase y los de la subclase hasta el nivel de clase
+    // (con la alternativa elegida en la ficha, si la subclase las tiene)
+    const options = c.subclass?.data?.spellOptions ?? [];
+    const current = c.subclass && options.length ? (sheet.spellOption?.[preparedKey(c.subclass.named.ref)] ?? null) : null;
+    const option = options.find((o) => o.name === current);
     const always = [
       ...upTo(c.klass.data?.spells, c.level).map((r) => ({ spell: named(r, entries), origin: c.klass.named.name })),
-      ...(c.subclass ? upTo(c.subclass.data?.spells, c.level).map((r) => ({ spell: named(r, entries), origin: c.subclass!.named.name })) : []),
+      ...(c.subclass
+        ? upTo([...(c.subclass.data?.spells ?? []), ...(option?.spells ?? [])], c.level)
+          .map((r) => ({ spell: named(r, entries), origin: c.subclass!.named.name }))
+        : []),
     ];
     return {
       class: c.ref,
@@ -129,7 +119,8 @@ export function casterBlocks(
       mode,
       dc: 8 + derived.proficiencyBonus + mod,
       attack: derived.proficiencyBonus + mod,
-      cantripLimit: c.progressions.cantrips?.[c.level - 1] ?? 0,
+      // (más los trucos de las opciones de rasgo: Taumaturgo…)
+      cantripLimit: (c.progressions.cantrips?.[c.level - 1] ?? 0) + heldBonusCantrips(sheet.levels, c.klass.named.ref),
       preparedLimit: c.progressions.prepared?.[c.level - 1] ?? 0,
       maxSpellLevel: maxSpellLevel(progression, c.level),
       known,
@@ -137,6 +128,9 @@ export function casterBlocks(
       prepared: mode === "levelUp" ? known.map((k) => k.ref) : (sheet.prepared[preparedKey(c.ref)] ?? []),
       spellbook: mode === "spellbook" ? [...spells, ...sheet.spellbookExtra] : [],
       always,
+      ...(c.subclass && options.length
+        ? { spellOptions: { subclass: c.subclass.named.ref, names: options.map((o) => o.name), current: option ? current : null } }
+        : {}),
     };
   });
 }

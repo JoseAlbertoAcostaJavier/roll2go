@@ -154,3 +154,11 @@ const MASTERY_NAMES: Record<string, string> = {
 export const damageTypeName = (code: string) => DAMAGE_TYPE_NAMES[code] ?? code;
 export const weaponPropertyName = (code: string) => WEAPON_PROPERTY_NAMES[code] ?? code;
 export const masteryName = (id: string) => MASTERY_NAMES[id.toLowerCase()] ?? capitalize(id);
+
+// Alternativas de conjuros de una subclase (`SubclassData.spellOptions`): título de la elección y nombre de cada una
+const SPELL_OPTION_TITLES: Record<string, string> = { "subclass:circle of the land|druid|xphb": "Tierra" };
+const SPELL_OPTION_NAMES: Record<string, string> = {
+  "Arid Land": "Árida", "Polar Land": "Polar", "Temperate Land": "Templada", "Tropical Land": "Tropical",
+};
+export const spellOptionTitle = (subclassKey: string) => SPELL_OPTION_TITLES[subclassKey] ?? "Conjuros de la subclase";
+export const spellOptionName = (name: string) => SPELL_OPTION_NAMES[name] ?? name;

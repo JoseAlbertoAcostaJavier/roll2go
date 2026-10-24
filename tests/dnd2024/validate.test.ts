@@ -237,7 +237,9 @@ describe("validateSheet", () => {
 });
 
 describe("validateSheet: elecciones de clase de nivel 1", () => {
-  const cat = buildCatalog(["class-barbarian.json", "class-cleric.json", "class-fighter.json", "class-rogue.json", "class-wizard.json"]);
+  const cat = buildCatalog([
+    "class-barbarian.json", "class-cleric.json", "class-druid.json", "class-fighter.json", "class-rogue.json", "class-wizard.json",
+  ]);
   // Armas y un estilo de combate que no están en los fixtures
   const extra = (key: string, data: unknown, name: string) =>
     cat.set(`${FB}:${key}`, { ...cat.get(`${FB}:item:greataxe|xphb`)!, ref: fref(key), name, nameEs: null, data });
@@ -252,7 +254,9 @@ describe("validateSheet: elecciones de clase de nivel 1", () => {
   extra("feat:archery|xphb", { category: "fightingStyle", repeatable: false }, "Archery");
   const WIZARD_SPELLS = ["magic missile", "shield", "sleep", "mage armor", "detect magic", "burning hands", "grease"];
   for (const [name, level, classes] of [
-    ["light", 0, ["cleric", "wizard"]], ["sacred flame", 0, ["cleric"]], ["guidance", 0, ["cleric"]],
+    ["light", 0, ["cleric", "wizard"]], ["sacred flame", 0, ["cleric"]], ["guidance", 0, ["cleric", "druid"]],
+    ["thaumaturgy", 0, ["cleric"]], ["druidcraft", 0, ["druid"]], ["produce flame", 0, ["druid"]],
+    ["dancing lights", 0, ["wizard"]],
     ["mage hand", 0, ["wizard"]], ["fire bolt", 0, ["wizard"]], ["fireball", 3, ["wizard"]],
     ...WIZARD_SPELLS.map((n) => [n, 1, ["wizard"]]),
   ] as [string, number, string[]][]) {
@@ -314,6 +318,37 @@ describe("validateSheet: elecciones de clase de nivel 1", () => {
       .toHaveProperty(["levels.0.choices.progression:spells|cleric|xphb"], "Conjuros: elige 3 trucos.");
     expect(errs(await validateSheet(sheetFor("cleric", [...base, spellChoice("cleric", ["light", "guidance", "fire bolt"])]), fctx)))
       .toHaveProperty(["levels.0.choices.progression:spells|cleric|xphb"], "Conjuros: fire bolt no está en la lista de la clase.");
+  });
+  it("Clérigo 1 Taumaturgo: un truco más (4); Protector, 3", async () => {
+    const SOURCE = "levels.0.choices.progression:spells|cleric|xphb";
+    const thaumaturge = [skills(["history", "medicine"]), order("classFeature:thaumaturge|cleric|xphb|1")];
+    expect(errs(await validateSheet(sheetFor("cleric", [...thaumaturge, spellChoice("cleric", CLERIC_CANTRIPS)]), fctx)))
+      .toHaveProperty([SOURCE], "Conjuros: elige 4 trucos.");
+    const r = await validateSheet(sheetFor("cleric", [...thaumaturge, spellChoice("cleric", [...CLERIC_CANTRIPS, "thaumaturgy"])]), fctx);
+    if (!r.ok) throw new Error(JSON.stringify(r.errors));
+    const protector = [skills(["history", "medicine"]), order("classFeature:protector|cleric|xphb|1")];
+    expect(errs(await validateSheet(sheetFor("cleric", [...protector, spellChoice("cleric", [...CLERIC_CANTRIPS, "thaumaturgy"])]), fctx)))
+      .toHaveProperty([SOURCE], "Conjuros: elige 3 trucos.");
+  });
+  it("un truco que ya da el legado (Drow → Luces danzantes) no se puede elegir", async () => {
+    const r = await validateSheet(sheetFor("wizard", [
+      skills(["arcana", "history"]), spellChoice("wizard", ["light", "mage hand", "dancing lights"], WIZARD_SPELLS.slice(0, 6)),
+    ]), fctx);
+    expect(errs(r)).toHaveProperty(["levels.0.choices.progression:spells|wizard|xphb"], "Conjuros: ya tienes dancing lights.");
+  });
+  it("Druida 1 Mago (Orden primigenia): un truco más (3)", async () => {
+    const SOURCE = "levels.0.choices.progression:spells|druid|xphb";
+    const druid = (option: string, cantrips: string[]) => validateSheet(sheetFor("druid", [
+      skills(["arcana", "nature"]),
+      { type: "featureOption", source: "classFeature:primal order|druid|xphb|1", value: fnamed(option) },
+      spellChoice("druid", cantrips),
+    ]), fctx);
+    expect(errs(await druid("classFeature:magician|druid|xphb|1", ["guidance", "druidcraft"])))
+      .toHaveProperty([SOURCE], "Conjuros: elige 3 trucos.");
+    const r = await druid("classFeature:magician|druid|xphb|1", ["guidance", "druidcraft", "produce flame"]);
+    if (!r.ok) throw new Error(JSON.stringify(r.errors));
+    const warden = await druid("classFeature:warden|druid|xphb|1", ["guidance", "druidcraft"]);
+    if (!warden.ok) throw new Error(JSON.stringify(warden.errors));
   });
   it("Mago 1: exige sus trucos y el libro inicial de 6 conjuros de nivel 1", async () => {
     const SOURCE = "levels.0.choices.progression:spells|wizard|xphb";

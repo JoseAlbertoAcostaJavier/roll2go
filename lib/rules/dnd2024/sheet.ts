@@ -101,6 +101,11 @@ export type Dnd2024SheetV2 = Omit<Dnd2024Sheet, "version" | "classes"> & {
   spellbookExtra: Named[];
   slotsUsed: Record<string, number>;
   /**
+   * Alternativa de conjuros elegida en la ficha por subclase (`SubclassData.spellOptions`, la tierra del Círculo de la
+   * Tierra): `{ [clave de la subclase]: nombre }`. Las hojas sin ninguna no lo tienen.
+   */
+  spellOption?: Record<string, string>;
+  /**
    * Armas con maestría actuales: empiezan con las elecciones `weaponMastery` del historial y se pueden cambiar en la
    * ficha. Las hojas guardadas antes no lo tienen: ver `currentMasteries`.
    */

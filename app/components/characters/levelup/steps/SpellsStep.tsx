@@ -40,6 +40,8 @@ type Props = {
   spells: SpellOption[];
   /** Trucos y conjuros que ya tiene (aprendidos o su libro): marcados e inactivos, y de ahí sale el que se sustituye. */
   held: { cantrips: Named[]; spells: Named[] };
+  /** Conjuros que ya tiene por otras vías (siempre preparados, especie, legado, dotes; `libro:clave`): no se eligen. */
+  granted?: string[];
   value: SpellPick;
   onChange: (value: SpellPick) => void;
   prepared?: PreparedPick;
@@ -80,7 +82,10 @@ export default function SpellsStep(props: Props) {
 
   const counts = pending?.spells ?? { cantrips: 0, spells: 0 };
   const picked = { cantrips: value.cantrips.slice(0, counts.cantrips), spells: value.spells.slice(0, counts.spells) };
-  const heldKeys = new Set([...held.cantrips, ...held.spells].map((h) => refKey(h.ref)));
+  const granted = new Set(props.granted ?? []);
+  const heldKeys = new Set([...held.cantrips, ...held.spells].map((h) => refKey(h.ref)).concat([...granted]));
+  const heldLabel = (s: SpellOption) => (granted.has(refKey(s.ref)) ? "Ya lo tienes"
+    : mode === "spellbook" && s.data.level > 0 ? "Ya está en tu libro" : "Ya lo conoces");
   const swapIns = [value.replace.in, value.replaceCantrip.in].filter(Boolean);
   const prepSet = new Set(prepared?.value ?? []);
   const always = new Set(prepared?.always ?? []);
@@ -112,7 +117,7 @@ export default function SpellsStep(props: Props) {
     const kind = cantrip ? "cantrips" : "spells";
     const checked = picked[kind].includes(key);
     const isHeld = heldKeys.has(key);
-    const reason = isHeld ? (mode === "spellbook" && !cantrip ? "Ya está en tu libro" : "Ya lo conoces")
+    const reason = isHeld ? heldLabel(s)
       : !cantrip && s.data.level > maxLevel ? `Nivel demasiado alto (hasta el ${maxLevel})`
       : swapIns.includes(key) ? "Ya lo eliges como sustituto"
       : !checked && picked[kind].length >= count ? `Ya has elegido ${count}. Desmarca uno para elegir otro`
@@ -137,7 +142,8 @@ export default function SpellsStep(props: Props) {
     const check = learnCheck(s) ?? (mode === "list" && preparable(s) ? prepareCheck(s) : undefined);
     // Sin casilla, los que ya tiene llevan la marca
     if (!check && heldKeys.has(refKey(s.ref)))
-      return { ...item(s, undefined), origin: mode === "spellbook" && s.data.level > 0 ? "En tu libro" : "Ya lo conoces" };
+      return { ...item(s, undefined), origin: granted.has(refKey(s.ref)) ? "Ya lo tienes"
+        : mode === "spellbook" && s.data.level > 0 ? "En tu libro" : "Ya lo conoces" };
     return item(s, check);
   };
 

@@ -1,5 +1,5 @@
 // Cambios de conjuros desde la ficha (spec de conjuros §2.5): preparar y dejar de preparar, copiar al libro del Mago,
-// gastar espacios y descanso largo. Funciones puras: validan la operación del cliente sobre la hoja guardada y
+// gastar espacios, descanso largo y elegir la alternativa de conjuros de una subclase. Funciones puras: validan la operación del cliente sobre la hoja guardada y
 // devuelven la hoja nueva; la ruta relee el personaje y recalcula los bloques antes de aplicarlas.
 import type { CatalogEntry } from "@/lib/rules/catalog";
 import type { Ref, SpellData } from "@/lib/rules/types";
@@ -12,7 +12,8 @@ export type SpellOp =
   | { op: "prepare" | "unprepare"; class: Ref; ref: Ref }
   | { op: "copy"; ref: Ref }
   | { op: "slot"; level: string; used: number }
-  | { op: "longRest" };
+  | { op: "longRest" }
+  | { op: "setOption"; subclass: Ref; name: string | null };
 
 export type SpellOpCtx = {
   /** Bloques de lanzador de la hoja guardada (`derive(...).spells.blocks`). */
@@ -123,6 +124,18 @@ export function applySpellOp(sheet: Dnd2024SheetV2, op: unknown, ctx: SpellOpCtx
   }
 
   if (op.op === "longRest") return { ok: true, sheet: { ...sheet, slotsUsed: {} } };
+
+  // Alternativa de conjuros de una subclase (la tierra del Círculo de la Tierra); `name: null` la quita
+  if (op.op === "setOption") {
+    const sub = asRef(op.subclass);
+    const options = sub ? ctx.blocks.find((b) => b.spellOptions && refKey(b.spellOptions.subclass) === refKey(sub))?.spellOptions : undefined;
+    if (!options) return fail("Esa subclase no tiene conjuros a elegir.");
+    const key = preparedKey(options.subclass);
+    const rest = Object.fromEntries(Object.entries(sheet.spellOption ?? {}).filter(([k]) => k !== key));
+    if (op.name === null) return { ok: true, sheet: { ...sheet, spellOption: rest } };
+    if (typeof op.name !== "string" || !options.names.includes(op.name)) return fail("Opción no válida.");
+    return { ok: true, sheet: { ...sheet, spellOption: { ...rest, [key]: op.name } } };
+  }
   return fail("Operación no válida.");
 }
 

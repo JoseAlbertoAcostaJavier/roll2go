@@ -214,9 +214,27 @@ export function expandVersions(base: unknown): Rec[] {
 
 /**
  * `additionalSpells` → conjuros fijos por nivel de personaje/clase. Las elecciones (`choose`) se omiten. Con
- * `unleveled`, los que no tienen nivel (`"_"`, como los de las dotes) se dan en ese nivel.
+ * `unleveled`, los que no tienen nivel (`"_"`, como los de las dotes) se dan en ese nivel. Si hay varios bloques con
+ * nombre, son alternativas (las tierras del Círculo de la Tierra) y no se concede ninguno: ver `spellOptions`.
  */
 function spellGrants(additional: unknown[], unleveled?: number): SpellGrant[] {
+  return alternativeBlocks(additional) ? [] : blockGrants(additional, unleveled);
+}
+
+// Varios bloques con nombre: el personaje tiene uno solo de ellos (lo elige él)
+const alternativeBlocks = (additional: unknown[]) =>
+  additional.filter((b) => isObj(b) && typeof b.name === "string").length > 1;
+
+/** Bloques alternativos con nombre (`Arid Land`, `Polar Land`…) con sus conjuros por nivel de clase. */
+function spellOptions(additional: unknown[]): { name: string; spells: { level: number; ref: Ref }[] }[] {
+  if (!alternativeBlocks(additional)) return [];
+  return additional.filter(isObj).map((b) => ({
+    name: str(b.name),
+    spells: blockGrants([b]).map(({ level, ref: r }) => ({ level, ref: r })),
+  }));
+}
+
+function blockGrants(additional: unknown[], unleveled?: number): SpellGrant[] {
   const grants: SpellGrant[] = [];
   for (const block of additional) {
     if (!isObj(block)) continue;
@@ -654,6 +672,12 @@ function multiclassData(raw: Rec, ctx: NormalizeContext): MulticlassData {
   };
 }
 
+// Conjuros de `additionalSpells` de una clase que no están siempre preparados: el Druida lanza Encontrar familiar con
+// Compañero salvaje (gastando Forma salvaje), sin tenerlo preparado
+const NOT_ALWAYS_PREPARED: Record<string, string[]> = {
+  "class:druid|xphb": ["spell:find familiar|xphb"],
+};
+
 /** Título de subclase en español (`subclassTitle:barbarian|xphb` en el diccionario); si no está, el original. */
 const subclassTitle = (raw: Rec) =>
   (es as Record<string, string>)[`subclassTitle:${lower(`${str(raw.name)}|${str(raw.source)}`)}`] ?? str(raw.subclassTitle);
@@ -687,7 +711,8 @@ export function normalizeClass(raw: Rec, ctx: NormalizeContext): NormalizedEntry
     subclassLevel: subclassAt?.level ?? 3,
     asiLevels: features.filter((f) => f.ref.key.startsWith("classFeature:ability score improvement|")).map((f) => f.level),
     spellcasting: spellcasting(raw, key),
-    spells: spellGrants(asArr(raw.additionalSpells)).map(({ level, ref: r }) => ({ level, ref: r })),
+    spells: spellGrants(asArr(raw.additionalSpells)).map(({ level, ref: r }) => ({ level, ref: r }))
+      .filter((s) => !NOT_ALWAYS_PREPARED[key]?.includes(s.ref.key)),
     features,
     progressions: classProgressions(raw),
     table: classTable(raw.classTableGroups),
@@ -717,12 +742,14 @@ export function normalizeSubclass(raw: Rec): NormalizedEntry {
     progressions.cantrips = perLevel(raw.cantripProgression);
     progressions.prepared = perLevel(raw.preparedSpellsProgression);
   }
+  const options = spellOptions(asArr(raw.additionalSpells));
   return entry<"subclass">(header("subclass", raw, key, {
     parent: { key: keyOf("class", str(raw.className), str(raw.classSource)) },
   }), {
     features: asArr(raw.subclassFeatures).map((f) => featureRef(f, "subclassFeature"))
       .filter((x): x is LevelFeature => x !== null),
     spells: spellGrants(asArr(raw.additionalSpells)).map(({ level, ref: r }) => ({ level, ref: r })),
+    ...(options.length ? { spellOptions: options } : {}),
     progressions,
     ...(casting ? { spellcasting: casting } : {}),
   });
@@ -990,7 +1017,8 @@ export function normalizeAll(files: RawFiles, source: string): {
   }
   // Las subclases que conceden un conjuro (dominios, juramentos…) también figuran en su lista: `subclass:life-domain`
   for (const s of subclasses) {
-    for (const grant of spellGrants(asArr(s.additionalSpells))) {
+    const additional = asArr(s.additionalSpells);
+    for (const grant of [...spellGrants(additional), ...spellOptions(additional).flatMap((o) => o.spells)]) {
       const classes = ctx.spellClasses.get(grant.ref.key) ?? [];
       const id = `subclass:${toIdentifier(str(s.name))}`;
       if (!classes.includes(id)) ctx.spellClasses.set(grant.ref.key, [...classes, id]);

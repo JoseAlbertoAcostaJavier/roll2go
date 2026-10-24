@@ -224,6 +224,20 @@ describe("pendingChoices", () => {
       });
       expect(spellsOf(pendingChoices(sheetWith([["fighter", 2]]), cls("fighter"), 3, catalog))).toBeUndefined();
     });
+    it("Clérigo con Taumaturgo creado sin su truco de más: lo elige en la siguiente subida", () => {
+      const thaumaturge: Choice = {
+        type: "featureOption", source: "classFeature:divine order|cleric|xphb|1",
+        value: named(ref("classFeature:thaumaturge|cleric|xphb|1")),
+      };
+      const cantrips = (names: string[]): Choice => ({
+        type: "spells", source: "progression:spells|cleric|xphb",
+        value: { class: cls("cleric"), cantrips: names.map((n) => named(ref(`spell:${n}|xphb`))), spells: [] },
+      });
+      const at2 = (names: string[]) =>
+        spellsOf(pendingChoices(sheetWith([["cleric", 1]], { 1: [thaumaturge, cantrips(names)] }), cls("cleric"), 2, catalog));
+      expect(at2(["light", "guidance", "sacred flame"])).toMatchObject({ count: 1, spells: { cantrips: 1 } });
+      expect(at2(["light", "guidance", "sacred flame", "thaumaturgy"])).toMatchObject({ count: 0, spells: { cantrips: 0 } });
+    });
     it("Bárbaro: ninguna", () => {
       expect(spellsOf(pendingChoices(sheetWith([]), cls("barbarian"), 1, catalog))).toBeUndefined();
     });

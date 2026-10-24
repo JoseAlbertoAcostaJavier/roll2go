@@ -267,6 +267,43 @@ test("las elecciones de conjuros (choose) no se convierten en referencias", () =
   ]);
 });
 
+test("bloques de conjuros alternativos con nombre (Círculo de la Tierra): no se conceden, quedan como opciones", () => {
+  const { entries: es, errors: errs } = normalizeAll({
+    classes: [{
+      subclass: [{
+        name: "Circle of the Land", shortName: "Land", source: "XPHB", className: "Druid", classSource: "XPHB",
+        subclassFeatures: [],
+        additionalSpells: [
+          { name: "Arid Land", prepared: { 3: ["blur|xphb", "fire bolt|xphb"], 5: ["fireball|xphb"] } },
+          { name: "Polar Land", prepared: { 3: ["fog cloud|xphb"] } },
+        ],
+      }],
+    }],
+  }, "XPHB");
+  expect(errs).toEqual([]);
+  const data = es[0].data as SubclassData;
+  expect(data.spells).toEqual([]);
+  const r = (k: string) => ({ book: "__BOOK__", key: `spell:${k}|xphb` });
+  expect(data.spellOptions).toEqual([
+    { name: "Arid Land", spells: [{ level: 3, ref: r("blur") }, { level: 3, ref: r("fire bolt") }, { level: 5, ref: r("fireball") }] },
+    { name: "Polar Land", spells: [{ level: 3, ref: r("fog cloud") }] },
+  ]);
+});
+
+test("Druida: Encontrar familiar no es un conjuro siempre preparado (lo lanza con Forma salvaje)", () => {
+  const druid = {
+    name: "Druid", source: "XPHB", hd: { number: 1, faces: 8 }, proficiency: ["int", "wis"],
+    primaryAbility: [{ wis: true }], spellcastingAbility: "wis", casterProgression: "full",
+    startingProficiencies: { skills: [{ choose: { from: ["arcana"], count: 1 } }] },
+    startingEquipment: { defaultData: [{ A: [{ value: 100 }] }] },
+    additionalSpells: [{ prepared: { 1: ["speak with animals|xphb"], 2: ["find familiar|xphb"] } }],
+    classFeatures: [],
+  };
+  const { entries: es, errors: errs } = normalizeAll({ classes: [{ class: [druid] }] }, "XPHB");
+  expect(errs).toEqual([]);
+  expect((es[0].data as ClassData).spells).toEqual([{ level: 1, ref: { book: "__BOOK__", key: "spell:speak with animals|xphb" } }]);
+});
+
 test("equipo con más de dos opciones (Guerrero) y clase lanzadora", () => {
   const fighter = {
     name: "Fighter", source: "XPHB", hd: { number: 1, faces: 10 }, proficiency: ["str", "con"],

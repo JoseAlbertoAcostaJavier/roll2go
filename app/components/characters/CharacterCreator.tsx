@@ -15,7 +15,7 @@ import { checkBackgroundBonus } from "@/lib/rules/dnd2024/abilities";
 import { totalsWithinLimit } from "@/lib/rules/dnd2024/assign";
 import { bareName, equipmentRefs, refKey } from "@/lib/rules/dnd2024/equipmentRefs";
 import { ABILITY_NAMES, sizeName, skillName, toolName } from "@/lib/rules/dnd2024/labels";
-import { pendingChoices } from "@/lib/rules/dnd2024/levels";
+import { pendingChoices, withBonusCantrips } from "@/lib/rules/dnd2024/levels";
 import { maxSpellLevel, preparedKey, spellListOf } from "@/lib/rules/dnd2024/spellcasting";
 import {
   emptySpellPick, parseSpellPick, spellChoiceOf, spellPickMissing, type SpellPick,
@@ -386,10 +386,13 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
 
   // Elecciones de nivel 1 de la clase (las mismas que exige el servidor); las de los rasgos aparecen al cargarlos.
   // La de conjuros va en su propia sección
-  const allPending = useMemo(
-    () => (form.klass ? pendingChoices({ levels: [] }, form.klass, 1, entries) : []),
-    [form.klass, entries],
-  );
+  // (con el truco de más de la opción de rasgo elegida: Taumaturgo, Mago del Druida)
+  const allPending = useMemo(() => {
+    const base = form.klass ? pendingChoices({ levels: [] }, form.klass, 1, entries) : [];
+    const options = base.filter((p) => p.type === "featureOption")
+      .flatMap((p) => (form.classChoices[p.source] ?? []).filter(Boolean).map((k) => refFromKey(k).key));
+    return withBonusCantrips(base, options);
+  }, [form.klass, form.classChoices, entries]);
   const pending = allPending.filter((p) => p.type !== "spells");
   const spellPending = allPending.find((p) => p.type === "spells") ?? null;
 
@@ -407,6 +410,11 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
     };
   }, [classData, classOpt, form.klass, spellPending, entries]);
   const spellsMissing = spellPending ? spellPickMissing(spellPending, form.spells) : null;
+  // Conjuros de nivel 1 que ya da otra cosa (especie, legado, dote del trasfondo, clase): no se eligen
+  const grantedSpells = useMemo(() => [form.species, form.lineage, bgData?.feat ?? null, form.klass].flatMap((r) => {
+    const data = r ? (entries.get(refKey(r))?.data as { spells?: { level: number; ref: Ref }[] } | undefined) : undefined;
+    return (data?.spells ?? []).filter((g) => g.level <= 1).map((g) => refKey(g.ref));
+  }), [form.species, form.lineage, form.klass, bgData, entries]);
 
   // ---- hoja ----
   const filledBase = (): Record<Ability, number | null> => {
@@ -816,6 +824,7 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
               pending={spellPending}
               spells={props.spells}
               held={NO_SPELLS}
+              granted={grantedSpells}
               value={form.spells}
               onChange={(spells) => update({ spells }, ...spellErrorKeys())}
               prepared={casting.preparedLimit > 0

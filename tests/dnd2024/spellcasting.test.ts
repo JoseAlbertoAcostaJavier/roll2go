@@ -8,7 +8,7 @@ import { B, buildCatalog, ref } from "./fixtureCatalog";
 
 const entries = buildCatalog([
   "class-barbarian.json", "class-cleric.json", "class-wizard.json", "class-paladin.json", "class-sorcerer.json",
-  "class-warlock.json", "class-fighter.json",
+  "class-warlock.json", "class-fighter.json", "class-druid.json",
 ]);
 const classData = (key: string) => entries.get(`${B}:${key}`)!.data as ClassData;
 
@@ -20,6 +20,7 @@ const CLASSES: Record<string, Named> = {
   sorcerer: { ref: ref("class:sorcerer|xphb"), name: "Hechicero" },
   warlock: { ref: ref("class:warlock|xphb"), name: "Brujo" },
   fighter: { ref: ref("class:fighter|xphb"), name: "Guerrero" },
+  druid: { ref: ref("class:druid|xphb"), name: "Druida" },
 };
 const EK: Named = { ref: ref("subclass:eldritch knight|fighter|xphb"), name: "Caballero arcano" };
 const spell = (name: string): Named => ({ ref: ref(`spell:${name}|xphb`), name });
@@ -95,6 +96,14 @@ describe("bloques de lanzador", () => {
     });
     expect(b.cantripLimit).toBe(3);
     expect(b.preparedLimit).toBe(4);
+  });
+  it("Clérigo 1 Taumaturgo: un truco más en el límite", () => {
+    const thaumaturge: Choice = {
+      type: "featureOption", source: "classFeature:divine order|cleric|xphb|1",
+      value: { ref: ref("classFeature:thaumaturge|cleric|xphb|1"), name: "Taumaturgo" },
+    };
+    expect(blocks(sheetOf(["cleric"], { 1: [thaumaturge] }))[0].cantripLimit).toBe(4);
+    expect(blocks(sheetOf(["cleric", "cleric"], { 1: [thaumaturge] }))[0].cantripLimit).toBe(4);
   });
   it("Mago 1: modo libro; el libro son las entradas del nivel y las copiadas", () => {
     const p = classData("class:wizard|xphb").progressions;
@@ -177,6 +186,25 @@ describe("bloques de lanzador", () => {
     expect(b.always.every((a) => a.origin === "Dominio de la vida")).toBe(true);
     expect(b.prepared).toEqual([spell("bless").ref]);
     expect(b.preparedLimit).toBe(classData("class:cleric|xphb").progressions.prepared![2]);
+  });
+  it("Druida 2: Hablar con los animales siempre preparado; Encontrar familiar no", () => {
+    expect(blocks(sheetOf(times("druid", 2)))[0].always.map((a) => a.spell.ref.key)).toEqual(["spell:speak with animals|xphb"]);
+  });
+  it("Círculo de la Tierra: sin tierra elegida, ninguna lista; con ella, la suya hasta el nivel de clase", () => {
+    const land: Named = { ref: ref("subclass:circle of the land|druid|xphb"), name: "Círculo de la Tierra" };
+    const s = sheetOf(times("druid", 3), { 3: [{ type: "subclass", source: "class:subclass", value: land }] });
+    const [b] = blocks(s);
+    expect(b.always.map((a) => a.spell.ref.key)).toEqual(["spell:speak with animals|xphb"]);
+    expect(b.spellOptions).toEqual({
+      subclass: land.ref, names: ["Arid Land", "Polar Land", "Temperate Land", "Tropical Land"], current: null,
+    });
+    s.spellOption = { [land.ref.key]: "Polar Land" };
+    const [c] = blocks(s);
+    expect(c.always.filter((a) => a.origin !== "Druida").map((a) => [a.spell.ref.key, a.origin])).toEqual([
+      ["spell:fog cloud|xphb", "Círculo de la Tierra"], ["spell:hold person|xphb", "Círculo de la Tierra"],
+      ["spell:ray of frost|xphb", "Círculo de la Tierra"],
+    ]);
+    expect(c.spellOptions?.current).toBe("Polar Land");
   });
   it("sin clases lanzadoras: ningún bloque", () => {
     expect(blocks(sheetOf(["barbarian"]))).toEqual([]);

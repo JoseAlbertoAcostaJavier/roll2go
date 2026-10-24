@@ -100,9 +100,14 @@ export type ClassData = {
   subclassTitle: string;
 };
 
+/** Conjuros alternativos con nombre: el personaje tiene los de una sola (la tierra del Círculo de la Tierra). */
+export type SpellOption = { name: string; spells: { level: number; ref: Ref }[] };
+
 export type SubclassData = {
   features: LevelFeature[];
   spells: { level: number; ref: Ref }[];
+  /** Alternativas entre las que el dueño elige en la ficha (`sheet.spellOption`); no se conceden por sí solas. */
+  spellOptions?: SpellOption[];
   /**
    * Dotes y rasgos opcionales propios de la subclase (estilo de combate del Campeón, maniobras…) y, en las
    * subclases lanzadoras, sus trucos y preparados por nivel de clase.

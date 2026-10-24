@@ -5,11 +5,11 @@ import { BookPlus, LoaderCircle, WandSparkles } from "lucide-react";
 import type { SpellOption } from "@/lib/rules/catalog";
 import type { CasterBlock } from "@/lib/rules/dnd2024/derive";
 import { bareName, refKey } from "@/lib/rules/dnd2024/equipmentRefs";
-import { ABILITY_NAMES } from "@/lib/rules/dnd2024/labels";
+import { ABILITY_NAMES, spellOptionName, spellOptionTitle } from "@/lib/rules/dnd2024/labels";
 import { EMPTY_SPELL_FILTER, matchesSpellFilter, type SpellFilter } from "@/lib/rules/dnd2024/spellFilters";
 import type { SpellOp } from "@/lib/rules/dnd2024/spellOps";
 import type { Ref } from "@/lib/rules/types";
-import { card, primaryButton } from "@/app/components/formStyles";
+import { card, field, labelClass, primaryButton } from "@/app/components/formStyles";
 import { CLASS_ICONS } from "@/app/components/icons/classes";
 import RuleSelect from "../RuleSelect";
 import SpellFilters from "./SpellFilters";
@@ -46,6 +46,40 @@ function Stat({ label, value }: { label: string; value: string }) {
     <div className="min-w-0 rounded-md border border-line bg-surface px-3 py-2 text-center">
       <dt className="text-[11px] font-semibold uppercase tracking-wide text-muted">{label}</dt>
       <dd className="font-heading text-lg font-bold">{value}</dd>
+    </div>
+  );
+}
+
+// Alternativa de conjuros de la subclase (la tierra del Círculo de la Tierra): el dueño la elige y la cambia cuando
+// quiera; sus conjuros aparecen como siempre preparados
+function SpellOptionPicker({ id, options, isOwner, busy, onChange }: {
+  id: string;
+  options: NonNullable<CasterBlock["spellOptions"]>;
+  isOwner: boolean;
+  busy: boolean;
+  onChange: (name: string | null) => void;
+}) {
+  const title = spellOptionTitle(options.subclass.key);
+  if (!isOwner) {
+    return (
+      <p className="mb-4 text-sm">
+        <span className="font-semibold">{title}:</span> {options.current ? spellOptionName(options.current) : "sin elegir"}
+      </p>
+    );
+  }
+  return (
+    <div className="mb-4 max-w-xs print:hidden">
+      <label htmlFor={id} className={labelClass}>{title}</label>
+      <select
+        id={id}
+        className={field}
+        value={options.current ?? ""}
+        disabled={busy}
+        onChange={(e) => onChange(e.target.value || null)}
+      >
+        <option value="">Sin elegir</option>
+        {options.names.map((n) => <option key={n} value={n}>{spellOptionName(n)}</option>)}
+      </select>
     </div>
   );
 }
@@ -142,6 +176,16 @@ export default function CasterBlockView({ block, listId, iconId, spells, isOwner
           <Stat label="Trucos" value={`${block.cantrips.length}/${block.cantripLimit}`} />
         )}
       </dl>
+
+      {block.spellOptions && (
+        <SpellOptionPicker
+          id={`${tabId("preparados")}-option`}
+          options={block.spellOptions}
+          isOwner={isOwner}
+          busy={busy}
+          onChange={(name) => void onOp({ op: "setOption", subclass: block.spellOptions!.subclass, name })}
+        />
+      )}
 
       <div role="tablist" aria-label={`Listas de ${block.name}`} className="mb-4 flex gap-1 overflow-x-auto border-b border-line print:hidden">
         {tabs.map((t) => (

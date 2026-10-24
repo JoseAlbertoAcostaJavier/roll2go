@@ -132,6 +132,7 @@ const checks: { [K in EntryKind]: Check } = {
   subclass: shape({
     features: arrayOf(levelFeature),
     spells: arrayOf(shape({ level: int(1, 20), ref })),
+    "spellOptions?": arrayOf(shape({ name: str, spells: arrayOf(shape({ level: int(1, 20), ref })) })),
     progressions: shape({
       feats: featProgressions,
       optionalFeatures: optionalFeatureProgressions,

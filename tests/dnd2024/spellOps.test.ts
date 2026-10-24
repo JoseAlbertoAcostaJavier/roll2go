@@ -6,7 +6,7 @@ import { applySpellOp, trimSpells } from "@/lib/rules/dnd2024/spellOps";
 import type { Ref, SpellData } from "@/lib/rules/types";
 import { B, buildCatalog, ref } from "./fixtureCatalog";
 
-const entries = buildCatalog(["class-cleric.json", "class-wizard.json", "class-sorcerer.json", "class-warlock.json"]);
+const entries = buildCatalog(["class-cleric.json", "class-wizard.json", "class-sorcerer.json", "class-warlock.json", "class-druid.json"]);
 
 // Conjuros de prueba: nombre, nivel y listas
 const SPELLS: [string, number, string[]][] = [
@@ -43,6 +43,7 @@ const CLASSES: Record<string, Named> = {
   wizard: { ref: ref("class:wizard|xphb"), name: "Mago" },
   sorcerer: { ref: ref("class:sorcerer|xphb"), name: "Hechicero" },
   warlock: { ref: ref("class:warlock|xphb"), name: "Brujo" },
+  druid: { ref: ref("class:druid|xphb"), name: "Druida" },
 };
 const BOOK = ["magic missile", "shield", "sleep", "mage armor", "detect magic", "burning hands"].map(spell);
 
@@ -182,6 +183,24 @@ describe("espacios", () => {
   it("operación desconocida → error", () => {
     expect(errorOf(apply(sheetOf(["cleric"]), { op: "nada" }))).toBe("Operación no válida.");
     expect(errorOf(apply(sheetOf(["cleric"]), null))).toBe("Petición no válida.");
+  });
+});
+
+describe("tierra del Círculo de la Tierra", () => {
+  const LAND = ref("subclass:circle of the land|druid|xphb");
+  const druid3 = () => sheetOf(["druid", "druid", "druid"], {
+    3: [{ type: "subclass", source: "class:subclass", value: { ref: LAND, name: "Círculo de la Tierra" } }],
+  });
+  it("elige una tierra de la subclase, la cambia y la quita", () => {
+    const s = ok(apply(druid3(), { op: "setOption", subclass: LAND, name: "Arid Land" }));
+    expect(s.spellOption).toEqual({ [LAND.key]: "Arid Land" });
+    expect(ok(apply(s, { op: "setOption", subclass: LAND, name: "Polar Land" })).spellOption).toEqual({ [LAND.key]: "Polar Land" });
+    expect(ok(apply(s, { op: "setOption", subclass: LAND, name: null })).spellOption).toEqual({});
+  });
+  it("una tierra que no existe o una subclase sin tierras → error", () => {
+    expect(errorOf(apply(druid3(), { op: "setOption", subclass: LAND, name: "Lunar Land" }))).toBe("Opción no válida.");
+    expect(errorOf(apply(sheetOf(["cleric"]), { op: "setOption", subclass: LAND, name: "Arid Land" })))
+      .toBe("Esa subclase no tiene conjuros a elegir.");
   });
 });
 

@@ -18,12 +18,14 @@ const MAX_ATTEMPTS = 3;
 const CHANGED_ERROR = "Los conjuros del personaje han cambiado; recarga la página.";
 
 // Campo de la hoja que cambia cada operación
-const FIELDS: Record<string, keyof Pick<Dnd2024SheetV2, "prepared" | "spellbookExtra" | "slotsUsed">> = {
+const FIELDS: Record<string, keyof Pick<Dnd2024SheetV2, "prepared" | "spellbookExtra" | "slotsUsed" | "spellOption">> = {
   prepare: "prepared", unprepare: "prepared", copy: "spellbookExtra", slot: "slotsUsed", longRest: "slotsUsed",
+  setOption: "spellOption",
 };
 
 // Una operación de conjuros (spec de conjuros §2.5): { op: "prepare" | "unprepare", class, ref }, { op: "copy", ref },
-// { op: "slot", level, used } o { op: "longRest" }. Solo el dueño. Se comprueba sobre lo guardado y solo se escribe si
+// { op: "slot", level, used }, { op: "longRest" } o { op: "setOption", subclass, name } (la tierra del Círculo de la
+// Tierra; `name: null` la quita). Solo el dueño. Se comprueba sobre lo guardado y solo se escribe si
 // ese campo sigue igual, así nunca se supera el límite con peticiones a la vez. Responde { spells } recalculado.
 export async function PATCH(req: NextRequest, { params }: Ctx) {
   const { id } = await params;

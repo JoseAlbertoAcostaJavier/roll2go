@@ -38,7 +38,7 @@ for (const [name, level, classes] of [
   ["charm person", 1, ["warlock", "wizard"]], ["hold person", 2, ["warlock", "wizard"]], ["burning hands", 1, ["wizard"]],
   ["magic missile", 1, ["wizard"]], ["shield", 1, ["wizard"]],
   ["light", 0, ["cleric", "wizard"]], ["sacred flame", 0, ["cleric"]], ["guidance", 0, ["cleric"]],
-  ["thaumaturgy", 0, ["cleric"]], ["bless", 1, ["cleric"]],
+  ["thaumaturgy", 0, ["cleric"]], ["bless", 1, ["cleric"]], ["dancing lights", 0, ["warlock"]],
 ] as [string, number, string[]][]) {
   extra(`spell:${name}|xphb`, {
     level, school: "V", time: "", range: "", components: "", duration: "", concentration: false, ritual: false, classes, tags: [],
@@ -251,6 +251,13 @@ describe("validateLevel", () => {
         expect(await spellErrors(warlock1(), learn(["hex"], { cantrips: [client("spell:minor illusion|xphb")] })))
           .toBe("Conjuros: elige 0 trucos.");
         expect(await errorsOf(warlock1(), invocations(two, undefined, null as never))).toHaveProperty("choices");
+      });
+      it("un truco que ya da el legado (Drow → Luces danzantes) no entra como sustituto", async () => {
+        const drow = known();
+        drow.lineage = named(ref("lineage:drow|xphb"));
+        const swap = { replaceCantrip: { out: client("spell:chill touch|xphb"), in: client("spell:dancing lights|xphb") } };
+        expect(await spellErrors(drow, learn(["witch bolt"], swap))).toBe("Conjuros: ya tienes dancing lights.");
+        expect(await spellErrors(known(), learn(["witch bolt"], swap))).toBeUndefined();
       });
       it("de otra lista, de nivel demasiado alto, un truco o uno que ya conoce → error", async () => {
         expect(await spellErrors(warlock1(), learn(["burning hands"]))).toMatch(/no está en la lista/);

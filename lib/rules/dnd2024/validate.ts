@@ -3,7 +3,7 @@ import { cleanText } from "@/lib/utils";
 import type { CatalogEntry } from "@/lib/rules/catalog";
 import {
   ABILITIES, type Ability, type BackgroundData, type ClassData, type FeatData, type FeatureData, type ItemData,
-  type OptionalFeatureData, type Ref, type SpeciesData, type SpellData, type SubclassData,
+  type LineageData, type OptionalFeatureData, type Ref, type SpeciesData, type SpellData, type SubclassData,
 } from "@/lib/rules/types";
 import { POINT_BUY_TOTAL, STANDARD_ARRAY, checkBackgroundBonus, pointBuyCost } from "./abilities";
 import { abilityScores } from "./derive/abilities";
@@ -11,7 +11,9 @@ import { weaponProficient } from "./derive/attacks";
 import { casterBlocks, spellSlots } from "./derive/spells";
 import { FEATURE_OPTION_LABELS } from "./featureChoices";
 import { ABILITY_NAMES, SKILL_NAMES, featFitsCategories } from "./labels";
-import { meetsFeatPrerequisite, pendingChoices, type FeatPrerequisiteCtx, type PendingChoice } from "./levels";
+import {
+  meetsFeatPrerequisite, pendingChoices, withBonusCantrips, type FeatPrerequisiteCtx, type PendingChoice,
+} from "./levels";
 import { meleeOnlySource, validateMasteries } from "./masteries";
 import { abilityRollValue, verifyRolls } from "./rolls";
 import { bareName, isRef, loadEquipmentEntries, refKey } from "./equipmentRefs";
@@ -82,6 +84,7 @@ export async function validateSheet(input: unknown, ctx: ValidateCtx): Promise<V
   const speciesEntry = await load("species", input.species, "species");
   const species = speciesEntry ? (speciesEntry.data as SpeciesData) : null;
   let lineage: Named | null = null;
+  let lineageData: LineageData | null = null;
   if (species && speciesEntry) {
     if (input.lineage == null) {
       if (species.hasLineages && (await ctx.hasLineages(speciesEntry.ref))) err("lineage", "Elige un legado.");
@@ -91,7 +94,10 @@ export async function validateSheet(input: unknown, ctx: ValidateCtx): Promise<V
       const l = await load("lineage", input.lineage, "lineage");
       if (l) {
         if (!isChildOf(l, speciesEntry)) err("lineage", "El legado no pertenece a la especie elegida.");
-        else lineage = named(l);
+        else {
+          lineage = named(l);
+          lineageData = l.data as LineageData;
+        }
       }
     }
   }
@@ -187,9 +193,13 @@ export async function validateSheet(input: unknown, ctx: ValidateCtx): Promise<V
       const options = [...classEntries.values()].flatMap((e) => (e.data as FeatureData | null)?.options ?? []);
       await loadInto(classEntries, options, ctx.resolve);
       const pending = pendingChoices({ levels: [] }, cEntry.ref, 1, classEntries, subclass ? { subclass: subclass.ref } : {});
+      // Conjuros de nivel 1 que ya da otra cosa: especie, legado, dote del trasfondo, clase y subclase
+      const bgFeat = bg?.feat ? ((await ctx.resolve(bg.feat))?.data as FeatData | undefined) : undefined;
+      const spellsGranted = [species?.spells, lineageData?.spells, bgFeat?.spells, cls.spells, subData?.spells]
+        .flatMap((list) => (list ?? []).filter((g) => g.level <= 1).map((g) => g.ref));
       const checked = await checkChoices(pending, raw.choices, {
         path: "levels.0.choices", entries: classEntries, resolve: ctx.resolve, skills: takenSkills,
-        weapons: cls.weapons, level: 1, subclass,
+        weapons: cls.weapons, level: 1, subclass, spellsGranted,
       });
       for (const [k, msg] of Object.entries(checked.errors)) err(k, msg);
       if (Object.keys(checked.errors).length) ok = false;
@@ -372,6 +382,8 @@ export type ChoicesCtx = {
    * de ahí sale el que se sustituye. Sin él (creación), ninguno.
    */
   spellsHeld?: (cls: Ref, mode: SpellChoiceMode) => { cantrips: Named[]; spells: Named[] };
+  /** Conjuros que ya tiene por otras vías (siempre preparados, especie, legado, dotes…): tampoco se pueden elegir. */
+  spellsGranted?: Ref[];
 };
 type SpellChoiceMode = NonNullable<PendingChoice["spells"]>["mode"];
 
@@ -581,7 +593,10 @@ export async function checkChoices(
       }
       out.push({ type: "weaponMastery", source: p.source, value: weapons });
     } else if (p.type === "spells" && p.spells) {
-      const r = await checkSpells(p, p.spells, value, ctx, load);
+      // Con los trucos de más de las opciones de rasgo de este nivel, que ya están comprobadas (van antes)
+      const options = out.flatMap((o) => (o.type === "featureOption" ? [o.value.ref.key] : []));
+      const [withBonus] = withBonusCantrips([p], options);
+      const r = await checkSpells(withBonus, withBonus.spells!, value, ctx, load);
       if ("error" in r) { bad(r.error); continue; }
       out.push({ type: "spells", source: p.source, value: r.value });
     } else {
@@ -603,6 +618,7 @@ async function checkSpells(
   if (given && refKey(given) !== refKey(p.class)) return { error: "conjuros de otra clase." };
   const held = ctx.spellsHeld?.(p.class, p.mode) ?? { cantrips: [], spells: [] };
   const heldKeys = new Set([...held.cantrips, ...held.spells].map((h) => refKey(h.ref)));
+  for (const r of ctx.spellsGranted ?? []) heldKeys.add(refKey(r));
   const nameOf = (e: CatalogEntry) => e.nameEs || e.name;
   const toNamed = (e: CatalogEntry): Named => ({ ref: { book: e.ref.book, key: e.ref.key }, name: nameOf(e) });
   // Comprueba un conjuro: de la lista, truco o de nivel 1..máximo
