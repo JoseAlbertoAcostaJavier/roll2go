@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useId, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { Check, EllipsisVertical, LoaderCircle, TriangleAlert, X } from "lucide-react";
 import useDismiss from "@/app/components/useDismiss";
@@ -77,7 +78,8 @@ export function useCampaignRequest({ inlineErrors = false } = {}) {
 
 /**
  * Ventana modal de la sección, con el comportamiento de StatDialog: foco dentro al abrir, atrapado con Tab, Escape
- * cierra y el foco vuelve a `opener`.
+ * cierra y el foco vuelve a `opener`. Se pinta en <body>: dentro de un ancestro animado (p. ej. la cabecera de la
+ * ficha, con transform) `fixed` quedaría encerrado en él.
  */
 export function CampaignDialog({ title, icon, onClose, opener, children }: {
   title: string;
@@ -120,7 +122,7 @@ export function CampaignDialog({ title, icon, onClose, opener, children }: {
     }
   }
 
-  return (
+  return createPortal(
     <div
       className="fixed inset-0 z-50 flex animate-fade-in items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
       onClick={(e) => e.target === e.currentTarget && onClose()}
@@ -140,7 +142,8 @@ export function CampaignDialog({ title, icon, onClose, opener, children }: {
         </div>
         {children}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

@@ -6,6 +6,8 @@ import { connectDB } from "@/lib/mongodb";
 import { Campaign } from "@/lib/Campaign";
 import { requireUser } from "@/lib/currentUser";
 import { loadCharacterFor } from "@/lib/characterAccess";
+import { joinReasons } from "@/lib/campaignEligibility";
+import { system as rpgSystems } from "@/lib/systems";
 import { booksByIds } from "@/lib/rules/books";
 import { listMasteryWeapons, listSpells } from "@/lib/rules/catalog";
 import { derive } from "@/lib/rules/dnd2024/derive";
@@ -18,6 +20,7 @@ import { parsePronouns, pronounsText } from "@/lib/rules/dnd2024/names";
 import { spellListOf } from "@/lib/rules/dnd2024/spellcasting";
 import type { BackgroundData, ItemData } from "@/lib/rules/types";
 import SheetHeader from "@/app/components/characters/sheet/SheetHeader";
+import type { JoinableCampaign } from "@/app/components/characters/sheet/JoinCampaignDialog";
 import SheetTabs, { isSheetTab, SHEET_TABS, type SheetTab } from "@/app/components/characters/sheet/SheetTabs";
 import InfoTab, { type InfoData } from "@/app/components/characters/sheet/InfoTab";
 import BackgroundTab from "@/app/components/characters/sheet/BackgroundTab";
@@ -65,11 +68,31 @@ export default async function CharacterPage({ params, searchParams }: Props) {
   const tabs: SheetTab[] = d.hasSpells ? [...BASE_TABS, "conjuros"] : BASE_TABS;
   const tab: SheetTab = isSheetTab(query.tab) && tabs.includes(query.tab) ? query.tab : "info";
 
-  let campaign: { id: string; name: string } | null = null;
+  let campaign: { id: string; name: string; pending: boolean; isDm: boolean } | null = null;
+  let joinable: JoinableCampaign[] = [];
+  await connectDB();
   if (c.campaign) {
-    await connectDB();
-    const doc = await Campaign.findById(c.campaign).select("name").lean();
-    if (doc) campaign = { id: String(doc._id), name: doc.name };
+    const doc = await Campaign.findById(c.campaign).select("name owner").lean();
+    if (doc) {
+      campaign = {
+        id: String(doc._id),
+        name: doc.name,
+        pending: c.campaignStatus === "pending",
+        isDm: String(doc.owner) === user.id,
+      };
+    }
+  } else if (isOwner) {
+    // «Unir a una campaña»: las campañas activas del dueño de este sistema, cada una con su elegibilidad
+    const mine = await Campaign.find({ members: user.id, status: "active", systemId: c.systemId })
+      .select("name owner members systemId status characters restrictBooks allowedBooks")
+      .sort({ name: 1 })
+      .collation({ locale: "es", strength: 2 })
+      .lean();
+    const reasons = await joinReasons(
+      user.id,
+      mine.map((m) => ({ campaign: m, character: { systemId: c.systemId, sheet: c.sheet } })),
+    );
+    joinable = mine.map((m, i) => ({ id: String(m._id), name: m.name, isDm: String(m.owner) === user.id, reason: reasons[i] }));
   }
 
   const species = `${sheet.species.name}${sheet.lineage ? ` (${sheet.lineage.name})` : ""}`;
@@ -157,6 +180,8 @@ export default async function CharacterPage({ params, searchParams }: Props) {
         level={d.level}
         campaign={campaign}
         isOwner={isOwner}
+        joinable={joinable}
+        systemName={rpgSystems.find((r) => r.id === c.systemId)?.name ?? c.systemId}
         notice={query.saved ? (NOTICES[String(query.saved)] ?? "Cambios guardados") : null}
         backHref={isOwner || !campaign ? "/characters" : `/campaigns/${campaign.id}/characters`}
       />

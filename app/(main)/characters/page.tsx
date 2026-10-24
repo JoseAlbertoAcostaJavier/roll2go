@@ -64,7 +64,7 @@ export default async function CharactersPage({
 
   const [characters, books] = await Promise.all([
     Character.find(filter)
-      .select("name systemId status campaign portraitId sheet.species sheet.lineage sheet.classes sheet.classesSummary")
+      .select("name systemId status campaign campaignStatus portraitId sheet.species sheet.lineage sheet.classes sheet.classesSummary")
       .sort(sort === "name" ? { name: 1 } : { updatedAt: -1 })
       .collation({ locale: "es", strength: 2 })
       .limit(100)
@@ -97,6 +97,7 @@ export default async function CharactersPage({
       systemName: rpgSystems.find((r) => r.id === c.systemId)?.name ?? c.systemId,
       status: c.status,
       campaign: campaignName ? { id: campaignId, name: campaignName } : null,
+      pending: c.campaignStatus === "pending",
     };
   });
 

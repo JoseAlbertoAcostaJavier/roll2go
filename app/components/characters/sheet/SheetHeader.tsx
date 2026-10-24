@@ -5,6 +5,8 @@ import Link from "next/link";
 import { ChevronLeft, ChevronsUp, CircleCheck, Pencil, Printer, User as UserIcon, X } from "lucide-react";
 import DeleteLevel from "../levelup/DeleteLevel";
 import StatusBadge, { type CharacterStatus } from "./StatusBadge";
+import JoinCampaignDialog, { LeaveCampaignButton, type JoinableCampaign } from "./JoinCampaignDialog";
+import { CharacterNoticeArea, CharacterNotices } from "@/app/components/campaigns/CharacterActions";
 
 // Nivel total máximo (como MAX_LEVEL del servidor)
 const MAX_LEVEL = 20;
@@ -21,8 +23,12 @@ export type SheetHeaderProps = {
   /** «Especie (Legado) Clase N / Clase M». */
   summary: string;
   level: number;
-  campaign: { id: string; name: string } | null;
+  /** Campaña del personaje; `pending` mientras el DM no acepte la solicitud, `isDm` si quien mira es su DM. */
+  campaign: { id: string; name: string; pending: boolean; isDm: boolean } | null;
   isOwner: boolean;
+  /** Para el dueño sin campaña: sus campañas activas del sistema del personaje, con su elegibilidad. */
+  joinable: JoinableCampaign[];
+  systemName: string;
   /** Aviso tras volver de una acción (`?saved=…`). */
   notice: string | null;
   backHref: string;
@@ -60,75 +66,105 @@ export default function SheetHeader(p: SheetHeaderProps) {
 
   return (
     <header className="mb-6 animate-fade-up">
-      {notice && (
-        <p role="status" className="mb-4 flex items-center gap-2 rounded-md border border-success/40 bg-success/10 px-3 py-2 text-sm text-success print:hidden">
-          <CircleCheck size={16} aria-hidden="true" className="shrink-0" />
-          <span className="flex-1">{notice}</span>
-          <button type="button" onClick={dismiss} aria-label="Cerrar aviso" className="rounded p-1 hover:text-white">
-            <X size={16} aria-hidden="true" />
-          </button>
-        </p>
-      )}
-
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="flex min-w-0 items-center gap-4">
-          <div className="relative shrink-0">
-            <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-md border border-line bg-surface text-muted">
-              {p.portraitUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={p.portraitUrl} alt="" className="h-full w-full object-cover" />
-              ) : (
-                <UserIcon size={36} aria-hidden="true" />
-              )}
-            </div>
-            <StatusBadge status={p.status} isOwner={p.isOwner} />
-          </div>
-          <div className="min-w-0">
-            <h1 className="break-words font-heading text-3xl font-extrabold">
-              {p.name}
-              {p.pronouns && <span className="ml-2 align-middle font-body text-base font-normal text-muted">({p.pronouns})</span>}
-            </h1>
-            {p.summary && <p className="text-muted">{p.summary}</p>}
-            <p className="mt-1 flex flex-wrap items-center gap-x-3 text-sm">
-              {p.campaign ? (
-                <Link href={`/campaigns/${p.campaign.id}`} className="text-brand-soft hover:underline">
-                  {p.campaign.name}
-                </Link>
-              ) : (
-                <span className="text-muted">Sin campaña</span>
-              )}
-              <span className="rounded bg-surface px-2 py-0.5 font-heading font-bold">Nivel {p.level}</span>
-            </p>
-          </div>
+      <CharacterNotices>
+        {/* Resultado de unir, cancelar o quitar de una campaña */}
+        <div className="print:hidden">
+          <CharacterNoticeArea />
         </div>
-
-        <div className="flex flex-wrap items-center gap-2 print:hidden">
-          {p.isOwner && p.level < MAX_LEVEL && (
-            <Link
-              href={`/characters/${p.id}/level-up`}
-              className="flex items-center gap-2 rounded-md bg-brand px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand-hover"
-            >
-              <ChevronsUp size={16} aria-hidden="true" /> Subir de nivel
-            </Link>
-          )}
-          {p.isOwner && p.level >= 2 && (
-            <DeleteLevel characterId={p.id} level={p.level} redirectTo={`/characters/${p.id}?saved=level-deleted`} />
-          )}
-          {p.isOwner && (
-            <Link href={`/characters/${p.id}/edit`} className={secondaryButton}>
-              <Pencil size={16} aria-hidden="true" /> Editar
-            </Link>
-          )}
-          {p.isOwner && (
-            <button type="button" onClick={() => window.print()} className={secondaryButton}>
-              <Printer size={16} aria-hidden="true" /> Imprimir
+        {notice && (
+          <p role="status" className="mb-4 flex items-center gap-2 rounded-md border border-success/40 bg-success/10 px-3 py-2 text-sm text-success print:hidden">
+            <CircleCheck size={16} aria-hidden="true" className="shrink-0" />
+            <span className="flex-1">{notice}</span>
+            <button type="button" onClick={dismiss} aria-label="Cerrar aviso" className="rounded p-1 hover:text-white">
+              <X size={16} aria-hidden="true" />
             </button>
-          )}
-          <Link href={p.backHref} className="flex items-center gap-1 px-2 py-2 text-sm text-muted hover:text-white">
-            <ChevronLeft size={16} aria-hidden="true" /> Volver
-          </Link>
+          </p>
+        )}
+
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="flex min-w-0 items-center gap-4">
+            <div className="relative shrink-0">
+              <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-md border border-line bg-surface text-muted">
+                {p.portraitUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={p.portraitUrl} alt="" className="h-full w-full object-cover" />
+                ) : (
+                  <UserIcon size={36} aria-hidden="true" />
+                )}
+              </div>
+              <StatusBadge status={p.status} isOwner={p.isOwner} />
+            </div>
+            <div className="min-w-0">
+              <h1 className="break-words font-heading text-3xl font-extrabold">
+                {p.name}
+                {p.pronouns && <span className="ml-2 align-middle font-body text-base font-normal text-muted">({p.pronouns})</span>}
+              </h1>
+              {p.summary && <p className="text-muted">{p.summary}</p>}
+              <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+                {p.campaign ? (
+                  p.campaign.pending ? (
+                    <span className="text-muted">
+                      Pendiente de aprobación en{" "}
+                      <Link href={`/campaigns/${p.campaign.id}`} className="text-brand-soft hover:underline">
+                        {p.campaign.name}
+                      </Link>
+                    </span>
+                  ) : (
+                    <Link href={`/campaigns/${p.campaign.id}`} className="text-brand-soft hover:underline">
+                      {p.campaign.name}
+                    </Link>
+                  )
+                ) : (
+                  <span className="text-muted">Sin campaña</span>
+                )}
+                {p.isOwner && (
+                  <span className="print:hidden">
+                    {p.campaign ? (
+                      <LeaveCampaignButton
+                        characterId={p.id}
+                        name={p.name}
+                        campaignName={p.campaign.name}
+                        pending={p.campaign.pending}
+                        isDm={p.campaign.isDm}
+                      />
+                    ) : (
+                      <JoinCampaignDialog characterId={p.id} name={p.name} campaigns={p.joinable} systemName={p.systemName} />
+                    )}
+                  </span>
+                )}
+                <span className="rounded bg-surface px-2 py-0.5 font-heading font-bold">Nivel {p.level}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 print:hidden">
+            {p.isOwner && p.level < MAX_LEVEL && (
+              <Link
+                href={`/characters/${p.id}/level-up`}
+                className="flex items-center gap-2 rounded-md bg-brand px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand-hover"
+              >
+                <ChevronsUp size={16} aria-hidden="true" /> Subir de nivel
+              </Link>
+            )}
+            {p.isOwner && p.level >= 2 && (
+              <DeleteLevel characterId={p.id} level={p.level} redirectTo={`/characters/${p.id}?saved=level-deleted`} />
+            )}
+            {p.isOwner && (
+              <Link href={`/characters/${p.id}/edit`} className={secondaryButton}>
+                <Pencil size={16} aria-hidden="true" /> Editar
+              </Link>
+            )}
+            {p.isOwner && (
+              <button type="button" onClick={() => window.print()} className={secondaryButton}>
+                <Printer size={16} aria-hidden="true" /> Imprimir
+              </button>
+            )}
+            <Link href={p.backHref} className="flex items-center gap-1 px-2 py-2 text-sm text-muted hover:text-white">
+              <ChevronLeft size={16} aria-hidden="true" /> Volver
+            </Link>
+          </div>
         </div>
-      </div>
+      </CharacterNotices>
     </header>
   );
 }

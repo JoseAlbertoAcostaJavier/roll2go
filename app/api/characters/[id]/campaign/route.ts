@@ -3,12 +3,10 @@ import mongoose from "mongoose";
 import { sessionOf } from "@/lib/campaignApi";
 import { rateLimit, tooManyRequests } from "@/lib/rateLimit";
 import { connectDB } from "@/lib/mongodb";
-import { Book } from "@/lib/Book";
 import { Campaign } from "@/lib/Campaign";
 import { Character } from "@/lib/Character";
-import { canRequestJoin } from "@/lib/CampaignRules";
+import { joinReasons } from "@/lib/campaignEligibility";
 import { OUTDATED_SHEET_ERROR, loadCharacterFor } from "@/lib/characterAccess";
-import { booksUsedBy } from "@/lib/rules/dnd2024/booksUsed";
 import { notify } from "@/lib/notify";
 
 type Ctx = { params: Promise<{ id: string }> };
@@ -41,32 +39,11 @@ export async function POST(req: NextRequest, { params }: Ctx) {
     .lean();
   if (!campaign) return NextResponse.json({ error: "Campaña no encontrada." }, { status: 404 });
 
-  const rule = canRequestJoin({
-    campaign: {
-      systemId: campaign.systemId,
-      status: campaign.status,
-      characters: { allowed: !!campaign.characters?.allowed, external: !!campaign.characters?.external },
-      restrictBooks: !!campaign.restrictBooks,
-      allowedBooks: campaign.allowedBooks ?? [],
-    },
-    character: {
-      systemId: found.character.systemId,
-      campaign: found.character.campaign ? String(found.character.campaign) : null,
-      // Los libros que usa de verdad la hoja (Character.books es solo el filtro del creador y puede estar vacío)
-      books: booksUsedBy(found.sheet),
-    },
-    isMember: (campaign.members ?? []).some((m: unknown) => String(m) === session.id),
-  });
-  if (!rule.ok) {
-    if (!rule.disallowed?.length) return NextResponse.json({ error: rule.error }, { status: 400 });
-    // Se nombran los libros no permitidos (si alguno ya no existe, se muestra su id)
-    const books = await Book.find({ _id: { $in: rule.disallowed.filter((b) => mongoose.isValidObjectId(b)) } })
-      .select("name")
-      .lean();
-    const names = new Map(books.map((b: { _id: unknown; name: string }) => [String(b._id), b.name]));
-    const list = rule.disallowed.map((b) => names.get(b) ?? b).join(", ");
-    return NextResponse.json({ error: `Este personaje usa libros que la campaña no permite: ${list}.` }, { status: 400 });
-  }
+  // Los libros que usa de verdad la hoja (Character.books es solo el filtro del creador y puede estar vacío)
+  const [reason] = await joinReasons(session.id, [
+    { campaign, character: { systemId: found.character.systemId, campaign: found.character.campaign, sheet: found.sheet } },
+  ]);
+  if (reason) return NextResponse.json({ error: reason }, { status: 400 });
 
   const isDm = String(campaign.owner) === session.id;
   const status = isDm ? "approved" : "pending";

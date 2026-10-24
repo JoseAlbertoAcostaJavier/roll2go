@@ -1,14 +1,10 @@
 import Link from "next/link";
-import mongoose from "mongoose";
 import { Plus } from "lucide-react";
 import { getCampaignAccess } from "@/lib/campaignAccess";
-import { Book } from "@/lib/Book";
 import { Character } from "@/lib/Character";
-import { canRequestJoin } from "@/lib/CampaignRules";
+import { joinReasons } from "@/lib/campaignEligibility";
 import { loadUserCards } from "@/lib/userCards";
 import { system as rpgSystems } from "@/lib/systems";
-import { booksUsedBy } from "@/lib/rules/dnd2024/booksUsed";
-import type { AnySheet, Dnd2024SheetV2 } from "@/lib/rules/dnd2024/sheet";
 import { classesOf } from "@/lib/rules/dnd2024/upgrade";
 import CampaignCharacterCard, { type CampaignCharacterData } from "@/app/components/campaigns/CampaignCharacterCard";
 import AddCharacterDialog, { type AddableCharacter } from "@/app/components/campaigns/AddCharacterDialog";
@@ -21,13 +17,6 @@ function summaryOf(sheet: Parameters<typeof classesOf>[0] & { species?: { name?:
     .map((c) => `${c.class.name}${c.level ? ` ${c.level}` : ""}`)
     .join(" / ");
   return [sheet.species?.name, classes].filter(Boolean).join(" ");
-}
-
-// Libros que usa una hoja; una v1 (aún sin migrar) guarda sus clases en `classes` en vez de en `levels`
-function usedBooks(sheet: AnySheet | undefined) {
-  if (sheet?.version === 2) return booksUsedBy(sheet);
-  if (sheet?.version === 1) return booksUsedBy({ ...sheet, levels: sheet.classes } as unknown as Dnd2024SheetV2);
-  return [];
 }
 
 export default async function CampaignCharactersPage({ params }: { params: Promise<{ id: string }> }) {
@@ -75,35 +64,11 @@ export default async function CampaignCharactersPage({ params }: { params: Promi
       .sort({ name: 1 })
       .collation({ locale: "es", strength: 2 })
       .lean();
-    const checks = mine.map((c) =>
-      canRequestJoin({
-        campaign: {
-          systemId: campaign.systemId,
-          status: campaign.status,
-          characters: rules,
-          restrictBooks: !!campaign.restrictBooks,
-          allowedBooks: campaign.allowedBooks ?? [],
-        },
-        character: { systemId: c.systemId, campaign: null, books: usedBooks(c.sheet) },
-        isMember: true,
-      }),
+    const reasons = await joinReasons(
+      session.id,
+      mine.map((c) => ({ campaign, character: { systemId: c.systemId, sheet: c.sheet } })),
     );
-    // Nombres de los libros no permitidos, para el motivo (si alguno ya no existe, se muestra su id)
-    const disallowed = [...new Set(checks.flatMap((r) => (r.ok ? [] : (r.disallowed ?? []))))];
-    const books = disallowed.length
-      ? await Book.find({ _id: { $in: disallowed.filter((b) => mongoose.isValidObjectId(b)) } }).select("name").lean()
-      : [];
-    const bookNames = new Map(books.map((b: { _id: unknown; name: string }) => [String(b._id), b.name]));
-    addable = mine.map((c, i) => {
-      const r = checks[i];
-      let reason: string | null = null;
-      if (!r.ok) {
-        reason = r.disallowed?.length
-          ? `Este personaje usa libros que la campaña no permite: ${r.disallowed.map((b) => bookNames.get(b) ?? b).join(", ")}.`
-          : r.error;
-      }
-      return { id: String(c._id), name: c.name, summary: summaryOf(c.sheet ?? {}), reason };
-    });
+    addable = mine.map((c, i) => ({ id: String(c._id), name: c.name, summary: summaryOf(c.sheet ?? {}), reason: reasons[i] }));
   }
 
   const help = !rules.allowed
