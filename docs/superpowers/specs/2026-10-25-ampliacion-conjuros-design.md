@@ -64,7 +64,11 @@ Elección nueva `bonusSpells` con `count: 2`, solo conjuros de nivel 3 **de su l
 
 ## 5. Aligerar las páginas
 
-- **Listas bajo demanda**: ruta `GET /api/rules/spells?list=<id>&books=<ids>` (o acotada a un personaje: `/api/characters/[id]/spells/list?list=<id>`), con caché por libro como `listSpells`, que devuelve filas ligeras: `ref`, `name`, `nameEs`, `level`, `school`, `ritual`, `concentration`, `time`, `range`, `classes`, `tags` (sin `summary` ni componentes materiales).
+- **Listas bajo demanda**, con caché por libro como `listSpells` y filas ligeras:
+  - creador y asistente: `GET /api/rules/spells?list=<id>&books=<ids>&campaign=<id>?`, con los libros recortados a los que el usuario puede usar (`usableBooks`, con la campaña si la hay);
+  - ficha: `GET /api/characters/[id]/spells/list?list=<id>`, acotada a los libros del personaje (`loadCharacterFor(..., "read")`), para que el DM vea también los de libros privados del jugador.
+
+  Cada fila lleva: `ref`, `name`, `nameEs`, `level`, `school`, `ritual`, `concentration`, `time`, `range`, `classes`, `tags` (sin `summary` ni componentes materiales).
 - **Creador y rehacer creación**: ya no reciben `listSpells(books)` entero; piden la lista de la clase elegida (y las listas de dotes) al elegir la clase.
 - **Asistente de subir de nivel**: pide la lista de la clase (y las de §2.1/§2.3/§4) del paso de conjuros al llegar a él.
 - **Ficha**: con `tab=conjuros` recibe las listas como ahora; en las demás pestañas recibe solo los conjuros que el personaje tiene (para imprimir) y la pestaña Conjuros pide el resto al abrirse.
