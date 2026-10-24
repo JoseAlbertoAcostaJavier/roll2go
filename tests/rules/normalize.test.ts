@@ -81,7 +81,7 @@ test("dote con versiones (Magic Initiate)", () => {
   expect(find("feat", "feat:magic initiate|xphb")).toBeDefined();
   const cleric = find("feat", "feat:magic initiate; cleric|xphb");
   expect(cleric).toBeDefined();
-  expect(cleric!.data).toMatchObject({ category: "origin", repeatable: true });
+  expect(cleric!.data).toMatchObject({ category: "origin", categoryCode: "O", repeatable: true });
   expect(cleric!.description).not.toContain("Druid");
 });
 

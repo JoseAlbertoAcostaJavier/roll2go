@@ -207,6 +207,25 @@ describe("validateLevel", () => {
     });
   });
 
+  describe("estilo de combate del Guerrero", () => {
+    const FS = "progression:fs|fighter|xphb";
+    extra("feat:archery|xphb", { category: "fightingStyle", categoryCode: "FS", repeatable: false }, "Archery");
+    extra("feat:defense|xphb", { category: "fightingStyle", categoryCode: "FS", repeatable: false }, "Defense");
+    extra("feat:blessed warrior|xphb", { category: "fightingStyle", categoryCode: "FS:P", repeatable: false }, "Blessed Warrior");
+    const fighter1 = () => sheetWith([["fighter", 1]], {
+      1: [{ type: "feat", source: FS, value: [named(ref("feat:archery|xphb"))] }],
+    });
+    const replace = (key: string) => ({
+      expectedLevel: 2, class: client("class:fighter|xphb"), hp: { method: "average", value: 6 },
+      choices: [{ type: "feat", source: FS, value: [client(`feat:${key}|xphb`)], replaced: [client("feat:archery|xphb")] }],
+    });
+    it("Guerrero 2: sustituye su estilo por otro del Guerrero, no por uno del Paladín", async () => {
+      const r = await validateLevel(fighter1(), replace("defense"), ctx());
+      if (!r.ok) throw new Error(JSON.stringify(r.errors));
+      expect((await errorsOf(fighter1(), replace("blessed warrior")))[`choices.${FS}`]).toMatch(/categoría/);
+    });
+  });
+
   it("requisito de multiclase no cumplido (CAR 8 para Brujo) → error en class; cumplido (SAB 13 para Clérigo) → ok", async () => {
     const body = { expectedLevel: 4, class: client("class:warlock|xphb"), choices: [], hp: { method: "average", value: 5 } };
     expect((await errorsOf(barbarian3(), body)).class).toMatch(/Carisma/);

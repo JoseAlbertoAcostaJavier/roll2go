@@ -127,6 +127,8 @@ export type BackgroundData = {
 
 export type FeatData = {
   category: "origin" | "general" | "fightingStyle" | "epicBoon";
+  /** Código de categoría de 5etools (`FS`, `FS:P`…): distingue los estilos de combate propios de una clase. */
+  categoryCode?: string;
   prerequisite?: string;
   repeatable: boolean;
   abilityIncrease?: Ability[];

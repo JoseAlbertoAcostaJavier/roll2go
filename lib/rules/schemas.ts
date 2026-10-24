@@ -143,6 +143,7 @@ const checks: { [K in EntryKind]: Check } = {
   }),
   feat: shape({
     category: oneOf("origin", "general", "fightingStyle", "epicBoon"),
+    "categoryCode?": str,
     "prerequisite?": str,
     repeatable: bool,
     "abilityIncrease?": abilities,

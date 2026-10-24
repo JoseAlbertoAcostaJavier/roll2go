@@ -383,6 +383,7 @@ function prerequisiteText(pre: unknown): string | undefined {
 export function normalizeFeat(raw: Rec): NormalizedEntry {
   const data: EntryData["feat"] = {
     category: FEAT_CATEGORIES[str(raw.category)] ?? (str(raw.category) as EntryData["feat"]["category"]),
+    ...(str(raw.category) ? { categoryCode: str(raw.category) } : {}),
     repeatable: raw.repeatable === true,
   };
   const prerequisite = prerequisiteText(raw.prerequisite);

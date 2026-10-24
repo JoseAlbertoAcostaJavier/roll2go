@@ -7,7 +7,7 @@ import type { CatalogEntry, EntryOption } from "@/lib/rules/catalog";
 import { weaponProficient } from "@/lib/rules/dnd2024/derive/attacks";
 import { bareName, refKey } from "@/lib/rules/dnd2024/equipmentRefs";
 import { FEATURE_OPTION_LABELS } from "@/lib/rules/dnd2024/featureChoices";
-import { FEAT_CATEGORIES, SKILL_NAMES, skillName } from "@/lib/rules/dnd2024/labels";
+import { SKILL_NAMES, featFitsCategories, skillName } from "@/lib/rules/dnd2024/labels";
 import type { PendingChoice } from "@/lib/rules/dnd2024/levels";
 import { isMasteryWeapon, masteryLabel, meleeOnlySource } from "@/lib/rules/dnd2024/masteries";
 import type { Choice } from "@/lib/rules/dnd2024/sheet";
@@ -133,9 +133,8 @@ export function choiceOptions(p: PendingChoice, ctx: ChoiceCtx): PickerOption[] 
         })
         : (p.from ?? []).map((id) => ({ id: `builtin:${id}`, label: FEATURE_OPTION_LABELS[id] ?? id }));
     case "feat": {
-      const categories = (p.category ?? []).map((c) => FEAT_CATEGORIES[c]);
       return ctx.feats
-        .filter((f) => categories.includes((f.data as FeatData | null)?.category ?? "origin") && !held.has(refKey(f.ref)))
+        .filter((f) => featFitsCategories(f.data as FeatData | null, p.category) && !held.has(refKey(f.ref)))
         .map((f) => {
           const blocked = ctx.featBlocked?.(f);
           return { id: refKey(f.ref), label: nameOf(f), ...(blocked ? { disabled: blocked } : {}) };

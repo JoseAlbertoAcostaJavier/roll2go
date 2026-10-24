@@ -356,6 +356,14 @@ describe("validateSheet: elecciones de clase de nivel 1", () => {
     ]), fctx);
     expect(errs(r)["levels.0.choices.progression:fs|fighter|xphb"]).toMatch(/categoría/);
   });
+  it("Guerrero 1: un estilo de combate solo del Paladín (Guerrero bendito) → error", async () => {
+    extra("feat:blessed warrior|xphb", { category: "fightingStyle", categoryCode: "FS:P", repeatable: false }, "Blessed Warrior");
+    const r = await validateSheet(sheetFor("fighter", [
+      skills(["athletics", "history"]), fightingStyle("feat:blessed warrior|xphb"),
+      weaponMastery("fighter", "greataxe", "handaxe", "longbow"),
+    ]), fctx);
+    expect(errs(r)["levels.0.choices.progression:fs|fighter|xphb"]).toMatch(/categoría/);
+  });
   it("Pícaro 1: habilidades de clase y pericia entre ellas", async () => {
     const rogue = (expertise: string[], ...weapons: string[]) => sheetFor("rogue", [
       skills(["stealth", "acrobatics", "deception", "sleight of hand"]),
@@ -415,5 +423,24 @@ describe("checkChoices: habilidades sin lista (cualquiera)", () => {
     expect((await pick(["arcana", "History"])).errors).toEqual({});
     expect(Object.keys((await pick(["arcana", "basket weaving"])).errors)).toEqual([`choices.${source}`]);
     expect(Object.keys((await pick(["arcana", "stealth"])).errors)).toEqual([`choices.${source}`]);
+  });
+});
+
+describe("checkChoices: estilo de combate del Paladín", () => {
+  const blessed: CatalogEntry = {
+    ref: { book: "b1", key: "feat:blessed warrior|xphb" }, name: "Blessed Warrior", nameEs: null, bookName: "Libro",
+    srd52: false, data: { category: "fightingStyle", categoryCode: "FS:P", repeatable: false }, description: "",
+    descriptionEs: "", identifier: "blessed-warrior", parent: null, foundry: null,
+  };
+  const source = "progression:fs,fs:p|paladin|xphb";
+  const cctx = {
+    path: "choices", entries: new Map([["b1:feat:blessed warrior|xphb", blessed]]), resolve: async () => null,
+    skills: [], weapons: [], level: 2, subclass: null,
+  };
+  it("Paladín 2 puede elegir Guerrero bendito", async () => {
+    const pending = [{ type: "feat" as const, source, count: 1, category: ["FS", "FS:P"], label: "Estilo de combate" }];
+    const r = await checkChoices(pending, [{ type: "feat", source, value: [{ ref: blessed.ref, name: "x" }] }], cctx);
+    expect(r.errors).toEqual({});
+    expect(r.choices[0]).toMatchObject({ value: [{ name: "Blessed Warrior" }] });
   });
 });

@@ -6,6 +6,17 @@ export const FEAT_CATEGORIES: Record<string, FeatData["category"]> = {
   O: "origin", G: "general", FS: "fightingStyle", "FS:P": "fightingStyle", "FS:R": "fightingStyle", EB: "epicBoon",
 };
 
+/**
+ * Si una dote vale para una elección de dote de las categorías `codes` (`FS`, `FS:P`, `G`…). Se compara el código de
+ * 5etools (`categoryCode`): «Guerrero bendito» (`FS:P`) es un estilo de combate solo del Paladín. Las dotes sin
+ * código (importadas antes de guardarlo o de libros propios) se comparan por su categoría.
+ */
+export function featFitsCategories(data: FeatData | null | undefined, codes: readonly string[] = []): boolean {
+  if (!data) return false;
+  if (data.categoryCode) return codes.includes(data.categoryCode);
+  return codes.some((c) => FEAT_CATEGORIES[c] === data.category);
+}
+
 export const ABILITY_NAMES: Record<Ability, string> = {
   str: "Fuerza", dex: "Destreza", con: "Constitución", int: "Inteligencia", wis: "Sabiduría", cha: "Carisma",
 };

@@ -8,7 +8,7 @@ import {
 import { POINT_BUY_TOTAL, STANDARD_ARRAY, checkBackgroundBonus, pointBuyCost } from "./abilities";
 import { weaponProficient } from "./derive/attacks";
 import { FEATURE_OPTION_LABELS } from "./featureChoices";
-import { ABILITY_NAMES, FEAT_CATEGORIES, SKILL_NAMES } from "./labels";
+import { ABILITY_NAMES, SKILL_NAMES, featFitsCategories } from "./labels";
 import { meetsFeatPrerequisite, pendingChoices, type FeatPrerequisiteCtx, type PendingChoice } from "./levels";
 import { meleeOnlySource, validateMasteries } from "./masteries";
 import { abilityRollValue, verifyRolls } from "./rolls";
@@ -465,9 +465,8 @@ export async function checkChoices(
       const picked = await Promise.all(list.map((v) => load(v, "feat")));
       if (picked.length !== p.count + replaced.length || picked.some((e) => !e)) { bad(chooseN); continue; }
       const feats = picked as CatalogEntry[];
-      const categories: (string | undefined)[] = (p.category ?? []).map((k) => FEAT_CATEGORIES[k]).filter(Boolean);
       // (una entrada sin datos válidos cuenta como de otra categoría)
-      if (feats.some((e) => !categories.includes((e.data as FeatData | null)?.category))) { bad("dote de otra categoría."); continue; }
+      if (feats.some((e) => !featFitsCategories(e.data as FeatData | null, p.category))) { bad("dote de otra categoría."); continue; }
       if (new Set(feats.map((e) => refKey(e.ref))).size !== feats.length) { bad("dote repetida."); continue; }
       const held = alreadyHeld(p, feats);
       if (held) { bad(`ya tienes ${held.nameEs || held.name}.`); continue; }
@@ -494,9 +493,8 @@ export async function checkChoices(
         out.push({ type: "asi", source: p.source, value: { abilities } });
       } else if (has(value, "feat") && Object.keys(value).every((k) => k === "feat" || k === "ability")) {
         const e = await load(value.feat, "feat");
-        const categories: (string | undefined)[] = (p.category ?? []).map((k) => FEAT_CATEGORIES[k]).filter(Boolean);
         if (!e || e.ref.key.startsWith(ASI_FEAT)) { bad("elige una dote."); continue; }
-        if (!categories.includes((e.data as FeatData | null)?.category)) { bad("dote de otra categoría."); continue; }
+        if (!featFitsCategories(e.data as FeatData | null, p.category)) { bad("dote de otra categoría."); continue; }
         const r = checkFeat(e, value.ability);
         if ("error" in r) { bad(r.error); continue; }
         out.push({ type: "asi", source: p.source, value: { feat: named(e), ...(r.ability ? { ability: r.ability } : {}) } });
