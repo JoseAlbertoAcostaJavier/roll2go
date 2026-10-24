@@ -547,7 +547,7 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
       } catch {
         // almacenamiento no disponible
       }
-      router.push(`/characters/${data.id}`);
+      router.push(recreate ? `/characters/${recreate.characterId}?saved=creation` : `/characters/${data.id}`);
       router.refresh();
     } catch {
       setConfirming(false);

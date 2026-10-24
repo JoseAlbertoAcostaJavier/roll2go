@@ -66,12 +66,13 @@ export async function POST(req: NextRequest, { params }: Ctx) {
   if (res.matchedCount === 0)
     return NextResponse.json({ error: "El personaje ha cambiado de nivel; recarga la página." }, { status: 409 });
 
-  // Aviso al DM (si no es quien sube). Un fallo aquí no deshace el nivel.
+  // Aviso al DM (si no es quien sube y quien sube sigue en la campaña). Un fallo aquí no deshace el nivel.
   const campaignId = found.character.campaign;
   if (campaignId) {
     try {
-      const campaign = await Campaign.findById(campaignId).select("owner").lean();
-      if (campaign && String(campaign.owner) !== session.id) {
+      const campaign = await Campaign.findById(campaignId).select("owner members").lean();
+      const member = campaign?.members?.some((m: unknown) => String(m) === session.id);
+      if (campaign && member && String(campaign.owner) !== session.id) {
         await notify({
           user: String(campaign.owner),
           type: "character_level_up",

@@ -81,6 +81,21 @@ describe("removeLastLevel", () => {
     const r = removeLastLevel(sheet, 12);
     expect(r.ok && r.sheet.weaponMasteries).toEqual([axe]);
   });
+  it("si la maestría del nivel ya se cambió por otra, recorta a las que permite la hoja sin el nivel", () => {
+    const axe = ref("item:greataxe|xphb");
+    const bow = ref("item:longbow|xphb");
+    const sheet = sheetOf(
+      [lvl(1, barbarian, 1, [{ type: "weaponMastery", source: "s", value: [axe] }]),
+        lvl(2, barbarian, 2, [{ type: "weaponMastery", source: "s", value: [ref("item:longsword|xphb")] }])],
+      { current: 12 },
+      { weaponMasteries: [axe, bow] },
+    );
+    const r = removeLastLevel(sheet, 12, 1);
+    expect(r.ok && r.sheet.weaponMasteries).toEqual([axe]);
+    // Dentro del límite no recorta
+    const kept = removeLastLevel(sheet, 12, 2);
+    expect(kept.ok && kept.sheet.weaponMasteries).toEqual([axe, bow]);
+  });
 });
 
 describe("checkExpectedLevel", () => {

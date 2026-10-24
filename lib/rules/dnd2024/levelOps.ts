@@ -42,9 +42,13 @@ export function applyLevel(
   return next;
 }
 
-/** Hoja sin el último nivel: el nivel 1 no se borra; los PG actuales se recortan al nuevo máximo. */
+/**
+ * Hoja sin el último nivel: el nivel 1 no se borra; los PG actuales se recortan al nuevo máximo. Quita las maestrías
+ * que añadió el nivel; si ya se habían cambiado por otras, recorta las de la hoja a `masteriesAfter` (las que permite
+ * la hoja sin el nivel, `masteryCount`).
+ */
 export function removeLastLevel(
-  sheet: Dnd2024SheetV2, maxHpAfter: number,
+  sheet: Dnd2024SheetV2, maxHpAfter: number, masteriesAfter = Infinity,
 ): { ok: true; sheet: Dnd2024SheetV2 } | { ok: false; error: string } {
   if (sheet.levels.length <= 1) return { ok: false, error: "El nivel 1 no se puede borrar." };
   const removed = sheet.levels[sheet.levels.length - 1];
@@ -63,7 +67,7 @@ export function removeLastLevel(
       const i = left.findIndex((m) => refKey(m) === refKey(r));
       if (i >= 0) left.splice(i, 1);
     }
-    next.weaponMasteries = left;
+    next.weaponMasteries = left.slice(0, masteriesAfter);
   }
   return { ok: true, sheet: next };
 }

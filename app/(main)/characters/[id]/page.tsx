@@ -34,7 +34,11 @@ type Props = {
 const TABS: SheetTab[] = ["info", "trasfondo", "rasgos", "equipo"];
 
 // Avisos al volver de una acción (`?saved=…`)
-const NOTICES: Record<string, string> = { level: "Nivel guardado correctamente", "level-deleted": "Nivel borrado" };
+const NOTICES: Record<string, string> = {
+  level: "Nivel guardado correctamente",
+  "level-deleted": "Nivel borrado",
+  creation: "Creación rehecha correctamente",
+};
 
 // Lectura compartida entre generateMetadata y la página (una sola carga por petición)
 const loadForRead = cache((userId: string, id: string) => loadCharacterFor(userId, id, "read"));

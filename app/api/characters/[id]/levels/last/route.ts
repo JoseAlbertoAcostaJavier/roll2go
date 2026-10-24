@@ -5,7 +5,9 @@ import { Character } from "@/lib/Character";
 import { OUTDATED_SHEET_ERROR, loadCharacterFor } from "@/lib/characterAccess";
 import { getEntries } from "@/lib/rules/catalog";
 import { derive } from "@/lib/rules/dnd2024/derive";
+import { refKey } from "@/lib/rules/dnd2024/equipmentRefs";
 import { removeLastLevel } from "@/lib/rules/dnd2024/levelOps";
+import { masteryCount } from "@/lib/rules/dnd2024/masteries";
 import { loadSheetEntries } from "@/lib/rules/dnd2024/sheetEntries";
 
 type Ctx = { params: Promise<{ id: string }> };
@@ -29,12 +31,17 @@ export async function DELETE(req: NextRequest, { params }: Ctx) {
   if (!probe.ok) return NextResponse.json({ error: probe.error }, { status: 400 });
   const entriesAfter = await loadSheetEntries(probe.sheet, found.books, getEntries);
   const maxAfter = derive(probe.sheet, entriesAfter).hp.max;
-  const result = removeLastLevel(found.sheet, maxAfter);
+  // Maestrías que permite la hoja sin el nivel (sin tope si falta alguna clase en el catálogo)
+  const classesLoaded = probe.sheet.classesSummary.every((c) => entriesAfter.has(refKey(c.class.ref)));
+  const result = removeLastLevel(found.sheet, maxAfter, classesLoaded ? masteryCount(probe.sheet, entriesAfter) : Infinity);
   if (!result.ok) return NextResponse.json({ error: result.error }, { status: 400 });
 
   // Solo lo que cambia, y solo si nadie ha cambiado de nivel entretanto
   const set: Record<string, unknown> = { "sheet.classesSummary": result.sheet.classesSummary, "sheet.hp.current": result.sheet.hp.current };
-  if (result.sheet.weaponMasteries && result.sheet.weaponMasteries.length !== found.sheet.weaponMasteries?.length) set["sheet.weaponMasteries"] = result.sheet.weaponMasteries;
+  // (borrar solo quita maestrías: si cambian, cambia su número)
+  if (result.sheet.weaponMasteries && result.sheet.weaponMasteries.length !== found.sheet.weaponMasteries?.length) {
+    set["sheet.weaponMasteries"] = result.sheet.weaponMasteries;
+  }
   const res = await Character.updateOne(
     { _id: id, "sheet.version": 2, "sheet.levels": { $size: before } },
     { $set: set, $pop: { "sheet.levels": 1 } },

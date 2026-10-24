@@ -149,9 +149,9 @@ export async function DELETE(req: NextRequest, { params }: Ctx) {
   const { character } = found;
 
   try {
-    await Character.deleteOne({ _id: id, owner: session.id });
-    // Los avisos de subida de nivel enlazan a la ficha: no se dejan colgando
+    // Los avisos de subida de nivel enlazan a la ficha: se borran antes, para que un fallo no los deje colgando
     await Notification.deleteMany({ character: id });
+    await Character.deleteOne({ _id: id, owner: session.id });
     const images = [character.portraitId, character.imageId].filter(Boolean);
     if (images.length) await CampaignImage.deleteMany({ _id: { $in: images } });
     return NextResponse.json({ ok: true });

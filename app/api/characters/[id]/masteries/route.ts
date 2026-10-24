@@ -54,8 +54,13 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
   });
   if (!result.ok) return NextResponse.json({ error: result.error }, { status: 400 });
 
-  // Solo las maestrías: así no pisa otros cambios de la hoja hechos a la vez
-  const res = await Character.updateOne({ _id: id, "sheet.version": 2 }, { $set: { "sheet.weaponMasteries": masteries } });
-  if (res.matchedCount === 0) return NextResponse.json({ error: OUTDATED_SHEET_ERROR }, { status: 409 });
+  // Solo las maestrías: así no pisa otros cambios de la hoja hechos a la vez; y solo si sigue en el mismo nivel, porque
+  // el número permitido depende de él
+  const res = await Character.updateOne(
+    { _id: id, "sheet.version": 2, "sheet.levels": { $size: found.sheet.levels.length } },
+    { $set: { "sheet.weaponMasteries": masteries } },
+  );
+  if (res.matchedCount === 0)
+    return NextResponse.json({ error: "El personaje ha cambiado de nivel; recarga la página." }, { status: 409 });
   return NextResponse.json({ weaponMasteries: masteries });
 }
