@@ -40,7 +40,11 @@ export type LineageData = {
   traitName: string;
 };
 
-export type SpellcastingProgression = "full" | "half" | "pact" | null;
+/** Progresión de espacios: lanzador completo, medio (redondeando hacia arriba), tercio (hacia abajo) o Magia de pacto. */
+export type SpellcastingProgression = "full" | "half" | "third" | "pact";
+/** Cómo se eligen los conjuros preparados (ver `lib/rules/dnd2024/spellcastingModes.ts`). */
+export type SpellcastingMode = "list" | "levelUp" | "spellbook";
+export type Spellcasting = { ability: Ability; progression: SpellcastingProgression; mode: SpellcastingMode };
 
 /** Número acumulado por nivel de clase, solo en los niveles en que cambia: `{ 2: 2, 10: 4, 17: 6 }`. */
 export type LevelCounts = Record<number, number>;
@@ -85,7 +89,7 @@ export type ClassData = {
   equipment: Equipment;
   subclassLevel: number;
   asiLevels: number[];
-  spellcasting: { ability: Ability; progression: SpellcastingProgression; table: number[][] } | null;
+  spellcasting: Spellcasting | null;
   features: LevelFeature[];
   progressions: ClassProgressions;
   table: ClassTable;
@@ -97,8 +101,13 @@ export type ClassData = {
 export type SubclassData = {
   features: LevelFeature[];
   spells: { level: number; ref: Ref }[];
-  /** Dotes y rasgos opcionales propios de la subclase (estilo de combate del Campeón, maniobras…). */
-  progressions: Pick<ClassProgressions, "feats" | "optionalFeatures">;
+  /**
+   * Dotes y rasgos opcionales propios de la subclase (estilo de combate del Campeón, maniobras…) y, en las
+   * subclases lanzadoras, sus trucos y preparados por nivel de clase.
+   */
+  progressions: Pick<ClassProgressions, "feats" | "optionalFeatures"> & Partial<Pick<ClassProgressions, "cantrips" | "prepared">>;
+  /** Solo las subclases lanzadoras (Caballero arcano, Embaucador arcano). */
+  spellcasting?: Spellcasting;
 };
 
 export type FeatureData = {
@@ -143,7 +152,12 @@ export type SpellData = {
   duration: string;
   concentration: boolean;
   ritual: boolean;
+  /** Identificadores de las clases que lo tienen en su lista (`wizard`) y de las subclases que lo conceden (`subclass:life-domain`). */
   classes: string[];
+  /** Etiquetas en español para filtrar: «Daño de fuego», «Salvación de Destreza», «Concentración»… */
+  tags: string[];
+  /** Mejora con un espacio de nivel superior (BBCode); también va al final de la descripción. */
+  higherLevels?: string;
 };
 
 export type ItemData = {

@@ -23,6 +23,7 @@ import { matchFoundry, type FoundryFiles } from "../lib/rules/import/foundry";
 import { normalizeName } from "../lib/rules/schemas";
 import { FEATURE_CHOICES, SPECIFIED_CHOICES } from "../lib/rules/dnd2024/featureChoices";
 import es from "../lib/rules/i18n/es.json";
+import type { SpellData } from "../lib/rules/types";
 
 const SRD_ATTRIBUTION =
   'This work includes material from the System Reference Document 5.2 ("SRD 5.2") by Wizards of the Coast LLC, available at https://www.dndbeyond.com/srd. The SRD 5.2 is licensed under the Creative Commons Attribution 4.0 International License, available at https://creativecommons.org/licenses/by/4.0/legalcode.';
@@ -202,6 +203,13 @@ async function main() {
     const keys = untranslated.filter((e) => e.kind === kind).map((e) => e.key);
     if (["spell", "item", "classFeature", "subclassFeature"].includes(kind)) console.log(`  ${kind}: ${keys.length}`);
     else console.log(`  ${kind} (${keys.length}): ${keys.join(", ")}`);
+  }
+  // Un conjuro sin ninguna clase (falta en `spells/sources.json`) no aparece en ninguna lista de conjuros
+  const classless = upserts.filter((e) => e.kind === "spell"
+    && !(e.data as SpellData).classes.some((c) => !c.startsWith("subclass:")));
+  if (wanted("spell")) {
+    console.log(`\nConjuros sin clase: ${classless.length}`);
+    for (const e of classless) console.log(`  ${e.key}`);
   }
   const textChoices = textChoiceFeatures(upserts, SPECIFIED_CHOICES);
   console.log(`\nRasgos con elección en texto sin especificación: ${textChoices.length}`);

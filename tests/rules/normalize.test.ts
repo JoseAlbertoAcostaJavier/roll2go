@@ -170,13 +170,57 @@ test("conjuro (Fireball)", () => {
   const data = fb.data as SpellData;
   expect(data.level).toBe(3);
   expect(data.school).toBe("V");
-  expect(data.classes).toContain("wizard");
-  expect(data.time).toBe("1 action");
-  expect(data.range).toBe("150 feet");
+  expect(data.classes).toEqual(expect.arrayContaining(["sorcerer", "wizard"]));
+  expect(data.time).toBe("1 acción");
+  expect(data.range).toBe("45 metros (150 pies)");
   expect(data.components).toBe("V, S, M (a ball of bat guano and sulfur)");
-  expect(data.duration).toBe("Instantaneous");
+  expect(data.duration).toBe("Instantáneo");
   expect(data.concentration).toBe(false);
+  expect(data.tags).toEqual(expect.arrayContaining(["Daño de fuego", "Salvación de Destreza", "Área: esfera"]));
+  expect(data.higherLevels).toMatch(/^The damage increases by .*1d6.* above 3/);
   expect(fb.description).toContain("Using a Higher-Level Spell Slot");
+});
+
+test("conjuro: clases desde sources.json y subclases que lo conceden", () => {
+  const spell = { ...fixture("spells.json").spell[0], name: "Shield of Faith", level: 1 };
+  const life = { name: "Life Domain", shortName: "Life", source: "XPHB", className: "Cleric", classSource: "XPHB",
+    additionalSpells: [{ prepared: { 3: ["shield of faith|xphb"] } }], subclassFeatures: [] };
+  const r = normalizeAll({
+    spells: [{ spell: [spell] }],
+    spellSources: { XPHB: { "Shield of Faith": { class: [{ name: "Cleric", source: "XPHB" }, { name: "Paladin", source: "XPHB" },
+      { name: "Cleric", source: "PHB" }] } } },
+    classes: [{ subclass: [life] }],
+  }, "XPHB");
+  expect(r.errors).toEqual([]);
+  const data = r.entries.find((e) => e.key === "spell:shield of faith|xphb")!.data as SpellData;
+  expect(data.classes).toEqual(["cleric", "paladin", "subclass:life-domain"]);
+});
+
+describe("modos de lanzamiento", () => {
+  const classes = ["cleric", "sorcerer", "warlock", "ranger"].map((c) => fixture(`class-${c}.json`));
+  const wizard = { ...classes[0].class[0], name: "Wizard", spellcastingAbility: "int", casterProgression: "full" };
+  const { entries: es } = normalizeAll({ classes: [...classes, { class: [wizard] }] }, "XPHB");
+  const casting = (key: string) => (es.find((e) => e.key === key)!.data as ClassData).spellcasting;
+
+  test("Mago con libro, Clérigo con lista, Hechicero al subir de nivel", () => {
+    expect(casting("class:wizard|xphb")).toEqual({ ability: "int", progression: "full", mode: "spellbook" });
+    expect(casting("class:cleric|xphb")?.mode).toBe("list");
+    expect(casting("class:sorcerer|xphb")?.mode).toBe("levelUp");
+    expect(casting("class:warlock|xphb")).toEqual({ ability: "cha", progression: "pact", mode: "levelUp" });
+    expect(casting("class:ranger|xphb")).toEqual({ ability: "wis", progression: "half", mode: "levelUp" });
+  });
+
+  test("subclase lanzadora de tercio (Caballero arcano)", () => {
+    const ek = { name: "Eldritch Knight", shortName: "Eldritch Knight", source: "XPHB", className: "Fighter",
+      classSource: "XPHB", spellcastingAbility: "int", casterProgression: "1/3", subclassFeatures: [],
+      cantripProgression: [0, 0, 2, ...Array(17).fill(3)], preparedSpellsProgression: [0, 0, 3, ...Array(17).fill(4)] };
+    const r = normalizeAll({ classes: [{ subclass: [ek] }] }, "XPHB");
+    expect(r.errors).toEqual([]);
+    const data = r.entries[0].data as SubclassData;
+    expect(data.spellcasting).toEqual({ ability: "int", progression: "third", mode: "levelUp" });
+    expect(data.progressions.cantrips?.slice(0, 3)).toEqual([0, 0, 2]);
+    expect(data.progressions.prepared?.slice(0, 3)).toEqual([0, 0, 3]);
+  });
 });
 
 test("la clave de la entrada coincide con el destino de [ref] del BBCode", () => {
@@ -230,7 +274,7 @@ test("equipo con más de dos opciones (Guerrero) y clase lanzadora", () => {
   expect(data("class:fighter|xphb").equipment.C).toEqual([{ value: 15500 }]);
   expect(data("class:fighter|xphb").primaryAbility).toEqual(["str", "dex"]);
   expect(data("class:fighter|xphb").spellcasting).toBeNull();
-  expect(data("class:wizard|xphb").spellcasting).toEqual({ ability: "int", progression: "full", table: [[2, 0], [3, 0], [4, 2]] });
+  expect(data("class:wizard|xphb").spellcasting).toEqual({ ability: "int", progression: "full", mode: "spellbook" });
   expect(data("class:paladin|xphb").spellcasting?.progression).toBe("half");
 });
 

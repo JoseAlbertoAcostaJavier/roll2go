@@ -83,6 +83,11 @@ const progressions = shape({
   prepared: nullable(perLevel(int(0, 100))),
   spellbook: nullable(perLevel(int(0, 100))),
 });
+const spellcasting = shape({
+  ability,
+  progression: oneOf("full", "half", "third", "pact"),
+  mode: oneOf("list", "levelUp", "spellbook"),
+});
 const classTable = shape({ columns: arrayOf(shape({ label: str, values: perLevel(str) })) });
 const multiclass = shape({
   requirements: shape({ abilities, any: bool }),
@@ -116,11 +121,7 @@ const checks: { [K in EntryKind]: Check } = {
     equipment,
     subclassLevel: int(1, 20),
     asiLevels: arrayOf(int(1, 20)),
-    spellcasting: nullable(shape({
-      ability,
-      progression: nullable(oneOf("full", "half", "pact")),
-      table: arrayOf(arrayOf(num)),
-    })),
+    spellcasting: nullable(spellcasting),
     features: arrayOf(levelFeature),
     progressions,
     table: classTable,
@@ -130,7 +131,13 @@ const checks: { [K in EntryKind]: Check } = {
   subclass: shape({
     features: arrayOf(levelFeature),
     spells: arrayOf(shape({ level: int(1, 20), ref })),
-    progressions: shape({ feats: featProgressions, optionalFeatures: optionalFeatureProgressions }),
+    progressions: shape({
+      feats: featProgressions,
+      optionalFeatures: optionalFeatureProgressions,
+      "cantrips?": nullable(perLevel(int(0, 100))),
+      "prepared?": nullable(perLevel(int(0, 100))),
+    }),
+    "spellcasting?": spellcasting,
   }),
   classFeature: feature,
   subclassFeature: feature,
@@ -158,6 +165,8 @@ const checks: { [K in EntryKind]: Check } = {
     concentration: bool,
     ritual: bool,
     classes: strings,
+    tags: strings,
+    "higherLevels?": str,
   }),
   item: shape({
     type: str,

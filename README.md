@@ -13,3 +13,7 @@ Tras desplegar la subida de nivel:
 
 - Vuelve a ejecutar `npm run import:5etools -- --data <carpeta data de 5etools>` (rasgos enlazados de clase y subclase, estilos de combate por clase, maestrías solo con armas base) y **reinicia el servidor** después: el catálogo se guarda en caché hasta 1 h.
 - Los personajes que ya tomaron un nivel con rasgos que antes no se importaban (p. ej. el nivel 3 de subclase: Student of War, Hunter's Prey…) no reciben esas elecciones solos: hay que borrar ese nivel y volver a subirlo.
+
+Tras desplegar los conjuros:
+
+- Vuelve a ejecutar `npm run import:5etools -- --data <carpeta data de 5etools>` y **reinicia el servidor**: los conjuros ganan clases, etiquetas, mejora y nombre en español, y las clases su modo de lanzamiento. Hasta reimportar, el catálogo descarta las clases y los conjuros guardados con el formato anterior.
