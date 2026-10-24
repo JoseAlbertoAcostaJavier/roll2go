@@ -10,6 +10,7 @@ import { removeLastLevel } from "@/lib/rules/dnd2024/levelOps";
 import { masteryCount } from "@/lib/rules/dnd2024/masteries";
 import { loadSheetEntries } from "@/lib/rules/dnd2024/sheetEntries";
 import type { SpellData } from "@/lib/rules/types";
+import { unchangedFilter } from "@/lib/unchangedFilter";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -55,7 +56,7 @@ export async function DELETE(req: NextRequest, { params }: Ctx) {
     const stored = found.character.sheet as Record<string, unknown> | undefined;
     for (const field of ["prepared", "slotsUsed"] as const) {
       set[`sheet.${field}`] = result.sheet[field];
-      unchanged[`sheet.${field}`] = stored?.[field] === undefined ? { $exists: false } : stored[field];
+      unchanged[`sheet.${field}`] = unchangedFilter(stored?.[field]);
     }
   }
   const res = await Character.updateOne(

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState, type RefObject } from "react";
 import { useSearchParams } from "next/navigation";
 import { LoaderCircle, WandSparkles, X } from "lucide-react";
 import type { CatalogEntry, SpellOption } from "@/lib/rules/catalog";
@@ -32,25 +32,26 @@ function Field({ label, value }: { label: string; value: string }) {
 }
 
 // Ficha de un conjuro (spec de conjuros §4.1): se abre con `?spell=<libro:clave>` (enlace propio) y pide la
-// descripción al servidor. La descripción ya incluye la mejora a niveles superiores, así que no se repite.
-export default function SpellDialog({ spells, campaignId }: {
+// descripción al servidor, dentro de los libros del personaje. La descripción ya incluye la mejora a niveles
+// superiores, así que no se repite.
+export default function SpellDialog({ characterId, spells, opener }: {
+  characterId: string;
   /** Conjuros ya cargados en la pestaña (para mostrar la cabecera mientras llega la descripción). */
   spells: Map<string, SpellOption>;
-  campaignId: string | null;
+  /** Elemento que abrió la ficha (lo fija quien la abre); recibe el foco al cerrar. Con el enlace directo, ninguno. */
+  opener: RefObject<HTMLElement | null>;
 }) {
   const uid = useId();
   const key = useSearchParams().get("spell");
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const box = useRef<HTMLDivElement>(null);
   const closeButton = useRef<HTMLButtonElement>(null);
-  const opener = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     if (!key) return;
     let stale = false;
     const ref = refFromKey(key);
-    const query = campaignId ? `?campaign=${encodeURIComponent(campaignId)}` : "";
-    fetch(`/api/rules/entries/${encodeURIComponent(ref.book)}/${encodeURIComponent(ref.key)}${query}`)
+    fetch(`/api/characters/${characterId}/spells/${encodeURIComponent(ref.book)}/${encodeURIComponent(ref.key)}`)
       .then(async (res) => {
         const data = await res.json().catch(() => null);
         if (stale) return;
@@ -61,15 +62,19 @@ export default function SpellDialog({ spells, campaignId }: {
     return () => {
       stale = true;
     };
-  }, [key, campaignId]);
+  }, [key, characterId]);
 
-  // Foco en el botón de cerrar al abrir; al cerrar vuelve a donde estaba
+  // Foco en el botón de cerrar al abrir; al cerrar vuelve a quien la abrió (no se usa document.activeElement: Safari
+  // no enfoca los enlaces al pulsarlos)
   useEffect(() => {
     if (!key) return;
-    opener.current = document.activeElement as HTMLElement | null;
     closeButton.current?.focus();
-    return () => opener.current?.focus();
-  }, [key]);
+    return () => {
+      const el = opener.current;
+      opener.current = null;
+      if (el?.isConnected) el.focus();
+    };
+  }, [key, opener]);
 
   if (!key) return null;
   const current = loaded?.key === key ? loaded : null;

@@ -1,23 +1,20 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Sparkles } from "lucide-react";
 import type { SpellOption } from "@/lib/rules/catalog";
 import type { SpellsSummary } from "@/lib/rules/dnd2024/derive";
 import { bareName, refKey } from "@/lib/rules/dnd2024/equipmentRefs";
 import type { SpellOp } from "@/lib/rules/dnd2024/spellOps";
-import type { Ref } from "@/lib/rules/types";
 import { card } from "@/app/components/formStyles";
 import CasterBlockView from "./CasterBlockView";
 import SlotsBar from "./SlotsBar";
 import SpellDialog from "./SpellDialog";
-import SpellList, { spellHref } from "./SpellList";
+import SpellList, { spellHref, type SpellOpener } from "./SpellList";
 
 type Props = {
   characterId: string;
   isOwner: boolean;
-  /** Campaña del personaje, para pedir la ficha de un conjuro con sus libros. */
-  campaignId: string | null;
   initial: SpellsSummary;
   /** Por bloque (`libro:clave` de su clase): identificador de su lista de conjuros y de su icono. */
   lists: Record<string, { listId: string; iconId: string }>;
@@ -27,7 +24,7 @@ type Props = {
 
 // Pestaña Conjuros (spec de conjuros §4.1): espacios comunes, un bloque por clase lanzadora y «Otros». Las
 // operaciones van una a una a PATCH /spells, que responde con el estado recalculado.
-export default function SpellsTab({ characterId, isOwner, campaignId, initial, lists, spells }: Props) {
+export default function SpellsTab({ characterId, isOwner, initial, lists, spells }: Props) {
   const [state, setState] = useState(initial);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -57,8 +54,12 @@ export default function SpellsTab({ characterId, isOwner, campaignId, initial, l
     }
   }
 
-  // Abre la ficha del conjuro: cambia `?spell=` sin recargar (SpellDialog lo lee)
-  const open = (ref: Ref) => window.history.pushState(null, "", spellHref(ref));
+  // Abre la ficha del conjuro: cambia `?spell=` sin recargar (SpellDialog lo lee) y recuerda quién la abrió
+  const opener = useRef<HTMLElement | null>(null);
+  const open: SpellOpener = (ref, from) => {
+    opener.current = from;
+    window.history.pushState(null, "", spellHref(ref));
+  };
 
   const other = state.other.map((o) => {
     const spell = byKey.get(refKey(o.spell.ref)) ?? null;
@@ -110,7 +111,7 @@ export default function SpellsTab({ characterId, isOwner, campaignId, initial, l
         <p className="text-sm text-muted">Este personaje aún no tiene conjuros.</p>
       )}
 
-      <SpellDialog spells={byKey} campaignId={campaignId} />
+      <SpellDialog characterId={characterId} spells={byKey} opener={opener} />
     </div>
   );
 }

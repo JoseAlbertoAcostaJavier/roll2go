@@ -23,6 +23,9 @@ export type SpellRowItem = {
   action?: ReactNode;
 };
 
+/** Abre la ficha de un conjuro; `from`: el elemento pulsado, que recupera el foco al cerrarla. */
+export type SpellOpener = (ref: Ref, from: HTMLElement) => void;
+
 /** Enlace propio de la ficha de un conjuro. */
 export const spellHref = (ref: Ref) => `?tab=conjuros&spell=${encodeURIComponent(refKey(ref))}`;
 
@@ -39,7 +42,7 @@ function Meta({ label, value, icon: Icon }: { label: string; value: string; icon
 
 // Fila de un conjuro: casilla (si se puede preparar), icono de escuela, nombre (abre su ficha), nivel y escuela, tiempo,
 // alcance, duración, componentes y el resumen
-function Row({ item, onOpen }: { item: SpellRowItem; onOpen: (ref: Ref) => void }) {
+function Row({ item, onOpen }: { item: SpellRowItem; onOpen: SpellOpener }) {
   const s = item.spell;
   const Icon = s ? SCHOOL_ICONS[s.data.school] : undefined;
   const name = s ? (s.nameEs ?? s.name) : item.name;
@@ -72,7 +75,7 @@ function Row({ item, onOpen }: { item: SpellRowItem; onOpen: (ref: Ref) => void 
             onClick={(e) => {
               if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
               e.preventDefault();
-              onOpen(item.ref);
+              onOpen(item.ref, e.currentTarget);
             }}
             className="font-semibold text-fg hover:text-brand-soft hover:underline"
           >
@@ -109,7 +112,7 @@ function Row({ item, onOpen }: { item: SpellRowItem; onOpen: (ref: Ref) => void 
 export default function SpellList({ items, empty, onOpen }: {
   items: SpellRowItem[];
   empty: string;
-  onOpen: (ref: Ref) => void;
+  onOpen: SpellOpener;
 }) {
   if (items.length === 0) return <p className="py-3 text-sm text-muted">{empty}</p>;
   return (

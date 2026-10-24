@@ -13,7 +13,7 @@ import { card, primaryButton } from "@/app/components/formStyles";
 import { CLASS_ICONS } from "@/app/components/icons/classes";
 import RuleSelect from "../RuleSelect";
 import SpellFilters from "./SpellFilters";
-import SpellList, { type SpellRowItem } from "./SpellList";
+import SpellList, { type SpellOpener, type SpellRowItem } from "./SpellList";
 
 type ListTab = "preparados" | "libro" | "disponibles" | "todos";
 
@@ -29,7 +29,7 @@ type Props = {
   busy: boolean;
   /** Envía una operación; devuelve si fue bien. */
   onOp: (op: SpellOp) => Promise<boolean>;
-  onOpen: (ref: Ref) => void;
+  onOpen: SpellOpener;
 };
 
 /** Aviso al llegar al límite de preparados (la casilla del resto queda desactivada). */

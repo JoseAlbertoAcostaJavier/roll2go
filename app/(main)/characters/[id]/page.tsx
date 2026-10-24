@@ -212,7 +212,6 @@ export default async function CharacterPage({ params, searchParams }: Props) {
             key={d.level}
             characterId={id}
             isOwner={isOwner}
-            campaignId={campaign?.id ?? null}
             initial={d.spells}
             lists={spellLists}
             spells={spellOptions}

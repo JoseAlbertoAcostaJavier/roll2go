@@ -8,6 +8,7 @@ import { derive } from "@/lib/rules/dnd2024/derive";
 import { isRef, refKey } from "@/lib/rules/dnd2024/equipmentRefs";
 import type { Dnd2024SheetV2 } from "@/lib/rules/dnd2024/sheet";
 import { applySpellOp } from "@/lib/rules/dnd2024/spellOps";
+import { unchangedFilter } from "@/lib/unchangedFilter";
 import type { Ref } from "@/lib/rules/types";
 
 type Ctx = { params: Promise<{ id: string }> };
@@ -62,8 +63,7 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     const res = await Character.updateOne(
       {
         _id: id, "sheet.version": 2, "sheet.levels": { $size: found.sheet.levels.length },
-        // Con $eq: Mongoose convierte un array suelto en $in (spellbookExtra: [] no coincidiría nunca)
-        [`sheet.${field}`]: stored === undefined ? { $exists: false } : { $eq: stored },
+        [`sheet.${field}`]: unchangedFilter(stored),
       },
       { $set: { [`sheet.${field}`]: result.sheet[field] } },
     );
