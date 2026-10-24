@@ -9,7 +9,11 @@ import { summarizeClasses, upgradeSheet } from "@/lib/rules/dnd2024/upgrade";
 import type {
   Ability, BackgroundData, ClassData, FeatData, ItemData, LineageData, Ref, SpeciesData,
 } from "@/lib/rules/types";
-import { abilityScores, saveRows, skillRows, type AbilityScores, type SaveRow, type SkillRow } from "./abilities";
+import {
+  abilityBreakdowns, modOf, saveBreakdowns, saveRows, skillBreakdowns, skillRows,
+  type AbilityScores, type SaveRow, type SkillRow,
+} from "./abilities";
+import { makeBreakdown, type Breakdown } from "./breakdown";
 import { armorClass, UNARMORED_CLASSES, type ArmorData, type UnarmoredClass } from "./ac";
 import { unarmedAttack, weaponAttack, weaponProficient, type Attack } from "./attacks";
 import { characterFeats, featureGroups, type FeatureGroup } from "./features";
@@ -18,6 +22,7 @@ import { spellsSummary, type SpellsSummary } from "./spells";
 import { carriedWeight } from "./weight";
 
 export type { Attack } from "./attacks";
+export type { Breakdown, Part } from "./breakdown";
 export type { FeatureGroup } from "./features";
 export type { CasterBlock, OtherSpell, Slots, SpellsSummary } from "./spells";
 export { armorClass } from "./ac";
@@ -54,6 +59,16 @@ export type Derived = {
   hasSpells: boolean;
   /** Nombres guardados de las referencias que ya no existen en el catálogo. */
   missing: string[];
+  /** De dónde sale cada valor (sus totales coinciden con los de arriba). */
+  breakdowns: {
+    abilities: Record<Ability, Breakdown>;
+    saves: Record<Ability, Breakdown>;
+    /** Por id de habilidad. */
+    skills: Record<string, Breakdown>;
+    ac: Breakdown;
+    initiative: Breakdown;
+    speed: Breakdown;
+  };
 };
 
 // Campos del catálogo que llegan con la parte 4; se leen si ya están
@@ -99,7 +114,13 @@ export function derive(input: AnySheet, entries: Map<string, CatalogEntry>): Der
   const level = sheet.levels.length;
   const proficiencyBonus = proficiencyOf(level);
   const isEpicBoon = (r: Ref) => (entries.get(refKey(r))?.data as FeatData | undefined)?.category === EPIC_BOON;
-  const abilities = abilityScores(sheet, isEpicBoon);
+  const nameOf = (r: Ref, fallback: string) => {
+    const e = entries.get(refKey(r));
+    return e ? e.nameEs ?? e.name : fallback;
+  };
+  const abilityParts = abilityBreakdowns(sheet, isEpicBoon, nameOf);
+  const abilities = Object.fromEntries(Object.entries(abilityParts)
+    .map(([a, b]) => [a, { score: b.total, mod: modOf(b.total) }])) as AbilityScores;
   const mods = Object.fromEntries(Object.entries(abilities).map(([a, v]) => [a, v.mod])) as Record<Ability, number>;
   const choices = sheet.levels.flatMap((l) => l.choices.map((c) => ({ ...c, n: l.n })));
 
@@ -115,6 +136,15 @@ export function derive(input: AnySheet, entries: Map<string, CatalogEntry>): Der
   const weapons = profs("weapons");
   const tools = uniq([...profs("tools"), ...(backgroundData?.tools ?? [])]);
   const skillsOf = (type: "skills" | "expertise") => choices.flatMap((c) => (c.type === type ? c.value : []));
+  const skillProfs = [
+    ...(backgroundData?.skills ?? []), ...(speciesData?.skills.fixed ?? []), ...sheet.speciesChoices.skills,
+    ...skillsOf("skills"),
+  ];
+  const expertise = skillsOf("expertise");
+  // Polivalente: Bardo 2
+  const jackOfAllTrades = summary.some((c) => bareName(c.class.ref.key) === "bard" && c.level >= 2);
+  // Salvaciones: solo las de la primera clase
+  const saveProfs = firstData?.saves ?? [];
 
   // Inventario: objetos equipados y referencias perdidas
   const equipped: { name: string; key: string; data: ItemData }[] = [];
@@ -150,6 +180,9 @@ export function derive(input: AnySheet, entries: Map<string, CatalogEntry>): Der
   ));
   attacks.push(unarmedAttack(mods, proficiencyBonus, martialArts));
 
+  const ac = acOf(bodyArmor);
+  const initiative = mods.dex + (featKeys.includes(ALERT_FEAT) ? proficiencyBonus : 0);
+  const speed = lineageData?.speed ?? speciesData?.speed ?? 30;
   const size = sheet.speciesChoices.size ?? (speciesData?.size.length === 1 ? speciesData.size[0] : null);
 
   return {
@@ -158,22 +191,13 @@ export function derive(input: AnySheet, entries: Map<string, CatalogEntry>): Der
     abilities,
     proficiencyBonus,
     hp: hitPoints(sheet, mods.con, featKeys),
-    ac: acOf(bodyArmor),
+    ac,
     armorWarning,
-    initiative: mods.dex + (featKeys.includes(ALERT_FEAT) ? proficiencyBonus : 0),
-    speed: lineageData?.speed ?? speciesData?.speed ?? 30,
+    initiative,
+    speed,
     darkvision: Math.max(speciesData?.darkvision ?? 0, lineageData?.darkvision ?? 0),
-    // Salvaciones: solo las de la primera clase
-    saves: saveRows(abilities, firstData?.saves ?? [], proficiencyBonus),
-    skills: skillRows(
-      abilities,
-      [
-        ...(backgroundData?.skills ?? []), ...(speciesData?.skills.fixed ?? []), ...sheet.speciesChoices.skills,
-        ...skillsOf("skills"),
-      ],
-      skillsOf("expertise"),
-      proficiencyBonus,
-    ),
+    saves: saveRows(abilities, saveProfs, proficiencyBonus),
+    skills: skillRows(abilities, skillProfs, expertise, proficiencyBonus, jackOfAllTrades),
     armor,
     weapons,
     tools,
@@ -183,5 +207,14 @@ export function derive(input: AnySheet, entries: Map<string, CatalogEntry>): Der
     features: featureGroups(sheet, summary, feats, entries),
     ...spellsSummary(sheet, { abilities, proficiencyBonus }, entries),
     missing: uniq(missing),
+    breakdowns: {
+      abilities: abilityParts,
+      saves: saveBreakdowns(abilities, saveProfs, proficiencyBonus),
+      skills: skillBreakdowns(abilities, skillProfs, expertise, proficiencyBonus, jackOfAllTrades),
+      // Provisionales: la CA, la iniciativa y la velocidad se desglosan en la Tarea 2
+      ac: makeBreakdown([{ label: "Total", value: ac }]),
+      initiative: makeBreakdown([{ label: "Total", value: initiative }]),
+      speed: makeBreakdown([{ label: "Total", value: speed }]),
+    },
   };
 }
