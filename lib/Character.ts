@@ -18,6 +18,9 @@ const CharacterSchema = new Schema(
     campaign: { type: Schema.Types.ObjectId, ref: "Campaign", index: true },
     // "internal": creado desde la campaña. "external": creado fuera y añadido después
     origin: { type: String, enum: ["internal", "external"] },
+    // "pending": solicitud de unirse que el DM aún no ha aceptado. Solo existe junto a `campaign`; los antiguos sin
+    // este campo cuentan como aprobados (las consultas usan `campaignStatus: { $ne: "pending" }`)
+    campaignStatus: { type: String, enum: ["approved", "pending"] },
 
     // En activo, retirado o fallecido
     status: { type: String, enum: ["active", "retired", "dead", "npc"], default: "active" },

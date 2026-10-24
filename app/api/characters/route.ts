@@ -128,7 +128,7 @@ export async function POST(req: NextRequest) {
       // Solo se guarda el filtro propio del personaje; si manda el de la campaña o se ignoró por no tener
       // ningún libro visible, no hace falta
       books: !campaign?.restrictBooks && books.some((id) => chosen.includes(id)) ? books : [],
-      ...(campaign ? { campaign: campaign._id, origin: "internal" } : {}),
+      ...(campaign ? { campaign: campaign._id, origin: "internal", campaignStatus: "approved" } : {}),
       status,
       portraitId,
       imageId,

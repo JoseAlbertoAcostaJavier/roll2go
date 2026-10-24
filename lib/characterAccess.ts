@@ -1,5 +1,6 @@
-// Acceso a un personaje de D&D 2024 desde las rutas de la ficha. Ver: el dueño o un miembro de su campaña; escribir:
-// solo el dueño. Cualquier otro caso devuelve null (las rutas responden 404 sin revelar que existe).
+// Acceso a un personaje de D&D 2024 desde las rutas de la ficha. Ver: el dueño o un miembro de su campaña (si está
+// pendiente de aprobación, solo el DM); escribir: solo el dueño. Cualquier otro caso devuelve null (las rutas
+// responden 404 sin revelar que existe).
 import mongoose from "mongoose";
 import { connectDB } from "@/lib/mongodb";
 import { Campaign } from "@/lib/Campaign";
@@ -30,8 +31,12 @@ export async function loadCharacterFor(userId: string, id: string, mode: "read" 
   const isOwner = String(character.owner) === userId;
   if (!isOwner) {
     if (mode === "write" || !character.campaign) return null;
-    const member = await Campaign.exists({ _id: character.campaign, members: userId });
-    if (!member) return null;
+    // Una solicitud pendiente solo la ve el DM, además del dueño
+    const pending = character.campaignStatus === "pending";
+    const allowed = await Campaign.exists(
+      pending ? { _id: character.campaign, owner: userId } : { _id: character.campaign, members: userId },
+    );
+    if (!allowed) return null;
   }
 
   let stored = character.sheet as AnySheet | undefined;

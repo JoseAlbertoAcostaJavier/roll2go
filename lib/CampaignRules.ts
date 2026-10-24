@@ -32,3 +32,36 @@ export function booksAreValid(
   const allowed = new Set(booksForCharacter(c, systemBooks).map((b) => b.id));
   return bookIds.every((id) => allowed.has(id));
 }
+
+type JoinInput = {
+  campaign: {
+    systemId: string;
+    status: string;
+    characters: { allowed: boolean; external: boolean };
+    restrictBooks: boolean;
+    allowedBooks: string[];
+  };
+  // books: los libros que usa de verdad su hoja (booksUsedBy), no Character.books
+  character: { systemId: string; campaign: string | null; books: string[] };
+  isMember: boolean;
+};
+
+// Si un personaje creado fuera puede solicitar unirse a la campaña. Con libros no permitidos devuelve sus ids en
+// `disallowed` (la ruta añade sus nombres al mensaje).
+export function canRequestJoin(
+  input: JoinInput,
+): { ok: true } | { ok: false; error: string; disallowed?: string[] } {
+  const { campaign, character } = input;
+  if (!input.isMember) return { ok: false, error: "No eres miembro de esta campaña." };
+  if (campaign.status !== "active") return { ok: false, error: "Esta campaña no está activa." };
+  if (campaign.systemId !== character.systemId) return { ok: false, error: "La campaña es de otro sistema de juego." };
+  if (!campaign.characters.allowed || !campaign.characters.external)
+    return { ok: false, error: "Esta campaña no admite personajes creados fuera de ella." };
+  if (character.campaign) return { ok: false, error: "Este personaje ya está en una campaña." };
+  if (campaign.restrictBooks) {
+    const allowed = new Set(campaign.allowedBooks);
+    const disallowed = character.books.filter((b) => !allowed.has(b));
+    if (disallowed.length) return { ok: false, error: "Este personaje usa libros que la campaña no permite.", disallowed };
+  }
+  return { ok: true };
+}

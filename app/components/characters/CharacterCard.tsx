@@ -9,6 +9,8 @@ export type CharacterCardData = {
   systemName: string;
   status: "active" | "retired" | "dead" | "npc";
   campaign: { id: string; name: string } | null;
+  /** La solicitud para unirse a `campaign` espera a que el DM la acepte. */
+  pending: boolean;
 };
 
 const STATUS_LABEL = { retired: "Retirado", dead: "Fallecido", npc: "PNJ" } as const;
@@ -44,6 +46,9 @@ export default function CharacterCard({ character: c, index }: { character: Char
             </Link>
           ) : (
             <span className="text-muted">Sin campaña</span>
+          )}
+          {c.campaign && c.pending && (
+            <span className="rounded bg-black/70 px-2 py-0.5 text-xs font-semibold text-muted">Pendiente</span>
           )}
           {c.status !== "active" && (
             <span className="rounded bg-black/70 px-2 py-0.5 text-xs font-semibold text-muted">

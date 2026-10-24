@@ -12,6 +12,10 @@ export const NOTIFICATION_TYPES = [
   "character_created",
   "character_import_request",
   "character_level_up",
+  "character_approved",
+  "character_rejected",
+  "character_removed",
+  "character_left",
   "book_like",
 ] as const;
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
@@ -56,13 +60,17 @@ export function emailPrefFor(type: NotificationType): EmailPref | null {
     case "forum_reply":
       return "forum";
     case "campaign_invite":
+    case "character_approved":
       return "invites";
     case "campaign_removed":
+    case "character_rejected":
+    case "character_removed":
       return "removals";
     case "campaign_joined":
     case "character_created":
     case "character_import_request":
     case "character_level_up":
+    case "character_left":
       return "dm";
     case "system":
     case "book_like":
@@ -139,9 +147,30 @@ export function describeNotification(
         text: `${who} ha creado un personaje en ${where}`,
         href: `${campaignHref}/characters`,
       };
+    // En los avisos de personajes de la campaña, `text` es el nombre del personaje
     case "character_import_request":
       return {
-        text: `${who} solicita importar un personaje a ${where}`,
+        text: `${who} solicita unir a ${n.text ?? "un personaje"} a ${where}`,
+        href: `${campaignHref}/characters`,
+      };
+    case "character_approved":
+      return {
+        text: `${who} ha aceptado a ${n.text ?? "tu personaje"} en ${where}`,
+        href: `${campaignHref}/characters`,
+      };
+    case "character_rejected":
+      return {
+        text: `${who} ha denegado a ${n.text ?? "tu personaje"} en ${where}`,
+        href: n.character ? `/characters/${n.character}` : "/characters",
+      };
+    case "character_removed":
+      return {
+        text: `${who} ha sacado a ${n.text ?? "tu personaje"} de ${where}`,
+        href: n.character ? `/characters/${n.character}` : "/characters",
+      };
+    case "character_left":
+      return {
+        text: `${who} ha sacado a ${n.text ?? "un personaje"} de ${where}`,
         href: `${campaignHref}/characters`,
       };
     case "character_level_up":
