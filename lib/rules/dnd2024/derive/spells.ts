@@ -38,8 +38,11 @@ export type CasterBlock = {
   spellbook: Named[];
   /** Siempre preparados de la clase y de la subclase; no cuentan para el límite. */
   always: OtherSpell[];
-  /** Si la subclase tiene conjuros alternativos (la tierra del Círculo de la Tierra): sus nombres y el elegido. */
-  spellOptions?: { subclass: Ref; names: string[]; current: string | null };
+  /**
+   * Si la subclase tiene conjuros alternativos (la tierra del Círculo de la Tierra): sus nombres, el elegido y los
+   * conjuros de cada uno hasta el nivel de clase.
+   */
+  spellOptions?: { subclass: Ref; names: string[]; current: string | null; spells: Record<string, Ref[]> };
 };
 
 export type Slots = { levels: Record<string, number>; pact: { count: number; level: number } | null };
@@ -126,11 +129,18 @@ export function casterBlocks(
       maxSpellLevel: maxSpellLevel(progression, c.level),
       known,
       cantrips,
-      prepared: mode === "levelUp" ? known.map((k) => k.ref) : (sheet.prepared[preparedKey(c.ref)] ?? []),
+      // (un preparado que también está siempre preparado, p. ej. por la tierra elegida después, no ocupa sitio)
+      prepared: mode === "levelUp" ? known.map((k) => k.ref)
+        : (sheet.prepared[preparedKey(c.ref)] ?? []).filter((r) => !always.some((a) => refKey(a.spell.ref) === refKey(r))),
       spellbook: mode === "spellbook" ? [...spells, ...sheet.spellbookExtra] : [],
       always,
       ...(c.subclass && options.length
-        ? { spellOptions: { subclass: c.subclass.named.ref, names: options.map((o) => o.name), current: option ? current : null } }
+        ? {
+          spellOptions: {
+            subclass: c.subclass.named.ref, names: options.map((o) => o.name), current: option ? current : null,
+            spells: Object.fromEntries(options.map((o) => [o.name, upTo(o.spells, c.level)])),
+          },
+        }
         : {}),
     };
   });

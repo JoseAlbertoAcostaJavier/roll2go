@@ -26,6 +26,12 @@ const SPELLS: [string, number, string[]][] = [
   ["burning hands", 1, ["wizard", "sorcerer"]],
   ["grease", 1, ["wizard"]],
   ["light", 0, ["wizard", "cleric", "sorcerer"]],
+  ["fog cloud", 1, ["druid", "wizard"]],
+  ["entangle", 1, ["druid"]],
+  ["goodberry", 1, ["druid"]],
+  ["thunderwave", 1, ["druid", "wizard"]],
+  ["faerie fire", 1, ["druid"]],
+  ["jump", 1, ["druid"]],
 ];
 for (const [name, level, classes] of SPELLS) {
   const data: SpellData = {
@@ -196,6 +202,23 @@ describe("tierra del Círculo de la Tierra", () => {
     expect(s.spellOption).toEqual({ [LAND.key]: "Arid Land" });
     expect(ok(apply(s, { op: "setOption", subclass: LAND, name: "Polar Land" })).spellOption).toEqual({ [LAND.key]: "Polar Land" });
     expect(ok(apply(s, { op: "setOption", subclass: LAND, name: null })).spellOption).toEqual({});
+  });
+  const DRUID = CLASSES.druid.ref.key;
+  it("los preparados que pasan a ser de la tierra dejan de estar preparados (y de contar)", () => {
+    const s = druid3();
+    s.prepared = { [DRUID]: [spell("fog cloud").ref, spell("cure wounds").ref] };
+    const after = ok(apply(s, { op: "setOption", subclass: LAND, name: "Polar Land" }));
+    expect(after.prepared[DRUID]).toEqual([spell("cure wounds").ref]);
+    expect(derive(after, entries).spells.blocks[0].prepared).toEqual([spell("cure wounds").ref]);
+  });
+  it("un preparado que también es de la tierra no ocupa sitio: se puede preparar hasta el límite", () => {
+    const s = druid3();
+    s.spellOption = { [LAND.key]: "Polar Land" };
+    s.prepared = { [DRUID]: ["fog cloud", "cure wounds", "entangle", "goodberry", "thunderwave", "faerie fire"].map((n) => spell(n).ref) };
+    const [b] = derive(s, entries).spells.blocks;
+    expect(b.preparedLimit).toBe(6);
+    expect(b.prepared).toHaveLength(5);
+    expect(ok(apply(s, prepare(CLASSES.druid, "jump"))).prepared[DRUID]).toHaveLength(7);
   });
   it("una tierra que no existe o una subclase sin tierras → error", () => {
     expect(errorOf(apply(druid3(), { op: "setOption", subclass: LAND, name: "Lunar Land" }))).toBe("Opción no válida.");

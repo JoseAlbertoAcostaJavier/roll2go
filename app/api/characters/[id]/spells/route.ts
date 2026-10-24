@@ -17,10 +17,11 @@ type Ctx = { params: Promise<{ id: string }> };
 const MAX_ATTEMPTS = 3;
 const CHANGED_ERROR = "Los conjuros del personaje han cambiado; recarga la página.";
 
-// Campo de la hoja que cambia cada operación
-const FIELDS: Record<string, keyof Pick<Dnd2024SheetV2, "prepared" | "spellbookExtra" | "slotsUsed" | "spellOption">> = {
-  prepare: "prepared", unprepare: "prepared", copy: "spellbookExtra", slot: "slotsUsed", longRest: "slotsUsed",
-  setOption: "spellOption",
+// Campos de la hoja que cambia cada operación (la tierra también quita de los preparados los que pasa a dar)
+type Field = keyof Pick<Dnd2024SheetV2, "prepared" | "spellbookExtra" | "slotsUsed" | "spellOption">;
+const FIELDS: Record<string, Field[]> = {
+  prepare: ["prepared"], unprepare: ["prepared"], copy: ["spellbookExtra"], slot: ["slotsUsed"], longRest: ["slotsUsed"],
+  setOption: ["spellOption", "prepared"],
 };
 
 // Una operación de conjuros (spec de conjuros §2.5): { op: "prepare" | "unprepare", class, ref }, { op: "copy", ref },
@@ -43,8 +44,8 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     return NextResponse.json({ error: "Petición no válida." }, { status: 400 });
   }
   const op = typeof body === "object" && body !== null ? (body as { op?: unknown; ref?: unknown }) : {};
-  const field = typeof op.op === "string" && Object.hasOwn(FIELDS, op.op) ? FIELDS[op.op] : null;
-  if (!field) return NextResponse.json({ error: "Operación no válida." }, { status: 400 });
+  const fields = typeof op.op === "string" && Object.hasOwn(FIELDS, op.op) ? FIELDS[op.op] : null;
+  if (!fields) return NextResponse.json({ error: "Operación no válida." }, { status: 400 });
 
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
     const found = await loadCharacterFor(session.id, id, "write");
@@ -61,14 +62,14 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     const result = applySpellOp(found.sheet, body, { blocks, slots, resolve });
     if (!result.ok) return NextResponse.json({ error: result.error }, { status: 400 });
 
-    // Solo el campo que cambia, si sigue como se leyó y en el mismo nivel (los límites dependen de él)
-    const stored = (found.character.sheet as Record<string, unknown> | undefined)?.[field];
+    // Solo los campos que cambian, si siguen como se leyeron y en el mismo nivel (los límites dependen de él)
+    const stored = found.character.sheet as Record<string, unknown> | undefined;
     const res = await Character.updateOne(
       {
         _id: id, "sheet.version": 2, "sheet.levels": { $size: found.sheet.levels.length },
-        [`sheet.${field}`]: unchangedFilter(stored),
+        ...Object.fromEntries(fields.map((f) => [`sheet.${f}`, unchangedFilter(stored?.[f])])),
       },
-      { $set: { [`sheet.${field}`]: result.sheet[field] } },
+      { $set: Object.fromEntries(fields.filter((f) => result.sheet[f] !== undefined).map((f) => [`sheet.${f}`, result.sheet[f]])) },
     );
     if (res.matchedCount === 1) return NextResponse.json({ spells: derive(result.sheet, entries).spells });
   }

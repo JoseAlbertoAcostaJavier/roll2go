@@ -184,7 +184,8 @@ describe("bloques de lanzador", () => {
     expect(b.always.map((a) => a.spell.ref.key).sort())
       .toEqual(["spell:aid|xphb", "spell:bless|xphb", "spell:cure wounds|xphb", "spell:lesser restoration|xphb"]);
     expect(b.always.every((a) => a.origin === "Dominio de la vida")).toBe(true);
-    expect(b.prepared).toEqual([spell("bless").ref]);
+    // Bendición está preparada y también siempre preparada: no ocupa sitio
+    expect(b.prepared).toEqual([]);
     expect(b.preparedLimit).toBe(classData("class:cleric|xphb").progressions.prepared![2]);
   });
   it("Druida 2: Hablar con los animales siempre preparado; Encontrar familiar no", () => {
@@ -195,9 +196,11 @@ describe("bloques de lanzador", () => {
     const s = sheetOf(times("druid", 3), { 3: [{ type: "subclass", source: "class:subclass", value: land }] });
     const [b] = blocks(s);
     expect(b.always.map((a) => a.spell.ref.key)).toEqual(["spell:speak with animals|xphb"]);
-    expect(b.spellOptions).toEqual({
+    expect(b.spellOptions).toMatchObject({
       subclass: land.ref, names: ["Arid Land", "Polar Land", "Temperate Land", "Tropical Land"], current: null,
     });
+    expect(b.spellOptions?.spells["Polar Land"].map((r) => r.key))
+      .toEqual(["spell:fog cloud|xphb", "spell:hold person|xphb", "spell:ray of frost|xphb"]);
     s.spellOption = { [land.ref.key]: "Polar Land" };
     const [c] = blocks(s);
     expect(c.always.filter((a) => a.origin !== "Druida").map((a) => [a.spell.ref.key, a.origin])).toEqual([

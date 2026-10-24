@@ -91,8 +91,9 @@ export function applySpellOp(sheet: Dnd2024SheetV2, op: unknown, ctx: SpellOpCtx
       return fail(block.mode === "spellbook"
         ? `${nameOf(entry)} no está en tu libro de conjuros.`
         : `${nameOf(entry)} no está en la lista de ${block.name}.`);
-    // Nunca se supera el límite: se comprueba sobre lo guardado
-    if (current.length >= block.preparedLimit) return fail(preparedFullError(current.length, block.preparedLimit));
+    // Nunca se supera el límite: se comprueba sobre lo guardado (sin los que también están siempre preparados)
+    const counted = current.filter((r) => !block.always.some((a) => refKey(a.spell.ref) === refKey(r))).length;
+    if (counted >= block.preparedLimit) return fail(preparedFullError(counted, block.preparedLimit));
     const ref = { book: entry.ref.book, key: entry.ref.key };
     return { ok: true, sheet: { ...sheet, prepared: { ...prepared, [key]: [...current, ref] } } };
   }
@@ -128,13 +129,24 @@ export function applySpellOp(sheet: Dnd2024SheetV2, op: unknown, ctx: SpellOpCtx
   // Alternativa de conjuros de una subclase (la tierra del Círculo de la Tierra); `name: null` la quita
   if (op.op === "setOption") {
     const sub = asRef(op.subclass);
-    const options = sub ? ctx.blocks.find((b) => b.spellOptions && refKey(b.spellOptions.subclass) === refKey(sub))?.spellOptions : undefined;
-    if (!options) return fail("Esa subclase no tiene conjuros a elegir.");
+    const block = sub ? ctx.blocks.find((b) => b.spellOptions && refKey(b.spellOptions.subclass) === refKey(sub)) : undefined;
+    const options = block?.spellOptions;
+    if (!block || !options) return fail("Esa subclase no tiene conjuros a elegir.");
     const key = preparedKey(options.subclass);
     const rest = Object.fromEntries(Object.entries(sheet.spellOption ?? {}).filter(([k]) => k !== key));
     if (op.name === null) return { ok: true, sheet: { ...sheet, spellOption: rest } };
     if (typeof op.name !== "string" || !options.names.includes(op.name)) return fail("Opción no válida.");
-    return { ok: true, sheet: { ...sheet, spellOption: { ...rest, [key]: op.name } } };
+    // Los preparados que pasan a estar siempre preparados con la nueva alternativa dejan de estar preparados
+    const granted = new Set((options.spells[op.name] ?? []).map(refKey));
+    const classKey = preparedKey(block.class);
+    const kept = (prepared[classKey] ?? []).filter((r) => !granted.has(refKey(r)));
+    return {
+      ok: true,
+      sheet: {
+        ...sheet, spellOption: { ...rest, [key]: op.name },
+        ...(prepared[classKey] ? { prepared: { ...prepared, [classKey]: kept } } : {}),
+      },
+    };
   }
   return fail("Operación no válida.");
 }
