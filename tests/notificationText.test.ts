@@ -15,3 +15,33 @@ describe("character_level_up", () => {
     expect(r).toEqual({ text: "Ana ha subido a Grog a nivel 4", href: "/characters/abc123" });
   });
 });
+
+describe("avisos de personajes en la campaña", () => {
+  const ana = { username: "ana", displayName: "Ana" };
+  const mesa = { id: "c1", name: "Mesa" };
+  const describe1 = (type: Parameters<typeof describeNotification>[0]["type"]) =>
+    describeNotification({ type, text: "Grog", character: "abc123" }, ana, mesa);
+
+  it("son tipos válidos con su preferencia de correo", () => {
+    for (const t of ["character_approved", "character_rejected", "character_removed", "character_left"] as const)
+      expect(NOTIFICATION_TYPES).toContain(t);
+    expect(emailPrefFor("character_approved")).toBe("invites");
+    expect(emailPrefFor("character_rejected")).toBe("removals");
+    expect(emailPrefFor("character_removed")).toBe("removals");
+    expect(emailPrefFor("character_left")).toBe("dm");
+    expect(emailPrefFor("character_import_request")).toBe("dm");
+  });
+  it("textos y enlaces", () => {
+    expect(describe1("character_import_request")).toEqual({
+      text: "Ana solicita unir a Grog a Mesa", href: "/campaigns/c1/characters",
+    });
+    expect(describe1("character_approved")).toEqual({
+      text: "Ana ha aceptado a Grog en Mesa", href: "/campaigns/c1/characters",
+    });
+    expect(describe1("character_rejected")).toEqual({ text: "Ana ha denegado a Grog en Mesa", href: "/characters/abc123" });
+    expect(describe1("character_removed")).toEqual({ text: "Ana ha sacado a Grog de Mesa", href: "/characters/abc123" });
+    expect(describe1("character_left")).toEqual({
+      text: "Ana ha sacado a Grog de Mesa", href: "/campaigns/c1/characters",
+    });
+  });
+});
