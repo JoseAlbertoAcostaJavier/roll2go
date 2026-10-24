@@ -15,11 +15,13 @@ try {
 import { connectDB } from "../lib/mongodb";
 import { Book } from "../lib/Book";
 import { BookEntry, ENTRY_KINDS } from "../lib/BookEntry";
-import { BOOK_PLACEHOLDER, normalizeAll, textChoiceFeatures, type RawFiles } from "../lib/rules/import/normalize";
+import {
+  BOOK_PLACEHOLDER, normalizeAll, textChoiceFeatures, unreachableFeatures, type RawFiles,
+} from "../lib/rules/import/normalize";
 import { planImport } from "../lib/rules/import/plan";
 import { matchFoundry, type FoundryFiles } from "../lib/rules/import/foundry";
 import { normalizeName } from "../lib/rules/schemas";
-import { SPECIFIED_CHOICES } from "../lib/rules/dnd2024/featureChoices";
+import { FEATURE_CHOICES, SPECIFIED_CHOICES } from "../lib/rules/dnd2024/featureChoices";
 import es from "../lib/rules/i18n/es.json";
 
 const SRD_ATTRIBUTION =
@@ -204,6 +206,13 @@ async function main() {
   const textChoices = textChoiceFeatures(upserts, SPECIFIED_CHOICES);
   console.log(`\nRasgos con elección en texto sin especificación: ${textChoices.length}`);
   for (const key of textChoices) console.log(`  ${key}`);
+  // Con --only puede faltar la clase o la subclase que cuelga los rasgos: solo tiene sentido con todo importado
+  if (!args.only.length) {
+    const unreachable = unreachableFeatures(upserts, Object.keys(FEATURE_CHOICES));
+    console.log(`
+Rasgos inalcanzables desde su clase o subclase: ${unreachable.length}`);
+    for (const key of unreachable) console.log(`  ${key}`);
+  }
 
   console.log("\nLa caché del catálogo se renueva en 1 hora (o borra .next/cache).");
 

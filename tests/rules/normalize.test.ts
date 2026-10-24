@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { inlineTags } from "@/lib/rules/import/toBbcode";
 import {
-  normalizeAll, normalizeBackground, expandVersions, resolveCopy, textChoiceFeatures, toIdentifier,
+  normalizeAll, normalizeBackground, expandVersions, resolveCopy, textChoiceFeatures, toIdentifier, unreachableFeatures,
   type NormalizedEntry, type RawFiles,
 } from "@/lib/rules/import/normalize";
 import type {
@@ -419,6 +419,72 @@ describe("progresiones, tabla, multiclase y rasgos opcionales", () => {
     const champion = get("subclass:champion|fighter|xphb").data as SubclassData;
     expect(champion.progressions).toEqual({ feats: [{ category: ["FS"], levels: { 7: 1 } }], optionalFeatures: [] });
   });
+  test("rasgos anidados en la cabecera de subclase (Maestro de batalla)", () => {
+    const features = (get("subclass:battle master|fighter|xphb").data as SubclassData).features;
+    const bm = (name: string, level: number) => `subclassFeature:${name}|fighter|xphb|battle master|xphb|${level}`;
+    expect(features.map((f) => [f.ref.key, f.level])).toEqual([
+      [bm("battle master", 3), 3],
+      [bm("combat superiority", 3), 3],
+      [bm("student of war", 3), 3],
+      [bm("maneuver options", 3), 3],
+      [bm("know your enemy", 7), 7],
+      [bm("improved combat superiority", 10), 10],
+      [bm("relentless", 15), 15],
+      [bm("ultimate combat superiority", 18), 18],
+    ]);
+    // Los anidados existen como entradas
+    for (const f of features.slice(1, 4)) expect(r.entries.some((e) => e.key === f.ref.key)).toBe(true);
+  });
+  test("todos los rasgos importados son alcanzables desde su clase o subclase", () => {
+    expect(unreachableFeatures(r.entries, ["subclassFeature:student of war|fighter|xphb|battle master|xphb|3"]))
+      .toEqual([]);
+    // Una elección escrita a mano para un rasgo que no se importa o no cuelga de nadie se lista
+    expect(unreachableFeatures(r.entries, ["subclassFeature:nada|fighter|xphb|battle master|xphb|3"]))
+      .toEqual(["subclassFeature:nada|fighter|xphb|battle master|xphb|3"]);
+  });
+});
+
+test("rasgos anidados: no entra en bloques `options`, no duplica y sigue anidando", () => {
+  const sub = (name: string, level: number, entries: unknown[]) => ({
+    name, source: "XPHB", className: "Fighter", classSource: "XPHB",
+    subclassShortName: "Champion", subclassSource: "XPHB", level, entries,
+  });
+  const nested = (name: string, level = 3) => ({
+    type: "refSubclassFeature", subclassFeature: `${name}|Fighter|XPHB|Champion|XPHB|${level}`,
+  });
+  const { entries: es, errors: errs } = normalizeAll({
+    classes: [{
+      subclass: [{
+        name: "Champion", shortName: "Champion", source: "XPHB", className: "Fighter", classSource: "XPHB",
+        subclassFeatures: ["Champion|Fighter|XPHB|Champion|XPHB|3", "Uno|Fighter|XPHB|Champion|XPHB|3"],
+      }],
+      subclassFeature: [
+        sub("Champion", 3, ["Texto", nested("Uno"), { type: "entries", entries: [nested("Dos")] },
+          { type: "options", count: 1, entries: [nested("Opción")] }]),
+        sub("Uno", 3, ["Uno"]),
+        sub("Dos", 3, ["Dos", nested("Tres")]),
+        sub("Tres", 3, ["Tres"]),
+        sub("Opción", 3, ["Opción"]),
+      ],
+    }],
+  }, "XPHB");
+  expect(errs).toEqual([]);
+  const features = (es.find((e) => e.key === "subclass:champion|fighter|xphb")!.data as SubclassData).features;
+  expect(features.map((f) => f.ref.key.split("|")[0])).toEqual([
+    "subclassFeature:champion", "subclassFeature:dos", "subclassFeature:tres", "subclassFeature:uno",
+  ]);
+});
+
+test("rasgos de clase anidados (Artes marciales del Monje)", () => {
+  const files: RawFiles = { classes: [fixture("class-monk.json")] };
+  const { entries: es } = normalizeAll(files, "XPHB");
+  const monk = es.find((e) => e.key === "class:monk|xphb")!.data as ClassData;
+  const keys = monk.features.map((f) => f.ref.key);
+  const at = keys.indexOf("classFeature:martial arts|monk|xphb|1");
+  expect(keys.slice(at, at + 4)).toEqual([
+    "classFeature:martial arts|monk|xphb|1", "classFeature:bonus unarmed strike|monk|xphb|1",
+    "classFeature:martial arts die|monk|xphb|1", "classFeature:dexterous attacks|monk|xphb|1",
+  ]);
 });
 
 test("opciones de rasgo de subclase y dentro de listas (`items`)", () => {

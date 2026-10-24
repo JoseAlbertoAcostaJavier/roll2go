@@ -809,16 +809,44 @@ function featureExtras(raw: Rec): Pick<FeatureData, "options" | "asi"> {
   };
 }
 
+const classFeatureKeyOf = (raw: Rec) =>
+  classFeatureKey(str(raw.name), str(raw.className), str(raw.classSource), String(raw.level), str(raw.source));
+
 export function normalizeClassFeature(raw: Rec): NormalizedEntry {
-  const key = classFeatureKey(str(raw.name), str(raw.className), str(raw.classSource), String(raw.level), str(raw.source));
+  const key = classFeatureKeyOf(raw);
   return entry<"classFeature">(header("classFeature", raw, key, {
     parent: { key: keyOf("class", str(raw.className), str(raw.classSource)) },
   }), { level: raw.level as number, className: str(raw.className), ...featureExtras(raw) });
 }
 
+const subclassFeatureKeyOf = (raw: Rec) => subclassFeatureKey([raw.name, raw.className, raw.classSource,
+  raw.subclassShortName, raw.subclassSource, raw.level].map(String), str(raw.source));
+
+/**
+ * Rasgos enlazados en el texto de otro rasgo (`refClassFeature`, `refSubclassFeature`): en el XPHB la cabecera de una
+ * subclase solo enlaza sus rasgos reales, y algunos rasgos de clase enlazan sus partes (Artes marciales, Canalizar
+ * divinidad…). No entra en bloques `options`, que son opciones a elegir y no rasgos que se ganan.
+ */
+function nestedFeatures(entries: unknown): LevelFeature[] {
+  const out: LevelFeature[] = [];
+  const walk = (v: unknown): void => {
+    if (Array.isArray(v)) v.forEach(walk);
+    else if (isObj(v) && (v.type === "refClassFeature" || v.type === "refSubclassFeature")) {
+      const r = optionRef(v);
+      const parts = str(v.type === "refClassFeature" ? v.classFeature : v.subclassFeature).split("|");
+      const level = Number(parts[v.type === "refClassFeature" ? 3 : 5]);
+      if (r && Number.isInteger(level)) out.push({ ref: r, level });
+    } else if (isObj(v) && v.type !== "options") {
+      walk(v.entries);
+      walk(v.items);
+    }
+  };
+  walk(entries);
+  return out;
+}
+
 export function normalizeSubclassFeature(raw: Rec, ctx: NormalizeContext): NormalizedEntry {
-  const key = subclassFeatureKey([raw.name, raw.className, raw.classSource, raw.subclassShortName,
-    raw.subclassSource, raw.level].map(String), str(raw.source));
+  const key = subclassFeatureKeyOf(raw);
   const sub = ctx.subclasses.get(subclassLookup(
     str(raw.subclassShortName), str(raw.className), str(raw.classSource), str(raw.subclassSource)));
   return entry<"subclassFeature">(header("subclassFeature", raw, key, {
@@ -886,6 +914,28 @@ export function textChoiceFeatures(entries: NormalizedEntry[], specified: Readon
       && !(e.data as FeatureData).asi
       && !specified.has(e.key))
     .map((e) => e.key);
+}
+
+/**
+ * Rasgos de clase y subclase que ningún personaje llegaría a tener: ni están en los rasgos de una clase o subclase ni
+ * son opciones de un rasgo alcanzable. `required` son claves que deben ser alcanzables aunque no se hayan importado
+ * (las elecciones escritas a mano); también se listan si faltan.
+ */
+export function unreachableFeatures(entries: NormalizedEntry[], required: Iterable<string>): string[] {
+  const byKey = new Map(entries.map((e) => [e.key, e]));
+  const reachable = new Set<string>();
+  const queue = entries.flatMap((e) =>
+    e.kind === "class" || e.kind === "subclass" ? (e.data as { features: LevelFeature[] }).features.map((f) => f.ref.key) : []);
+  for (let key = queue.pop(); key !== undefined; key = queue.pop()) {
+    if (reachable.has(key)) continue;
+    reachable.add(key);
+    const e = byKey.get(key);
+    if (e?.kind === "classFeature" || e?.kind === "subclassFeature") {
+      queue.push(...((e.data as FeatureData).options ?? []).map((o) => o.key));
+    }
+  }
+  const imported = entries.filter((e) => e.kind === "classFeature" || e.kind === "subclassFeature").map((e) => e.key);
+  return [...new Set([...imported, ...required])].filter((key) => !reachable.has(key));
 }
 
 // ---------- todo junto ----------
@@ -973,12 +1023,39 @@ export function normalizeAll(files: RawFiles, source: string): {
   for (const i of fromSource("item", itemPool)) run("item", i, () => normalizeItem(i));
   for (const l of fromSource("language", files.languages?.language)) run("language", l, () => normalizeLanguage(l));
   for (const s of skills) run("skill", s, () => normalizeSkill(s));
+  // Rasgos sin normalizar por clave, para seguir los enlaces de su texto
+  const rawFeatures = new Map<string, Rec>();
   for (const f of classFiles) {
     for (const c of fromSource("class", f.class)) run("class", c, () => normalizeClass(c, ctx));
-    for (const c of fromSource("classFeature", f.classFeature)) run("classFeature", c, () => normalizeClassFeature(c));
+    for (const c of fromSource("classFeature", f.classFeature)) {
+      rawFeatures.set(classFeatureKeyOf(c), c);
+      run("classFeature", c, () => normalizeClassFeature(c));
+    }
   }
   for (const s of subclasses) run("subclass", s, () => normalizeSubclass(s));
-  for (const f of classFiles) for (const s of fromSource("subclassFeature", f.subclassFeature)) run("subclassFeature", s, () => normalizeSubclassFeature(s, ctx));
+  for (const f of classFiles) {
+    for (const s of fromSource("subclassFeature", f.subclassFeature)) {
+      rawFeatures.set(subclassFeatureKeyOf(s), s);
+      run("subclassFeature", s, () => normalizeSubclassFeature(s, ctx));
+    }
+  }
+  // Cada clase y subclase gana los rasgos enlazados desde los suyos, justo detrás del que los enlaza y sin repetir
+  for (const e of entries) {
+    if (e.kind !== "class" && e.kind !== "subclass") continue;
+    const data = e.data as { features: LevelFeature[] };
+    const seen = new Set(data.features.map((f) => f.ref.key));
+    const features: LevelFeature[] = [];
+    const add = (f: LevelFeature) => {
+      features.push(f);
+      for (const n of nestedFeatures(rawFeatures.get(f.ref.key)?.entries)) {
+        if (seen.has(n.ref.key)) continue;
+        seen.add(n.ref.key);
+        add(n);
+      }
+    };
+    data.features.forEach(add);
+    data.features = features;
+  }
   for (const o of fromSource("optionalFeature", files.optionalFeatures?.optionalfeature)) {
     run("optionalFeature", o, () => normalizeOptionalFeature(o));
   }

@@ -403,3 +403,17 @@ describe("checkChoices: opciones escritas a mano", () => {
     }
   });
 });
+
+describe("checkChoices: habilidades sin lista (cualquiera)", () => {
+  const source = "subclassFeature:bonus proficiencies|bard|xphb|lore|xphb|3";
+  const pending = [{ type: "skills" as const, source, count: 2, label: "Competencias adicionales" }];
+  const cctx = {
+    path: "choices", entries: new Map(), resolve: async () => null, skills: ["stealth"], weapons: [], level: 3, subclass: null,
+  };
+  const pick = (value: string[]) => checkChoices(pending, [{ type: "skills", source, value }], cctx);
+  it("acepta habilidades que existen y rechaza las que no", async () => {
+    expect((await pick(["arcana", "History"])).errors).toEqual({});
+    expect(Object.keys((await pick(["arcana", "basket weaving"])).errors)).toEqual([`choices.${source}`]);
+    expect(Object.keys((await pick(["arcana", "stealth"])).errors)).toEqual([`choices.${source}`]);
+  });
+});

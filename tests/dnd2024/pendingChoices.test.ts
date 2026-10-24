@@ -110,6 +110,10 @@ describe("pendingChoices", () => {
       type: "optionalFeature", source: "progression:maneuvers|battle master|fighter|xphb", count: 3,
       featureType: ["MV:B"], optionalReplace: false,
     }));
+    // Student of War (anidado en la cabecera de la subclase); «Maneuver Options» no pide otra elección
+    expect(r.slice(3)).toEqual([expect.objectContaining({
+      type: "skills", source: "subclassFeature:student of war|fighter|xphb|battle master|xphb|3", count: 1,
+    })]);
   });
 
   it("Guerrero 7: progresiones de la subclase que ya tiene (maniobras, estilo del Campeón)", () => {

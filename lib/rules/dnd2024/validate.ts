@@ -8,7 +8,7 @@ import {
 import { POINT_BUY_TOTAL, STANDARD_ARRAY, checkBackgroundBonus, pointBuyCost } from "./abilities";
 import { weaponProficient } from "./derive/attacks";
 import { FEATURE_OPTION_LABELS } from "./featureChoices";
-import { ABILITY_NAMES, FEAT_CATEGORIES } from "./labels";
+import { ABILITY_NAMES, FEAT_CATEGORIES, SKILL_NAMES } from "./labels";
 import { meetsFeatPrerequisite, pendingChoices, type FeatPrerequisiteCtx, type PendingChoice } from "./levels";
 import { meleeOnlySource, validateMasteries } from "./masteries";
 import { abilityRollValue, verifyRolls } from "./rolls";
@@ -433,7 +433,8 @@ export async function checkChoices(
 
     if (p.type === "skills" || p.type === "expertise") {
       if (!isStringList(value) || value.length !== p.count) { bad(chooseN); continue; }
-      const from = p.from?.map(lower);
+      // Sin lista: cualquier habilidad (la pericia, cualquiera con competencia, que se comprueba abajo)
+      const from = p.from?.map(lower) ?? (p.type === "skills" ? Object.keys(SKILL_NAMES) : undefined);
       if (from && !value.every((s) => from.includes(lower(s)))) { bad("alguna no está en la lista."); continue; }
       if (p.type === "skills") {
         if (value.some((s) => proficient.includes(lower(s)))) { bad("repites una habilidad que ya tienes."); continue; }
