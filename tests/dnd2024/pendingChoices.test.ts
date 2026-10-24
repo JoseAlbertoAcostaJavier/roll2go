@@ -134,13 +134,14 @@ describe("pendingChoices", () => {
     expect(r).toEqual([expect.objectContaining({
       type: "optionalFeature", source: "progression:metamagic|sorcerer|xphb", count: 2, featureType: ["MM"],
       label: "Metamagia", optionalReplace: false,
-    })]);
+    }), expect.objectContaining({ type: "spells", count: 2 })]);
   });
 
   it("Hechicero 3: solo puede sustituir una metamagia si ya conoce alguna", () => {
     expect(pendingChoices(sheetWith([["sorcerer", 2]]), cls("sorcerer"), 3, catalog)).toEqual([
       expect.objectContaining({ type: "subclass" }),
       expect.objectContaining({ type: "optionalFeature", source: "progression:metamagic|sorcerer|xphb", count: 0, optionalReplace: true }),
+      expect.objectContaining({ type: "spells", count: 2 }),
     ]);
     // Sin metamagias conocidas (progresión que empieza más tarde) no hay nada que sustituir
     const late = new Map(catalog);
@@ -148,14 +149,14 @@ describe("pendingChoices", () => {
     const data = structuredClone(late.get(key)!.data) as ClassData;
     data.progressions.optionalFeatures[0].levels = { 4: 2 };
     late.set(key, { ...late.get(key)!, data });
-    expect(types(pendingChoices(sheetWith([["sorcerer", 2]]), cls("sorcerer"), 3, late))).toEqual(["subclass"]);
+    expect(types(pendingChoices(sheetWith([["sorcerer", 2]]), cls("sorcerer"), 3, late))).toEqual(["subclass", "spells"]);
   });
 
   it("«… Options» con rasgos opcionales de otro tipo que el de la progresión: sí pide elegir", () => {
     const other = new Map(catalog);
     const key = `${B}:classFeature:metamagic options|sorcerer|xphb|2`;
     other.set(key, { ...other.get(key)!, data: { level: 2, className: "Sorcerer", options: [ref("optionalFeature:ascendant step|xphb")] } });
-    expect(types(pendingChoices(sheetWith([["sorcerer", 1]]), cls("sorcerer"), 2, other))).toEqual(["optionalFeature", "featureOption"]);
+    expect(types(pendingChoices(sheetWith([["sorcerer", 1]]), cls("sorcerer"), 2, other))).toEqual(["optionalFeature", "featureOption", "spells"]);
   });
 
   it("opciones escritas a mano: ids estables con nombre en español", () => {
@@ -167,7 +168,7 @@ describe("pendingChoices", () => {
 
   it("Clérigo 1: Orden divina con 2 opciones", () => {
     const r = pendingChoices(sheetWith([]), cls("cleric"), 1, catalog);
-    expect(types(r)).toEqual(["skills", "featureOption"]);
+    expect(types(r)).toEqual(["skills", "featureOption", "spells"]);
     expect(r[1]).toMatchObject({ source: "classFeature:divine order|cleric|xphb|1", count: 1 });
     expect(r[1].options).toEqual([
       ref("classFeature:protector|cleric|xphb|1"), ref("classFeature:thaumaturge|cleric|xphb|1"),
@@ -182,10 +183,47 @@ describe("pendingChoices", () => {
 
   it("entrada en Explorador como multiclase: 1 habilidad de su lista (y sus maestrías)", () => {
     const r = pendingChoices(sheetWith([["barbarian", 3]]), cls("ranger"), 1, catalog);
-    expect(types(r)).toEqual(["skills", "weaponMastery"]);
+    expect(types(r)).toEqual(["skills", "weaponMastery", "spells"]);
     expect(r[0]).toMatchObject({ source: "multiclass:ranger|xphb", count: 1 });
     expect(r[0].from).toContain("stealth");
     expect(r[0].from).toHaveLength(8);
+  });
+
+  describe("conjuros (regla 8)", () => {
+    const spellsOf = (r: ReturnType<typeof pendingChoices>) => r.find((p) => p.type === "spells");
+    const progressions = (name: string) => (catalog.get(`${B}:class:${name}|xphb`)!.data as ClassData).progressions;
+
+    it("Clérigo 1: sus trucos (modo list, sin conjuros aprendidos ni sustitución)", () => {
+      const p = spellsOf(pendingChoices(sheetWith([]), cls("cleric"), 1, catalog));
+      expect(p).toEqual({
+        type: "spells", source: "progression:spells|cleric|xphb", count: progressions("cleric").cantrips![0], label: "Conjuros",
+        spells: { class: cls("cleric"), mode: "list", list: "cleric", cantrips: 3, spells: 0, maxLevel: 1 },
+      });
+    });
+    it("Clérigo 2: sin trucos nuevos, pero puede sustituir uno", () => {
+      expect(spellsOf(pendingChoices(sheetWith([["cleric", 1]]), cls("cleric"), 2, catalog)))
+        .toMatchObject({ count: 0, optionalReplace: true, spells: { cantrips: 0, spells: 0 } });
+    });
+    it("Hechicero 1 y 3: trucos y conjuros aprendidos de su progresión; nivel máximo 2 a nivel 3", () => {
+      const p = progressions("sorcerer");
+      expect(spellsOf(pendingChoices(sheetWith([]), cls("sorcerer"), 1, catalog))).toMatchObject({
+        count: p.cantrips![0] + p.prepared![0], spells: { mode: "levelUp", list: "sorcerer", cantrips: 4, spells: 2, maxLevel: 1 },
+      });
+      expect(spellsOf(pendingChoices(sheetWith([["sorcerer", 2]]), cls("sorcerer"), 3, catalog))).toMatchObject({
+        optionalReplace: true, spells: { cantrips: p.cantrips![2] - p.cantrips![1], spells: p.prepared![2] - p.prepared![1], maxLevel: 2 },
+      });
+    });
+    it("Caballero arcano: la subclase lanzadora, con la lista del Mago, al elegirla a nivel 3", () => {
+      const ek = ref("subclass:eldritch knight|fighter|xphb");
+      expect(spellsOf(pendingChoices(sheetWith([["fighter", 2]]), cls("fighter"), 3, catalog, { subclass: ek }))).toMatchObject({
+        source: "progression:spells|eldritch knight|fighter|xphb",
+        spells: { class: ek, mode: "levelUp", list: "wizard", cantrips: 2, spells: 3, maxLevel: 1 },
+      });
+      expect(spellsOf(pendingChoices(sheetWith([["fighter", 2]]), cls("fighter"), 3, catalog))).toBeUndefined();
+    });
+    it("Bárbaro: ninguna", () => {
+      expect(spellsOf(pendingChoices(sheetWith([]), cls("barbarian"), 1, catalog))).toBeUndefined();
+    });
   });
 
   it("clase que no está en el catálogo: ninguna elección", () => {

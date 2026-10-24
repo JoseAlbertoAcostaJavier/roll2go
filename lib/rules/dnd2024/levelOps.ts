@@ -1,9 +1,12 @@
 // Añadir y quitar niveles de una hoja v2 (spec de subir de nivel §4.1 y §4.3). Funciones puras: las rutas guardan solo
 // los campos que cambian. Las elecciones se quedan en la entrada del nivel, así que borrarlo las deshace (también los
 // reemplazos de opciones: la derivación lee las elecciones de los niveles).
+import type { Ref } from "@/lib/rules/types";
+import type { CasterBlock, Slots } from "./derive/spells";
 import { refKey } from "./equipmentRefs";
 import { currentMasteries } from "./masteries";
 import type { Dnd2024SheetV2, LevelEntry } from "./sheet";
+import { trimSpells } from "./spellOps";
 import { summarizeClasses } from "./upgrade";
 
 const masteriesOf = (entry: LevelEntry) => entry.choices.flatMap((c) => (c.type === "weaponMastery" ? c.value : []));
@@ -45,10 +48,12 @@ export function applyLevel(
 /**
  * Hoja sin el último nivel: el nivel 1 no se borra; los PG actuales se recortan al nuevo máximo. Quita las maestrías
  * que añadió el nivel; si ya se habían cambiado por otras, recorta las de la hoja a `masteriesAfter` (las que permite
- * la hoja sin el nivel, `masteryCount`).
+ * la hoja sin el nivel, `masteryCount`). Con `spellsAfter` (bloques y espacios de la hoja sin el nivel), quita los
+ * preparados que ya no caben y recorta los espacios gastados (`trimSpells`).
  */
 export function removeLastLevel(
   sheet: Dnd2024SheetV2, maxHpAfter: number, masteriesAfter = Infinity,
+  spellsAfter?: { blocks: CasterBlock[]; slots: Slots; spellLevel: (ref: Ref) => number | undefined },
 ): { ok: true; sheet: Dnd2024SheetV2 } | { ok: false; error: string } {
   if (sheet.levels.length <= 1) return { ok: false, error: "El nivel 1 no se puede borrar." };
   const removed = sheet.levels[sheet.levels.length - 1];
@@ -69,5 +74,6 @@ export function removeLastLevel(
     }
     next.weaponMasteries = left.slice(0, masteriesAfter);
   }
+  if (spellsAfter) Object.assign(next, trimSpells(sheet, spellsAfter));
   return { ok: true, sheet: next };
 }

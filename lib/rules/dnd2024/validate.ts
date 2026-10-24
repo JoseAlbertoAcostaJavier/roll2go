@@ -3,7 +3,7 @@ import { cleanText } from "@/lib/utils";
 import type { CatalogEntry } from "@/lib/rules/catalog";
 import {
   ABILITIES, type Ability, type BackgroundData, type ClassData, type FeatData, type FeatureData, type ItemData,
-  type OptionalFeatureData, type Ref, type SpeciesData, type SubclassData,
+  type OptionalFeatureData, type Ref, type SpeciesData, type SpellData, type SubclassData,
 } from "@/lib/rules/types";
 import { POINT_BUY_TOTAL, STANDARD_ARRAY, checkBackgroundBonus, pointBuyCost } from "./abilities";
 import { weaponProficient } from "./derive/attacks";
@@ -14,7 +14,7 @@ import { meleeOnlySource, validateMasteries } from "./masteries";
 import { abilityRollValue, verifyRolls } from "./rolls";
 import { bareName, loadEquipmentEntries, refKey } from "./equipmentRefs";
 import {
-  ABILITY_METHODS, type AbilityMethod, type Choice, type Dnd2024Sheet, type Dnd2024SheetV2, type Named,
+  ABILITY_METHODS, type AbilityMethod, type Choice, type Dnd2024Sheet, type Dnd2024SheetV2, type Named, type SpellChoice,
 } from "./sheet";
 import { SKILLS_SOURCE, upgradeSheet } from "./upgrade";
 
@@ -332,7 +332,13 @@ export type ChoicesCtx = {
   held?: Map<string, Named[]>;
   /** Armas con las que ya tiene maestría. */
   masteries?: Ref[];
+  /**
+   * Trucos y conjuros que ya tiene una clase lanzadora (aprendidos o, en modo `spellbook`, su libro): no se repiten y
+   * de ahí sale el que se sustituye. Sin él (creación), ninguno.
+   */
+  spellsHeld?: (cls: Ref, mode: SpellChoiceMode) => { cantrips: Named[]; spells: Named[] };
 };
+type SpellChoiceMode = NonNullable<PendingChoice["spells"]>["mode"];
 
 const lower = (s: string) => s.toLowerCase();
 const ABILITY_CAP = 20;
@@ -539,9 +545,75 @@ export async function checkChoices(
         continue;
       }
       out.push({ type: "weaponMastery", source: p.source, value: weapons });
+    } else if (p.type === "spells" && p.spells) {
+      const r = await checkSpells(p.spells, !!p.optionalReplace, value, ctx, load);
+      if ("error" in r) { bad(r.error); continue; }
+      out.push({ type: "spells", source: p.source, value: r.value });
     } else {
       bad("esta elección todavía no se puede hacer aquí.");
     }
   }
   return { choices: out, errors };
+}
+
+// Elección de conjuros (spec de conjuros §2.4): exactamente los trucos y conjuros nuevos que pide el nivel, de la
+// lista de la clase y de nivel permitido, sin repetir los que ya tiene; y como mucho una sustitución del mismo tipo
+async function checkSpells(
+  p: NonNullable<PendingChoice["spells"]>, canReplace: boolean, raw: unknown, ctx: ChoicesCtx,
+  load: (v: unknown, kind: string) => Promise<CatalogEntry | null>,
+): Promise<{ error: string } | { value: SpellChoice }> {
+  if (!isObj(raw)) return { error: "elige los conjuros." };
+  const given = asRef(raw.class);
+  if (given && refKey(given) !== refKey(p.class)) return { error: "conjuros de otra clase." };
+  const held = ctx.spellsHeld?.(p.class, p.mode) ?? { cantrips: [], spells: [] };
+  const heldKeys = new Set([...held.cantrips, ...held.spells].map((h) => refKey(h.ref)));
+  const nameOf = (e: CatalogEntry) => e.nameEs || e.name;
+  const toNamed = (e: CatalogEntry): Named => ({ ref: { book: e.ref.book, key: e.ref.key }, name: nameOf(e) });
+  // Comprueba un conjuro: de la lista, truco o de nivel 1..máximo
+  const fits = (e: CatalogEntry, cantrip: boolean): string | null => {
+    const d = e.data as SpellData | null;
+    if (!d?.classes?.includes(p.list)) return `${nameOf(e)} no está en la lista de la clase.`;
+    if (cantrip ? d.level !== 0 : d.level < 1) return `${nameOf(e)} no es ${cantrip ? "un truco" : "un conjuro de nivel 1 o más"}.`;
+    if (!cantrip && d.level > p.maxLevel) return `${nameOf(e)} es de nivel ${d.level}; el máximo es ${p.maxLevel}.`;
+    return null;
+  };
+  const pick = async (list: unknown, count: number, cantrip: boolean): Promise<{ error: string } | CatalogEntry[]> => {
+    const what = cantrip ? (count === 1 ? "truco" : "trucos") : (count === 1 ? "conjuro" : "conjuros");
+    const items = list ?? [];
+    if (!Array.isArray(items) || items.length !== count) return { error: `elige ${count} ${what}.` };
+    const found = await Promise.all(items.map((v) => load(v, "spell")));
+    if (found.some((e) => !e)) return { error: "conjuro no disponible." };
+    for (const e of found as CatalogEntry[]) {
+      const bad = fits(e, cantrip);
+      if (bad) return { error: bad };
+      if (heldKeys.has(refKey(e.ref))) return { error: `ya tienes ${nameOf(e)}.` };
+    }
+    return found as CatalogEntry[];
+  };
+
+  const cantrips = await pick(raw.cantrips, p.cantrips, true);
+  if ("error" in cantrips) return cantrips;
+  const spells = await pick(raw.spells, p.spells, false);
+  if ("error" in spells) return spells;
+  const chosen = [...cantrips, ...spells];
+  if (new Set(chosen.map((e) => refKey(e.ref))).size !== chosen.length) return { error: "conjuro repetido." };
+
+  const value: SpellChoice = { class: p.class, cantrips: cantrips.map(toNamed), spells: spells.map(toNamed) };
+  if (raw.replace !== undefined) {
+    if (!canReplace || !isObj(raw.replace)) return { error: "no puedes sustituir conjuros en este nivel." };
+    const outRef = asRef(raw.replace.out);
+    // Sale un truco o, en modo `levelUp`, un conjuro aprendido (nunca uno del libro del Mago)
+    const outCantrip = outRef ? held.cantrips.find((h) => refKey(h.ref) === refKey(outRef)) : undefined;
+    const outSpell = outRef && p.mode === "levelUp" ? held.spells.find((h) => refKey(h.ref) === refKey(outRef)) : undefined;
+    const out = outCantrip ?? outSpell;
+    if (!out) return { error: "solo puedes sustituir un truco o un conjuro que ya conoces." };
+    const inEntry = await load(raw.replace.in, "spell");
+    if (!inEntry) return { error: "conjuro no disponible." };
+    const bad = fits(inEntry, !!outCantrip);
+    if (bad) return { error: bad };
+    if (heldKeys.has(refKey(inEntry.ref)) || chosen.some((e) => refKey(e.ref) === refKey(inEntry.ref)))
+      return { error: `ya tienes ${nameOf(inEntry)}.` };
+    value.replace = { out, in: toNamed(inEntry) };
+  }
+  return { value };
 }

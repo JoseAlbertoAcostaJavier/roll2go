@@ -84,8 +84,8 @@ function casters(sheet: Dnd2024SheetV2, entries: Map<string, CatalogEntry>): Cas
   return out;
 }
 
-// Trucos y conjuros elegidos para una clase en el historial, con las sustituciones aplicadas en orden
-function chosenSpells(sheet: Dnd2024SheetV2, cls: Ref) {
+/** Trucos y conjuros elegidos para una clase en el historial, con las sustituciones aplicadas en orden. */
+export function chosenSpells(sheet: Pick<Dnd2024SheetV2, "levels">, cls: Ref): { cantrips: Named[]; spells: Named[] } {
   const cantrips: Named[] = [];
   const spells: Named[] = [];
   for (const l of sheet.levels) {

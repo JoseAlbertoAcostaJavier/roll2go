@@ -10,7 +10,7 @@ beforeAll(() => {
   process.env.AUTH_SECRET = "secreto-de-prueba";
 });
 
-const cat = buildCatalog(["class-barbarian.json", "class-cleric.json", "class-fighter.json", "class-warlock.json"]);
+const cat = buildCatalog(["class-barbarian.json", "class-cleric.json", "class-fighter.json", "class-warlock.json", "class-wizard.json"]);
 // Dotes, invocaciones y armas que no están en los fixtures
 const extra = (key: string, data: unknown, name: string) =>
   cat.set(`${B}:${key}`, { ...cat.get(`${B}:item:greataxe|xphb`)!, ref: ref(key), name, nameEs: null, data });
@@ -31,6 +31,19 @@ extra("feat:boon of combat prowess|xphb", {
 extra("optionalFeature:armor of shadows|xphb", { featureType: ["EI"] }, "Armor of Shadows");
 extra("optionalFeature:mask of many faces|xphb", { featureType: ["EI"] }, "Mask of Many Faces");
 extra("optionalFeature:misty visions|xphb", { featureType: ["EI"] }, "Misty Visions");
+// Conjuros: nombre, nivel y listas
+for (const [name, level, classes] of [
+  ["eldritch blast", 0, ["warlock"]], ["chill touch", 0, ["warlock", "wizard"]], ["minor illusion", 0, ["warlock", "wizard"]],
+  ["hex", 1, ["warlock"]], ["armor of agathys", 1, ["warlock"]], ["witch bolt", 1, ["warlock", "wizard"]],
+  ["charm person", 1, ["warlock", "wizard"]], ["hold person", 2, ["warlock", "wizard"]], ["burning hands", 1, ["wizard"]],
+  ["magic missile", 1, ["wizard"]], ["shield", 1, ["wizard"]],
+  ["light", 0, ["cleric", "wizard"]], ["sacred flame", 0, ["cleric"]], ["guidance", 0, ["cleric"]],
+  ["thaumaturgy", 0, ["cleric"]], ["bless", 1, ["cleric"]],
+] as [string, number, string[]][]) {
+  extra(`spell:${name}|xphb`, {
+    level, school: "V", time: "", range: "", components: "", duration: "", concentration: false, ritual: false, classes, tags: [],
+  }, name);
+}
 
 const ctx = (userId = "u1") => ({
   userId,
@@ -174,12 +187,16 @@ describe("validateLevel", () => {
         { type: "optionalFeature", source: INVOCATIONS, value: [named(ref("optionalFeature:armor of shadows|xphb"))] },
       ],
     });
-    const invocations = (keys: string[], replaced?: string[]) => ({
+    const SPELLS = "progression:spells|warlock|xphb";
+    // Brujo 2: 1 conjuro aprendido nuevo (sin trucos nuevos)
+    const learn = (spells = ["hex"], extraValue: object = {}) =>
+      ({ type: "spells", source: SPELLS, value: { cantrips: [], spells: spells.map((n) => client(`spell:${n}|xphb`)), ...extraValue } });
+    const invocations = (keys: string[], replaced?: string[], spells = learn()) => ({
       expectedLevel: 2, class: client("class:warlock|xphb"), hp: { method: "average", value: 5 },
       choices: [{
         type: "optionalFeature", source: INVOCATIONS, value: keys.map((k) => client(`optionalFeature:${k}|xphb`)),
         ...(replaced ? { replaced: replaced.map((k) => client(`optionalFeature:${k}|xphb`)) } : {}),
-      }],
+      }, spells],
     });
 
     it("Brujo 2: dos invocaciones nuevas", async () => {
@@ -204,6 +221,102 @@ describe("validateLevel", () => {
       expect(await errorsOf(warlock1(), invocations(three.slice(0, 2), ["armor of shadows"])))
         .toHaveProperty([`choices.${INVOCATIONS}`]);
       expect(await errorsOf(warlock1(), invocations(three, ["eldritch smite"]))).toHaveProperty([`choices.${INVOCATIONS}`]);
+    });
+
+    describe("conjuros", () => {
+      const two = ["mask of many faces", "misty visions"];
+      const spellErrors = async (sheet: Dnd2024SheetV2, spells: unknown) =>
+        (await errorsOf(sheet, invocations(two, undefined, spells as ReturnType<typeof learn>)))[`choices.${SPELLS}`];
+      // Brujo 1 con sus trucos y conjuros
+      const known = () => {
+        const s = warlock1();
+        s.levels[0].choices.push({
+          type: "spells", source: SPELLS, value: {
+            class: cls("warlock"), cantrips: [named(ref("spell:eldritch blast|xphb")), named(ref("spell:chill touch|xphb"))],
+            spells: [named(ref("spell:hex|xphb")), named(ref("spell:armor of agathys|xphb"))],
+          },
+        });
+        return s;
+      };
+
+      it("exige el número exacto de conjuros nuevos, con los nombres del catálogo", async () => {
+        const r = await validateLevel(warlock1(), invocations(two), ctx());
+        if (!r.ok) throw new Error(JSON.stringify(r.errors));
+        expect(r.entry.choices[1]).toEqual({
+          type: "spells", source: SPELLS,
+          value: { class: cls("warlock"), cantrips: [], spells: [{ ref: ref("spell:hex|xphb"), name: "hex" }] },
+        });
+        expect(await spellErrors(warlock1(), learn([]))).toBe("Conjuros: elige 1 conjuro.");
+        expect(await spellErrors(warlock1(), learn(["hex", "witch bolt"]))).toBe("Conjuros: elige 1 conjuro.");
+        expect(await spellErrors(warlock1(), learn(["hex"], { cantrips: [client("spell:minor illusion|xphb")] })))
+          .toBe("Conjuros: elige 0 trucos.");
+        expect(await errorsOf(warlock1(), invocations(two, undefined, null as never))).toHaveProperty("choices");
+      });
+      it("de otra lista, de nivel demasiado alto, un truco o uno que ya conoce → error", async () => {
+        expect(await spellErrors(warlock1(), learn(["burning hands"]))).toMatch(/no está en la lista/);
+        expect(await spellErrors(warlock1(), learn(["hold person"]))).toMatch(/nivel 2; el máximo es 1/);
+        expect(await spellErrors(warlock1(), learn(["eldritch blast"]))).toMatch(/no es un conjuro de nivel 1/);
+        expect(await spellErrors(known(), learn(["hex"]))).toBe("Conjuros: ya tienes hex.");
+      });
+      it("acepta una sustitución válida (un conjuro aprendido por otro de la lista)", async () => {
+        const replace = { out: client("spell:hex|xphb"), in: client("spell:charm person|xphb") };
+        const r = await validateLevel(known(), invocations(two, undefined, learn(["witch bolt"], { replace })), ctx());
+        if (!r.ok) throw new Error(JSON.stringify(r.errors));
+        expect((r.entry.choices[1].value as { replace: unknown }).replace).toEqual({
+          out: { ref: ref("spell:hex|xphb"), name: "hex" }, in: { ref: ref("spell:charm person|xphb"), name: "charm person" },
+        });
+        // También un truco por otro truco
+        const cantrip = { out: client("spell:chill touch|xphb"), in: client("spell:minor illusion|xphb") };
+        expect(await spellErrors(known(), learn(["witch bolt"], { replace: cantrip }))).toBeUndefined();
+      });
+      it("sustitución no válida: uno que no conoce, de otro tipo, uno que ya tiene o el mismo que aprende → error", async () => {
+        const bad = (out: string, inn: string, spells = ["witch bolt"]) =>
+          spellErrors(known(), learn(spells, { replace: { out: client(`spell:${out}|xphb`), in: client(`spell:${inn}|xphb`) } }));
+        expect(await bad("charm person", "hold person")).toMatch(/solo puedes sustituir/);
+        expect(await bad("hex", "minor illusion")).toMatch(/no es un conjuro de nivel 1/);
+        expect(await bad("chill touch", "charm person")).toMatch(/no es un truco/);
+        expect(await bad("hex", "armor of agathys")).toBe("Conjuros: ya tienes armor of agathys.");
+        expect(await bad("hex", "witch bolt")).toBe("Conjuros: ya tienes witch bolt.");
+      });
+    });
+  });
+
+  describe("Mago: libro de conjuros", () => {
+    const SPELLS = "progression:spells|wizard|xphb";
+    const book = ["burning hands", "witch bolt", "charm person"];
+    const wizard1 = () => {
+      const s = sheetWith([["wizard", 1]], {
+        1: [{
+          type: "spells", source: SPELLS, value: {
+            class: cls("wizard"), cantrips: [named(ref("spell:light|xphb")), named(ref("spell:chill touch|xphb"))],
+            spells: book.map((n) => named(ref(`spell:${n}|xphb`))),
+          },
+        }],
+      });
+      s.baseAbilities.int = 15;
+      return s;
+    };
+    const spellErrors = async (value: object) => (await errorsOf(wizard1(), {
+      expectedLevel: 2, class: client("class:wizard|xphb"), hp: { method: "average", value: 4 },
+      choices: [{ type: "spells", source: SPELLS, value }],
+    }))[`choices.${SPELLS}`];
+    const spells = (names: string[]) => names.map((n) => client(`spell:${n}|xphb`));
+    const two = spells(["magic missile", "shield"]);
+
+    it("Mago 2: 2 entradas nuevas de su lista y nivel, que no estén ya en el libro", async () => {
+      expect(await spellErrors({ cantrips: [], spells: two })).toBeUndefined();
+      expect(await spellErrors({ cantrips: [], spells: spells(["magic missile"]) })).toBe("Conjuros: elige 2 conjuros.");
+      expect(await spellErrors({ cantrips: [], spells: spells(["magic missile", "hold person"]) })).toMatch(/nivel 2; el máximo es 1/);
+      expect(await spellErrors({ cantrips: [], spells: spells(["magic missile", "hex"]) })).toMatch(/no está en la lista/);
+      expect(await spellErrors({ cantrips: [], spells: spells(["magic missile", "burning hands"]) }))
+        .toBe("Conjuros: ya tienes burning hands.");
+      expect(await spellErrors({ cantrips: [], spells: spells(["shield", "shield"]) })).toBe("Conjuros: conjuro repetido.");
+    });
+    it("sustituye un truco, pero nunca un conjuro del libro", async () => {
+      const replace = (out: string, inn: string) => ({ out: client(`spell:${out}|xphb`), in: client(`spell:${inn}|xphb`) });
+      expect(await spellErrors({ cantrips: [], spells: two, replace: replace("light", "minor illusion") })).toBeUndefined();
+      expect(await spellErrors({ cantrips: [], spells: two, replace: replace("burning hands", "charm person") }))
+        .toMatch(/solo puedes sustituir/);
     });
   });
 
@@ -232,7 +345,9 @@ describe("validateLevel", () => {
     const sheet = barbarian3();
     sheet.baseAbilities.wis = 11;
     const order = { type: "featureOption", source: "classFeature:divine order|cleric|xphb|1", value: client("classFeature:protector|cleric|xphb|1") };
-    const r = await validateLevel(sheet, { ...body, class: client("class:cleric|xphb"), choices: [order] }, ctx());
+    const cantrips = ["light", "sacred flame", "guidance"].map((n) => client(`spell:${n}|xphb`));
+    const spells = { type: "spells", source: "progression:spells|cleric|xphb", value: { cantrips, spells: [] } };
+    const r = await validateLevel(sheet, { ...body, class: client("class:cleric|xphb"), choices: [order, spells] }, ctx());
     if (!r.ok) throw new Error(JSON.stringify(r.errors));
     expect(r.entry).toMatchObject({ n: 4, classLevel: 1, class: { name: "Cleric" } });
   });

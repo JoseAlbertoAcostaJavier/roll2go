@@ -237,7 +237,7 @@ describe("validateSheet", () => {
 });
 
 describe("validateSheet: elecciones de clase de nivel 1", () => {
-  const cat = buildCatalog(["class-barbarian.json", "class-cleric.json", "class-fighter.json", "class-rogue.json"]);
+  const cat = buildCatalog(["class-barbarian.json", "class-cleric.json", "class-fighter.json", "class-rogue.json", "class-wizard.json"]);
   // Armas y un estilo de combate que no están en los fixtures
   const extra = (key: string, data: unknown, name: string) =>
     cat.set(`${FB}:${key}`, { ...cat.get(`${FB}:item:greataxe|xphb`)!, ref: fref(key), name, nameEs: null, data });
@@ -250,6 +250,21 @@ describe("validateSheet: elecciones de clase de nivel 1", () => {
     weapon: { damage: "1d6", damageType: "P", properties: ["F", "L"], mastery: "vex", category: "martial" },
   }, "Shortsword");
   extra("feat:archery|xphb", { category: "fightingStyle", repeatable: false }, "Archery");
+  const WIZARD_SPELLS = ["magic missile", "shield", "sleep", "mage armor", "detect magic", "burning hands", "grease"];
+  for (const [name, level, classes] of [
+    ["light", 0, ["cleric", "wizard"]], ["sacred flame", 0, ["cleric"]], ["guidance", 0, ["cleric"]],
+    ["mage hand", 0, ["wizard"]], ["fire bolt", 0, ["wizard"]], ["fireball", 3, ["wizard"]],
+    ...WIZARD_SPELLS.map((n) => [n, 1, ["wizard"]]),
+  ] as [string, number, string[]][]) {
+    extra(`spell:${name}|xphb`, {
+      level, school: "V", time: "", range: "", components: "", duration: "", concentration: false, ritual: false, classes, tags: [],
+    }, name);
+  }
+  const spellChoice = (cls: string, cantrips: string[], spells: string[] = []) => ({
+    type: "spells", source: `progression:spells|${cls}|xphb`,
+    value: { cantrips: cantrips.map((n) => fnamed(`spell:${n}|xphb`)), spells: spells.map((n) => fnamed(`spell:${n}|xphb`)) },
+  });
+  const CLERIC_CANTRIPS = ["light", "sacred flame", "guidance"];
   const fctx = {
     userId: "u1",
     books: [FB],
@@ -282,13 +297,38 @@ describe("validateSheet: elecciones de clase de nivel 1", () => {
     expect(errs(r)).toHaveProperty("levels.0.choices");
   });
   it("Clérigo 1 con Orden divina → ok, con el nombre del catálogo", async () => {
-    const r = await validateSheet(sheetFor("cleric", [skills(["history", "medicine"]), order("classFeature:protector|cleric|xphb|1")]), fctx);
+    const r = await validateSheet(sheetFor("cleric", [
+      skills(["history", "medicine"]), order("classFeature:protector|cleric|xphb|1"), spellChoice("cleric", CLERIC_CANTRIPS),
+    ]), fctx);
     if (!r.ok) throw new Error(JSON.stringify(r.errors));
-    expect(r.sheet.levels[0].choices).toEqual([
+    expect(r.sheet.levels[0].choices.slice(0, 2)).toEqual([
       { type: "skills", source: "class:skills", value: ["history", "medicine"] },
       { type: "featureOption", source: "classFeature:divine order|cleric|xphb|1", value: { ref: fref("classFeature:protector|cleric|xphb|1"), name: "Protector" } },
     ]);
     expect(r.sheet.weaponMasteries).toEqual([]);
+  });
+  it("Clérigo 1: exige sus 3 trucos de la lista del Clérigo", async () => {
+    const base = [skills(["history", "medicine"]), order("classFeature:protector|cleric|xphb|1")];
+    expect(errs(await validateSheet(sheetFor("cleric", base), fctx))["levels.0.choices"]).toMatch(/Conjuros/);
+    expect(errs(await validateSheet(sheetFor("cleric", [...base, spellChoice("cleric", ["light", "guidance"])]), fctx)))
+      .toHaveProperty(["levels.0.choices.progression:spells|cleric|xphb"], "Conjuros: elige 3 trucos.");
+    expect(errs(await validateSheet(sheetFor("cleric", [...base, spellChoice("cleric", ["light", "guidance", "fire bolt"])]), fctx)))
+      .toHaveProperty(["levels.0.choices.progression:spells|cleric|xphb"], "Conjuros: fire bolt no está en la lista de la clase.");
+  });
+  it("Mago 1: exige sus trucos y el libro inicial de 6 conjuros de nivel 1", async () => {
+    const SOURCE = "levels.0.choices.progression:spells|wizard|xphb";
+    const wizard = (choice: unknown) => validateSheet(sheetFor("wizard", [skills(["arcana", "history"]), choice]), fctx);
+    const cantrips = ["light", "mage hand", "fire bolt"];
+    const r = await wizard(spellChoice("wizard", cantrips, WIZARD_SPELLS.slice(0, 6)));
+    if (!r.ok) throw new Error(JSON.stringify(r.errors));
+    expect(r.sheet.levels[0].choices[1]).toMatchObject({
+      type: "spells", value: { class: fref("class:wizard|xphb"), cantrips: [{ name: "light" }, { name: "mage hand" }, { name: "fire bolt" }] },
+    });
+    expect((r.sheet.levels[0].choices[1].value as { spells: unknown[] }).spells).toHaveLength(6);
+    expect(errs(await wizard(spellChoice("wizard", cantrips, WIZARD_SPELLS.slice(0, 5))))).toHaveProperty([SOURCE], "Conjuros: elige 6 conjuros.");
+    expect(errs(await wizard(spellChoice("wizard", cantrips.slice(0, 2), WIZARD_SPELLS.slice(0, 6))))).toHaveProperty([SOURCE], "Conjuros: elige 3 trucos.");
+    expect(errs(await wizard(spellChoice("wizard", cantrips, [...WIZARD_SPELLS.slice(0, 5), "fireball"]))))
+      .toHaveProperty([SOURCE], "Conjuros: fireball es de nivel 3; el máximo es 1.");
   });
   it("Orden divina con una opción que no es suya, o elección que no estaba pendiente → error", async () => {
     expect(choiceErrors(await validateSheet(sheetFor("cleric", [skills(["history", "medicine"]), order("classFeature:rage|barbarian|xphb|1")]), fctx))).not.toEqual([]);

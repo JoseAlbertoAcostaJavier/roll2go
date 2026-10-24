@@ -3,6 +3,7 @@
 import type { CatalogEntry } from "@/lib/rules/catalog";
 import { ABILITIES, type Ability, type ClassData, type FeatureData, type Ref, type SubclassData } from "@/lib/rules/types";
 import { derive } from "./derive";
+import { chosenSpells } from "./derive/spells";
 import { refKey } from "./equipmentRefs";
 import { heldPicks, meetsMulticlass, pendingChoices } from "./levels";
 import { currentMasteries } from "./masteries";
@@ -128,6 +129,11 @@ export async function validateLevel(
     },
     held: heldPicks(sheet.levels),
     masteries: currentMasteries(sheet),
+    // El libro del Mago también tiene los copiados
+    spellsHeld: (cls, mode) => {
+      const held = chosenSpells(sheet, cls);
+      return mode === "spellbook" ? { ...held, spells: [...held.spells, ...(sheet.spellbookExtra ?? [])] } : held;
+    },
   });
   for (const [k, msg] of Object.entries(checked.errors)) err(k, msg);
 

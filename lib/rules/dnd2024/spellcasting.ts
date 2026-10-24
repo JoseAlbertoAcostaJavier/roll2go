@@ -77,3 +77,16 @@ export function spellbookSize(progressions: Pick<ClassProgressions, "spellbook">
 
 /** Clave de `sheet.prepared` para una clase (o subclase lanzadora). */
 export const preparedKey = (cls: Ref) => cls.key;
+
+// Las subclases lanzadoras del XPHB eligen de la lista del Mago
+const SUBCLASS_SPELL_LISTS: Record<string, string> = {
+  "subclass:eldritch knight|fighter|xphb": "wizard",
+  "subclass:arcane trickster|rogue|xphb": "wizard",
+};
+
+/**
+ * Identificador de la lista de conjuros de una clase o subclase lanzadora (el que guarda `SpellData.classes`): el de
+ * la clase (`wizard`) o, en las subclases, el de la tabla; si no está, el de la propia entrada.
+ */
+export const spellListOf = (caster: Ref, identifier: string | undefined) =>
+  SUBCLASS_SPELL_LISTS[caster.key] ?? identifier ?? caster.key.replace(/^[^:]*:/, "").split("|")[0];

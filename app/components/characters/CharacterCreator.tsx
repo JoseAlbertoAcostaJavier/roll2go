@@ -367,9 +367,10 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
     return map;
   }, [props.species, props.lineages, props.classes, props.backgrounds, cache]);
 
-  // Elecciones de nivel 1 de la clase (las mismas que exige el servidor); las de los rasgos aparecen al cargarlos
+  // Elecciones de nivel 1 de la clase (las mismas que exige el servidor); las de los rasgos aparecen al cargarlos.
+  // (La elección de conjuros tendrá su propia sección: por ahora no se muestra)
   const pending = useMemo(
-    () => (form.klass ? pendingChoices({ levels: [] }, form.klass, 1, entries) : []),
+    () => (form.klass ? pendingChoices({ levels: [] }, form.klass, 1, entries).filter((p) => p.type !== "spells") : []),
     [form.klass, entries],
   );
 

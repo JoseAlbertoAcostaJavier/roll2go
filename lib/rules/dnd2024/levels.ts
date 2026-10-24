@@ -2,13 +2,14 @@
 // puras: las usan el asistente de subir de nivel, el creador (nivel 1) y la validación del servidor.
 import type { CatalogEntry } from "@/lib/rules/catalog";
 import type {
-  Ability, ClassData, FeatureData, LevelCounts, LevelFeature, OptionalFeatureData, Ref, SubclassData,
+  Ability, ClassData, FeatureData, LevelCounts, LevelFeature, OptionalFeatureData, Ref, SpellcastingMode, SubclassData,
 } from "@/lib/rules/types";
 import type { Derived } from "./derive";
 import { refKey } from "./equipmentRefs";
 import { FEATURE_CHOICES, REPLACEABLE_FIGHTING_STYLE, type ChoiceSpec } from "./featureChoices";
 import { ABILITY_NAMES, optionalFeatureLabel } from "./labels";
 import type { Choice, Dnd2024SheetV2, FeatPickValue, LevelEntry, Named } from "./sheet";
+import { maxSpellLevel, spellListOf } from "./spellcasting";
 import { SKILLS_SOURCE, SUBCLASS_SOURCE, summarizeClasses } from "./upgrade";
 
 /**
@@ -17,7 +18,9 @@ import { SKILLS_SOURCE, SUBCLASS_SOURCE, summarizeClasses } from "./upgrade";
  * `from`: habilidades permitidas o nombres de las opciones escritas a mano; `options`: opciones del catálogo;
  * `category`: categorías de dote (`FS`, `EB`, `G`); `featureType`: tipo de rasgo opcional (`MM`, `EI`…);
  * `optionalReplace`: además puede sustituir uno de los rasgos opcionales (o el estilo de combate) que ya tiene; con
- * `count: 0`, el nivel solo permite esa sustitución.
+ * `count: 0`, el nivel solo permite esa sustitución. `spells`: en la elección de conjuros, la clase (o subclase
+ * lanzadora), su modo, su lista (`SpellData.classes`), cuántos trucos y conjuros nuevos (aprendidos o entradas del
+ * libro) y su nivel máximo; `count` es la suma.
  */
 export type PendingChoice = {
   type: Choice["type"];
@@ -29,7 +32,20 @@ export type PendingChoice = {
   featureType?: string[];
   label: string;
   optionalReplace?: boolean;
+  spells?: SpellsPending;
 };
+
+export type SpellsPending = {
+  class: Ref;
+  mode: SpellcastingMode;
+  list: string;
+  cantrips: number;
+  spells: number;
+  maxLevel: number;
+};
+
+/** Fuente de la elección de conjuros de una clase o subclase lanzadora. */
+export const spellsSource = (caster: Ref) => `progression:spells|${bareKey(caster.key)}`;
 
 const ASI_PREFIX = "classFeature:ability score improvement|";
 // Categoría de las dotes generales (la alternativa a la mejora de característica)
@@ -173,7 +189,35 @@ export function pendingChoices(
   };
   featureChoices(newFeatures);
 
-  // 8. Conjuros: llegan con la parte 5
+  // 8. Conjuros de la clase o, si no lanza, de su subclase lanzadora (Caballero arcano…): trucos nuevos, conjuros
+  // aprendidos (`levelUp`) o entradas del libro (`spellbook`); al subir un nivel que no es el primero, puede
+  // sustituir un truco o (en `levelUp`) un conjuro aprendido
+  const caster = data.spellcasting
+    ? { ref: classRef, casting: data.spellcasting, progressions: data.progressions }
+    : subData?.spellcasting && subclass
+      ? { ref: subclass.ref, casting: subData.spellcasting, progressions: subData.progressions }
+      : null;
+  if (caster) {
+    const { mode, progression } = caster.casting;
+    const at = (list: number[] | null | undefined, level: number) => (level >= 1 ? (list?.[level - 1] ?? 0) : 0);
+    const gained = (list: number[] | null | undefined) => Math.max(at(list, newClassLevel) - at(list, newClassLevel - 1), 0);
+    const cantrips = gained(caster.progressions.cantrips);
+    const spells = mode === "levelUp" ? gained(caster.progressions.prepared)
+      : mode === "spellbook" ? at((caster.progressions as Partial<ClassData["progressions"]>).spellbook, newClassLevel)
+      : 0;
+    const replace = at(caster.progressions.cantrips, newClassLevel - 1) > 0
+      || (mode === "levelUp" && at(caster.progressions.prepared, newClassLevel - 1) > 0);
+    if (cantrips + spells > 0 || replace) {
+      out.push({
+        type: "spells", source: spellsSource(caster.ref), count: cantrips + spells, label: "Conjuros",
+        spells: {
+          class: caster.ref, mode, list: spellListOf(caster.ref, entryOf(caster.ref)?.identifier),
+          cantrips, spells, maxLevel: maxSpellLevel(progression, newClassLevel),
+        },
+        ...(replace ? { optionalReplace: true } : {}),
+      });
+    }
+  }
 
   // 9. Rasgos nuevos de la subclase
   if (subData) featureChoices(subData.features.filter((f) => f.level === newClassLevel));
