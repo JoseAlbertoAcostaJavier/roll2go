@@ -26,6 +26,11 @@ export type ValidateCtx = {
   hasLineages: (species: Ref) => Promise<boolean>;
   /** Id de cada línea del inventario inicial (un ObjectId en texto). */
   makeId: () => string;
+  /**
+   * Al rehacer la creación: las tiradas que ya tenía el personaje. Si se envían las mismas (valores y token), valen
+   * aunque el token haya caducado; se comprobaron al crearlo.
+   */
+  keptRolls?: { values: number[]; token: string } | null;
 };
 export type ValidateResult = { ok: true; sheet: Dnd2024SheetV2 } | { ok: false; errors: Record<string, string> };
 
@@ -217,7 +222,10 @@ export async function validateSheet(input: unknown, ctx: ValidateCtx): Promise<V
       const r = input.rolls;
       if (!isObj(r) || !Array.isArray(r.values) || !r.values.every(isInt) || typeof r.token !== "string")
         err("rolls", "Haz las tiradas de característica.");
-      else if (!verifyRolls(ctx.userId, r.values, r.token)) err("rolls", "Las tiradas no son válidas o han caducado.");
+      else if (
+        !(ctx.keptRolls && r.token === ctx.keptRolls.token && sameValues(r.values, ctx.keptRolls.values))
+        && !verifyRolls(ctx.userId, r.values, r.token)
+      ) err("rolls", "Las tiradas no son válidas o han caducado.");
       else if (!sameValues(vals, r.values)) err("baseAbilities", "Debes repartir exactamente las tiradas obtenidas.");
       else {
         // Los dados no van firmados: solo se guardan si cuadran con cada tirada

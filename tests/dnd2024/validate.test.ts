@@ -212,6 +212,20 @@ describe("validateSheet", () => {
     expect(await errorsOf(roll(signRolls("u1", other), other))).toHaveProperty("baseAbilities");
     expect(await errorsOf((s) => { s.abilityMethod = "roll"; s.rolls = null; })).toHaveProperty("rolls");
   });
+  it("al rehacer, acepta las tiradas que ya tenía el personaje aunque hayan caducado", async () => {
+    const values = [15, 14, 13, 12, 10, 8];
+    const old = signRolls("u1", values, Date.now() - 25 * 3600 * 1000);
+    const s = valid();
+    s.abilityMethod = "roll";
+    s.rolls = { values, token: old };
+    const r = await validateSheet(s, { ...ctx, keptRolls: { values: [...values].reverse(), token: old } });
+    expect(r.ok && r.sheet.rolls?.values).toEqual(values);
+    // Otro token u otros valores con el mismo token no valen
+    expect((await validateSheet(s, { ...ctx, keptRolls: { values, token: "1.otro" } })).ok).toBe(false);
+    s.rolls = { values: [18, 14, 13, 12, 10, 8], token: old };
+    s.baseAbilities = { ...s.baseAbilities, str: 18 };
+    expect((await validateSheet(s, { ...ctx, keptRolls: { values, token: old } })).ok).toBe(false);
+  });
   it("textos y experiencia", async () => {
     expect(await errorsOf((s) => { s.alignment = "x".repeat(41); })).toHaveProperty("alignment");
     expect(await errorsOf((s) => { s.notes = "x".repeat(10001); })).toHaveProperty("notes");

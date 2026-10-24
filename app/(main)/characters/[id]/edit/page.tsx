@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, RotateCcw } from "lucide-react";
 import { requireUser } from "@/lib/currentUser";
 import { loadCharacterFor } from "@/lib/characterAccess";
 import { bareName, refKey } from "@/lib/rules/dnd2024/equipmentRefs";
@@ -30,7 +30,18 @@ export default async function EditCharacterPage({ params }: { params: Promise<{ 
 
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <h1 className="font-heading text-3xl font-extrabold">Editar personaje</h1>
-        <DeleteCharacter characterId={id} characterName={c.name} />
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Solo a nivel 1: después, los niveles se borran uno a uno */}
+          {!found.outdated && sheet.levels.length === 1 && (
+            <Link
+              href={`/characters/${id}/recreate`}
+              className="flex w-max items-center gap-1.5 rounded-md border border-line px-3 py-1.5 text-xs font-bold transition-colors hover:border-brand"
+            >
+              <RotateCcw size={14} aria-hidden="true" /> Rehacer creación
+            </Link>
+          )}
+          <DeleteCharacter characterId={id} characterName={c.name} />
+        </div>
       </div>
 
       <CharacterEditForm

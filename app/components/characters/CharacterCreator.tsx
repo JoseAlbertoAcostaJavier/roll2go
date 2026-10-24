@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
-import { LoaderCircle } from "lucide-react";
+import { LoaderCircle, TriangleAlert } from "lucide-react";
 import Bbcode from "@/app/components/Bbcode";
 import { card, cardTitle, errorClass, field, labelClass, primaryButton } from "@/app/components/formStyles";
 import type { CatalogEntry, EntryOption } from "@/lib/rules/catalog";
@@ -17,6 +17,7 @@ import { bareName, equipmentRefs, refKey } from "@/lib/rules/dnd2024/equipmentRe
 import { ABILITY_NAMES, sizeName, skillName, toolName } from "@/lib/rules/dnd2024/labels";
 import { pendingChoices } from "@/lib/rules/dnd2024/levels";
 import { PRONOUNS, type Pronoun } from "@/lib/rules/dnd2024/names";
+import type { CreationDraft } from "@/lib/rules/dnd2024/recreate";
 import { SKILLS_SOURCE } from "@/lib/rules/dnd2024/upgrade";
 import AbilityScores from "./AbilityScores";
 import CharacterSummary, { type MissingItem } from "./CharacterSummary";
@@ -80,6 +81,11 @@ type Props = {
   optionalFeatures: EntryOption[];
   /** Armas con propiedad de maestría (con `data`). */
   weapons: EntryOption[];
+  /**
+   * Rehacer la creación de un personaje de nivel 1: se precarga con su creación actual (si no hay borrador propio) y
+   * se guarda con `PUT /api/characters/[id]/creation`. Sin campaña, imágenes, estado ni información (no cambian).
+   */
+  recreate?: { characterId: string; initial: CreationDraft };
 };
 
 const emptyForm = (): FormState => ({
@@ -109,6 +115,8 @@ const S = {
 // ---------- borrador ----------
 
 const draftKeyOf = (systemId: string, campaignId?: string) => `roll2go:new-character:${systemId}:${campaignId ?? "none"}`;
+// Al rehacer, un borrador por personaje (no pisa el de un personaje nuevo)
+const recreateDraftKey = (characterId: string) => `roll2go:recreate-character:${characterId}`;
 const noSubscribe = () => () => {};
 
 function readDraft(key: string): string | null {
@@ -235,7 +243,9 @@ function EquipmentChoice({
 /* Asistente de creación de personajes de D&D 2024. Se monta en el navegador para poder recuperar el borrador
    de localStorage antes del primer pintado del formulario. */
 export default function CharacterCreator(props: Props) {
-  const draftKey = draftKeyOf(props.systemId, props.campaign?.id);
+  const draftKey = props.recreate
+    ? recreateDraftKey(props.recreate.characterId)
+    : draftKeyOf(props.systemId, props.campaign?.id);
   const draft = useSyncExternalStore(noSubscribe, () => readDraft(draftKey), () => undefined);
   if (draft === undefined)
     return (
@@ -243,11 +253,13 @@ export default function CharacterCreator(props: Props) {
         <LoaderCircle size={16} className="animate-spin" aria-hidden="true" /> Cargando…
       </p>
     );
-  return <CreatorForm {...props} draftKey={draftKey} draft={draft} />;
+  // Al rehacer sin borrador propio, se empieza por la creación actual
+  const start = draft ?? (props.recreate ? JSON.stringify(props.recreate.initial) : null);
+  return <CreatorForm {...props} draftKey={draftKey} draft={start} />;
 }
 
 function CreatorForm(props: Props & { draftKey: string; draft: string | null }) {
-  const { campaign, draftKey } = props;
+  const { campaign, draftKey, recreate } = props;
   const router = useRouter();
   const [form, setForm] = useState<FormState>(() => parseDraft(props.draft, props));
   const [portrait, setPortrait] = useState<File | null>(null);
@@ -256,6 +268,8 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
   const [formError, setFormError] = useState("");
   const [loading, setLoading] = useState(false);
   const [scrollTick, setScrollTick] = useState(0);
+  // Al rehacer, el primer envío pide confirmar que se reinicia el inventario
+  const [confirming, setConfirming] = useState(false);
 
   // Borrador: se guarda en cada cambio (si el navegador no deja, se sigue sin borrador)
   useEffect(() => {
@@ -472,6 +486,10 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
     ev.preventDefault();
     if (!abilitiesValid || loading) return;
     setFormError("");
+    if (recreate && !confirming) {
+      setConfirming(true);
+      return;
+    }
 
     const xp = form.xp.trim() === "" ? 0 : Number(form.xp); // NaN viaja como null y el servidor lo rechaza
     const sheet = {
@@ -512,9 +530,12 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
 
     setLoading(true);
     try {
-      const res = await fetch("/api/characters", { method: "POST", body: fd });
+      const res = recreate
+        ? await fetch(`/api/characters/${recreate.characterId}/creation`, { method: "PUT", body: fd })
+        : await fetch("/api/characters", { method: "POST", body: fd });
       const data = await res.json().catch(() => null);
       if (!res.ok) {
+        setConfirming(false);
         if (data?.errors) {
           setErrors(data.errors);
           setScrollTick((t) => t + 1);
@@ -529,6 +550,7 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
       router.push(`/characters/${data.id}`);
       router.refresh();
     } catch {
+      setConfirming(false);
       setFormError("No se pudo conectar con el servidor.");
     } finally {
       setLoading(false);
@@ -537,7 +559,11 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
 
   // Errores sin un campo propio en el formulario: se muestran junto al botón
   // (el legado solo tiene campo si la especie tiene legados; las elecciones de clase, en su sección)
-  const shown = (k: string) => (k === "lineage" ? hasLineages : SHOWN_ERRORS.has(k) || k.startsWith("levels.0.choices"));
+  // (al rehacer no están las secciones de campaña, imágenes, estado ni información)
+  const shown = (k: string) =>
+    k === "lineage"
+      ? hasLineages
+      : (SHOWN_ERRORS.has(k) && !(recreate && NOT_ON_RECREATE.has(k))) || k.startsWith("levels.0.choices");
   const generalErrors = Object.entries(errors).filter(([k]) => !shown(k));
   const errorCount = Object.keys(errors).length;
   const classIdentifier = form.klass ? (cache[refKey(form.klass)]?.identifier || bareName(form.klass.key)) : null;
@@ -639,21 +665,27 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
               {form.klass && <Description entry={cache[refKey(form.klass)]} />}
             </div>
 
-            <div>
-              <label htmlFor="campaign" className={labelClass}>Campaña</label>
-              <input id="campaign" className={field} value={campaign?.name ?? "Sin campaña"} readOnly disabled />
-              <FieldError errors={errors} keys={["campaign"]} />
-            </div>
+            {!recreate && (
+              <>
+                <div>
+                  <label htmlFor="campaign" className={labelClass}>Campaña</label>
+                  <input id="campaign" className={field} value={campaign?.name ?? "Sin campaña"} readOnly disabled />
+                  <FieldError errors={errors} keys={["campaign"]} />
+                </div>
 
-            <ImageFields errors={errors} onPortrait={setPortrait} onImage={setImage} />
+                <ImageFields errors={errors} onPortrait={setPortrait} onImage={setImage} />
+              </>
+            )}
           </div>
         </section>
 
         {/* 2. Estado */}
-        <section id="estado" {...section(1)}>
-          <h2 className={cardTitle}>Estado</h2>
-          <StatusField value={form.status} onChange={(status) => update({ status }, "status")} errors={errors} />
-        </section>
+        {!recreate && (
+          <section id="estado" {...section(1)}>
+            <h2 className={cardTitle}>Estado</h2>
+            <StatusField value={form.status} onChange={(status) => update({ status }, "status")} errors={errors} />
+          </section>
+        )}
 
         {/* 3. Trasfondo */}
         <section id="trasfondo" {...section(2)}>
@@ -747,10 +779,12 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
         </section>
 
         {/* 6. Información */}
-        <section id="informacion" {...section(5)}>
-          <h2 className={cardTitle}>Información</h2>
-          <InfoFields values={form} errors={errors} onChange={update} />
-        </section>
+        {!recreate && (
+          <section id="informacion" {...section(5)}>
+            <h2 className={cardTitle}>Información</h2>
+            <InfoFields values={form} errors={errors} onChange={update} />
+          </section>
+        )}
 
         <div className="flex flex-wrap items-center justify-end gap-3">
           {generalErrors.map(([k, msg]) => (
@@ -758,9 +792,19 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
           ))}
           {formError && <p className={errorClass} role="alert">{formError}</p>}
           {!abilitiesValid && <p className="text-sm text-brand-soft">Ninguna característica puede superar 20.</p>}
+          {confirming && (
+            <p role="alert" className="flex animate-fade-in items-center gap-2 text-sm text-brand-soft">
+              <TriangleAlert size={16} aria-hidden="true" /> Se reiniciará el inventario con el equipo inicial elegido.
+            </p>
+          )}
+          {confirming && (
+            <button type="button" onClick={() => setConfirming(false)} disabled={loading} className="text-sm text-muted hover:text-white disabled:opacity-50">
+              Cancelar
+            </button>
+          )}
           <button type="submit" disabled={loading || !abilitiesValid} className={primaryButton}>
             {loading && <LoaderCircle size={16} className="animate-spin" aria-hidden="true" />}
-            Crear personaje
+            {!recreate ? "Crear personaje" : confirming ? "Sí, rehacer" : "Rehacer creación"}
             {errorCount > 0 && (
               <span className="rounded-full bg-white/20 px-2 text-xs">
                 {errorCount} {errorCount === 1 ? "problema" : "problemas"}
@@ -791,4 +835,9 @@ const SHOWN_ERRORS = new Set([
   "status", "pronouns", "background", "background.equipment", "classes.0.equipment",
   "abilityMethod", "baseAbilities", "rolls", "background.abilities",
   "alignment", "age", "xp", "appearance", "backstory", "languages", "notes",
+]);
+
+// Campos que no aparecen al rehacer la creación
+const NOT_ON_RECREATE = new Set([
+  "campaign", "portrait", "image", "status", "alignment", "age", "xp", "appearance", "backstory", "languages", "notes",
 ]);
