@@ -163,6 +163,7 @@ const checks: { [K in EntryKind]: Check } = {
     type: str,
     weight: num,
     value: num,
+    "rarity?": str,
     "armor?": shape({ ac: num, dexCap: nullable(num), stealthDisadvantage: bool, category: str }),
     "weapon?": shape({ damage: str, damageType: str, properties: strings, "mastery?": str, category: str }),
     "contents?": arrayOf(shape({ ref, quantity: num })),

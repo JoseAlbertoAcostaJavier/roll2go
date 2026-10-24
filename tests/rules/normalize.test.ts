@@ -594,3 +594,10 @@ describe("tablas de nombres (names.json, Guía de Xanathar)", () => {
     expect(data.tables[0]).toMatchObject({ option: "Arabic, Female", gender: "female" });
   });
 });
+
+test("objetos: la rareza solo se guarda en los mágicos", () => {
+  const item = (name: string, rarity: string) => ({ name, source: "XPHB", type: "M", rarity, weapon: true, dmg1: "1d8" });
+  const { entries: es } = normalizeAll({ items: { item: [item("Sword", "none"), item("Sword +1", "rare")] } }, "XPHB");
+  expect((es.find((e) => e.key === "item:sword|xphb")!.data as ItemData).rarity).toBeUndefined();
+  expect((es.find((e) => e.key === "item:sword +1|xphb")!.data as ItemData).rarity).toBe("rare");
+});

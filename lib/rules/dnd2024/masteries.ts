@@ -9,6 +9,8 @@ import type { Dnd2024SheetV2 } from "./sheet";
 import { summarizeClasses } from "./upgrade";
 
 const MELEE_TYPE = "M";
+// Cuerpo a cuerpo y a distancia: un foco (el Bastón arcano) puede traer datos de arma sin serlo
+const WEAPON_TYPES = [MELEE_TYPE, "R"];
 const CATEGORIES = ["simple", "martial"];
 const MASTERY_SOURCE = "progression:weapon mastery|";
 // "class:barbarian|xphb" → "barbarian|xphb"
@@ -21,10 +23,14 @@ export const MELEE_ONLY_MASTERY: ReadonlySet<string> = new Set(["barbarian|xphb"
 export const meleeOnlySource = (source: string) =>
   source.startsWith(MASTERY_SOURCE) && MELEE_ONLY_MASTERY.has(source.slice(MASTERY_SOURCE.length));
 
-/** Arma sencilla o marcial con propiedad de maestría (con `meleeOnly`, además cuerpo a cuerpo). */
+/**
+ * Arma base (sin rareza: no un arma mágica) sencilla o marcial con propiedad de maestría (con `meleeOnly`, además
+ * cuerpo a cuerpo).
+ */
 export function isMasteryWeapon(data: ItemData | undefined, meleeOnly = false): boolean {
   const w = data?.weapon;
-  return !!w?.mastery && CATEGORIES.includes(w.category.toLowerCase()) && (!meleeOnly || data?.type === MELEE_TYPE);
+  return !!w?.mastery && CATEGORIES.includes(w.category.toLowerCase()) && !data?.rarity
+    && WEAPON_TYPES.includes(data?.type ?? "") && (!meleeOnly || data?.type === MELEE_TYPE);
 }
 
 /** «Espada corta (Vejar)». */

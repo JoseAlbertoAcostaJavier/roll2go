@@ -488,6 +488,7 @@ export function normalizeItem(raw: Rec): NormalizedEntry {
     weight: typeof raw.weight === "number" ? raw.weight : 0,
     value: typeof raw.value === "number" ? raw.value : 0,
   };
+  if (str(raw.rarity) && raw.rarity !== "none") data.rarity = str(raw.rarity);
   if (type in ARMOR && typeof raw.ac === "number") {
     data.armor = { ac: raw.ac, ...ARMOR[type], stealthDisadvantage: raw.stealth === true };
   }

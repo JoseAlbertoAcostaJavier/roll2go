@@ -6,9 +6,10 @@ import { BookEntry } from "@/lib/BookEntry";
 import { Campaign } from "@/lib/Campaign";
 import { escapeRegex } from "@/lib/utils";
 import { visibleBooksOf } from "@/lib/rules/books";
+import { isMasteryWeapon } from "@/lib/rules/dnd2024/masteries";
 import { pickBooks } from "@/lib/rules/pickBooks";
 import { normalizeName, validateEntryData } from "@/lib/rules/schemas";
-import type { EntryKind, Ref } from "@/lib/rules/types";
+import type { EntryKind, ItemData, Ref } from "@/lib/rules/types";
 
 export { pickBooks };
 
@@ -147,7 +148,7 @@ function listBookMasteryWeapons(bookId: string) {
         .lean()) as unknown as EntryDoc[];
       return {
         entries: docs
-          .filter((d) => validateEntryData("item", d.data).ok)
+          .filter((d) => validateEntryData("item", d.data).ok && isMasteryWeapon(d.data as ItemData))
           .map((d) => ({ sort: d.nameLower, option: toOption(d, book.name, true) })),
       };
     },

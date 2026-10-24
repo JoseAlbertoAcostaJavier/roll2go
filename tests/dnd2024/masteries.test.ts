@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { CatalogEntry } from "@/lib/rules/catalog";
-import { masteryCount, masteryLabel, validateMasteries } from "@/lib/rules/dnd2024/masteries";
+import { isMasteryWeapon, masteryCount, masteryLabel, validateMasteries } from "@/lib/rules/dnd2024/masteries";
 import type { Dnd2024SheetV2, LevelEntry } from "@/lib/rules/dnd2024/sheet";
 import type { ItemData } from "@/lib/rules/types";
 import { B, buildCatalog, ref } from "./fixtureCatalog";
@@ -50,6 +50,21 @@ describe("validateMasteries", () => {
     expect(validateMasteries(items("greataxe", "nope"), ctx(2)).ok).toBe(false);
     expect(validateMasteries([ref("item:greataxe|xphb"), { book: B }] as never, ctx(2)).ok).toBe(false);
     expect(validateMasteries("x" as never, ctx(2)).ok).toBe(false);
+  });
+});
+
+describe("isMasteryWeapon", () => {
+  const data = (type: string, extra: Partial<ItemData> = {}): ItemData => ({
+    type, weight: 4, value: 20,
+    weapon: { damage: "1d6", damageType: "B", properties: ["V"], mastery: "topple", category: "simple" }, ...extra,
+  });
+  it("solo armas cuerpo a cuerpo o a distancia: no un foco arcano con datos de arma (Bastón arcano)", () => {
+    expect(isMasteryWeapon(data("M"))).toBe(true);
+    expect(isMasteryWeapon(data("R"))).toBe(true);
+    expect(isMasteryWeapon(data("SCF"))).toBe(false);
+  });
+  it("solo objetos base: no un arma mágica", () => {
+    expect(isMasteryWeapon(data("M", { rarity: "rare" }))).toBe(false);
   });
 });
 

@@ -150,6 +150,8 @@ export type ItemData = {
   type: string;
   weight: number;
   value: number; // pc
+  /** Rareza de un objeto mágico (`uncommon`, `rare`…); los objetos normales no la llevan. */
+  rarity?: string;
   armor?: { ac: number; dexCap: number | null; stealthDisadvantage: boolean; category: string };
   weapon?: { damage: string; damageType: string; properties: string[]; mastery?: string; category: string };
   contents?: { ref: Ref; quantity: number }[];
