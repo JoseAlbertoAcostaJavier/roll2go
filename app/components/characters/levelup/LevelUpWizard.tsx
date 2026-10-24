@@ -1,0 +1,494 @@
+"use client";
+
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useRouter } from "next/navigation";
+import { Check, ChevronLeft, ChevronRight, LoaderCircle } from "lucide-react";
+import { card, primaryButton } from "@/app/components/formStyles";
+import type { CatalogEntry, EntryOption } from "@/lib/rules/catalog";
+import { derive } from "@/lib/rules/dnd2024/derive";
+import { refKey } from "@/lib/rules/dnd2024/equipmentRefs";
+import { FEATURE_OPTION_LABELS } from "@/lib/rules/dnd2024/featureChoices";
+import { ABILITY_NAMES, skillName } from "@/lib/rules/dnd2024/labels";
+import {
+  heldPicks, meetsFeatPrerequisite, meetsMulticlass, pendingChoices, type PendingChoice,
+} from "@/lib/rules/dnd2024/levels";
+import { currentMasteries, masteryLabel } from "@/lib/rules/dnd2024/masteries";
+import type { Dnd2024SheetV2, LevelEntry } from "@/lib/rules/dnd2024/sheet";
+import { summarizeClasses } from "@/lib/rules/dnd2024/upgrade";
+import { ABILITIES, type Ability, type ClassData, type FeatData, type ItemData, type Ref, type SubclassData } from "@/lib/rules/types";
+import { nameFromKey, refFromKey, type ChoiceCtx } from "../ClassFeaturesSection";
+import useCatalogEntries from "../useCatalogEntries";
+import ClassCard from "./ClassCard";
+import DeleteLevel from "./DeleteLevel";
+import {
+  buildChoices, draftKeyOf, emptyAsi, featAbilityKey, missingChoice, parseDraft, slotsFor,
+  type ChoiceEnv, type LevelUpState,
+} from "./state";
+import AsiStep from "./steps/AsiStep";
+import ChoiceRowsStep from "./steps/ChoiceRowsStep";
+import ClassStep, { type ClassChoice } from "./steps/ClassStep";
+import ConfirmStep from "./steps/ConfirmStep";
+import FeaturesStep from "./steps/FeaturesStep";
+import HpStep from "./steps/HpStep";
+import PickStep from "./steps/PickStep";
+import SubclassStep from "./steps/SubclassStep";
+
+type Props = {
+  characterId: string;
+  characterName: string;
+  campaignId: string | null;
+  sheet: Dnd2024SheetV2;
+  /** Entradas de la hoja y de lo que puede ganar en este nivel (clases, rasgos nuevos, opciones, subclases). */
+  entries: CatalogEntry[];
+  classes: Ref[];
+  /** Subclases de las clases que la ganan en su siguiente nivel. */
+  subclasses: Ref[];
+  feats: EntryOption[];
+  optionalFeatures: EntryOption[];
+  weapons: EntryOption[];
+};
+
+type Step = { id: string; title: string; p?: PendingChoice };
+
+const CONFLICT = "El personaje ha cambiado de nivel; recarga la página.";
+const ROW_TYPES: PendingChoice["type"][] = ["skills", "expertise", "weaponMastery"];
+const uniq = <T,>(list: T[]) => [...new Set(list)];
+const nameOf = (e: { nameEs: string | null; name: string }) => e.nameEs ?? e.name;
+// Entrada ligera del listado como entrada completa, para `derive` (solo usa `data` y los nombres)
+const asEntry = (o: EntryOption): CatalogEntry => ({
+  ...o, description: "", descriptionEs: "", identifier: "", parent: null, foundry: null,
+});
+
+const noSubscribe = () => () => {};
+function readDraft(key: string): string | null {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+/* Asistente para subir de nivel. Se monta en el navegador para recuperar el borrador de localStorage antes del primer
+   pintado; cada nivel tiene su propio borrador. */
+export default function LevelUpWizard(props: Props) {
+  const draftKey = draftKeyOf(props.characterId, props.sheet.levels.length + 1);
+  const draft = useSyncExternalStore(noSubscribe, () => readDraft(draftKey), () => undefined);
+  if (draft === undefined)
+    return (
+      <p className="flex items-center gap-2 text-muted">
+        <LoaderCircle size={16} className="animate-spin" aria-hidden="true" /> Cargando…
+      </p>
+    );
+  return <Wizard key={draftKey} {...props} draftKey={draftKey} draft={draft} />;
+}
+
+function Wizard(props: Props & { draftKey: string; draft: string | null }) {
+  const { sheet, characterId, draftKey } = props;
+  const router = useRouter();
+  const n = sheet.levels.length + 1;
+  const top = useRef<HTMLDivElement>(null);
+
+  // ---- personaje antes de subir ----
+  const entries = useMemo(() => new Map(props.entries.map((e) => [refKey(e.ref), e])), [props.entries]);
+  const derived = useMemo(() => derive(sheet, entries), [sheet, entries]);
+  const summary = useMemo(() => summarizeClasses(sheet.levels), [sheet]);
+  const scores = useMemo(
+    () => Object.fromEntries(ABILITIES.map((a) => [a, derived.abilities[a].score])) as Record<Ability, number>,
+    [derived],
+  );
+
+  // ---- clases: las suyas suben de nivel; las demás, con el requisito de multiclase ----
+  const classChoices = useMemo((): ClassChoice[] => props.classes.flatMap((r) => {
+    const e = entries.get(refKey(r));
+    if (!e) return [];
+    const owned = summary.find((s) => refKey(s.class.ref) === refKey(r));
+    const ok = meetsMulticlass(sheet, derived, e, entries);
+    return [{ key: refKey(r), entry: e, nextLevel: (owned?.level ?? 0) + 1, blocked: ok.ok ? null : ok.reason }];
+  }), [props.classes, entries, summary, sheet, derived]);
+  const lastClass = refKey(sheet.levels[sheet.levels.length - 1].class.ref);
+  const defaultClass = (classChoices.find((c) => c.key === lastClass && !c.blocked) ?? classChoices.find((c) => !c.blocked))?.key ?? "";
+
+  const [state, setState] = useState<LevelUpState>(() => parseDraft(props.draft, {
+    classKey: defaultClass, subclassKey: "", values: {}, replaced: {}, featAbility: {}, asi: {}, hp: null, step: "class",
+  }));
+  const [saving, setSaving] = useState(false);
+  const [errors, setErrors] = useState<string[]>([]);
+  const [conflict, setConflict] = useState<string | null>(null);
+
+  // Borrador: se guarda en cada cambio (si el navegador no deja, se sigue sin borrador)
+  useEffect(() => {
+    try {
+      localStorage.setItem(draftKey, JSON.stringify(state));
+    } catch {
+      // almacenamiento no disponible
+    }
+  }, [state, draftKey]);
+
+  const choice = classChoices.find((c) => c.key === state.classKey && !c.blocked)
+    ?? classChoices.find((c) => c.key === defaultClass) ?? null;
+
+  // ---- lo que gana en la clase elegida ----
+  const classEntry = choice?.entry ?? null;
+  const classData = classEntry?.data as ClassData | undefined;
+  const classLevel = choice?.nextLevel ?? 1;
+  const owned = choice ? summary.find((s) => refKey(s.class.ref) === choice.key) : undefined;
+  const subclassOptions = props.subclasses.map((r) => entries.get(refKey(r)))
+    .filter((e): e is CatalogEntry => !!e?.parent && !!choice && refKey(e.parent) === choice.key);
+  const chosenSub = !owned?.subclass && classLevel === classData?.subclassLevel
+    ? subclassOptions.find((s) => refKey(s.ref) === state.subclassKey) ?? null
+    : null;
+  const subclassEntry = chosenSub ?? (owned?.subclass ? entries.get(refKey(owned.subclass.ref)) ?? null : null);
+
+  const pending = classEntry
+    ? pendingChoices(sheet, classEntry.ref, classLevel, entries, chosenSub ? { subclass: chosenSub.ref } : {})
+      .filter((p) => p.type !== "spells")
+    : [];
+
+  // Estado efectivo: la subclase solo si es de la clase elegida; los PG solo si son del dado de esta clase
+  const hp = state.hp && classData && state.hp.die === classData.hitDie ? state.hp : null;
+  const effective: LevelUpState = { ...state, subclassKey: chosenSub ? refKey(chosenSub.ref) : "", hp };
+  const env: ChoiceEnv = { pending, state: effective, feats: props.feats, scores };
+
+  // ---- descripciones de las dotes y rasgos opcionales elegidos (se piden al servidor) ----
+  const lazyRefs = uniq([
+    ...pending.filter((p) => p.type === "feat" || p.type === "optionalFeature").flatMap((p) => state.values[p.source] ?? []),
+    ...Object.values(state.asi).map((a) => a.feat),
+  ].filter((k) => k && !entries.has(k))).sort().map(refFromKey);
+  const lazyKey = lazyRefs.map(refKey).join("\n");
+  const [cacheRefs, setCacheRefs] = useState<{ key: string; refs: Ref[] }>({ key: "", refs: [] });
+  if (lazyKey !== cacheRefs.key) setCacheRefs({ key: lazyKey, refs: lazyRefs });
+  const cache = useCatalogEntries(cacheRefs.refs, props.campaignId);
+  const entry = (r: Ref): CatalogEntry | null | undefined => {
+    const k = refKey(r);
+    if (entries.has(k)) return entries.get(k);
+    return k in cache ? cache[k] : lazyRefs.some((x) => refKey(x) === k) ? undefined : null;
+  };
+
+  // ---- opciones de las elecciones ----
+  const gained = classLevel === 1 ? classData?.multiclass?.proficiencies : null;
+  const heldFeats = derived.features.filter((g) => g.source === "feat").flatMap((g) => g.features.map((f) => f.ref.key));
+  const prerequisites = {
+    level: n,
+    abilities: scores,
+    armor: uniq([...derived.armor, ...(gained?.armor ?? [])]),
+    spellcasting: [...summary.map((s) => entries.get(refKey(s.class.ref))?.data as ClassData | undefined), classData]
+      .some((d) => !!d?.spellcasting),
+  };
+  const featBlocked = (f: EntryOption) => {
+    const d = f.data as FeatData | null;
+    if (!d?.repeatable && heldFeats.includes(f.ref.key)) return "ya la tienes";
+    return meetsFeatPrerequisite(d?.prerequisite, prerequisites) ? null : "no cumples los requisitos";
+  };
+  const held = useMemo(() => heldPicks(sheet.levels), [sheet]);
+  const ctx: ChoiceCtx = {
+    pending,
+    values: state.values,
+    entry,
+    takenSkills: derived.skills.filter((s) => s.proficiency > 0).map((s) => s.id),
+    expertSkills: derived.skills.filter((s) => s.proficiency === 2).map((s) => s.id),
+    feats: props.feats,
+    optionalFeatures: props.optionalFeatures,
+    weapons: props.weapons,
+    weaponProficiencies: uniq([...derived.weapons, ...(gained?.weapons ?? [])]),
+    classLevel,
+    held,
+    masteries: currentMasteries(sheet).map(refKey),
+    featBlocked,
+  };
+  // Dotes generales para la mejora de característica: sin la propia mejora, con requisitos y sin las que ya tiene
+  const generalFeats = props.feats.filter((f) => (f.data as FeatData | null)?.category === "general"
+    && !f.ref.key.startsWith("feat:ability score improvement|") && !featBlocked(f));
+
+  // ---- PG: máximo antes y después con lo elegido ----
+  const preview = (() => {
+    if (!hp || !classEntry) return null;
+    const level: LevelEntry = {
+      n, class: { ref: classEntry.ref, name: nameOf(classEntry) }, classLevel,
+      hp: { method: hp.method, value: hp.value }, choices: buildChoices(env),
+    };
+    const withFeats = new Map(entries);
+    for (const f of props.feats) if (!withFeats.has(refKey(f.ref))) withFeats.set(refKey(f.ref), asEntry(f));
+    if (chosenSub) withFeats.set(refKey(chosenSub.ref), chosenSub);
+    const after = derive({ ...sheet, levels: [...sheet.levels, level] }, withFeats);
+    return { before: derived.hp.max, after: after.hp.max, conMod: after.abilities.con.mod };
+  })();
+
+  // ---- pasos ----
+  const steps: Step[] = [
+    { id: "class", title: "Clase" },
+    { id: "features", title: "Rasgos de clase" },
+    ...pending.map((p) => ({ id: p.type === "subclass" ? "subclass" : `choice:${p.type}:${p.source}`, title: p.label, p })),
+    { id: "hp", title: "Puntos de golpe" },
+    { id: "confirm", title: "Confirmar" },
+  ];
+  const missingOf = (s: Step): string | null => {
+    if (s.id === "class") return choice ? null : "elegir una clase";
+    if (s.id === "hp") return hp ? null : "elegir cómo ganar los puntos de golpe";
+    return s.p ? missingChoice(s.p, env) : null;
+  };
+  const firstMissing = steps.findIndex((s) => missingOf(s));
+  const wanted = Math.max(0, steps.findIndex((s) => s.id === state.step));
+  const index = firstMissing >= 0 ? Math.min(wanted, firstMissing) : wanted;
+  const step = steps[index];
+  const missing = missingOf(step);
+  const isLast = index === steps.length - 1;
+
+  const update = (patch: Partial<LevelUpState>) => {
+    setState((s) => ({ ...s, ...patch }));
+    setErrors([]);
+  };
+  const go = (i: number) => {
+    update({ step: steps[i].id });
+    // Al cambiar de paso, el principio del asistente queda a la vista
+    const box = top.current;
+    if (box && box.getBoundingClientRect().top < 0) box.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  // ---- resumen ----
+  const keyLabel = (k: string): string => {
+    if (k.startsWith("builtin:")) return FEATURE_OPTION_LABELS[k.slice(8)] ?? k.slice(8);
+    const w = props.weapons.find((x) => refKey(x.ref) === k);
+    if (w) return masteryLabel(nameOf(w), (w.data as ItemData).weapon?.mastery);
+    const listed = [...props.feats, ...props.optionalFeatures].find((x) => refKey(x.ref) === k) ?? entries.get(k);
+    return listed ? nameOf(listed) : nameFromKey(refFromKey(k).key);
+  };
+  const summaryRows = (): { label: string; value: string }[] => {
+    const rows = [{
+      label: "Clase",
+      value: classEntry ? `${nameOf(classEntry)} ${classLevel}${classLevel === 1 ? " (nueva clase)" : ""} · nivel ${n}` : "",
+    }];
+    for (const p of pending) {
+      let value = "";
+      if (p.type === "subclass") value = chosenSub ? nameOf(chosenSub) : "";
+      else if (p.type === "asi") {
+        const a = state.asi[p.source] ?? emptyAsi();
+        value = a.mode === "abilities"
+          ? Object.entries(a.abilities).filter(([, v]) => v).map(([k, v]) => `${ABILITY_NAMES[k as Ability]} +${v}`).join(", ")
+          : a.feat ? `${keyLabel(a.feat)}${a.ability ? ` (${ABILITY_NAMES[a.ability]} +1)` : ""}` : "";
+      } else {
+        const picked = (state.values[p.source] ?? []).slice(0, slotsFor(p, effective)).filter(Boolean);
+        value = picked.map((k) => (p.type === "skills" || p.type === "expertise" ? skillName(k) : keyLabel(k))).join(", ");
+        if (p.optionalReplace && state.replaced[p.source]) value += ` (sustituye a ${keyLabel(state.replaced[p.source])})`;
+        if (!picked.length && p.count === 0) value = "Sin cambios";
+      }
+      rows.push({ label: p.label, value });
+    }
+    if (hp && preview) {
+      rows.push({
+        label: "Puntos de golpe",
+        value: `+${preview.after - preview.before} (${hp.method === "roll" ? "tirada" : "media"} ${hp.value}) → ${preview.after} PG`,
+      });
+    }
+    return rows;
+  };
+
+  async function confirm() {
+    if (!classEntry || !hp || firstMissing >= 0) return;
+    setSaving(true);
+    setErrors([]);
+    setConflict(null);
+    try {
+      const res = await fetch(`/api/characters/${characterId}/levels`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          expectedLevel: n,
+          class: { ref: classEntry.ref },
+          choices: buildChoices(env),
+          hp: { method: hp.method, value: hp.value, ...(hp.token ? { token: hp.token } : {}) },
+        }),
+      });
+      const data = await res.json().catch(() => null);
+      if (res.ok) {
+        try {
+          localStorage.removeItem(draftKey);
+        } catch {
+          // almacenamiento no disponible
+        }
+        router.push(`/characters/${characterId}?saved=level`);
+        router.refresh();
+        return;
+      }
+      if (res.status === 409) setConflict(data?.error ?? CONFLICT);
+      else if (data?.errors) setErrors(uniq(Object.values(data.errors as Record<string, string>)));
+      else setErrors([data?.error ?? `El servidor ha respondido con un error (${res.status}).`]);
+    } catch {
+      setErrors(["No se pudo conectar con el servidor."]);
+    }
+    setSaving(false);
+  }
+
+  // ---- contenido del paso ----
+  function content() {
+    if (step.id === "class") {
+      return (
+        <ClassStep
+          options={classChoices}
+          value={choice?.key ?? ""}
+          onChange={(classKey) => update({ classKey })}
+        />
+      );
+    }
+    if (!classEntry || !classData) return null;
+    const className = nameOf(classEntry);
+    if (step.id === "features") {
+      const subFeatures = subclassEntry
+        ? (subclassEntry.data as SubclassData).features.filter((f) => f.level === classLevel).map((f) => f.ref)
+        : [];
+      return (
+        <FeaturesStep
+          level={n}
+          classLevel={classLevel}
+          className={className}
+          features={classData.features.filter((f) => f.level === classLevel).map((f) => f.ref)}
+          subclass={subclassEntry && !chosenSub ? { name: nameOf(subclassEntry), features: subFeatures } : null}
+          entry={entry}
+        />
+      );
+    }
+    if (step.id === "subclass" && step.p) {
+      return (
+        <SubclassStep
+          label={step.p.label}
+          className={className}
+          classLevel={classLevel}
+          options={subclassOptions}
+          value={effective.subclassKey}
+          onChange={(subclassKey) => update({ subclassKey })}
+          entry={entry}
+        />
+      );
+    }
+    if (step.id === "hp") {
+      return (
+        <HpStep
+          characterId={characterId}
+          die={classData.hitDie}
+          value={hp}
+          onChange={(v) => update({ hp: v })}
+          conMod={preview?.conMod ?? derived.abilities.con.mod}
+          preview={preview}
+        />
+      );
+    }
+    if (step.id === "confirm") {
+      return <ConfirmStep level={n} rows={summaryRows()} errors={errors} conflict={conflict} />;
+    }
+    const p = step.p;
+    if (!p) return null;
+    const setValues = (v: string[]) => update({ values: { ...state.values, [p.source]: v } });
+    if (p.type === "asi") {
+      return (
+        <AsiStep
+          value={state.asi[p.source] ?? emptyAsi()}
+          onChange={(v) => update({ asi: { ...state.asi, [p.source]: v } })}
+          scores={scores}
+          feats={generalFeats}
+          entry={entry}
+        />
+      );
+    }
+    if (ROW_TYPES.includes(p.type)) {
+      const have = p.type === "expertise"
+        ? derived.skills.filter((s) => s.proficiency === 2).map((s) => skillName(s.id))
+        : p.type === "skills" ? derived.skills.filter((s) => s.proficiency > 0).map((s) => skillName(s.id)) : [];
+      const hint = have.length ? `${p.type === "expertise" ? "Ya tienes pericia en" : "Ya tienes"}: ${have.join(", ")}.` : undefined;
+      return <ChoiceRowsStep p={p} ctx={ctx} onChange={setValues} hint={hint} />;
+    }
+    return (
+      <PickStep
+        p={p}
+        ctx={ctx}
+        slots={slotsFor(p, effective)}
+        onChange={setValues}
+        held={held.get(p.source) ?? []}
+        replaced={state.replaced[p.source] ?? ""}
+        onReplace={(k) => update({ replaced: { ...state.replaced, [p.source]: k } })}
+        featAbility={(k) => state.featAbility[featAbilityKey(p.source, k)]}
+        onFeatAbility={(k, a) => update({ featAbility: { ...state.featAbility, [featAbilityKey(p.source, k)]: a } })}
+        scores={scores}
+      />
+    );
+  }
+
+  return (
+    <div ref={top} className="scroll-mt-4">
+      <header className="mb-6 flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="font-heading text-3xl font-extrabold">Subir de nivel</h1>
+          <p className="text-muted">{props.characterName} · Nivel {n - 1} → {n}</p>
+        </div>
+        {n - 1 >= 2 && <DeleteLevel characterId={characterId} level={n - 1} />}
+      </header>
+
+      <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-6 lg:grid-cols-[minmax(0,1fr)_24rem]">
+        {classEntry && (
+          <div className="lg:hidden">
+            <ClassCard classEntry={classEntry} classLevel={classLevel} entry={entry} collapsible />
+          </div>
+        )}
+
+        <section className={`${card} min-w-0`} aria-labelledby="level-up-step">
+          <ol className="mb-5 flex gap-1.5 overflow-x-auto pb-1" aria-label="Pasos">
+            {steps.map((s, i) => {
+              const done = i < index;
+              const reachable = firstMissing < 0 || i <= firstMissing;
+              return (
+                <li key={s.id} className="shrink-0">
+                  <button
+                    type="button"
+                    disabled={!reachable || i === index}
+                    aria-current={i === index ? "step" : undefined}
+                    onClick={() => go(i)}
+                    className={`flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-semibold transition-colors ${
+                      i === index ? "border-brand bg-brand text-white"
+                        : done ? "border-line text-fg enabled:hover:border-brand" : "border-line text-muted enabled:hover:border-brand disabled:opacity-50"
+                    }`}
+                  >
+                    {done && <Check size={12} aria-hidden="true" />}
+                    {s.title}
+                  </button>
+                </li>
+              );
+            })}
+          </ol>
+
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted">Paso {index + 1} de {steps.length}</p>
+          <h2 id="level-up-step" className="mb-4 font-heading text-2xl font-bold">{step.title}</h2>
+
+          <div key={step.id} className="animate-fade-up">{content()}</div>
+
+          <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-5">
+            <button
+              type="button"
+              onClick={() => go(index - 1)}
+              disabled={index === 0 || saving}
+              className="flex items-center gap-1 rounded-md border border-line px-4 py-2.5 font-semibold transition-colors enabled:hover:border-brand enabled:hover:text-white disabled:opacity-40"
+            >
+              <ChevronLeft size={16} aria-hidden="true" /> Anterior
+            </button>
+            <div className="flex flex-wrap items-center justify-end gap-3">
+              {missing && <p className="text-sm text-muted" role="status">Falta: {missing}</p>}
+              {isLast ? (
+                <button type="button" onClick={confirm} disabled={saving || firstMissing >= 0 || !!conflict} className={primaryButton}>
+                  {saving && <LoaderCircle size={16} className="animate-spin" aria-hidden="true" />}
+                  Confirmar nivel
+                </button>
+              ) : (
+                <button type="button" onClick={() => go(index + 1)} disabled={!!missing} className={primaryButton}>
+                  Siguiente <ChevronRight size={16} aria-hidden="true" />
+                </button>
+              )}
+            </div>
+          </div>
+        </section>
+
+        {classEntry && (
+          <aside className="sticky top-4 hidden lg:block">
+            <ClassCard classEntry={classEntry} classLevel={classLevel} entry={entry} />
+          </aside>
+        )}
+      </div>
+    </div>
+  );
+}

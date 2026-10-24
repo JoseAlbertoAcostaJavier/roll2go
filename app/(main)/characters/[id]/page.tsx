@@ -33,6 +33,9 @@ type Props = {
 // Pestañas disponibles: Conjuros llega con la parte 5
 const TABS: SheetTab[] = ["info", "trasfondo", "rasgos", "equipo"];
 
+// Avisos al volver de una acción (`?saved=…`)
+const NOTICES: Record<string, string> = { level: "Nivel guardado correctamente", "level-deleted": "Nivel borrado" };
+
 // Lectura compartida entre generateMetadata y la página (una sola carga por petición)
 const loadForRead = cache((userId: string, id: string) => loadCharacterFor(userId, id, "read"));
 
@@ -109,7 +112,9 @@ export default async function CharacterPage({ params, searchParams }: Props) {
 
   return (
     <div className="mx-auto max-w-280 px-4 py-8 sm:px-5">
+      {/* Con otro aviso (p. ej. tras borrar un nivel desde la propia ficha) la cabecera se monta de nuevo para mostrarlo */}
       <SheetHeader
+        key={String(query.saved ?? "")}
         id={id}
         name={c.name}
         pronouns={pronounsText(parsePronouns(((c.pronouns ?? []) as string[]).join(",")) ?? [])}
@@ -119,7 +124,7 @@ export default async function CharacterPage({ params, searchParams }: Props) {
         level={d.level}
         campaign={campaign}
         isOwner={isOwner}
-        notice={query.saved ? "Cambios guardados" : null}
+        notice={query.saved ? (NOTICES[String(query.saved)] ?? "Cambios guardados") : null}
         backHref={isOwner || !campaign ? "/characters" : `/campaigns/${campaign.id}/characters`}
       />
 
@@ -134,7 +139,8 @@ export default async function CharacterPage({ params, searchParams }: Props) {
 
       <section {...panel("info")}>
         {panelTitle("info")}
-        <InfoTab d={d} characterId={id} isOwner={isOwner} />
+        {/* Los editores guardan su estado: al borrar un nivel desde la ficha se montan de nuevo con los PG recortados */}
+        <InfoTab key={d.level} d={d} characterId={id} isOwner={isOwner} />
       </section>
       <section {...panel("trasfondo")}>
         {panelTitle("trasfondo")}
@@ -149,6 +155,7 @@ export default async function CharacterPage({ params, searchParams }: Props) {
       <section {...panel("rasgos")}>
         {panelTitle("rasgos")}
         <MasteriesEditor
+          key={d.level}
           characterId={id}
           isOwner={isOwner}
           allowed={allowedMasteries}

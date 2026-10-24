@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { LoaderCircle } from "lucide-react";
 import Bbcode from "@/app/components/Bbcode";
@@ -29,6 +29,7 @@ import ImageFields from "./fields/ImageFields";
 import InfoFields from "./fields/InfoFields";
 import PronounsField from "./fields/PronounsField";
 import SkillPicker from "./fields/SkillPicker";
+import useCatalogEntries from "./useCatalogEntries";
 import StatusField from "./fields/StatusField";
 import { LIMITS, STATUSES, type Status } from "./fields/constants";
 
@@ -165,28 +166,6 @@ function parseDraft(raw: string | null, props: Props): FormState {
   if (!form.background) form.bgEquipment = "";
   if (!form.klass) form.classEquipment = "";
   return form;
-}
-
-// ---------- entradas del catálogo pedidas al servidor (descripciones y objetos del equipo) ----------
-
-function useCatalogEntries(refs: Ref[], campaignId: string | null) {
-  // undefined = cargando; null = no disponible
-  const [cache, setCache] = useState<Record<string, CatalogEntry | null>>({});
-  const requested = useRef(new Set<string>());
-  useEffect(() => {
-    const qs = campaignId ? `?campaign=${encodeURIComponent(campaignId)}` : "";
-    for (const ref of refs) {
-      const k = refKey(ref);
-      if (requested.current.has(k)) continue;
-      requested.current.add(k);
-      // Las claves llevan ":" y "|": van codificadas en la dirección
-      fetch(`/api/rules/entries/${encodeURIComponent(ref.book)}/${encodeURIComponent(ref.key)}${qs}`)
-        .then((res) => (res.ok ? res.json() : null))
-        .then((data) => setCache((c) => ({ ...c, [k]: (data?.entry as CatalogEntry | undefined) ?? null })))
-        .catch(() => setCache((c) => ({ ...c, [k]: null })));
-    }
-  }, [refs, campaignId]);
-  return cache;
 }
 
 // Entrada ligera del listado como entrada completa, para `derive` (solo usa `data` y los nombres)
