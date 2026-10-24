@@ -13,6 +13,7 @@ const db = vi.hoisted(() => ({
   matched: 1,
   updates: [] as unknown[][],
   notified: [] as Record<string, unknown>[],
+  cleared: [] as unknown[],
 }));
 vi.mock("@/lib/campaignApi", () => ({
   requireDm: async () =>
@@ -31,6 +32,9 @@ vi.mock("@/lib/Character", () => ({
   },
 }));
 vi.mock("@/lib/notify", () => ({ notify: async (n: Record<string, unknown>) => void db.notified.push(n) }));
+vi.mock("@/lib/Notification", () => ({
+  Notification: { deleteMany: async (filter: unknown) => (db.cleared.push(filter), { deletedCount: 1 }) },
+}));
 
 const { POST: approve } = await import("@/app/api/campaigns/[id]/characters/[characterId]/approve/route");
 const { POST: reject } = await import("@/app/api/campaigns/[id]/characters/[characterId]/reject/route");
@@ -52,7 +56,10 @@ beforeEach(() => {
   db.matched = 1;
   db.updates = [];
   db.notified = [];
+  db.cleared = [];
 });
+// Aviso de solicitud que recibió el DM: se borra al resolverse, para que no quede uno caducado
+const requestNotice = { type: "character_import_request", character: CHAR, campaign: CAMPAIGN };
 
 describe("POST …/characters/[characterId]/approve", () => {
   it("el DM acepta una solicitud pendiente y avisa al dueño", async () => {
@@ -63,6 +70,7 @@ describe("POST …/characters/[characterId]/approve", () => {
     expect(db.notified).toEqual([
       { user: PLAYER, type: "character_approved", actor: DM, campaign: CAMPAIGN, character: CHAR, text: "Grog" },
     ]);
+    expect(db.cleared).toEqual([requestNotice]);
   });
 
   it("no DM → 403", async () => {
@@ -81,6 +89,7 @@ describe("POST …/characters/[characterId]/approve", () => {
     db.matched = 0;
     expect(await call(approve)).toEqual({ status: 409, json: { error: "La solicitud ya no está pendiente." } });
     expect(db.notified).toEqual([]);
+    expect(db.cleared).toEqual([]);
   });
 
   it("ya no está en la campaña → 409", async () => {
@@ -96,6 +105,7 @@ describe("POST …/characters/[characterId]/reject", () => {
     expect(db.notified).toEqual([
       { user: PLAYER, type: "character_rejected", actor: DM, campaign: CAMPAIGN, character: CHAR, text: "Grog" },
     ]);
+    expect(db.cleared).toEqual([requestNotice]);
   });
 
   it("no DM → 403", async () => {
@@ -121,11 +131,13 @@ describe("DELETE /api/campaigns/[id]/characters/[characterId]", () => {
     expect(db.notified).toEqual([
       { user: PLAYER, type: "character_removed", actor: DM, campaign: CAMPAIGN, character: CHAR, text: "Grog" },
     ]);
+    expect(db.cleared).toEqual([]);
   });
 
-  it("también uno pendiente", async () => {
+  it("también uno pendiente (y se borra el aviso de su solicitud)", async () => {
     expect((await call(remove, "DELETE")).status).toBe(200);
     expect(db.notified.map((n) => n.type)).toEqual(["character_removed"]);
+    expect(db.cleared).toEqual([requestNotice]);
   });
 
   it("su propio personaje: sin aviso", async () => {

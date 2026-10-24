@@ -4,6 +4,7 @@ import { requireDm } from "@/lib/campaignApi";
 import { rateLimit, tooManyRequests } from "@/lib/rateLimit";
 import { Character } from "@/lib/Character";
 import { notify } from "@/lib/notify";
+import { Notification } from "@/lib/Notification";
 
 type Ctx = { params: Promise<{ id: string; characterId: string }> };
 
@@ -25,6 +26,10 @@ export async function POST(req: NextRequest, { params }: Ctx) {
   // Condicional: si el jugador la acaba de cancelar, no cambia nada
   const result = await Character.updateOne(filter, { $set: { campaignStatus: "approved" } });
   if (result.matchedCount === 0) return notPending;
+
+  // El aviso de la solicitud que recibió el DM ya no sirve
+  await Notification.deleteMany({ type: "character_import_request", character: characterId, campaign: id })
+    .catch((err: unknown) => console.error("No se pudo borrar el aviso de la solicitud:", err));
 
   if (String(character.owner) !== ctx.session.id) {
     try {

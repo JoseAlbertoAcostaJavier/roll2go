@@ -8,6 +8,7 @@ import { Character } from "@/lib/Character";
 import { joinReasons } from "@/lib/campaignEligibility";
 import { OUTDATED_SHEET_ERROR, loadCharacterFor } from "@/lib/characterAccess";
 import { notify } from "@/lib/notify";
+import { Notification } from "@/lib/Notification";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -106,7 +107,11 @@ export async function DELETE(req: NextRequest, { params }: Ctx) {
   if (result.matchedCount === 0)
     return NextResponse.json({ error: "El personaje ha cambiado; recarga la página." }, { status: 409 });
 
-  if (!wasPending) {
+  if (wasPending) {
+    // Al cancelar una solicitud, el aviso que recibió el DM ya no sirve
+    await Notification.deleteMany({ type: "character_import_request", character: id, campaign: String(character.campaign) })
+      .catch((err: unknown) => console.error("No se pudo borrar el aviso de la solicitud:", err));
+  } else {
     try {
       const campaign = await Campaign.findById(character.campaign).select("owner").lean();
       if (campaign && String(campaign.owner) !== session.id) {

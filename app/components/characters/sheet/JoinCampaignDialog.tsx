@@ -25,11 +25,13 @@ const primary =
 
 /** «Unir a una campaña»: las campañas activas de quien mira, del sistema del personaje; las que no lo admiten salen
  *  desactivadas con el motivo. */
-export default function JoinCampaignDialog({ characterId, name, campaigns, systemName }: {
+export default function JoinCampaignDialog({ characterId, name, campaigns, systemName, onDone }: {
   characterId: string;
   name: string;
   campaigns: JoinableCampaign[];
   systemName: string;
+  /** Tras unirlo: la página se refresca y este botón desaparece, así que la cabecera mueve el foco. */
+  onDone?: () => void;
 }) {
   const [opener, setOpener] = useState<HTMLElement | null>(null);
   const [picked, setPicked] = useState<string | null>(null);
@@ -43,7 +45,10 @@ export default function JoinCampaignDialog({ characterId, name, campaigns, syste
         : `Has solicitado unir a ${name} a ${c.name}. El DM tiene que aceptarlo.`,
     { campaignId: c.id });
     setPicked(null);
-    if (ok) setOpener(null);
+    if (ok) {
+      setOpener(null);
+      onDone?.();
+    }
   }
 
   return (
@@ -84,7 +89,7 @@ export default function JoinCampaignDialog({ characterId, name, campaigns, syste
                     type="button"
                     disabled={!!c.reason || loading}
                     onClick={() => join(c)}
-                    aria-label={`${c.isDm ? "Unir" : "Solicitar"} en ${c.name}`}
+                    aria-label={`${c.isDm ? "Unir a" : "Solicitar unirse a"} ${c.name}`}
                     className="flex items-center gap-2 rounded-md bg-brand px-3 py-1.5 text-sm font-bold text-white transition-colors enabled:hover:bg-brand-hover disabled:opacity-40"
                   >
                     {picked === c.id && <LoaderCircle size={14} className="animate-spin" aria-hidden="true" />}
@@ -108,13 +113,15 @@ export default function JoinCampaignDialog({ characterId, name, campaigns, syste
 }
 
 /** «Cancelar solicitud» (pendiente) o «Quitar de la campaña» (aprobado), con confirmación. */
-export function LeaveCampaignButton({ characterId, name, campaignName, pending, isDm }: {
+export function LeaveCampaignButton({ characterId, name, campaignName, pending, isDm, onDone }: {
   characterId: string;
   name: string;
   campaignName: string;
   pending: boolean;
   /** Quien mira es el DM de la campaña (no hay a quién avisar). */
   isDm: boolean;
+  /** Tras cancelar o quitar (como en JoinCampaignDialog). */
+  onDone?: () => void;
 }) {
   const [opener, setOpener] = useState<HTMLElement | null>(null);
   const { send, loading } = useCampaignRequest();
@@ -138,8 +145,9 @@ export function LeaveCampaignButton({ characterId, name, campaignName, pending, 
 
   async function run() {
     // Si falla, se cierra y el error sale en el aviso de la cabecera
-    await send(`/api/characters/${characterId}/campaign`, "DELETE", () => text.done);
+    const ok = await send(`/api/characters/${characterId}/campaign`, "DELETE", () => text.done);
     setOpener(null);
+    if (ok) onDone?.();
   }
 
   return (

@@ -1,5 +1,6 @@
 // Acceso a un personaje de D&D 2024 desde las rutas de la ficha. Ver: el dueño o un miembro de su campaña (si está
-// pendiente de aprobación, solo el DM); escribir: solo el dueño. Cualquier otro caso devuelve null (las rutas responden 404 sin revelar que existe).
+// pendiente de aprobación, solo el DM); escribir: solo el dueño. Cualquier otro caso devuelve null (las rutas
+// responden 404 sin revelar que existe).
 import mongoose from "mongoose";
 import { connectDB } from "@/lib/mongodb";
 import { Campaign } from "@/lib/Campaign";

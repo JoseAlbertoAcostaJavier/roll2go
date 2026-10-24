@@ -4,6 +4,7 @@ import { requireDm } from "@/lib/campaignApi";
 import { rateLimit, tooManyRequests } from "@/lib/rateLimit";
 import { Character } from "@/lib/Character";
 import { notify } from "@/lib/notify";
+import { Notification } from "@/lib/Notification";
 
 type Ctx = { params: Promise<{ id: string; characterId: string }> };
 
@@ -19,11 +20,17 @@ export async function DELETE(req: NextRequest, { params }: Ctx) {
   const notFound = NextResponse.json({ error: "Personaje no encontrado." }, { status: 404 });
   if (!mongoose.isValidObjectId(characterId)) return notFound;
   const filter = { _id: characterId, campaign: ctx.campaign._id };
-  const character = await Character.findOne(filter).select("name owner").lean();
+  const character = await Character.findOne(filter).select("name owner campaignStatus").lean();
   if (!character) return notFound;
 
   const result = await Character.updateOne(filter, { $unset: { campaign: "", origin: "", campaignStatus: "" } });
   if (result.matchedCount === 0) return notFound;
+
+  // Si estaba pendiente, el aviso de la solicitud que recibió el DM ya no sirve
+  if (character.campaignStatus === "pending") {
+    await Notification.deleteMany({ type: "character_import_request", character: characterId, campaign: id })
+      .catch((err: unknown) => console.error("No se pudo borrar el aviso de la solicitud:", err));
+  }
 
   if (String(character.owner) !== ctx.session.id) {
     try {

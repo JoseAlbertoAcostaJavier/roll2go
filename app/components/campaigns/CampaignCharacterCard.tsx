@@ -44,18 +44,21 @@ export default function CampaignCharacterCard({ character: c, campaignId, isDm }
         </span>
       </div>
 
-      <div className={`min-w-0 flex-1 ${dimmed ? "grayscale opacity-60" : ""}`}>
-        <p className="truncate font-heading font-bold">
-          <Link href={`/characters/${c.id}`} className="text-brand-soft hover:underline">{c.name}</Link>
-        </p>
-        {c.summary && <p className="truncate text-sm text-muted">{c.summary}</p>}
-        {c.owner ? (
-          <Link href={`/users/${c.owner.username}`} className="block truncate text-sm hover:underline">
-            {c.owner.displayName}
-          </Link>
-        ) : (
-          <p className="text-sm text-muted">Desconocido</p>
-        )}
+      <div className="min-w-0 flex-1">
+        {/* El aviso «Pendiente de aprobación» queda fuera del gris, para que se lea bien */}
+        <div className={dimmed ? "grayscale opacity-60" : ""}>
+          <p className="truncate font-heading font-bold">
+            <Link href={`/characters/${c.id}`} className="text-brand-soft hover:underline">{c.name}</Link>
+          </p>
+          {c.summary && <p className="truncate text-sm text-muted">{c.summary}</p>}
+          {c.owner ? (
+            <Link href={`/users/${c.owner.username}`} className="block truncate text-sm hover:underline">
+              {c.owner.displayName}
+            </Link>
+          ) : (
+            <p className="text-sm text-muted">Desconocido</p>
+          )}
+        </div>
         {c.pending && <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-muted">Pendiente de aprobación</p>}
         {/* Debajo del texto y no a la derecha, para que el nombre quepa a 375 px */}
         {c.pending && isDm && (
@@ -65,7 +68,8 @@ export default function CampaignCharacterCard({ character: c, campaignId, isDm }
         )}
       </div>
 
-      {(isDm || c.isOwn) && (
+      {/* Al DM, una solicitud pendiente solo le muestra Aceptar/Denegar (Denegar ya la saca de la campaña) */}
+      {(isDm ? !c.pending : c.isOwn) && (
         <div className="shrink-0">
           <CharacterMenu campaignId={campaignId} characterId={c.id} name={c.name} isDm={isDm} isOwn={c.isOwn} pending={c.pending} />
         </div>

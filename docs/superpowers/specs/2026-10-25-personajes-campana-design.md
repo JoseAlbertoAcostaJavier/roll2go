@@ -71,7 +71,7 @@ Todas con sesión, `rateLimit("campaign_characters", userId, 60, 3600)`, respues
 
 **Jugador (dueño del personaje)**
 - `POST /api/characters/[id]/campaign` `{ campaignId }` → `canRequestJoin`; escritura condicional `{ _id, owner, campaign: { $exists: false } }` (409 «Este personaje ya está en una campaña.» si no coincide). Respuesta `{ status: "pending" | "approved" }`. Aviso al DM `character_import_request` (si no es el propio DM).
-- `DELETE /api/characters/[id]/campaign` → saca o cancela. Si estaba aprobado y el dueño no es el DM, aviso al DM `character_left` (texto «{who} ha sacado a {personaje} de {campaña}»); si estaba pendiente, sin aviso.
+- `DELETE /api/characters/[id]/campaign` → saca o cancela (409 «Este personaje no está en ninguna campaña.» si no tiene; 409 «El personaje ha cambiado; recarga la página.» si el DM lo acaba de aceptar o quitar). Si estaba aprobado y el dueño no es el DM, aviso al DM `character_left` (texto «{who} ha sacado a {personaje} de {campaña}»); si estaba pendiente, sin aviso.
 
 **DM**
 - `POST /api/campaigns/[id]/characters/[characterId]/approve` → solo si está pendiente en esa campaña (si no, 409). Aviso al dueño `character_approved`.
@@ -89,7 +89,7 @@ Usan `requireDm` / `requireMember` de `lib/campaignApi.ts`.
 - `character_removed`: «{who} ha sacado a {personaje} de {campaña}» → `/characters/{id}`.
 - `character_left`: «{who} ha sacado a {personaje} de {campaña}» → `/campaigns/{id}/characters`.
 
-Preferencias de correo (`emailPrefFor`): `character_approved` → `invites`; `character_rejected` y `character_removed` → `removals`; `character_left` e `character_import_request` → `dm`. El nombre del personaje va en `text`. Los avisos pendientes de un personaje se borran al borrarlo (ya se hace por `character`).
+Preferencias de correo (`emailPrefFor`): `character_approved` → `invites`; `character_rejected` y `character_removed` → `removals`; `character_left` e `character_import_request` → `dm`. El nombre del personaje va en `text`. Los avisos pendientes de un personaje se borran al borrarlo (ya se hace por `character`). El `character_import_request` del DM se borra también cuando la solicitud se resuelve (aceptar, denegar, cancelar o quitar estando pendiente).
 
 ## 8. Interfaz
 

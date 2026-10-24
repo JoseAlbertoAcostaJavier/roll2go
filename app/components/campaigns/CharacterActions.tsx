@@ -107,7 +107,11 @@ export function CampaignDialog({ title, icon, onClose, opener, children }: {
       onClose();
     } else if (e.key === "Tab" && box.current) {
       const items = [...box.current.querySelectorAll<HTMLElement>("button:not(:disabled), a[href]")];
-      if (items.length === 0) return;
+      // Sin nada enfocable (p. ej. todos los botones desactivados mientras se envía), el foco no sale de la ventana
+      if (items.length === 0) {
+        e.preventDefault();
+        return;
+      }
       const [first, last] = [items[0], items[items.length - 1]];
       if (document.activeElement === box.current) {
         e.preventDefault();
@@ -124,7 +128,7 @@ export function CampaignDialog({ title, icon, onClose, opener, children }: {
 
   return createPortal(
     <div
-      className="fixed inset-0 z-50 flex animate-fade-in items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex animate-fade-in items-center justify-center bg-black/70 p-4 backdrop-blur-sm print:hidden"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
       <div

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ChevronLeft, ChevronsUp, CircleCheck, Pencil, Printer, User as UserIcon, X } from "lucide-react";
 import DeleteLevel from "../levelup/DeleteLevel";
@@ -55,6 +55,20 @@ export default function SheetHeader(p: SheetHeaderProps) {
       window.removeEventListener("afterprint", restore);
     };
   }, []);
+
+  // Tras unir, cancelar o quitar, la página se refresca y el botón que abrió la ventana ya no existe: el foco pasa al
+  // botón nuevo de la campaña (y no se pierde en <body>)
+  const campaignControls = useRef<HTMLSpanElement>(null);
+  const refocus = useRef(false);
+  const campaignState = p.campaign ? `${p.campaign.id}:${p.campaign.pending}` : "";
+  useEffect(() => {
+    if (!refocus.current) return;
+    refocus.current = false;
+    campaignControls.current?.querySelector<HTMLElement>("button")?.focus();
+  }, [campaignState]);
+  const onCampaignChange = () => {
+    refocus.current = true;
+  };
 
   // Al descartar el aviso se quita también de la dirección, para que no vuelva al recargar
   const dismiss = () => {
@@ -118,7 +132,7 @@ export default function SheetHeader(p: SheetHeaderProps) {
                   <span className="text-muted">Sin campaña</span>
                 )}
                 {p.isOwner && (
-                  <span className="print:hidden">
+                  <span ref={campaignControls} className="print:hidden">
                     {p.campaign ? (
                       <LeaveCampaignButton
                         characterId={p.id}
@@ -126,9 +140,16 @@ export default function SheetHeader(p: SheetHeaderProps) {
                         campaignName={p.campaign.name}
                         pending={p.campaign.pending}
                         isDm={p.campaign.isDm}
+                        onDone={onCampaignChange}
                       />
                     ) : (
-                      <JoinCampaignDialog characterId={p.id} name={p.name} campaigns={p.joinable} systemName={p.systemName} />
+                      <JoinCampaignDialog
+                        characterId={p.id}
+                        name={p.name}
+                        campaigns={p.joinable}
+                        systemName={p.systemName}
+                        onDone={onCampaignChange}
+                      />
                     )}
                   </span>
                 )}

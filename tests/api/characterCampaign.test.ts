@@ -34,6 +34,7 @@ const db = vi.hoisted(() => ({
   matched: 1,
   updates: [] as unknown[][],
   notified: [] as Record<string, unknown>[],
+  cleared: [] as unknown[],
 }));
 const lean = (v: unknown) => ({ select: () => ({ lean: async () => v }) });
 vi.mock("@/lib/campaignApi", () => ({ sessionOf: async () => db.session }));
@@ -65,6 +66,9 @@ vi.mock("@/lib/Character", () => ({
   },
 }));
 vi.mock("@/lib/notify", () => ({ notify: async (n: Record<string, unknown>) => void db.notified.push(n) }));
+vi.mock("@/lib/Notification", () => ({
+  Notification: { deleteMany: async (filter: unknown) => (db.cleared.push(filter), { deletedCount: 1 }) },
+}));
 
 const { POST, DELETE } = await import("@/app/api/characters/[id]/campaign/route");
 
@@ -109,6 +113,7 @@ beforeEach(() => {
   db.matched = 1;
   db.updates = [];
   db.notified = [];
+  db.cleared = [];
 });
 
 describe("POST /api/characters/[id]/campaign", () => {
@@ -195,11 +200,12 @@ describe("POST /api/characters/[id]/campaign", () => {
 describe("DELETE /api/characters/[id]/campaign", () => {
   const unset = { $unset: { campaign: "", origin: "", campaignStatus: "" } };
 
-  it("cancelar una solicitud pendiente: sin aviso", async () => {
+  it("cancelar una solicitud pendiente: sin aviso, y se borra el que recibió el DM", async () => {
     db.owned = { _id: CHAR, name: "Grog", owner: PLAYER, campaign: CAMPAIGN, campaignStatus: "pending" };
     expect(await leave()).toEqual({ status: 200, json: { ok: true } });
     expect(db.updates).toEqual([[{ _id: CHAR, owner: PLAYER, campaign: CAMPAIGN, campaignStatus: "pending" }, unset]]);
     expect(db.notified).toEqual([]);
+    expect(db.cleared).toEqual([{ type: "character_import_request", character: CHAR, campaign: CAMPAIGN }]);
   });
 
   it("sacar un personaje aprobado de un jugador: avisa al DM con character_left", async () => {
@@ -211,6 +217,7 @@ describe("DELETE /api/characters/[id]/campaign", () => {
     expect(db.notified).toEqual([
       { user: DM, type: "character_left", actor: PLAYER, campaign: CAMPAIGN, character: CHAR, text: "Grog" },
     ]);
+    expect(db.cleared).toEqual([]);
   });
 
   it("un personaje antiguo sin campaignStatus cuenta como aprobado", async () => {
@@ -242,5 +249,6 @@ describe("DELETE /api/characters/[id]/campaign", () => {
     db.matched = 0;
     expect(await leave()).toEqual({ status: 409, json: { error: "El personaje ha cambiado; recarga la página." } });
     expect(db.notified).toEqual([]);
+    expect(db.cleared).toEqual([]);
   });
 });
