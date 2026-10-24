@@ -2,8 +2,8 @@ import { iconSrc } from "@/lib/icons";
 
 export type CharacterStatus = "active" | "retired" | "dead" | "npc";
 
-// Mismos textos que el selector de estado del creador
-const STATUS: Record<CharacterStatus, { label: string; description: string; color: string }> = {
+// Mismos textos que el selector de estado del creador (también los usan las tarjetas de la campaña)
+export const STATUS: Record<CharacterStatus, { label: string; description: string; color: string }> = {
   active: { label: "En activo", description: "¡En plena forma!", color: "bg-success text-black" },
   retired: { label: "Retirado", description: "Ha colgado las armas.", color: "bg-muted text-black" },
   dead: { label: "Fallecido", description: "Descanse en paz.", color: "bg-brand text-white" },
