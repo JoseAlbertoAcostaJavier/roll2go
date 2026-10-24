@@ -163,11 +163,14 @@ export function spellSummary(description: string): string {
   return first.length <= SUMMARY_LENGTH ? first : `${first.slice(0, SUMMARY_LENGTH - 1).trimEnd()}…`;
 }
 
+// Clases de otros libros que aparecen en las listas de los conjuros pero no están en es.json
+const OTHER_CLASS_NAMES: Record<string, string> = { artificer: "Artífice" };
+
 /**
  * Clases de `SpellData.classes` en español («Mago»); las subclases que lo conceden (`subclass:…`) se omiten y las
  * desconocidas se dejan con mayúscula inicial.
  */
 export function spellClassNames(classes: string[]): string[] {
   return classes.filter((c) => !c.startsWith("subclass:")).map((c) =>
-    (es as Record<string, string>)[`class:${c}|xphb`] ?? (c ? c[0].toUpperCase() + c.slice(1) : c));
+    (es as Record<string, string>)[`class:${c}|xphb`] ?? OTHER_CLASS_NAMES[c] ?? (c ? c[0].toUpperCase() + c.slice(1) : c));
 }

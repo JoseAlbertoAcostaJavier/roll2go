@@ -92,7 +92,11 @@ describe("spellSummary", () => {
 
 describe("spellClassNames", () => {
   test("clases en español; las subclases se omiten y las desconocidas se dejan con mayúscula", () => {
-    expect(spellClassNames(["wizard", "subclass:life-domain", "sorcerer", "artificer"]))
-      .toEqual(["Mago", "Hechicero", "Artificer"]);
+    expect(spellClassNames(["wizard", "subclass:life-domain", "sorcerer", "mystic"]))
+      .toEqual(["Mago", "Hechicero", "Mystic"]);
+  });
+
+  test("clases de otros libros que no están en es.json (Artífice)", () => {
+    expect(spellClassNames(["artificer", "wizard"])).toEqual(["Artífice", "Mago"]);
   });
 });
