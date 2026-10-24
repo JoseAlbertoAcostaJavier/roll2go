@@ -5,7 +5,7 @@ import { ChevronLeft } from "lucide-react";
 import { Campaign } from "@/lib/Campaign";
 import { requireUser } from "@/lib/currentUser";
 import { loadCharacterFor } from "@/lib/characterAccess";
-import { listEntries, listMasteryWeapons, type EntryOption } from "@/lib/rules/catalog";
+import { listEntries, listMasteryWeapons, listSpells, type EntryOption } from "@/lib/rules/catalog";
 import { creationDraft } from "@/lib/rules/dnd2024/recreate";
 import type { SpeciesData } from "@/lib/rules/types";
 import CharacterCreator from "@/app/components/characters/CharacterCreator";
@@ -25,13 +25,14 @@ export default async function RecreateCharacterPage({ params }: { params: Promis
   const campaign = campaignDoc ? { id: String(c.campaign), name: campaignDoc.name as string } : null;
 
   // Las mismas listas que en el alta, con los libros del personaje
-  const [species, classes, backgrounds, feats, optionalFeatures, weapons] = await Promise.all([
+  const [species, classes, backgrounds, feats, optionalFeatures, weapons, spells] = await Promise.all([
     listEntries({ books, kind: "species" }),
     listEntries({ books, kind: "class" }),
     listEntries({ books, kind: "background" }),
     listEntries({ books, kind: "feat" }),
     listEntries({ books, kind: "optionalFeature" }),
     listMasteryWeapons(books),
+    listSpells(books),
   ]);
   const lineages: Record<string, EntryOption[]> = {};
   await Promise.all(
@@ -71,6 +72,7 @@ export default async function RecreateCharacterPage({ params }: { params: Promis
         feats={feats}
         optionalFeatures={optionalFeatures}
         weapons={weapons}
+        spells={spells}
         recreate={{ characterId: id, initial }}
       />
     </div>

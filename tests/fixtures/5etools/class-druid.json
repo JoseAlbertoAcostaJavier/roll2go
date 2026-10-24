@@ -1,0 +1,917 @@
+{
+	"class": [
+		{
+			"name": "Druid",
+			"source": "XPHB",
+			"page": 78,
+			"srd52": true,
+			"basicRules2024": true,
+			"edition": "one",
+			"primaryAbility": [
+				{
+					"wis": true
+				}
+			],
+			"hd": {
+				"number": 1,
+				"faces": 8
+			},
+			"proficiency": [
+				"int",
+				"wis"
+			],
+			"spellcastingAbility": "wis",
+			"casterProgression": "full",
+			"preparedSpellsProgression": [
+				4,
+				5,
+				6,
+				7,
+				9,
+				10,
+				11,
+				12,
+				14,
+				15,
+				16,
+				16,
+				17,
+				17,
+				18,
+				18,
+				19,
+				20,
+				21,
+				22
+			],
+			"preparedSpellsChange": "restLong",
+			"cantripProgression": [
+				2,
+				2,
+				2,
+				3,
+				3,
+				3,
+				3,
+				3,
+				3,
+				4,
+				4,
+				4,
+				4,
+				4,
+				4,
+				4,
+				4,
+				4,
+				4,
+				4
+			],
+			"additionalSpells": [
+				{
+					"prepared": {
+						"1": [
+							"speak with animals|xphb"
+						],
+						"2": [
+							"find familiar|xphb"
+						]
+					}
+				}
+			],
+			"featProgression": [
+				{
+					"name": "Epic Boon",
+					"category": [
+						"EB"
+					],
+					"progression": {
+						"19": 1
+					}
+				}
+			],
+			"startingProficiencies": {
+				"skills": [
+					{
+						"choose": {
+							"from": [
+								"arcana",
+								"animal handling",
+								"insight",
+								"medicine",
+								"nature",
+								"perception",
+								"religion",
+								"survival"
+							],
+							"count": 2
+						}
+					}
+				],
+				"weapons": [
+					"simple"
+				],
+				"tools": [
+					"{@item Herbalism Kit|XPHB}"
+				],
+				"toolProficiencies": [
+					{
+						"herbalism kit": true
+					}
+				],
+				"armor": [
+					"light",
+					"shield"
+				],
+				"armorProficiencies": [
+					{
+						"light": true,
+						"shield": true
+					}
+				]
+			},
+			"startingEquipment": {
+				"additionalFromBackground": true,
+				"defaultData": [
+					{
+						"A": [
+							{
+								"item": "leather armor|xphb"
+							},
+							{
+								"item": "shield|xphb"
+							},
+							{
+								"item": "sickle|xphb"
+							},
+							{
+								"item": "druidic focus|xphb"
+							},
+							{
+								"item": "explorer's pack|xphb"
+							},
+							{
+								"item": "herbalism kit|xphb"
+							},
+							{
+								"value": 900
+							}
+						],
+						"B": [
+							{
+								"value": 5000
+							}
+						]
+					}
+				],
+				"entries": [
+					"{@i Choose A or B:} (A) {@item Leather Armor|XPHB}, {@item Shield|XPHB}, {@item Sickle|XPHB}, {@item Druidic Focus|XPHB|Druidic Focus (Quarterstaff)}, {@item Explorer's Pack|XPHB}, {@item Herbalism kit|XPHB}, 9 GP; or (B) 50 GP"
+				]
+			},
+			"multiclassing": {
+				"proficienciesGained": {
+					"armor": [
+						"light",
+						"shield"
+					],
+					"armorProficiencies": [
+						{
+							"light": true,
+							"shield": true
+						}
+					]
+				}
+			},
+			"classTableGroups": [
+				{
+					"colLabels": [
+						"Wild Shape",
+						"{@filter Cantrips|spells|level=0|class=Druid}",
+						"{@filter Prepared Spells|spells|level=!0|class=Druid}"
+					],
+					"rows": [
+						[
+							0,
+							2,
+							4
+						],
+						[
+							2,
+							2,
+							5
+						],
+						[
+							2,
+							2,
+							6
+						],
+						[
+							2,
+							3,
+							7
+						],
+						[
+							2,
+							3,
+							9
+						],
+						[
+							3,
+							3,
+							10
+						],
+						[
+							3,
+							3,
+							11
+						],
+						[
+							3,
+							3,
+							12
+						],
+						[
+							3,
+							3,
+							14
+						],
+						[
+							3,
+							4,
+							15
+						],
+						[
+							3,
+							4,
+							16
+						],
+						[
+							3,
+							4,
+							16
+						],
+						[
+							3,
+							4,
+							17
+						],
+						[
+							3,
+							4,
+							17
+						],
+						[
+							3,
+							4,
+							18
+						],
+						[
+							3,
+							4,
+							18
+						],
+						[
+							4,
+							4,
+							19
+						],
+						[
+							4,
+							4,
+							20
+						],
+						[
+							4,
+							4,
+							21
+						],
+						[
+							4,
+							4,
+							22
+						]
+					]
+				},
+				{
+					"title": "Spell Slots per Spell Level",
+					"colLabels": [
+						"{@filter 1st|spells|level=1|class=Druid}",
+						"{@filter 2nd|spells|level=2|class=Druid}",
+						"{@filter 3rd|spells|level=3|class=Druid}",
+						"{@filter 4th|spells|level=4|class=Druid}",
+						"{@filter 5th|spells|level=5|class=Druid}",
+						"{@filter 6th|spells|level=6|class=Druid}",
+						"{@filter 7th|spells|level=7|class=Druid}",
+						"{@filter 8th|spells|level=8|class=Druid}",
+						"{@filter 9th|spells|level=9|class=Druid}"
+					],
+					"rowsSpellProgression": [
+						[
+							2,
+							0,
+							0,
+							0,
+							0,
+							0,
+							0,
+							0,
+							0
+						],
+						[
+							3,
+							0,
+							0,
+							0,
+							0,
+							0,
+							0,
+							0,
+							0
+						],
+						[
+							4,
+							2,
+							0,
+							0,
+							0,
+							0,
+							0,
+							0,
+							0
+						],
+						[
+							4,
+							3,
+							0,
+							0,
+							0,
+							0,
+							0,
+							0,
+							0
+						],
+						[
+							4,
+							3,
+							2,
+							0,
+							0,
+							0,
+							0,
+							0,
+							0
+						],
+						[
+							4,
+							3,
+							3,
+							0,
+							0,
+							0,
+							0,
+							0,
+							0
+						],
+						[
+							4,
+							3,
+							3,
+							1,
+							0,
+							0,
+							0,
+							0,
+							0
+						],
+						[
+							4,
+							3,
+							3,
+							2,
+							0,
+							0,
+							0,
+							0,
+							0
+						],
+						[
+							4,
+							3,
+							3,
+							3,
+							1,
+							0,
+							0,
+							0,
+							0
+						],
+						[
+							4,
+							3,
+							3,
+							3,
+							2,
+							0,
+							0,
+							0,
+							0
+						],
+						[
+							4,
+							3,
+							3,
+							3,
+							2,
+							1,
+							0,
+							0,
+							0
+						],
+						[
+							4,
+							3,
+							3,
+							3,
+							2,
+							1,
+							0,
+							0,
+							0
+						],
+						[
+							4,
+							3,
+							3,
+							3,
+							2,
+							1,
+							1,
+							0,
+							0
+						],
+						[
+							4,
+							3,
+							3,
+							3,
+							2,
+							1,
+							1,
+							0,
+							0
+						],
+						[
+							4,
+							3,
+							3,
+							3,
+							2,
+							1,
+							1,
+							1,
+							0
+						],
+						[
+							4,
+							3,
+							3,
+							3,
+							2,
+							1,
+							1,
+							1,
+							0
+						],
+						[
+							4,
+							3,
+							3,
+							3,
+							2,
+							1,
+							1,
+							1,
+							1
+						],
+						[
+							4,
+							3,
+							3,
+							3,
+							3,
+							1,
+							1,
+							1,
+							1
+						],
+						[
+							4,
+							3,
+							3,
+							3,
+							3,
+							2,
+							1,
+							1,
+							1
+						],
+						[
+							4,
+							3,
+							3,
+							3,
+							3,
+							2,
+							2,
+							1,
+							1
+						]
+					]
+				}
+			],
+			"classFeatures": [
+				"Druidic|Druid|XPHB|1",
+				"Primal Order|Druid|XPHB|1",
+				"Spellcasting|Druid|XPHB|1",
+				"Wild Companion|Druid|XPHB|2",
+				"Wild Shape|Druid|XPHB|2",
+				{
+					"classFeature": "Druid Subclass|Druid|XPHB|3",
+					"gainSubclassFeature": true
+				}
+			],
+			"subclassTitle": "Druid Subclass",
+			"hasFluff": true,
+			"hasFluffImages": true
+		}
+	],
+	"classFeature": [
+		{
+			"name": "Druidic",
+			"source": "XPHB",
+			"page": 80,
+			"srd52": true,
+			"basicRules2024": true,
+			"className": "Druid",
+			"classSource": "XPHB",
+			"level": 1,
+			"entries": [
+				"You know Druidic, the secret language of Druids. While learning this ancient tongue, you also unlocked the magic of communicating with animals; you always have the {@spell Speak with Animals|XPHB} spell prepared.",
+				"You can use Druidic to leave hidden messages. You and others who know Druidic automatically spot such a message. Others spot the message's presence with a successful {@dc 15} Intelligence ({@skill Investigation|XPHB}) check but can't decipher it without magic."
+			]
+		},
+		{
+			"name": "Magician",
+			"source": "XPHB",
+			"page": 80,
+			"srd52": true,
+			"basicRules2024": true,
+			"className": "Druid",
+			"classSource": "XPHB",
+			"level": 1,
+			"entries": [
+				"You know one extra cantrip from the {@filter Druid spell list|spells|class=Druid}. In addition, your mystical connection to nature gives you a bonus to your Intelligence ({@skill Arcana|XPHB} or {@skill Nature|XPHB}) checks. The bonus equals your Wisdom modifier (minimum bonus of +1)."
+			]
+		},
+		{
+			"name": "Primal Order",
+			"source": "XPHB",
+			"page": 80,
+			"srd52": true,
+			"basicRules2024": true,
+			"className": "Druid",
+			"classSource": "XPHB",
+			"level": 1,
+			"entries": [
+				"You have dedicated yourself to one of the following sacred roles of your choice.",
+				{
+					"type": "entries",
+					"entries": [
+						{
+							"type": "options",
+							"count": 1,
+							"entries": [
+								{
+									"type": "refClassFeature",
+									"classFeature": "Magician|Druid|XPHB|1"
+								},
+								{
+									"type": "refClassFeature",
+									"classFeature": "Warden|Druid|XPHB|1"
+								}
+							]
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "Spellcasting",
+			"source": "XPHB",
+			"page": 79,
+			"srd52": true,
+			"basicRules2024": true,
+			"className": "Druid",
+			"classSource": "XPHB",
+			"level": 1,
+			"entries": [
+				"You have learned to cast spells through studying the mystical forces of nature. See {@book chapter 7|XPHB|7} for the rules on spellcasting. The information below details how you use those rules with Druid spells, which appear on the {@filter Druid spell list|spells|class=Druid} later in the class's description.",
+				{
+					"type": "entries",
+					"entries": [
+						{
+							"type": "entries",
+							"name": "Cantrips",
+							"entries": [
+								"You know two cantrips of your choice from the {@filter Druid spell list|spells|class=Druid}. {@spell Druidcraft|XPHB} and {@spell Produce Flame|XPHB} are recommended.",
+								"Whenever you gain a Druid level, you can replace one of your cantrips with another cantrip of your choice from the {@filter Druid spell list|spells|class=Druid}.",
+								"When you reach Druid levels 4 and 10, you learn another cantrip of your choice from the {@filter Druid spell list|spells|class=Druid}, as shown in the Cantrips column of the Druid Features table."
+							]
+						},
+						{
+							"type": "entries",
+							"name": "Spell Slots",
+							"entries": [
+								"The Druid Features table shows how many spell slots you have to cast your level 1+ spells. You regain all expended slots when you finish a {@variantrule Long Rest|XPHB}."
+							]
+						},
+						{
+							"type": "entries",
+							"name": "Prepared Spells of Level 1+",
+							"entries": [
+								"You prepare the list of level 1+ spells that are available for you to cast with this feature. To start, choose four level 1 spells from the {@filter Druid spell list|spells|class=Druid}. {@spell Animal Friendship|XPHB}, {@spell Cure Wounds|XPHB}, {@spell Faerie Fire|XPHB}, and {@spell Thunderwave|XPHB} are recommended.",
+								"The number of spells on your list increases as you gain Druid levels, as shown in the Prepared Spells column of the Druid Features table. Whenever that number increases, choose additional spells from the {@filter Druid spell list|spells|class=Druid} until the number of spells on your list matches the number on the table. The chosen spells must be of a level for which you have spell slots. For example, if you're a level 3 Druid, your list of prepared spells can include six spells of levels 1 and 2 in any combination.",
+								"If another Druid feature gives you spells that you always have prepared, those spells don't count against the number of spells you can prepare with this feature, but those spells otherwise count as Druid spells for you."
+							]
+						},
+						{
+							"type": "entries",
+							"name": "Changing Your Prepared Spells",
+							"entries": [
+								"Whenever you finish a {@variantrule Long Rest|XPHB}, you can change your list of prepared spells, replacing any of the spells with other Druid spells for which you have spell slots."
+							]
+						},
+						{
+							"type": "entries",
+							"name": "Spellcasting Ability",
+							"entries": [
+								"Wisdom is your spellcasting ability for your Druid spells."
+							]
+						},
+						{
+							"type": "entries",
+							"name": "Spellcasting Focus",
+							"entries": [
+								"You can use a {@item Druidic Focus|XPHB} as a {@variantrule Spellcasting Focus|XPHB} for your Druid spells."
+							]
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "Warden",
+			"source": "XPHB",
+			"page": 80,
+			"srd52": true,
+			"basicRules2024": true,
+			"className": "Druid",
+			"classSource": "XPHB",
+			"level": 1,
+			"entries": [
+				"Trained for battle, you gain proficiency with {@filter Martial weapons|items|type=martial weapon} and training with {@filter Medium armor|items|type=Medium Armor}."
+			]
+		},
+		{
+			"name": "Wild Companion",
+			"source": "XPHB",
+			"page": 81,
+			"srd52": true,
+			"basicRules2024": true,
+			"className": "Druid",
+			"classSource": "XPHB",
+			"level": 2,
+			"entries": [
+				"You can summon a nature spirit that assumes an animal form to aid you. As a {@action Magic|XPHB} action, you can expend a spell slot or a use of Wild Shape to cast the {@spell Find Familiar|XPHB} spell without Material components.",
+				"When you cast the spell in this way, the familiar is Fey and disappears when you finish a {@variantrule Long Rest|XPHB}."
+			]
+		},
+		{
+			"name": "Wild Shape",
+			"source": "XPHB",
+			"page": 80,
+			"srd52": true,
+			"basicRules2024": true,
+			"className": "Druid",
+			"classSource": "XPHB",
+			"level": 2,
+			"entries": [
+				"The power of nature allows you to assume the form of an animal. As a {@variantrule Bonus Action|XPHB}, you shape-shift into a Beast form that you have learned for this feature (see \"Known Forms\" below). You stay in that form for a number of hours equal to half your Druid level or until you use Wild Shape again, have the {@condition Incapacitated|XPHB} condition, or die. You can also leave the form early as a {@variantrule Bonus Action|XPHB}.",
+				{
+					"type": "entries",
+					"entries": [
+						{
+							"type": "entries",
+							"name": "Number of Uses",
+							"entries": [
+								"You can use Wild Shape twice. You regain one expended use when you finish a {@variantrule Short Rest|XPHB}, and you regain all expended uses when you finish a {@variantrule Long Rest|XPHB}.",
+								"You gain additional uses when you reach certain Druid levels, as shown in the Wild Shape column of the Druid Features table."
+							]
+						},
+						{
+							"type": "entries",
+							"name": "Known Forms",
+							"entries": [
+								"You know four Beast forms for this feature, chosen from among Beast stat blocks that have a maximum {@variantrule Challenge Rating|XPHB} of 1/4 and that lack a {@variantrule Fly Speed|XPHB} (see appendix B for stat block options). The {@creature Rat|XMM}, {@creature Riding Horse|XMM}, {@creature Spider|XMM}, and {@creature Wolf|XMM} are recommended. Whenever you finish a {@variantrule Long Rest|XPHB}, you can replace one of your known forms with another eligible form.",
+								"When you reach certain Druid levels, your number of known forms and the maximum {@variantrule Challenge Rating|XPHB} for those forms increases, as shown in the Beast Shapes table. In addition, starting at level 8, you can adopt a form that has a {@variantrule Fly Speed|XPHB}.",
+								"When choosing known forms, you may look in the {@book Monster Manual|XMM} or elsewhere for eligible Beasts if the Dungeon Master permits you to do so."
+							]
+						},
+						{
+							"type": "table",
+							"caption": "Beast Shapes",
+							"colLabels": [
+								"Druid Level",
+								"Known Forms",
+								"Max CR",
+								"Fly Speed"
+							],
+							"colStyles": [
+								"col-3 text-center",
+								"col-3 text-center",
+								"col-3 text-center"
+							],
+							"rows": [
+								[
+									"2",
+									"4",
+									"{@filter 1/4|bestiary|challenge rating=[&0;&1/4]|type=beast|speed type=!fly|miscellaneous=!swarm}",
+									"No"
+								],
+								[
+									"4",
+									"6",
+									"{@filter 1/2|bestiary|challenge rating=[&0;&1/2]|type=beast|speed type=!fly|miscellaneous=!swarm}",
+									"No"
+								],
+								[
+									"8",
+									"8",
+									"{@filter 1|bestiary|challenge rating=[&0;&1]|type=beast|miscellaneous=!swarm}",
+									"Yes"
+								]
+							]
+						},
+						{
+							"type": "entries",
+							"name": "Rules While Shape-Shifted",
+							"entries": [
+								"While in a form, you retain your personality, memories, and ability to speak, and the following rules apply:",
+								{
+									"type": "list",
+									"style": "list-hang-notitle",
+									"items": [
+										{
+											"type": "item",
+											"name": "Temporary Hit Points",
+											"entries": [
+												"When you assume a Wild Shape form, you gain a number of {@variantrule Temporary Hit Points|XPHB} equal to your Druid level."
+											]
+										},
+										{
+											"type": "item",
+											"name": "Game Statistics",
+											"entries": [
+												"Your game statistics are replaced by the Beast's stat block, but you retain your creature type; {@variantrule Hit Points|XPHB}; {@variantrule Hit Point Dice|XPHB}; Intelligence, Wisdom, and Charisma scores; class features; languages; and feats. You also retain your skill and saving throw proficiencies and use your {@variantrule Proficiency|XPHB|Proficiency Bonus} for them, in addition to gaining the proficiencies of the creature. If a skill or saving throw modifier in the Beast's stat block is higher than yours, use the one in the stat block."
+											]
+										},
+										{
+											"type": "item",
+											"name": "No Spellcasting",
+											"entries": [
+												"You can't cast spells, but shape-shifting doesn't break your {@status Concentration|XPHB} or otherwise interfere with a spell you've already cast."
+											]
+										},
+										{
+											"type": "item",
+											"name": "Objects",
+											"entries": [
+												"Your ability to handle objects is determined by the form's limbs rather than your own. In addition, you choose whether your equipment falls in your space, merges into your new form, or is worn by it. Worn equipment functions as normal, but the DM decides whether it's practical for the new form to wear a piece of equipment based on the creature's size and shape. Your equipment doesn't change size or shape to match the new form, and any equipment that the new form can't wear must either fall to the ground or merge with the form. Equipment that merges with the form has no effect while you're in that form."
+											]
+										}
+									]
+								}
+							]
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "Druid Subclass",
+			"source": "XPHB",
+			"page": 81,
+			"srd52": true,
+			"basicRules2024": true,
+			"className": "Druid",
+			"classSource": "XPHB",
+			"level": 3,
+			"entries": [
+				"You gain a Druid subclass of your choice. A subclass is a specialization that grants you features at certain Druid levels. For the rest of your career, you gain each of your subclass's features that are of your Druid level or lower."
+			]
+		}
+	],
+	"subclass": [
+		{
+			"name": "Circle of the Land",
+			"shortName": "Land",
+			"source": "XPHB",
+			"className": "Druid",
+			"classSource": "XPHB",
+			"page": 84,
+			"srd52": true,
+			"basicRules2024": true,
+			"edition": "one",
+			"additionalSpells": [
+				{
+					"name": "Arid Land",
+					"prepared": {
+						"3": [
+							"blur|xphb",
+							"burning hands|xphb",
+							"fire bolt|xphb"
+						],
+						"5": [
+							"fireball|xphb"
+						],
+						"7": [
+							"blight|xphb"
+						],
+						"9": [
+							"wall of stone|xphb"
+						]
+					}
+				},
+				{
+					"name": "Polar Land",
+					"prepared": {
+						"3": [
+							"fog cloud|xphb",
+							"hold person|xphb",
+							"ray of frost|xphb"
+						],
+						"5": [
+							"sleet storm|xphb"
+						],
+						"7": [
+							"ice storm|xphb"
+						],
+						"9": [
+							"cone of cold|xphb"
+						]
+					}
+				},
+				{
+					"name": "Temperate Land",
+					"prepared": {
+						"3": [
+							"misty step|xphb",
+							"shocking grasp|xphb",
+							"sleep|xphb"
+						],
+						"5": [
+							"lightning bolt|xphb"
+						],
+						"7": [
+							"freedom of movement|xphb"
+						],
+						"9": [
+							"tree stride|xphb"
+						]
+					}
+				},
+				{
+					"name": "Tropical Land",
+					"prepared": {
+						"3": [
+							"acid splash|xphb",
+							"ray of sickness|xphb",
+							"web|xphb"
+						],
+						"5": [
+							"stinking cloud|xphb"
+						],
+						"7": [
+							"polymorph|xphb"
+						],
+						"9": [
+							"insect plague|xphb"
+						]
+					}
+				}
+			],
+			"subclassFeatures": [],
+			"hasFluffImages": true
+		}
+	]
+}

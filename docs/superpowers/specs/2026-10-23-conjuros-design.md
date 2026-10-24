@@ -52,7 +52,8 @@ El importador fija el modo por clase con una tabla en `lib/rules/dnd2024/spellca
     class: Ref;                       // clase (o subclase lanzadora)
     cantrips: Named[];                // trucos nuevos
     spells: Named[];                  // conjuros nuevos (levelUp) o entradas de libro (spellbook)
-    replace?: { out: Named; in: Named }; // sustitución opcional (levelUp, y trucos si la regla lo permite)
+    replace?: { out: Named; in: Named };        // sustitución opcional de un conjuro aprendido (solo levelUp)
+    replaceCantrip?: { out: Named; in: Named }; // sustitución opcional de un truco (clases con trucos)
   };
   ```
 - **Preparados** de clases `list` y `spellbook`: `sheet.prepared: Record<classKey, Ref[]>` (en `levelUp` los preparados son exactamente los aprendidos, no se guarda nada aparte).
@@ -99,7 +100,7 @@ Un bloque por clase lanzadora y un bloque «Otros» (especie, legado, dotes):
 ### 4.2 Paso «Conjuros» al subir de nivel
 - Aparece si el nivel nuevo da trucos, conjuros (modo `levelUp`), entradas de libro (`spellbook`) o permite sustituir uno.
 - Misma lista con filtros en modo selección: «Elige 1 truco», «Elige 2 conjuros de nivel 1–2»; los que ya tiene o de nivel demasiado alto, marcados e inactivos.
-- Sustitución opcional: «Puedes sustituir un conjuro que ya conoces» → elegir cuál sale y cuál entra.
+- Sustituciones opcionales en la misma subida: un truco (clases con trucos) y un conjuro aprendido (modo `levelUp`): «Puedes sustituir un conjuro que ya conoces» → elegir cuál sale y cuál entra.
 - Se guarda como elección `spells` de la entrada; `validateLevel` comprueba números, listas, niveles y libros.
 
 ### 4.3 Creación (nivel 1)

@@ -83,6 +83,11 @@ const progressions = shape({
   prepared: nullable(perLevel(int(0, 100))),
   spellbook: nullable(perLevel(int(0, 100))),
 });
+const spellcasting = shape({
+  ability,
+  progression: oneOf("full", "half", "third", "pact"),
+  mode: oneOf("list", "levelUp", "spellbook"),
+});
 const classTable = shape({ columns: arrayOf(shape({ label: str, values: perLevel(str) })) });
 const multiclass = shape({
   requirements: shape({ abilities, any: bool }),
@@ -116,11 +121,8 @@ const checks: { [K in EntryKind]: Check } = {
     equipment,
     subclassLevel: int(1, 20),
     asiLevels: arrayOf(int(1, 20)),
-    spellcasting: nullable(shape({
-      ability,
-      progression: nullable(oneOf("full", "half", "pact")),
-      table: arrayOf(arrayOf(num)),
-    })),
+    spellcasting: nullable(spellcasting),
+    "spells?": arrayOf(shape({ level: int(1, 20), ref })),
     features: arrayOf(levelFeature),
     progressions,
     table: classTable,
@@ -130,7 +132,14 @@ const checks: { [K in EntryKind]: Check } = {
   subclass: shape({
     features: arrayOf(levelFeature),
     spells: arrayOf(shape({ level: int(1, 20), ref })),
-    progressions: shape({ feats: featProgressions, optionalFeatures: optionalFeatureProgressions }),
+    "spellOptions?": arrayOf(shape({ name: str, spells: arrayOf(shape({ level: int(1, 20), ref })) })),
+    progressions: shape({
+      feats: featProgressions,
+      optionalFeatures: optionalFeatureProgressions,
+      "cantrips?": nullable(perLevel(int(0, 100))),
+      "prepared?": nullable(perLevel(int(0, 100))),
+    }),
+    "spellcasting?": spellcasting,
   }),
   classFeature: feature,
   subclassFeature: feature,
@@ -147,6 +156,14 @@ const checks: { [K in EntryKind]: Check } = {
     "prerequisite?": str,
     repeatable: bool,
     "abilityIncrease?": abilities,
+    "spells?": arrayOf(spellGrant),
+    "grantsSpells?": oneOf(true),
+    "spellChoices?": arrayOf(shape({
+      level: int(1, 20),
+      count: int(1, 20),
+      filter: shape({ level: int(0, 9), "classes?": strings, "schools?": strings, "ritual?": oneOf(true) }),
+    })),
+    "spellAbility?": abilities,
   }),
   spell: shape({
     level: int(0, 9),
@@ -158,6 +175,8 @@ const checks: { [K in EntryKind]: Check } = {
     concentration: bool,
     ritual: bool,
     classes: strings,
+    tags: strings,
+    "higherLevels?": str,
   }),
   item: shape({
     type: str,
@@ -173,6 +192,7 @@ const checks: { [K in EntryKind]: Check } = {
   optionalFeature: shape({
     featureType: strings,
     "prerequisite?": shape({ "level?": int(1, 20), "spell?": ref, "pact?": str, "feature?": str }),
+    "spells?": arrayOf(spellGrant),
   }),
   nameTable: shape({
     species: str,

@@ -70,12 +70,21 @@ describe("validateEntryData", () => {
     expect(validateEntryData("class", { ...barbarianData, hitDie: 7 }).ok).toBe(false);
   });
   test("class rechaza progresión de conjuros desconocida", () => {
-    const r = validateEntryData("class", { ...barbarianData, spellcasting: { ability: "int", progression: "third", table: [] } });
-    expect(r.ok).toBe(false);
+    const casting = (extra: Record<string, unknown>) => validateEntryData("class",
+      { ...barbarianData, spellcasting: { ability: "int", progression: "full", mode: "list", ...extra } }).ok;
+    expect(casting({})).toBe(true);
+    expect(casting({ progression: "quarter" })).toBe(false);
+    expect(casting({ mode: "known" })).toBe(false);
+  });
+  test("subclass lanzadora declara su modo", () => {
+    const sub = { features: [], spells: [], progressions: { feats: [], optionalFeatures: [] } };
+    expect(validateEntryData("subclass", { ...sub, spellcasting: { ability: "int", progression: "third", mode: "levelUp" } }).ok)
+      .toBe(true);
+    expect(validateEntryData("subclass", { ...sub, spellcasting: { ability: "int", progression: "third" } }).ok).toBe(false);
   });
   test("spell rechaza nivel fuera de 0-9", () => {
     const base = { level: 3, school: "V", time: "1 acción", range: "60 pies", components: "V,S",
-      duration: "Instantáneo", concentration: false, ritual: false, classes: ["wizard"] };
+      duration: "Instantáneo", concentration: false, ritual: false, classes: ["wizard"], tags: [] };
     expect(validateEntryData("spell", base).ok).toBe(true);
     expect(validateEntryData("spell", { ...base, level: 10 }).ok).toBe(false);
   });

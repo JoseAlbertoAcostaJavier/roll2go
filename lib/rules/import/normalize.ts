@@ -5,12 +5,14 @@
 // padre siempre está en el mismo libro. Todas las claves llevan el tipo delante (`spell:fireball|xphb`).
 import { ABILITIES } from "../types";
 import type {
-  Ability, ClassTable, EntryData, EntryKind, Equipment, FeatureData, LevelCounts, LevelFeature, MulticlassData,
-  NameGender, OptionalFeatureData, Pack, Ref, SpellGrant,
+  Ability, ClassTable, EntryData, EntryKind, Equipment, FeatSpellChoice, FeatSpellFilter, FeatureData, LevelCounts,
+  LevelFeature, MulticlassData, NameGender, OptionalFeatureData, Pack, Ref, Spellcasting, SpellcastingProgression, SpellGrant,
 } from "../types";
 import { normalizeName, validateEntryData } from "../schemas";
 import { entriesToBbcode } from "./toBbcode";
 import { ABILITY_NAMES, CHOICE_LABELS, FEAT_CATEGORIES, proficiencyName, skillName, toolName } from "../dnd2024/labels";
+import { spellComponents, spellDuration, spellRange, spellTags, spellTime } from "../dnd2024/spellText";
+import { spellcastingMode } from "../dnd2024/spellcastingModes";
 import es from "../i18n/es.json";
 
 export const BOOK_PLACEHOLDER = "__BOOK__";
@@ -55,7 +57,7 @@ export type RawFiles = {
 export type NormalizeContext = {
   /** Nombres de todas las habilidades (para "elige cualquiera"). */
   skillNames: string[];
-  /** `nombre|fuente` del conjuro en minúsculas → clases en minúsculas. */
+  /** Clave del conjuro → identificadores de las clases que lo tienen en su lista (`wizard`). */
   spellClasses: Map<string, string[]>;
   /** `nombre corto|clase|fuente de la clase|fuente` en minúsculas → subclase. */
   subclasses: Map<string, { key: string; name: string }>;
@@ -210,8 +212,29 @@ export function expandVersions(base: unknown): Rec[] {
 
 // ---------- piezas comunes ----------
 
-/** `additionalSpells` → conjuros fijos por nivel de personaje/clase. Las elecciones (`choose`) se omiten. */
-function spellGrants(additional: unknown[]): SpellGrant[] {
+/**
+ * `additionalSpells` → conjuros fijos por nivel de personaje/clase. Las elecciones (`choose`) se omiten. Con
+ * `unleveled`, los que no tienen nivel (`"_"`, como los de las dotes) se dan en ese nivel. Si hay varios bloques con
+ * nombre, son alternativas (las tierras del Círculo de la Tierra) y no se concede ninguno: ver `spellOptions`.
+ */
+function spellGrants(additional: unknown[], unleveled?: number): SpellGrant[] {
+  return alternativeBlocks(additional) ? [] : blockGrants(additional, unleveled);
+}
+
+// Varios bloques con nombre: el personaje tiene uno solo de ellos (lo elige él)
+const alternativeBlocks = (additional: unknown[]) =>
+  additional.filter((b) => isObj(b) && typeof b.name === "string").length > 1;
+
+/** Bloques alternativos con nombre (`Arid Land`, `Polar Land`…) con sus conjuros por nivel de clase. */
+function spellOptions(additional: unknown[]): { name: string; spells: { level: number; ref: Ref }[] }[] {
+  if (!alternativeBlocks(additional)) return [];
+  return additional.filter(isObj).map((b) => ({
+    name: str(b.name),
+    spells: blockGrants([b]).map(({ level, ref: r }) => ({ level, ref: r })),
+  }));
+}
+
+function blockGrants(additional: unknown[], unleveled?: number): SpellGrant[] {
   const grants: SpellGrant[] = [];
   for (const block of additional) {
     if (!isObj(block)) continue;
@@ -220,7 +243,7 @@ function spellGrants(additional: unknown[]): SpellGrant[] {
       const byLevel = block[group];
       if (!isObj(byLevel)) continue;
       for (const [lvl, value] of Object.entries(byLevel)) {
-        const level = Number(lvl);
+        const level = lvl === "_" && unleveled !== undefined ? unleveled : Number(lvl);
         if (!Number.isInteger(level)) continue; // "_" = sin nivel, s1… = nivel de conjuro
         for (const s of collectStrings(value)) {
           grants.push({ level, ref: ref("spell", cleanRefKey(s)), ...(isAbility(ability) ? { ability } : {}) });
@@ -229,6 +252,48 @@ function spellGrants(additional: unknown[]): SpellGrant[] {
     }
   }
   return grants.sort((a, b) => a.level - b.level);
+}
+
+/**
+ * `additionalSpells` → conjuros a elegir (`{ choose: "level=1|class=Cleric", count }`) por nivel de personaje (los
+ * que no tienen nivel, desde el 1). Con varios bloques alternativos con nombre no se elige nada (se usa una versión de
+ * la dote), y los filtros que no se entienden se omiten.
+ */
+function spellChoices(additional: unknown[]): FeatSpellChoice[] {
+  if (alternativeBlocks(additional)) return [];
+  const out: FeatSpellChoice[] = [];
+  const walk = (v: unknown, level: number): void => {
+    if (Array.isArray(v)) v.forEach((x) => walk(x, level));
+    else if (isObj(v) && typeof v.choose === "string") {
+      const filter = chooseFilter(v.choose);
+      if (filter) out.push({ level, count: typeof v.count === "number" ? v.count : 1, filter });
+    } else if (isObj(v)) Object.values(v).forEach((x) => walk(x, level));
+  };
+  for (const block of additional.filter(isObj)) {
+    for (const group of ["known", "prepared", "innate", "expanded"]) {
+      if (!isObj(block[group])) continue;
+      for (const [lvl, value] of Object.entries(block[group] as Rec)) {
+        const level = lvl === "_" ? 1 : Number(lvl);
+        if (Number.isInteger(level) && level >= 1) walk(value, level);
+      }
+    }
+  }
+  return out.sort((a, b) => a.level - b.level);
+}
+
+// "level=1|class=Cleric;Druid", "level=1|school=E;D", "level=1|components & miscellaneous=ritual"
+function chooseFilter(choose: string): FeatSpellFilter | null {
+  const filter: Partial<FeatSpellFilter> = {};
+  for (const part of choose.split("|")) {
+    const [k, v = ""] = part.split("=").map((x) => x.trim());
+    const key = lower(k);
+    if (key === "level" && /^\d$/.test(v)) filter.level = Number(v);
+    else if (key === "class") filter.classes = v.split(";").map((c) => toIdentifier(c));
+    else if (key === "school") filter.schools = v.split(";").map((x) => x.toUpperCase());
+    else if (key === "components & miscellaneous" && lower(v) === "ritual") filter.ritual = true;
+    else return null;
+  }
+  return filter.level === undefined ? null : (filter as FeatSpellFilter);
 }
 
 // Los objetos con `choose` (elección del jugador) o `all` (lista ampliada por filtro), p. ej.
@@ -395,64 +460,16 @@ export function normalizeFeat(raw: Rec): NormalizedEntry {
     from.filter(isAbility).forEach((x) => increase.add(x));
   }
   if (increase.size) data.abilityIncrease = ABILITIES.filter((x) => increase.has(x));
+  // Conjuros: los fijos desde que se obtiene la dote; los elegidos solo marcan que da conjuros
+  const additional = asArr(raw.additionalSpells);
+  const spells = spellGrants(additional, 1);
+  if (spells.length) data.spells = spells;
+  if (additional.length) data.grantsSpells = true;
+  const choices = spellChoices(additional);
+  if (choices.length) data.spellChoices = choices;
+  const choose = additional.length === 1 && isObj(additional[0]) && isObj(additional[0].ability) ? additional[0].ability.choose : null;
+  if (choices.length && Array.isArray(choose) && choose.every(isAbility)) data.spellAbility = choose;
   return entry<"feat">(header("feat", raw, keyOf("feat", str(raw.name), str(raw.source))), data);
-}
-
-const TIME_UNITS: Record<string, string> = { action: "action", bonus: "bonus action", reaction: "reaction" };
-const plural = (n: number, unit: string) => `${n} ${unit}${n === 1 ? "" : "s"}`;
-
-function spellTime(time: unknown): string {
-  return asArr(time).map((t) => {
-    if (!isObj(t)) return "";
-    const n = typeof t.number === "number" ? t.number : 1;
-    const unit = str(t.unit);
-    return unit in TIME_UNITS ? `${n} ${TIME_UNITS[unit]}` : plural(n, unit);
-  }).filter(Boolean).join(" or ");
-}
-
-function spellRange(range: unknown): string {
-  if (!isObj(range)) return "";
-  const d = isObj(range.distance) ? range.distance : {};
-  const dType = str(d.type);
-  const amount = typeof d.amount === "number" ? d.amount : 0;
-  const special: Record<string, string> = { self: "Self", touch: "Touch", sight: "Sight", unlimited: "Unlimited" };
-  if (range.type === "special") return "Special";
-  if (range.type === "point") {
-    if (dType in special) return special[dType];
-    return dType === "miles" ? plural(amount, "mile") : `${amount} ${dType}`;
-  }
-  // Áreas centradas en el lanzador: cone, line, emanation, sphere, cube…
-  const unit = dType === "miles" ? "mile" : "foot";
-  return `Self (${amount}-${unit} ${str(range.type)})`;
-}
-
-function spellComponents(c: unknown): string {
-  if (!isObj(c)) return "";
-  const out: string[] = [];
-  if (c.v) out.push("V");
-  if (c.s) out.push("S");
-  if (c.m) {
-    const m = typeof c.m === "string" ? c.m : isObj(c.m) ? str(c.m.text) : "";
-    out.push(m ? `M (${m})` : "M");
-  }
-  if (c.r) out.push("R");
-  return out.join(", ");
-}
-
-function spellDuration(duration: unknown): string {
-  return asArr(duration).map((d) => {
-    if (!isObj(d)) return "";
-    switch (d.type) {
-      case "instant": return "Instantaneous";
-      case "timed": {
-        const t = isObj(d.duration) ? d.duration : {};
-        const text = plural(typeof t.amount === "number" ? t.amount : 1, str(t.type));
-        return d.concentration ? `Concentration, up to ${text}` : text;
-      }
-      case "permanent": return asArr(d.ends).includes("trigger") ? "Until dispelled or triggered" : "Until dispelled";
-      default: return "Special";
-    }
-  }).filter(Boolean).join(" or ");
 }
 
 export function normalizeSpell(raw: Rec, ctx: NormalizeContext): NormalizedEntry {
@@ -460,6 +477,8 @@ export function normalizeSpell(raw: Rec, ctx: NormalizeContext): NormalizedEntry
   const head = header("spell", raw, key);
   head.description = entriesToBbcode([...asArr(raw.entries), ...asArr(raw.entriesHigherLevel)]);
   const meta = isObj(raw.meta) ? raw.meta : {};
+  // La mejora va sin su título («Using a Higher-Level Spell Slot»)
+  const higherLevels = entriesToBbcode(asArr(raw.entriesHigherLevel).flatMap((e) => (isObj(e) ? asArr(e.entries) : [e])));
   return entry<"spell">(head, {
     level: raw.level as number,
     school: str(raw.school),
@@ -470,6 +489,8 @@ export function normalizeSpell(raw: Rec, ctx: NormalizeContext): NormalizedEntry
     concentration: asArr(raw.duration).some((d) => isObj(d) && d.concentration === true),
     ritual: meta.ritual === true,
     classes: ctx.spellClasses.get(key) ?? [],
+    tags: spellTags(raw),
+    ...(higherLevels ? { higherLevels } : {}),
   });
 }
 
@@ -529,7 +550,17 @@ function featureRef(f: unknown, field: "classFeature" | "subclassFeature"): Leve
   return Number.isInteger(level) ? { ref: ref(field, s), level } : null;
 }
 
-const PROGRESSION: Record<string, "full" | "half" | "pact"> = { full: "full", "1/2": "half", artificer: "half", pact: "pact" };
+// `artificer` es medio lanzador redondeando hacia arriba (Paladín y Explorador de 2024)
+const PROGRESSION: Record<string, SpellcastingProgression> = {
+  full: "full", "1/2": "half", artificer: "half", "1/3": "third", pact: "pact",
+};
+
+/** Lanzamiento de una clase o subclase; sin característica o con una progresión desconocida, no lanza conjuros. */
+function spellcasting(raw: Rec, key: string): Spellcasting | null {
+  const ability = raw.spellcastingAbility;
+  const progression = PROGRESSION[str(raw.casterProgression)];
+  return isAbility(ability) && progression ? { ability, progression, mode: spellcastingMode(key, raw) } : null;
+}
 
 /** Resumen en español de una clase sin descripción propia ni `fluff`: dado de golpe, competencias y rasgos de nivel 1. */
 function classSummary(raw: Rec, data: EntryData["class"], anySkills: boolean): string {
@@ -687,6 +718,12 @@ function multiclassData(raw: Rec, ctx: NormalizeContext): MulticlassData {
   };
 }
 
+// Conjuros de `additionalSpells` de una clase que no están siempre preparados: el Druida lanza Encontrar familiar con
+// Compañero salvaje (gastando Forma salvaje), sin tenerlo preparado
+const NOT_ALWAYS_PREPARED: Record<string, string[]> = {
+  "class:druid|xphb": ["spell:find familiar|xphb"],
+};
+
 /** Título de subclase en español (`subclassTitle:barbarian|xphb` en el diccionario); si no está, el original. */
 const subclassTitle = (raw: Rec) =>
   (es as Record<string, string>)[`subclassTitle:${lower(`${str(raw.name)}|${str(raw.source)}`)}`] ?? str(raw.subclassTitle);
@@ -707,8 +744,6 @@ export function normalizeClass(raw: Rec, ctx: NormalizeContext): NormalizedEntry
   const subclassAt = rawFeatures.map((f) => (isObj(f) && f.gainSubclassFeature ? featureRef(f, "classFeature") : null))
     .find((x) => x !== null);
   const hd = isObj(raw.hd) ? raw.hd.faces : undefined;
-  const ability = raw.spellcastingAbility;
-  const spellTable = asArr(raw.classTableGroups).find((g) => isObj(g) && Array.isArray(g.rowsSpellProgression));
   const key = keyOf("class", str(raw.name), str(raw.source));
   const data: EntryData["class"] = {
     hitDie: hd as EntryData["class"]["hitDie"],
@@ -721,13 +756,9 @@ export function normalizeClass(raw: Rec, ctx: NormalizeContext): NormalizedEntry
     equipment: toEquipment(asArr(isObj(raw.startingEquipment) ? raw.startingEquipment.defaultData : [])[0]),
     subclassLevel: subclassAt?.level ?? 3,
     asiLevels: features.filter((f) => f.ref.key.startsWith("classFeature:ability score improvement|")).map((f) => f.level),
-    spellcasting: isAbility(ability)
-      ? {
-        ability,
-        progression: PROGRESSION[str(raw.casterProgression)] ?? null,
-        table: isObj(spellTable) ? (spellTable.rowsSpellProgression as number[][]) : [],
-      }
-      : null,
+    spellcasting: spellcasting(raw, key),
+    spells: spellGrants(asArr(raw.additionalSpells)).map(({ level, ref: r }) => ({ level, ref: r }))
+      .filter((s) => !NOT_ALWAYS_PREPARED[key]?.includes(s.ref.key)),
     features,
     progressions: classProgressions(raw),
     table: classTable(raw.classTableGroups),
@@ -749,13 +780,24 @@ const subclassLookup = (shortName: string, className: string, classSource: strin
   lower(`${shortName}|${className}|${classSource}|${source}`);
 
 export function normalizeSubclass(raw: Rec): NormalizedEntry {
-  return entry<"subclass">(header("subclass", raw, subclassKey(raw), {
+  const key = subclassKey(raw);
+  const casting = spellcasting(raw, key);
+  const progressions: EntryData["subclass"]["progressions"] = choiceProgressions(raw);
+  // Subclases lanzadoras (Caballero arcano, Embaucador arcano): trucos y preparados propios
+  if (casting) {
+    progressions.cantrips = perLevel(raw.cantripProgression);
+    progressions.prepared = perLevel(raw.preparedSpellsProgression);
+  }
+  const options = spellOptions(asArr(raw.additionalSpells));
+  return entry<"subclass">(header("subclass", raw, key, {
     parent: { key: keyOf("class", str(raw.className), str(raw.classSource)) },
   }), {
     features: asArr(raw.subclassFeatures).map((f) => featureRef(f, "subclassFeature"))
       .filter((x): x is LevelFeature => x !== null),
     spells: spellGrants(asArr(raw.additionalSpells)).map(({ level, ref: r }) => ({ level, ref: r })),
-    progressions: choiceProgressions(raw),
+    ...(options.length ? { spellOptions: options } : {}),
+    progressions,
+    ...(casting ? { spellcasting: casting } : {}),
   });
 }
 
@@ -880,6 +922,9 @@ export function normalizeOptionalFeature(raw: Rec): NormalizedEntry {
     }
     if (Object.keys(p).length) data.prerequisite = p;
   }
+  // Conjuros fijos (Armadura de sombras, Paso ascendente…); los elegidos (Pacto del tomo) se omiten
+  const spells = spellGrants(asArr(raw.additionalSpells), 1);
+  if (spells.length) data.spells = spells;
   return entry<"optionalFeature">(
     header("optionalFeature", raw, keyOf("optionalFeature", str(raw.name), str(raw.source))), data);
 }
@@ -998,7 +1043,7 @@ export function normalizeAll(files: RawFiles, source: string): {
   }
   for (const [spellSource, byName] of Object.entries(files.spellSources ?? {})) {
     for (const [name, info] of Object.entries(byName)) {
-      ctx.spellClasses.set(keyOf("spell", name, spellSource), (info.class ?? []).map((c) => lower(c.name)));
+      ctx.spellClasses.set(keyOf("spell", name, spellSource), [...new Set((info.class ?? []).map((c) => toIdentifier(c.name)))]);
     }
   }
   const classFiles = files.classes ?? [];
@@ -1018,6 +1063,15 @@ export function normalizeAll(files: RawFiles, source: string): {
   for (const f of fromSource("feat", files.feats?.feat)) {
     run("feat", f, () => normalizeFeat(f));
     for (const v of expandVersions(f)) run("feat", v, () => normalizeFeat(v));
+  }
+  // Las subclases que conceden un conjuro (dominios, juramentos…) también figuran en su lista: `subclass:life-domain`
+  for (const s of subclasses) {
+    const additional = asArr(s.additionalSpells);
+    for (const grant of [...spellGrants(additional), ...spellOptions(additional).flatMap((o) => o.spells)]) {
+      const classes = ctx.spellClasses.get(grant.ref.key) ?? [];
+      const id = `subclass:${toIdentifier(str(s.name))}`;
+      if (!classes.includes(id)) ctx.spellClasses.set(grant.ref.key, [...classes, id]);
+    }
   }
   for (const s of (files.spells ?? []).flatMap((f) => fromSource("spell", f.spell))) run("spell", s, () => normalizeSpell(s, ctx));
   // Los `itemGroup` (Símbolo sagrado, Canalizador druídico…) son entradas de equipo como las demás

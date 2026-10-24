@@ -3,6 +3,9 @@
 import type { EntryOption } from "@/lib/rules/catalog";
 import type { PendingChoice } from "@/lib/rules/dnd2024/levels";
 import type { Choice } from "@/lib/rules/dnd2024/sheet";
+import {
+  featSpellsChoiceOf, featSpellsMissing, parseSpellPick, spellChoiceOf, spellPickMissing, type SpellPick,
+} from "@/lib/rules/dnd2024/spellPicks";
 import { SUBCLASS_SOURCE } from "@/lib/rules/dnd2024/upgrade";
 import { ABILITIES, type Ability, type FeatData } from "@/lib/rules/types";
 import { choicesFor, refFromKey, type ChoiceValues } from "../ClassFeaturesSection";
@@ -21,9 +24,11 @@ export type LevelUpState = {
   values: ChoiceValues;
   /** Dote o rasgo opcional que sustituye, por `source` ("" = ninguno). */
   replaced: Record<string, string>;
-  /** Característica que mejora cada dote elegida, por `featAbilityKey`. */
+  /** Característica que mejora cada dote elegida, por `featAbilityKey`; y la de lanzamiento de sus conjuros, por `source`. */
   featAbility: Record<string, Ability>;
   asi: Record<string, AsiPick>;
+  /** Conjuros elegidos y sustituciones, por `source`. */
+  spells: Record<string, SpellPick>;
   hp: HpPick | null;
   /** Paso en el que estaba. */
   step: string;
@@ -78,6 +83,7 @@ export function parseDraft(raw: string | null, fallback: LevelUpState): LevelUpS
         ability: isAbility(x.ability) ? x.ability : "",
       }
       : null)),
+    spells: record(d.spells, (x) => parseSpellPick(x)),
     hp,
     step: str(d.step),
   };
@@ -121,7 +127,8 @@ export function missingChoice(p: PendingChoice, env: ChoiceEnv): string | null {
     if (fa.ability && scores[fa.ability] + 1 > fa.cap) return `una característica que no pase de ${fa.cap}`;
     return null;
   }
-  if (p.type === "spells") return null;
+  if (p.type === "spells") return spellPickMissing(p, state.spells[p.source]);
+  if (p.type === "featSpells") return featSpellsMissing(p, state.spells[p.source], state.featAbility[p.source]);
   const chosen = (state.values[p.source] ?? []).slice(0, slotsFor(p, state)).filter(Boolean);
   const left = slotsFor(p, state) - chosen.length;
   if (left > 0) return `elegir ${left} ${left === 1 ? "opción" : "opciones"} en ${p.label}`;
@@ -167,6 +174,12 @@ export function buildChoices(env: ChoiceEnv): Choice[] {
       case "optionalFeature":
         if (!picked.length && !replaced.length && p.count === 0) return [];
         return [{ type: "optionalFeature", source: p.source, value: picked.map(named), ...(replaced.length ? { replaced } : {}) }];
+      case "spells": {
+        const c = spellChoiceOf(p, state.spells[p.source]);
+        return c ? [c] : [];
+      }
+      case "featSpells":
+        return [featSpellsChoiceOf(p, state.spells[p.source], state.featAbility[p.source])];
       default:
         return choicesFor([p], state.values);
     }

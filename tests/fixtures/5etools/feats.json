@@ -305,6 +305,55 @@
 					]
 				}
 			]
+		},
+		{
+			"name": "Fey-Touched",
+			"source": "XPHB",
+			"page": 204,
+			"category": "G",
+			"prerequisite": [
+				{
+					"level": 4
+				}
+			],
+			"ability": [
+				{
+					"choose": {
+						"from": [
+							"int",
+							"wis",
+							"cha"
+						]
+					}
+				}
+			],
+			"additionalSpells": [
+				{
+					"ability": "inherit",
+					"innate": {
+						"_": {
+							"daily": {
+								"1e": [
+									"misty step|xphb",
+									{
+										"choose": "level=1|school=E;D"
+									}
+								]
+							}
+						}
+					}
+				}
+			],
+			"entries": [
+				"Your exposure to the Feywild's magic grants you the following benefits.",
+				{
+					"type": "entries",
+					"name": "Fey Magic",
+					"entries": [
+						"Choose one {@filter level 1 spell from the Divination or Enchantment|spells|level=1|school=E;D} school of magic. You always have that spell and the {@spell Misty Step|XPHB} spell prepared. You can cast each of these spells without expending a spell slot. Once you cast either spell in this way, you can't cast that spell in this way again until you finish a {@variantrule Long Rest|XPHB}. You can also cast these spells using spell slots you have of the appropriate level. The spells' spellcasting ability is the ability increased by this feat."
+					]
+				}
+			]
 		}
 	]
 }

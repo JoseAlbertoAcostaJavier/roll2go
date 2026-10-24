@@ -7,7 +7,7 @@ import { Campaign } from "@/lib/Campaign";
 import { requireUser } from "@/lib/currentUser";
 import { loadCharacterFor } from "@/lib/characterAccess";
 import { booksByIds } from "@/lib/rules/books";
-import { listMasteryWeapons } from "@/lib/rules/catalog";
+import { listMasteryWeapons, listSpells } from "@/lib/rules/catalog";
 import { derive } from "@/lib/rules/dnd2024/derive";
 import { weaponProficient } from "@/lib/rules/dnd2024/derive/attacks";
 import { bareName, refKey } from "@/lib/rules/dnd2024/equipmentRefs";
@@ -15,6 +15,7 @@ import {
   currentMasteries, isMasteryWeapon, masteryCount, masteryLabel, masteryMeleeOnly,
 } from "@/lib/rules/dnd2024/masteries";
 import { parsePronouns, pronounsText } from "@/lib/rules/dnd2024/names";
+import { spellListOf } from "@/lib/rules/dnd2024/spellcasting";
 import type { BackgroundData, ItemData } from "@/lib/rules/types";
 import SheetHeader from "@/app/components/characters/sheet/SheetHeader";
 import SheetTabs, { isSheetTab, SHEET_TABS, type SheetTab } from "@/app/components/characters/sheet/SheetTabs";
@@ -23,6 +24,7 @@ import BackgroundTab from "@/app/components/characters/sheet/BackgroundTab";
 import FeaturesTab from "@/app/components/characters/sheet/FeaturesTab";
 import EquipmentTab, { type ItemInfo } from "@/app/components/characters/sheet/EquipmentTab";
 import MasteriesEditor from "@/app/components/characters/sheet/MasteriesEditor";
+import SpellsTab from "@/app/components/characters/spells/SpellsTab";
 import type { CharacterStatus } from "@/app/components/characters/sheet/StatusBadge";
 
 type Props = {
@@ -30,8 +32,8 @@ type Props = {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 };
 
-// Pestañas disponibles: Conjuros llega con la parte 5
-const TABS: SheetTab[] = ["info", "trasfondo", "rasgos", "equipo"];
+// Pestañas de todas las fichas; Conjuros, solo si el personaje tiene conjuros
+const BASE_TABS: SheetTab[] = ["info", "trasfondo", "rasgos", "equipo"];
 
 // Avisos al volver de una acción (`?saved=…`)
 const NOTICES: Record<string, string> = {
@@ -60,7 +62,8 @@ export default async function CharacterPage({ params, searchParams }: Props) {
   const d = derive(sheet, entries);
 
   const isOwner = String(c.owner) === user.id;
-  const tab: SheetTab = isSheetTab(query.tab) && TABS.includes(query.tab) ? query.tab : "info";
+  const tabs: SheetTab[] = d.hasSpells ? [...BASE_TABS, "conjuros"] : BASE_TABS;
+  const tab: SheetTab = isSheetTab(query.tab) && tabs.includes(query.tab) ? query.tab : "info";
 
   let campaign: { id: string; name: string } | null = null;
   if (c.campaign) {
@@ -102,6 +105,25 @@ export default async function CharacterPage({ params, searchParams }: Props) {
     return { id: refKey(r), label: w ? weaponLabel(w) : bareName(r.key) };
   });
 
+  // Conjuros: la lista de cada clase lanzadora (y los que ya tiene el personaje), sin descripción; se filtra en el
+  // navegador
+  const spellLists = Object.fromEntries(d.spells.blocks.map((b) => {
+    const identifier = entries.get(refKey(b.class))?.identifier || undefined;
+    return [refKey(b.class), { listId: spellListOf(b.class, identifier), iconId: identifier ?? bareName(b.class.key) }];
+  }));
+  const listIds = new Set(Object.values(spellLists).map((l) => l.listId));
+  const ownSpells = new Set([
+    ...d.spells.blocks.flatMap((b) => [
+      ...[...b.cantrips, ...b.known, ...b.spellbook].map((s) => refKey(s.ref)),
+      ...b.prepared.map(refKey),
+      ...b.always.map((a) => refKey(a.spell.ref)),
+    ]),
+    ...d.spells.other.map((o) => refKey(o.spell.ref)),
+  ]);
+  const spellOptions = d.hasSpells
+    ? (await listSpells(found.books)).filter((s) => s.data.classes.some((c) => listIds.has(c)) || ownSpells.has(refKey(s.ref)))
+    : [];
+
   const base = `/characters/${id}`;
   // Las pestañas inactivas se ocultan en pantalla, pero se imprimen todas seguidas
   const panel = (t: SheetTab) => ({
@@ -139,7 +161,7 @@ export default async function CharacterPage({ params, searchParams }: Props) {
         </p>
       )}
 
-      <SheetTabs base={base} active={tab} tabs={TABS} />
+      <SheetTabs base={base} active={tab} tabs={tabs} />
 
       <section {...panel("info")}>
         {panelTitle("info")}
@@ -181,6 +203,21 @@ export default async function CharacterPage({ params, searchParams }: Props) {
           books={found.books}
         />
       </section>
+
+      {d.hasSpells && (
+        <section {...panel("conjuros")}>
+          {panelTitle("conjuros")}
+          {/* Al borrar un nivel desde la ficha se monta de nuevo con los conjuros recortados */}
+          <SpellsTab
+            key={d.level}
+            characterId={id}
+            isOwner={isOwner}
+            initial={d.spells}
+            lists={spellLists}
+            spells={spellOptions}
+          />
+        </section>
+      )}
 
       {attributions.map((a) => (
         <p key={a} className="mt-6 text-xs text-muted">{a}</p>

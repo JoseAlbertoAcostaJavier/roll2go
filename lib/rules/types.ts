@@ -40,7 +40,11 @@ export type LineageData = {
   traitName: string;
 };
 
-export type SpellcastingProgression = "full" | "half" | "pact" | null;
+/** Progresión de espacios: lanzador completo, medio (redondeando hacia arriba), tercio (hacia abajo) o Magia de pacto. */
+export type SpellcastingProgression = "full" | "half" | "third" | "pact";
+/** Cómo se eligen los conjuros preparados (ver `lib/rules/dnd2024/spellcastingModes.ts`). */
+export type SpellcastingMode = "list" | "levelUp" | "spellbook";
+export type Spellcasting = { ability: Ability; progression: SpellcastingProgression; mode: SpellcastingMode };
 
 /** Número acumulado por nivel de clase, solo en los niveles en que cambia: `{ 2: 2, 10: 4, 17: 6 }`. */
 export type LevelCounts = Record<number, number>;
@@ -85,7 +89,9 @@ export type ClassData = {
   equipment: Equipment;
   subclassLevel: number;
   asiLevels: number[];
-  spellcasting: { ability: Ability; progression: SpellcastingProgression; table: number[][] } | null;
+  spellcasting: Spellcasting | null;
+  /** Conjuros siempre preparados de la clase por nivel de clase (Castigo divino del Paladín…). */
+  spells?: { level: number; ref: Ref }[];
   features: LevelFeature[];
   progressions: ClassProgressions;
   table: ClassTable;
@@ -94,11 +100,21 @@ export type ClassData = {
   subclassTitle: string;
 };
 
+/** Conjuros alternativos con nombre: el personaje tiene los de una sola (la tierra del Círculo de la Tierra). */
+export type SpellOption = { name: string; spells: { level: number; ref: Ref }[] };
+
 export type SubclassData = {
   features: LevelFeature[];
   spells: { level: number; ref: Ref }[];
-  /** Dotes y rasgos opcionales propios de la subclase (estilo de combate del Campeón, maniobras…). */
-  progressions: Pick<ClassProgressions, "feats" | "optionalFeatures">;
+  /** Alternativas entre las que el dueño elige en la ficha (`sheet.spellOption`); no se conceden por sí solas. */
+  spellOptions?: SpellOption[];
+  /**
+   * Dotes y rasgos opcionales propios de la subclase (estilo de combate del Campeón, maniobras…) y, en las
+   * subclases lanzadoras, sus trucos y preparados por nivel de clase.
+   */
+  progressions: Pick<ClassProgressions, "feats" | "optionalFeatures"> & Partial<Pick<ClassProgressions, "cantrips" | "prepared">>;
+  /** Solo las subclases lanzadoras (Caballero arcano, Embaucador arcano). */
+  spellcasting?: Spellcasting;
 };
 
 export type FeatureData = {
@@ -115,6 +131,8 @@ export type FeatureData = {
 export type OptionalFeatureData = {
   featureType: string[];
   prerequisite?: { level?: number; spell?: Ref; pact?: string; feature?: string };
+  /** Conjuros fijos que da (Armadura de sombras → Armadura de mago), desde que se tiene (nivel 1). */
+  spells?: SpellGrant[];
 };
 
 export type BackgroundData = {
@@ -125,6 +143,11 @@ export type BackgroundData = {
   equipment: Equipment;
 };
 
+/** Filtro de un conjuro a elegir: su nivel y, si se dan, las listas de clase, las escuelas o que sea ritual. */
+export type FeatSpellFilter = { level: number; classes?: string[]; schools?: string[]; ritual?: true };
+/** Conjuros a elegir de una dote: `count` que cumplan `filter`, desde el nivel de personaje `level`. */
+export type FeatSpellChoice = { level: number; count: number; filter: FeatSpellFilter };
+
 export type FeatData = {
   category: "origin" | "general" | "fightingStyle" | "epicBoon";
   /** Código de categoría de 5etools (`FS`, `FS:P`…): distingue los estilos de combate propios de una clase. */
@@ -132,6 +155,14 @@ export type FeatData = {
   prerequisite?: string;
   repeatable: boolean;
   abilityIncrease?: Ability[];
+  /** Conjuros fijos que da (Tocado por los feéricos → Paso brumoso), por nivel de personaje. */
+  spells?: SpellGrant[];
+  /** Si da conjuros, aunque sean solo elegidos (Iniciado en la magia, Lanzador de rituales…). */
+  grantsSpells?: true;
+  /** Conjuros que se eligen (Iniciado en la magia, Lanzador de rituales, la mitad elegida de Tocado por los feéricos…). */
+  spellChoices?: FeatSpellChoice[];
+  /** Características entre las que se elige la de lanzamiento de esos conjuros (Iniciado en la magia). */
+  spellAbility?: Ability[];
 };
 
 export type SpellData = {
@@ -143,7 +174,12 @@ export type SpellData = {
   duration: string;
   concentration: boolean;
   ritual: boolean;
+  /** Identificadores de las clases que lo tienen en su lista (`wizard`) y de las subclases que lo conceden (`subclass:life-domain`). */
   classes: string[];
+  /** Etiquetas en español para filtrar: «Daño de fuego», «Salvación de Destreza», «Concentración»… */
+  tags: string[];
+  /** Mejora con un espacio de nivel superior (BBCode); también va al final de la descripción. */
+  higherLevels?: string;
 };
 
 export type ItemData = {

@@ -9,6 +9,8 @@ import { refKey } from "@/lib/rules/dnd2024/equipmentRefs";
 import { removeLastLevel } from "@/lib/rules/dnd2024/levelOps";
 import { masteryCount } from "@/lib/rules/dnd2024/masteries";
 import { loadSheetEntries } from "@/lib/rules/dnd2024/sheetEntries";
+import type { SpellData } from "@/lib/rules/types";
+import { unchangedFilter } from "@/lib/unchangedFilter";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -30,10 +32,16 @@ export async function DELETE(req: NextRequest, { params }: Ctx) {
   const probe = removeLastLevel(found.sheet, 0);
   if (!probe.ok) return NextResponse.json({ error: probe.error }, { status: 400 });
   const entriesAfter = await loadSheetEntries(probe.sheet, found.books, getEntries);
-  const maxAfter = derive(probe.sheet, entriesAfter).hp.max;
+  const derivedAfter = derive(probe.sheet, entriesAfter);
   // Maestrías que permite la hoja sin el nivel (sin tope si falta alguna clase en el catálogo)
   const classesLoaded = probe.sheet.classesSummary.every((c) => entriesAfter.has(refKey(c.class.ref)));
-  const result = removeLastLevel(found.sheet, maxAfter, classesLoaded ? masteryCount(probe.sheet, entriesAfter) : Infinity);
+  // Preparados que siguen cabiendo y espacios gastados (con el nivel de cada preparado, de los libros del personaje)
+  const prepared = Object.values(found.sheet.prepared ?? {}).flat().filter((r) => found.books.includes(r.book));
+  const spellLevels = new Map((await getEntries(prepared)).map((e) => [refKey(e.ref), (e.data as SpellData).level]));
+  const result = removeLastLevel(
+    found.sheet, derivedAfter.hp.max, classesLoaded ? masteryCount(probe.sheet, entriesAfter) : Infinity,
+    classesLoaded ? { ...derivedAfter.spells, spellLevel: (r) => spellLevels.get(refKey(r)) } : undefined,
+  );
   if (!result.ok) return NextResponse.json({ error: result.error }, { status: 400 });
 
   // Solo lo que cambia, y solo si nadie ha cambiado de nivel entretanto
@@ -42,11 +50,26 @@ export async function DELETE(req: NextRequest, { params }: Ctx) {
   if (result.sheet.weaponMasteries && result.sheet.weaponMasteries.length !== found.sheet.weaponMasteries?.length) {
     set["sheet.weaponMasteries"] = result.sheet.weaponMasteries;
   }
+  // Los conjuros, solo si nadie los ha cambiado entretanto (si no, se perdería ese cambio)
+  const unchanged: Record<string, unknown> = {};
+  if (classesLoaded) {
+    const stored = found.character.sheet as Record<string, unknown> | undefined;
+    for (const field of ["prepared", "slotsUsed"] as const) {
+      set[`sheet.${field}`] = result.sheet[field];
+      unchanged[`sheet.${field}`] = unchangedFilter(stored?.[field]);
+    }
+  }
   const res = await Character.updateOne(
-    { _id: id, "sheet.version": 2, "sheet.levels": { $size: before } },
+    { _id: id, "sheet.version": 2, "sheet.levels": { $size: before }, ...unchanged },
     { $set: set, $pop: { "sheet.levels": 1 } },
   );
-  if (res.matchedCount === 0)
-    return NextResponse.json({ error: "El personaje ha cambiado de nivel; recarga la página." }, { status: 409 });
+  if (res.matchedCount === 0) {
+    // Si sigue en el mismo nivel, lo que cambió entretanto fueron sus conjuros
+    const sameLevel = await Character.exists({ _id: id, "sheet.version": 2, "sheet.levels": { $size: before } });
+    const error = sameLevel
+      ? "El personaje ha cambiado mientras borrabas el nivel. Recarga la página."
+      : "El personaje ha cambiado de nivel; recarga la página.";
+    return NextResponse.json({ error }, { status: 409 });
+  }
   return NextResponse.json({ ok: true });
 }

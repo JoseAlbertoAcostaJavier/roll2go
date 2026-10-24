@@ -9,7 +9,8 @@ import { visibleBooksOf } from "@/lib/rules/books";
 import { isMasteryWeapon } from "@/lib/rules/dnd2024/masteries";
 import { pickBooks } from "@/lib/rules/pickBooks";
 import { normalizeName, validateEntryData } from "@/lib/rules/schemas";
-import type { EntryKind, ItemData, Ref } from "@/lib/rules/types";
+import { spellSummary } from "@/lib/rules/dnd2024/spellText";
+import type { EntryKind, ItemData, Ref, SpellData } from "@/lib/rules/types";
 
 export { pickBooks };
 
@@ -161,6 +162,50 @@ function listBookMasteryWeapons(bookId: string) {
 export async function listMasteryWeapons(books: string[]): Promise<EntryOption[]> {
   const ids = [...new Set(books)].filter((id) => mongoose.isValidObjectId(id)).sort();
   const lists = await Promise.all(ids.map(listBookMasteryWeapons));
+  return lists
+    .flatMap((l) => l.entries)
+    .sort((a, b) => (a.sort < b.sort ? -1 : a.sort > b.sort ? 1 : 0))
+    .map((e) => e.option);
+}
+
+/** Conjuro del listado de la ficha: con sus datos (sin la mejora) y la línea de resumen, sin la descripción. */
+export type SpellOption = EntryOption & { data: SpellData; summary: string };
+
+type CachedSpells = { entries: { sort: string; option: SpellOption }[] };
+
+/* Todos los conjuros de un libro con datos y resumen, para la pestaña Conjuros (sin el límite del listado, que se
+   queda corto para un libro con 391). Misma caché que el listado. */
+function listBookSpells(bookId: string) {
+  return unstable_cache(
+    async (): Promise<CachedSpells> => {
+      await connectDB();
+      const book = await Book.findById(bookId).select("name").lean();
+      if (!book) return { entries: [] };
+      const docs = (await BookEntry.find({ book: bookId, kind: "spell" })
+        .select("-foundry")
+        .sort({ nameLower: 1 })
+        .lean()) as unknown as FullEntryDoc[];
+      return {
+        entries: docs
+          .filter((d) => validateEntryData("spell", d.data).ok)
+          .map((d) => {
+            // La mejora va también al final de la descripción, que se pide al abrir la ficha del conjuro
+            const data = { ...(d.data as SpellData) };
+            delete data.higherLevels;
+            const summary = spellSummary(d.descriptionEs || d.description || "");
+            return { sort: d.nameLower, option: { ...toOption(d, book.name, false), data, summary } };
+          }),
+      };
+    },
+    ["rules-spells", bookId],
+    { tags: [`book:${bookId}`], revalidate: CACHE_SECONDS },
+  )();
+}
+
+/** Conjuros de los libros dados, ordenados por nombre. */
+export async function listSpells(books: string[]): Promise<SpellOption[]> {
+  const ids = [...new Set(books)].filter((id) => mongoose.isValidObjectId(id)).sort();
+  const lists = await Promise.all(ids.map(listBookSpells));
   return lists
     .flatMap((l) => l.entries)
     .sort((a, b) => (a.sort < b.sort ? -1 : a.sort > b.sort ? 1 : 0))

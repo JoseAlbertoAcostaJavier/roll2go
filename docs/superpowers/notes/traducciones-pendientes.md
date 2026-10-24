@@ -73,7 +73,15 @@ Fuentes usadas para lo que sí está en `es.json`: el SRD 5.2.1 oficial en espa�
 | item:common wine (bottle)\|xphb | Common Wine (Bottle) | Vino común (botella) | El SRD tiene "Vino (botella)" con calidades; falta confirmar el orden |
 | item:fine wine (bottle)\|xphb | Fine Wine (Bottle) | Vino de calidad (botella) | Igual que el anterior |
 
-Los conjuros (391) y los rasgos de clase y subclase (592) tampoco tienen traducción todavía; quedan fuera de esta lista.
+## Clases de otros libros
+
+Las listas de clases de los conjuros del XPHB nombran clases que no son del XPHB (no se importan y no están en `es.json`). Su nombre en español está en `OTHER_CLASS_NAMES` (`lib/rules/dnd2024/spellText.ts`).
+
+| identificador | nombre inglés | nombre en `OTHER_CLASS_NAMES` | duda |
+| --- | --- | --- | --- |
+| artificer | Artificer (EFA) | Artífice | Nombre de la edición española de 2014 (Eberron); sin confirmar en 2024 |
+
+Los rasgos de clase y subclase (592) tampoco tienen traducción todavía; quedan fuera de esta lista. Los conjuros tienen su propia sección más abajo.
 
 ## Nombres a verificar
 
@@ -87,6 +95,65 @@ Estos sí están en `es.json`, pero el nombre solo sale de una reseña (Espada y
 | subclass:clockwork sorcery\|sorcerer\|xphb | Clockwork Sorcery | Hechicería mecánica | verificar |
 | subclass:battle master\|fighter\|xphb | Battle Master | Maestro del combate | verificar |
 | subclass:beast master\|ranger\|xphb | Beast Master | Señor de las bestias | verificar |
+
+## Conjuros fuera del SRD
+
+Los 339 conjuros del SRD 5.2.1 llevan en `es.json` el nombre del SRD oficial en español (comparados uno a uno por nivel, escuela y clases con la sección «Descripciones de conjuros»). Los 52 restantes no están en el SRD: también están en `es.json` para que la lista no mezcle idiomas, pero su nombre es una propuesta sin comprobar contra ninguna fuente (el de la edición española de 2014 o de los suplementos tal como se recuerda, o el patrón de nombres del SRD) que hay que confirmar con el Manual del Jugador 2024 en español.
+
+| clave | nombre inglés | nombre en `es.json` | origen de la propuesta |
+| --- | --- | --- | --- |
+| spell:arcane gate\|xphb | Arcane Gate | Portal arcano | Nombre de la edición española de 2014 |
+| spell:arcane vigor\|xphb | Arcane Vigor | Vigor arcano | Conjuro nuevo de 2024 |
+| spell:armor of agathys\|xphb | Armor of Agathys | Armadura de Agathys | Nombre de la edición española de 2014 |
+| spell:arms of hadar\|xphb | Arms of Hadar | Brazos de Hadar | Nombre de la edición española de 2014 |
+| spell:aura of purity\|xphb | Aura of Purity | Aura de pureza | Nombre de la edición española de 2014 |
+| spell:aura of vitality\|xphb | Aura of Vitality | Aura de vitalidad | Nombre de la edición española de 2014 |
+| spell:banishing smite\|xphb | Banishing Smite | Castigo desterrador | Sigue el patrón «Castigo…» del SRD |
+| spell:beast sense\|xphb | Beast Sense | Sentidos de bestia | Nombre de la edición española de 2014 |
+| spell:blade ward\|xphb | Blade Ward | Protección contra armas | Nombre de la edición española de 2014 |
+| spell:blinding smite\|xphb | Blinding Smite | Castigo cegador | Sigue el patrón «Castigo…» del SRD |
+| spell:circle of power\|xphb | Circle of Power | Círculo de poder | Nombre de la edición española de 2014 |
+| spell:cloud of daggers\|xphb | Cloud of Daggers | Nube de dagas | Nombre de la edición española de 2014 |
+| spell:compelled duel\|xphb | Compelled Duel | Duelo obligado | Nombre de la edición española de 2014 |
+| spell:conjure barrage\|xphb | Conjure Barrage | Conjurar andanada | Nombre de la edición española de 2014 |
+| spell:conjure volley\|xphb | Conjure Volley | Conjurar descarga | Nombre de la edición española de 2014 |
+| spell:cordon of arrows\|xphb | Cordon of Arrows | Cordón de flechas | Nombre de la edición española de 2014 |
+| spell:crown of madness\|xphb | Crown of Madness | Corona de locura | Nombre de la edición española de 2014 |
+| spell:crusader's mantle\|xphb | Crusader's Mantle | Manto del cruzado | Nombre de la edición española de 2014 |
+| spell:destructive wave\|xphb | Destructive Wave | Onda destructora | Nombre de la edición española de 2014 |
+| spell:elemental weapon\|xphb | Elemental Weapon | Arma elemental | Nombre de la edición española de 2014 |
+| spell:feign death\|xphb | Feign Death | Fingir muerte | Nombre de la edición española de 2014 |
+| spell:fount of moonlight\|xphb | Fount of Moonlight | Fuente de luz de luna | Conjuro nuevo de 2024 |
+| spell:friends\|xphb | Friends | Amigos | Nombre de la edición española de 2014 |
+| spell:grasping vine\|xphb | Grasping Vine | Enredadera aferradora | Nombre de la edición española de 2014 |
+| spell:hail of thorns\|xphb | Hail of Thorns | Lluvia de espinas | Nombre de la edición española de 2014 |
+| spell:hunger of hadar\|xphb | Hunger of Hadar | Hambre de Hadar | Nombre de la edición española de 2014 |
+| spell:jallarzi's storm of radiance\|xphb | Jallarzi's Storm of Radiance | Tormenta radiante de Jallarzi | Conjuro nuevo de 2024 |
+| spell:lightning arrow\|xphb | Lightning Arrow | Flecha relampagueante | Nombre de la edición española de 2014 |
+| spell:mind sliver\|xphb | Mind Sliver | Esquirla mental | Conjuro del Caldero de Tasha |
+| spell:power word fortify\|xphb | Power Word Fortify | Palabra de poder: fortalecer | Conjuro nuevo de 2024; sigue el patrón «Palabra de poder: …» del SRD |
+| spell:staggering smite\|xphb | Staggering Smite | Castigo abrumador | Sigue el patrón «Castigo…» del SRD |
+| spell:steel wind strike\|xphb | Steel Wind Strike | Golpe del viento de acero | Conjuro de la Guía de Xanathar |
+| spell:summon aberration\|xphb | Summon Aberration | Invocar aberración | Sigue el patrón de «Invocar dragón» del SRD |
+| spell:summon beast\|xphb | Summon Beast | Invocar bestia | Sigue el patrón de «Invocar dragón» del SRD |
+| spell:summon celestial\|xphb | Summon Celestial | Invocar celestial | Sigue el patrón de «Invocar dragón» del SRD |
+| spell:summon construct\|xphb | Summon Construct | Invocar constructo | Sigue el patrón de «Invocar dragón» del SRD |
+| spell:summon elemental\|xphb | Summon Elemental | Invocar elemental | Sigue el patrón de «Invocar dragón» del SRD |
+| spell:summon fey\|xphb | Summon Fey | Invocar feérico | Sigue el patrón de «Invocar dragón» del SRD |
+| spell:summon fiend\|xphb | Summon Fiend | Invocar infernal | Sigue el patrón de «Invocar dragón» del SRD |
+| spell:summon undead\|xphb | Summon Undead | Invocar muerto viviente | Sigue el patrón de «Invocar dragón» del SRD |
+| spell:swift quiver\|xphb | Swift Quiver | Carcaj veloz | Nombre de la edición española de 2014 |
+| spell:synaptic static\|xphb | Synaptic Static | Estática sináptica | Conjuro de la Guía de Xanathar |
+| spell:tasha's bubbling cauldron\|xphb | Tasha's Bubbling Cauldron | Caldero burbujeante de Tasha | Conjuro del Caldero de Tasha |
+| spell:telepathy\|xphb | Telepathy | Telepatía | Nombre de la edición española de 2014 |
+| spell:thorn whip\|xphb | Thorn Whip | Látigo de espinas | Nombre de la edición española de 2014 |
+| spell:thunderclap\|xphb | Thunderclap | Atronar | Conjuro de la Guía de Xanathar |
+| spell:thunderous smite\|xphb | Thunderous Smite | Castigo atronador | Sigue el patrón «Castigo…» del SRD |
+| spell:toll the dead\|xphb | Toll the Dead | Doblar por los muertos | Conjuro de la Guía de Xanathar |
+| spell:witch bolt\|xphb | Witch Bolt | Rayo de bruja | Sin confirmar |
+| spell:word of radiance\|xphb | Word of Radiance | Palabra radiante | Conjuro de la Guía de Xanathar |
+| spell:wrathful smite\|xphb | Wrathful Smite | Castigo iracundo | Sigue el patrón «Castigo…» del SRD |
+| spell:yolande's regal presence\|xphb | Yolande's Regal Presence | Presencia regia de Yolande | Conjuro nuevo de 2024 |
 
 ## Propiedades de maestría de las armas
 

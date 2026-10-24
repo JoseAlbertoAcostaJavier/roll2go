@@ -3,11 +3,11 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { inlineTags } from "@/lib/rules/import/toBbcode";
 import {
-  normalizeAll, normalizeBackground, expandVersions, resolveCopy, textChoiceFeatures, toIdentifier, unreachableFeatures,
+  normalizeAll, normalizeBackground, normalizeFeat, expandVersions, resolveCopy, textChoiceFeatures, toIdentifier, unreachableFeatures,
   type NormalizedEntry, type RawFiles,
 } from "@/lib/rules/import/normalize";
 import type {
-  BackgroundData, ClassData, FeatureData, ItemData, LineageData, NameTableData, OptionalFeatureData, SpeciesData, SpellData,
+  BackgroundData, ClassData, FeatData, FeatureData, ItemData, LineageData, NameTableData, OptionalFeatureData, SpeciesData, SpellData,
   SubclassData,
 } from "@/lib/rules/types";
 
@@ -83,6 +83,45 @@ test("dote con versiones (Magic Initiate)", () => {
   expect(cleric).toBeDefined();
   expect(cleric!.data).toMatchObject({ category: "origin", categoryCode: "O", repeatable: true });
   expect(cleric!.description).not.toContain("Druid");
+});
+
+test("dotes con conjuros: los fijos en `spells` y `grantsSpells` también si solo se eligen", () => {
+  const fey = find("feat", "feat:fey-touched|xphb")!.data as FeatData;
+  expect(fey.spells).toEqual([{ level: 1, ref: { book: "__BOOK__", key: "spell:misty step|xphb" } }]);
+  expect(fey.grantsSpells).toBe(true);
+  const initiate = find("feat", "feat:magic initiate; cleric|xphb")!.data as FeatData;
+  expect(initiate.spells).toBeUndefined();
+  expect(initiate.grantsSpells).toBe(true);
+  // Conjuros elegidos: filtros de `choose` por nivel de personaje y la característica elegible
+  expect(initiate.spellChoices).toEqual([
+    { level: 1, count: 2, filter: { level: 0, classes: ["cleric"] } },
+    { level: 1, count: 1, filter: { level: 1, classes: ["cleric"] } },
+  ]);
+  expect(initiate.spellAbility).toEqual(["int", "wis", "cha"]);
+  expect(fey.spellChoices).toEqual([{ level: 1, count: 1, filter: { level: 1, schools: ["E", "D"] } }]);
+  expect(fey.spellAbility).toBeUndefined();
+  const ritual = normalizeFeat({
+    name: "Ritual Caster", source: "XPHB", category: "G",
+    additionalSpells: [{ prepared: {
+      1: [{ choose: "level=1|components & miscellaneous=ritual", count: 2 }],
+      5: [{ choose: "level=1|components & miscellaneous=ritual", count: 1 }],
+    } }],
+  }).data as FeatData;
+  expect(ritual.spellChoices).toEqual([
+    { level: 1, count: 2, filter: { level: 1, ritual: true } }, { level: 5, count: 1, filter: { level: 1, ritual: true } },
+  ]);
+  // Con varias listas alternativas (la dote base de Iniciado en la magia) no hay elección: se usa una de sus versiones
+  expect((find("feat", "feat:magic initiate|xphb")!.data as FeatData).spellChoices).toBeUndefined();
+  const alert = normalizeFeat({ name: "Alert", source: "XPHB", category: "O" }).data;
+  expect(alert).not.toHaveProperty("grantsSpells");
+  expect(alert).not.toHaveProperty("spells");
+});
+
+test("clase con conjuros siempre preparados (Paladín)", () => {
+  const { entries: es } = normalizeAll({ classes: [fixture("class-paladin.json")] }, "XPHB");
+  const paladin = es.find((e) => e.key === "class:paladin|xphb")!.data as ClassData;
+  expect(paladin.spells!.map((s) => [s.level, s.ref.key])).toEqual([[2, "spell:divine smite|xphb"], [5, "spell:find steed|xphb"]]);
+  expect((find("class", "class:barbarian|xphb")!.data as ClassData).spells).toEqual([]);
 });
 
 describe("clase (Bárbaro)", () => {
@@ -170,13 +209,57 @@ test("conjuro (Fireball)", () => {
   const data = fb.data as SpellData;
   expect(data.level).toBe(3);
   expect(data.school).toBe("V");
-  expect(data.classes).toContain("wizard");
-  expect(data.time).toBe("1 action");
-  expect(data.range).toBe("150 feet");
+  expect(data.classes).toEqual(expect.arrayContaining(["sorcerer", "wizard"]));
+  expect(data.time).toBe("1 acción");
+  expect(data.range).toBe("45 metros (150 pies)");
   expect(data.components).toBe("V, S, M (a ball of bat guano and sulfur)");
-  expect(data.duration).toBe("Instantaneous");
+  expect(data.duration).toBe("Instantáneo");
   expect(data.concentration).toBe(false);
+  expect(data.tags).toEqual(expect.arrayContaining(["Daño de fuego", "Salvación de Destreza", "Área: esfera"]));
+  expect(data.higherLevels).toMatch(/^The damage increases by .*1d6.* above 3/);
   expect(fb.description).toContain("Using a Higher-Level Spell Slot");
+});
+
+test("conjuro: clases desde sources.json y subclases que lo conceden", () => {
+  const spell = { ...fixture("spells.json").spell[0], name: "Shield of Faith", level: 1 };
+  const life = { name: "Life Domain", shortName: "Life", source: "XPHB", className: "Cleric", classSource: "XPHB",
+    additionalSpells: [{ prepared: { 3: ["shield of faith|xphb"] } }], subclassFeatures: [] };
+  const r = normalizeAll({
+    spells: [{ spell: [spell] }],
+    spellSources: { XPHB: { "Shield of Faith": { class: [{ name: "Cleric", source: "XPHB" }, { name: "Paladin", source: "XPHB" },
+      { name: "Cleric", source: "PHB" }] } } },
+    classes: [{ subclass: [life] }],
+  }, "XPHB");
+  expect(r.errors).toEqual([]);
+  const data = r.entries.find((e) => e.key === "spell:shield of faith|xphb")!.data as SpellData;
+  expect(data.classes).toEqual(["cleric", "paladin", "subclass:life-domain"]);
+});
+
+describe("modos de lanzamiento", () => {
+  const classes = ["cleric", "sorcerer", "warlock", "ranger"].map((c) => fixture(`class-${c}.json`));
+  const wizard = { ...classes[0].class[0], name: "Wizard", spellcastingAbility: "int", casterProgression: "full" };
+  const { entries: es } = normalizeAll({ classes: [...classes, { class: [wizard] }] }, "XPHB");
+  const casting = (key: string) => (es.find((e) => e.key === key)!.data as ClassData).spellcasting;
+
+  test("Mago con libro, Clérigo con lista, Hechicero al subir de nivel", () => {
+    expect(casting("class:wizard|xphb")).toEqual({ ability: "int", progression: "full", mode: "spellbook" });
+    expect(casting("class:cleric|xphb")?.mode).toBe("list");
+    expect(casting("class:sorcerer|xphb")?.mode).toBe("levelUp");
+    expect(casting("class:warlock|xphb")).toEqual({ ability: "cha", progression: "pact", mode: "levelUp" });
+    expect(casting("class:ranger|xphb")).toEqual({ ability: "wis", progression: "half", mode: "levelUp" });
+  });
+
+  test("subclase lanzadora de tercio (Caballero arcano)", () => {
+    const ek = { name: "Eldritch Knight", shortName: "Eldritch Knight", source: "XPHB", className: "Fighter",
+      classSource: "XPHB", spellcastingAbility: "int", casterProgression: "1/3", subclassFeatures: [],
+      cantripProgression: [0, 0, 2, ...Array(17).fill(3)], preparedSpellsProgression: [0, 0, 3, ...Array(17).fill(4)] };
+    const r = normalizeAll({ classes: [{ subclass: [ek] }] }, "XPHB");
+    expect(r.errors).toEqual([]);
+    const data = r.entries[0].data as SubclassData;
+    expect(data.spellcasting).toEqual({ ability: "int", progression: "third", mode: "levelUp" });
+    expect(data.progressions.cantrips?.slice(0, 3)).toEqual([0, 0, 2]);
+    expect(data.progressions.prepared?.slice(0, 3)).toEqual([0, 0, 3]);
+  });
 });
 
 test("la clave de la entrada coincide con el destino de [ref] del BBCode", () => {
@@ -202,6 +285,43 @@ test("las elecciones de conjuros (choose) no se convierten en referencias", () =
   expect((es[0].data as SubclassData).spells).toEqual([
     { level: 3, ref: { book: "__BOOK__", key: "spell:counterspell|xphb" } },
   ]);
+});
+
+test("bloques de conjuros alternativos con nombre (Círculo de la Tierra): no se conceden, quedan como opciones", () => {
+  const { entries: es, errors: errs } = normalizeAll({
+    classes: [{
+      subclass: [{
+        name: "Circle of the Land", shortName: "Land", source: "XPHB", className: "Druid", classSource: "XPHB",
+        subclassFeatures: [],
+        additionalSpells: [
+          { name: "Arid Land", prepared: { 3: ["blur|xphb", "fire bolt|xphb"], 5: ["fireball|xphb"] } },
+          { name: "Polar Land", prepared: { 3: ["fog cloud|xphb"] } },
+        ],
+      }],
+    }],
+  }, "XPHB");
+  expect(errs).toEqual([]);
+  const data = es[0].data as SubclassData;
+  expect(data.spells).toEqual([]);
+  const r = (k: string) => ({ book: "__BOOK__", key: `spell:${k}|xphb` });
+  expect(data.spellOptions).toEqual([
+    { name: "Arid Land", spells: [{ level: 3, ref: r("blur") }, { level: 3, ref: r("fire bolt") }, { level: 5, ref: r("fireball") }] },
+    { name: "Polar Land", spells: [{ level: 3, ref: r("fog cloud") }] },
+  ]);
+});
+
+test("Druida: Encontrar familiar no es un conjuro siempre preparado (lo lanza con Forma salvaje)", () => {
+  const druid = {
+    name: "Druid", source: "XPHB", hd: { number: 1, faces: 8 }, proficiency: ["int", "wis"],
+    primaryAbility: [{ wis: true }], spellcastingAbility: "wis", casterProgression: "full",
+    startingProficiencies: { skills: [{ choose: { from: ["arcana"], count: 1 } }] },
+    startingEquipment: { defaultData: [{ A: [{ value: 100 }] }] },
+    additionalSpells: [{ prepared: { 1: ["speak with animals|xphb"], 2: ["find familiar|xphb"] } }],
+    classFeatures: [],
+  };
+  const { entries: es, errors: errs } = normalizeAll({ classes: [{ class: [druid] }] }, "XPHB");
+  expect(errs).toEqual([]);
+  expect((es[0].data as ClassData).spells).toEqual([{ level: 1, ref: { book: "__BOOK__", key: "spell:speak with animals|xphb" } }]);
 });
 
 test("equipo con más de dos opciones (Guerrero) y clase lanzadora", () => {
@@ -230,7 +350,7 @@ test("equipo con más de dos opciones (Guerrero) y clase lanzadora", () => {
   expect(data("class:fighter|xphb").equipment.C).toEqual([{ value: 15500 }]);
   expect(data("class:fighter|xphb").primaryAbility).toEqual(["str", "dex"]);
   expect(data("class:fighter|xphb").spellcasting).toBeNull();
-  expect(data("class:wizard|xphb").spellcasting).toEqual({ ability: "int", progression: "full", table: [[2, 0], [3, 0], [4, 2]] });
+  expect(data("class:wizard|xphb").spellcasting).toEqual({ ability: "int", progression: "full", mode: "spellbook" });
   expect(data("class:paladin|xphb").spellcasting?.progression).toBe("half");
 });
 
@@ -403,7 +523,11 @@ describe("progresiones, tabla, multiclase y rasgos opcionales", () => {
     expect(step.kind).toBe("optionalFeature");
     expect(step.parent).toBeNull();
     expect((step.data as OptionalFeatureData).prerequisite?.level).toBe(5);
-    expect(step.data).toEqual({ featureType: ["EI"], prerequisite: { level: 5 } });
+    expect(step.data).toEqual({
+      featureType: ["EI"], prerequisite: { level: 5 },
+      // Conjuro que da la invocación, desde que se tiene
+      spells: [{ level: 1, ref: { book: "__BOOK__", key: "spell:levitate|xphb" } }],
+    });
     expect(get("optionalFeature:eldritch smite|xphb").data).toEqual({
       featureType: ["EI"], prerequisite: { level: 5, pact: "optionalFeature:pact of the blade|xphb" },
     });

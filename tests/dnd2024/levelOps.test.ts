@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { applyLevel, checkExpectedLevel, removeLastLevel } from "@/lib/rules/dnd2024/levelOps";
+import type { CasterBlock } from "@/lib/rules/dnd2024/derive";
 import type { Dnd2024SheetV2, LevelEntry } from "@/lib/rules/dnd2024/sheet";
 import { ref } from "./fixtureCatalog";
 
@@ -95,6 +96,24 @@ describe("removeLastLevel", () => {
     // Dentro del límite no recorta
     const kept = removeLastLevel(sheet, 12, 2);
     expect(kept.ok && kept.sheet.weaponMasteries).toEqual([axe, bow]);
+  });
+  it("quita los preparados por encima del nuevo máximo y límite (los últimos) y recorta los espacios gastados", () => {
+    const spells = ["bless", "aid", "cure wounds", "sanctuary"].map((n) => ref(`spell:${n}|xphb`));
+    const sheet = sheetOf([lvl(1, cleric, 1), lvl(2, cleric, 2), lvl(3, cleric, 3)], { current: 20 }, {
+      prepared: { "class:cleric|xphb": spells },
+      slotsUsed: { 1: 4, 2: 1 },
+    });
+    // Sin el nivel: límite 2, máximo nivel 1 y 3 espacios de nivel 1
+    const block = { class: cleric.ref, mode: "list", preparedLimit: 2, maxSpellLevel: 1, spellbook: [] } as unknown as CasterBlock;
+    const levelOf = (r: { key: string }) => (r.key === "spell:aid|xphb" ? 2 : 1);
+    const r = removeLastLevel(sheet, 12, Infinity, { blocks: [block], slots: { levels: { 1: 3 }, pact: null }, spellLevel: levelOf });
+    expect(r.ok && r.sheet.prepared).toEqual({ "class:cleric|xphb": [spells[0], spells[2]] });
+    expect(r.ok && r.sheet.slotsUsed).toEqual({ 1: 3 });
+  });
+  it("sin datos de conjuros no toca los preparados", () => {
+    const sheet = sheetOf([lvl(1, cleric, 1), lvl(2, cleric, 2)], { current: 12 }, { prepared: { x: [] }, slotsUsed: { 1: 1 } });
+    const r = removeLastLevel(sheet, 12);
+    expect(r.ok && [r.sheet.prepared, r.sheet.slotsUsed]).toEqual([{ x: [] }, { 1: 1 }]);
   });
 });
 

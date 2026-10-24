@@ -32,6 +32,25 @@ export type Dnd2024Sheet = {
 export type FeatPickValue = Named & { ability?: Ability };
 
 /**
+ * Conjuros elegidos en un nivel para una clase (o subclase lanzadora): trucos nuevos, conjuros aprendidos (modo
+ * `levelUp`) o entradas del libro (modo `spellbook`) y, opcionalmente, en la misma subida, un conjuro aprendido
+ * (`replace`, solo modo `levelUp`) y un truco (`replaceCantrip`) que se sustituyen por otro del mismo tipo.
+ */
+export type SpellChoice = {
+  class: Ref;
+  cantrips: Named[];
+  spells: Named[];
+  replace?: { out: Named; in: Named };
+  replaceCantrip?: { out: Named; in: Named };
+};
+
+/**
+ * Conjuros elegidos con una dote (Iniciado en la magia…): trucos, conjuros y, si la dote la deja elegir, la
+ * característica de lanzamiento.
+ */
+export type FeatSpellsValue = { feat: Ref; cantrips: Named[]; spells: Named[]; ability?: Ability };
+
+/**
  * Elección hecha al subir un nivel. `source` es la clave del rasgo o de la progresión que la pide. `replaced`: dote o
  * rasgo opcional de esa misma elección que se sustituye por uno de los de `value`.
  */
@@ -44,8 +63,8 @@ export type Choice =
   | { type: "featureOption"; source: string; value: Named }
   | { type: "skills"; source: string; value: string[] }
   | { type: "expertise"; source: string; value: string[] }
-  // La forma de las elecciones de conjuros llega con la parte 5
-  | { type: "spells"; source: string; value: unknown };
+  | { type: "spells"; source: string; value: SpellChoice }
+  | { type: "featSpells"; source: string; value: FeatSpellsValue };
 
 /** Una entrada por nivel de personaje, en orden. */
 export type LevelEntry = {
@@ -88,6 +107,11 @@ export type Dnd2024SheetV2 = Omit<Dnd2024Sheet, "version" | "classes"> & {
   prepared: Record<string, Ref[]>;
   spellbookExtra: Named[];
   slotsUsed: Record<string, number>;
+  /**
+   * Alternativa de conjuros elegida en la ficha por subclase (`SubclassData.spellOptions`, la tierra del Círculo de la
+   * Tierra): `{ [clave de la subclase]: nombre }`. Las hojas sin ninguna no lo tienen.
+   */
+  spellOption?: Record<string, string>;
   /**
    * Armas con maestría actuales: empiezan con las elecciones `weaponMastery` del historial y se pueden cambiar en la
    * ficha. Las hojas guardadas antes no lo tienen: ver `currentMasteries`.

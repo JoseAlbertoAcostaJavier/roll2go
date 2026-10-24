@@ -1,8 +1,13 @@
 // Validación en el servidor de un nivel nuevo (spec de subir de nivel §4.1): clase, requisitos de multiclase, las
 // elecciones que pide exactamente el nivel y los puntos de golpe. Los nombres salen del catálogo, nunca del cliente.
 import type { CatalogEntry } from "@/lib/rules/catalog";
-import { ABILITIES, type Ability, type ClassData, type FeatureData, type Ref, type SubclassData } from "@/lib/rules/types";
+import {
+  ABILITIES, type Ability, type BackgroundData, type ClassData, type FeatData, type FeatureData, type Ref, type SubclassData,
+} from "@/lib/rules/types";
 import { derive } from "./derive";
+import { characterFeats } from "./derive/features";
+import { chosenSpells } from "./derive/spells";
+import { checkFeatSpellChoices, featSpellPending, splitFeatSpells, type FeatWithData } from "./featSpells";
 import { refKey } from "./equipmentRefs";
 import { heldPicks, meetsMulticlass, pendingChoices } from "./levels";
 import { currentMasteries } from "./masteries";
@@ -108,7 +113,9 @@ export async function validateLevel(
   // Al entrar en una clase nueva se ganan sus competencias de multiclase (las maestrías y las dotes ya las tienen en cuenta)
   const gained = owned ? null : data.multiclass?.proficiencies;
   const classData = [...summary.map((c) => entries.get(refKey(c.class.ref))?.data as ClassData | undefined), data];
-  const checked = await checkChoices(pending, rawChoices, {
+  // (los conjuros de las dotes, aparte: dependen de las dotes que se eligen ahora)
+  const split = splitFeatSpells(rawChoices);
+  const checked = await checkChoices(pending, split.rest, {
     path: CHOICES_PATH,
     entries,
     resolve: ctx.resolve,
@@ -128,15 +135,41 @@ export async function validateLevel(
     },
     held: heldPicks(sheet.levels),
     masteries: currentMasteries(sheet),
+    // Los siempre preparados (también los que da este nivel) y los de especie, legado y dotes
+    spellsGranted: [
+      ...derived.spells.blocks.flatMap((b) => b.always.map((a) => a.spell.ref)),
+      ...derived.spells.other.map((o) => o.spell.ref),
+      ...[...(data.spells ?? []), ...(subData?.spells ?? [])].filter((g) => g.level <= classLevel).map((g) => g.ref),
+    ],
+    // El libro del Mago también tiene los copiados
+    spellsHeld: (cls, mode) => {
+      const held = chosenSpells(sheet, cls);
+      return mode === "spellbook" ? { ...held, spells: [...held.spells, ...(sheet.spellbookExtra ?? [])] } : held;
+    },
   });
   for (const [k, msg] of Object.entries(checked.errors)) err(k, msg);
+
+  // Conjuros de dotes: los de las dotes que gana ahora (hasta este nivel) y los que dan más en este nivel las que tenía
+  const featOf = (ref: Ref, name: string | null): FeatWithData => {
+    const e = entries.get(refKey(ref));
+    return { ref, name: name || (e ? e.nameEs || e.name : ref.key), data: e?.data as FeatData | undefined };
+  };
+  const gainedFeats = checked.choices.flatMap((c) => (c.type === "feat" ? c.value.map((f) => featOf(f.ref, f.name))
+    : c.type === "asi" && "feat" in c.value ? [featOf(c.value.feat.ref, c.value.feat.name)] : []));
+  const background = entries.get(refKey(sheet.background.ref))?.data as BackgroundData | undefined;
+  const heldFeats = characterFeats(sheet, background).map((f) => featOf(f.ref, f.name));
+  const featSpells = await checkFeatSpellChoices(
+    [...featSpellPending(gainedFeats, (l) => l <= n), ...featSpellPending(heldFeats, (l) => l === n)],
+    split.featSpells, { path: CHOICES_PATH, books: ctx.books, resolve: ctx.resolve },
+  );
+  for (const [k, msg] of Object.entries(featSpells.errors)) err(k, msg);
 
   // Puntos de golpe: media exacta o tirada firmada; el máximo solo en el nivel 1 de la primera clase (la creación)
   const hp = checkHp(input.hp, data.hitDie, ctx.userId, ctx.characterId, n);
   if ("error" in hp) err("hp", hp.error);
 
   if (Object.keys(errors).length || "error" in hp) return fail();
-  return { ok: true, entry: { n, class: named(classEntry), classLevel, hp, choices: checked.choices } };
+  return { ok: true, entry: { n, class: named(classEntry), classLevel, hp, choices: [...checked.choices, ...featSpells.choices] } };
 }
 
 function checkHp(

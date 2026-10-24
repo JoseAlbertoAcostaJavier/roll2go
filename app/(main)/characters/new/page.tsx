@@ -8,7 +8,7 @@ import { Campaign } from "@/lib/Campaign";
 import { requireUser } from "@/lib/currentUser";
 import { system as rpgSystems } from "@/lib/systems";
 import { first } from "@/lib/utils";
-import { NotFoundError, listEntries, listMasteryWeapons, usableBooks, type EntryOption } from "@/lib/rules/catalog";
+import { NotFoundError, listEntries, listMasteryWeapons, listSpells, usableBooks, type EntryOption } from "@/lib/rules/catalog";
 import type { SpeciesData } from "@/lib/rules/types";
 import CharacterCreator from "@/app/components/characters/CharacterCreator";
 
@@ -51,14 +51,15 @@ export default async function NewCharacterPage({ searchParams }: { searchParams:
     throw e;
   }
 
-  // Dotes, rasgos opcionales y armas con maestría: para las elecciones de nivel 1 de la clase
-  const [species, classes, backgrounds, feats, optionalFeatures, weapons] = await Promise.all([
+  // Dotes, rasgos opcionales, armas con maestría y conjuros: para las elecciones de nivel 1 de la clase
+  const [species, classes, backgrounds, feats, optionalFeatures, weapons, spells] = await Promise.all([
     listEntries({ books, kind: "species" }),
     listEntries({ books, kind: "class" }),
     listEntries({ books, kind: "background" }),
     listEntries({ books, kind: "feat" }),
     listEntries({ books, kind: "optionalFeature" }),
     listMasteryWeapons(books),
+    listSpells(books),
   ]);
   // Legados de cada especie que los tiene (del mismo libro que la especie), por "libro:clave" de la especie
   const lineages: Record<string, EntryOption[]> = {};
@@ -110,6 +111,7 @@ export default async function NewCharacterPage({ searchParams }: { searchParams:
         feats={feats}
         optionalFeatures={optionalFeatures}
         weapons={weapons}
+        spells={spells}
       />
     </div>
   );
