@@ -73,6 +73,14 @@ Fuentes usadas para lo que sí está en `es.json`: el SRD 5.2.1 oficial en espa�
 | item:common wine (bottle)\|xphb | Common Wine (Bottle) | Vino común (botella) | El SRD tiene "Vino (botella)" con calidades; falta confirmar el orden |
 | item:fine wine (bottle)\|xphb | Fine Wine (Bottle) | Vino de calidad (botella) | Igual que el anterior |
 
+## Clases de otros libros
+
+Las listas de clases de los conjuros del XPHB nombran clases que no son del XPHB (no se importan y no están en `es.json`). Su nombre en español está en `OTHER_CLASS_NAMES` (`lib/rules/dnd2024/spellText.ts`).
+
+| identificador | nombre inglés | nombre en `OTHER_CLASS_NAMES` | duda |
+| --- | --- | --- | --- |
+| artificer | Artificer (EFA) | Artífice | Nombre de la edición española de 2014 (Eberron); sin confirmar en 2024 |
+
 Los rasgos de clase y subclase (592) tampoco tienen traducción todavía; quedan fuera de esta lista. Los conjuros tienen su propia sección más abajo.
 
 ## Nombres a verificar

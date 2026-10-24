@@ -13,9 +13,11 @@ export default function Conjuration({ size = 24 }: { size?: number }) {
       strokeLinejoin="round"
       aria-hidden="true"
     >
-      <path d="M6 21V10a6 6 0 0 1 12 0v11" />
-      <path d="M4 21h16" />
-      <path d="M12 11v4M10 13h4" />
+      {/* Portal abierto (sin suelo) y un destello de 4 puntas que sale por arriba */}
+      <path d="M5 21v-9a7 7 0 0 1 7-7" />
+      <path d="M19 14v7" />
+      <path d="M17 2.5c.4 2.3 1.2 3.1 3.5 3.5-2.3.4-3.1 1.2-3.5 3.5-.4-2.3-1.2-3.1-3.5-3.5 2.3-.4 3.1-1.2 3.5-3.5z" />
+      <path d="M12 13v.01M9 17v.01M14 18v.01" />
     </svg>
   );
 }

@@ -623,7 +623,7 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
   const section = (i: number) => ({ className: `${card} animate-fade-up scroll-mt-24`, style: { animationDelay: `${i * 50}ms` } });
 
   return (
-    <form onSubmit={submit} noValidate className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_18rem]">
+    <form onSubmit={submit} noValidate className="grid grid-cols-[minmax(0,1fr)] items-start gap-6 lg:grid-cols-[minmax(0,1fr)_18rem]">
       <div className="space-y-6">
         {/* 1. Detalles */}
         <section id="detalles" {...section(0)}>

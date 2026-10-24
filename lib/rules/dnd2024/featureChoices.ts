@@ -90,15 +90,16 @@ export const NOT_A_CHOICE: ReadonlySet<string> = new Set([
   "classFeature:eldritch invocations|warlock|xphb|1",
   "subclassFeature:combat superiority|fighter|xphb|battle master|xphb|3",
   "subclassFeature:additional fighting style|fighter|xphb|champion|xphb|7",
-  // Conjuros: los pide la parte 5
+  // Conjuros: los pide la elección `spells` (regla 8 de `pendingChoices`)
   ...["bard", "cleric", "druid", "paladin", "ranger", "sorcerer", "wizard"].map((c) => `classFeature:spellcasting|${c}|xphb|1`),
   "classFeature:pact magic|warlock|xphb|1",
+  "subclassFeature:spellcasting|fighter|xphb|eldritch knight|xphb|3",
+  "subclassFeature:spellcasting|rogue|xphb|arcane trickster|xphb|3",
+  // Pendiente: ver docs/superpowers/notes/conjuros-pendientes.md
   "classFeature:magical secrets|bard|xphb|10",
   ...[11, 13, 15, 17].map((n) => `classFeature:mystic arcanum|warlock|xphb|${n}`),
   "classFeature:spell mastery|wizard|xphb|18",
   "classFeature:signature spells|wizard|xphb|20",
-  "subclassFeature:spellcasting|fighter|xphb|eldritch knight|xphb|3",
-  "subclassFeature:spellcasting|rogue|xphb|arcane trickster|xphb|3",
   "subclassFeature:magical discoveries|bard|xphb|lore|xphb|6",
   "subclassFeature:abjuration savant|wizard|xphb|abjurer|xphb|3",
   "subclassFeature:divination savant|wizard|xphb|diviner|xphb|3",

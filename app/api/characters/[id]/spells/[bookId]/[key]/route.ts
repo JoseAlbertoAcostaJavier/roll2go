@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sessionOf } from "@/lib/campaignApi";
+import { rateLimit, tooManyRequests } from "@/lib/rateLimit";
 import { loadCharacterFor } from "@/lib/characterAccess";
 import { resolveRef } from "@/lib/rules/catalog";
 
@@ -22,6 +23,9 @@ const notFound = () => NextResponse.json({ error: "Conjuro no disponible." }, { 
 export async function GET(req: NextRequest, { params }: Ctx) {
   const session = await sessionOf(req);
   if (!session) return NextResponse.json({ error: "Inicia sesión." }, { status: 401 });
+
+  const limited = await rateLimit("character_read", session.id, 600, 3600);
+  if (!limited.ok) return tooManyRequests(limited.retryAfter);
 
   const { id, bookId, key: rawKey } = await params;
   const key = decodeKey(rawKey);

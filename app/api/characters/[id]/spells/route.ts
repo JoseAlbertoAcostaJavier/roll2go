@@ -32,7 +32,8 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
   const session = await sessionOf(req);
   if (!session) return NextResponse.json({ error: "Inicia sesión." }, { status: 401 });
 
-  const limited = await rateLimit("character_edit", session.id, 300, 3600);
+  // Cubo propio: gastar espacios y preparar en partida son muchas peticiones seguidas
+  const limited = await rateLimit("character_spells", session.id, 600, 3600);
   if (!limited.ok) return tooManyRequests(limited.retryAfter);
 
   let body: unknown;
