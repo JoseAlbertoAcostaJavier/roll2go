@@ -62,7 +62,8 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     const res = await Character.updateOne(
       {
         _id: id, "sheet.version": 2, "sheet.levels": { $size: found.sheet.levels.length },
-        [`sheet.${field}`]: stored === undefined ? { $exists: false } : stored,
+        // Con $eq: Mongoose convierte un array suelto en $in (spellbookExtra: [] no coincidiría nunca)
+        [`sheet.${field}`]: stored === undefined ? { $exists: false } : { $eq: stored },
       },
       { $set: { [`sheet.${field}`]: result.sheet[field] } },
     );

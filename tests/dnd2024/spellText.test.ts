@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 import {
-  spellComponents, spellDuration, spellLevelLabel, spellRange, spellSchoolName, spellTags, spellTime,
+  spellClassNames, spellComponents, spellDuration, spellLevelLabel, spellRange, spellSchoolName, spellSummary, spellTags,
+  spellTime,
 } from "@/lib/rules/dnd2024/spellText";
 
 describe("spellSchoolName", () => {
@@ -76,5 +77,22 @@ describe("spellTags", () => {
     expect(tags).not.toContain("XX");
     expect(tags).toHaveLength(9);
     expect(tags.filter((t) => t.startsWith("Área"))).toEqual(["Área: cono"]);
+  });
+});
+
+describe("spellSummary", () => {
+  test("primer párrafo en texto plano, recortado", () => {
+    expect(spellSummary("You hurl a [b]mote[/b] of [ref=x]fire[/ref].\n\nSecond paragraph.")).toBe("You hurl a mote of fire.");
+    expect(spellSummary("")).toBe("");
+    const long = spellSummary("a ".repeat(200));
+    expect(long.length).toBeLessThanOrEqual(200);
+    expect(long.endsWith("…")).toBe(true);
+  });
+});
+
+describe("spellClassNames", () => {
+  test("clases en español; las subclases se omiten y las desconocidas se dejan con mayúscula", () => {
+    expect(spellClassNames(["wizard", "subclass:life-domain", "sorcerer", "artificer"]))
+      .toEqual(["Mago", "Hechicero", "Artificer"]);
   });
 });

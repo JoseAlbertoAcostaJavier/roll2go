@@ -1,5 +1,6 @@
 // Textos en español de los conjuros a partir de los campos de 5etools (tiempo, alcance, duración, componentes,
 // etiquetas). El importador guarda el resultado en `SpellData`; la interfaz usa la escuela y la etiqueta de nivel.
+import { bbcodeToText } from "@/lib/bbcode";
 import { ABILITY_NAMES } from "./labels";
 import es from "../i18n/es.json";
 
@@ -150,4 +151,23 @@ export function spellTags(raw: unknown): string[] {
     ...(isObj(raw.meta) && raw.meta.ritual === true ? ["Ritual"] : []),
   ];
   return [...new Set(tags)];
+}
+
+// ---------- ficha ----------
+
+const SUMMARY_LENGTH = 200;
+
+/** Línea de resumen de un conjuro: el primer párrafo de la descripción (BBCode) en texto plano, recortado. */
+export function spellSummary(description: string): string {
+  const first = bbcodeToText(description).split(/\n\s*\n/)[0].replace(/\s+/g, " ").trim();
+  return first.length <= SUMMARY_LENGTH ? first : `${first.slice(0, SUMMARY_LENGTH - 1).trimEnd()}…`;
+}
+
+/**
+ * Clases de `SpellData.classes` en español («Mago»); las subclases que lo conceden (`subclass:…`) se omiten y las
+ * desconocidas se dejan con mayúscula inicial.
+ */
+export function spellClassNames(classes: string[]): string[] {
+  return classes.filter((c) => !c.startsWith("subclass:")).map((c) =>
+    (es as Record<string, string>)[`class:${c}|xphb`] ?? (c ? c[0].toUpperCase() + c.slice(1) : c));
 }
