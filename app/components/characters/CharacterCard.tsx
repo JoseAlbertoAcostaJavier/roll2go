@@ -7,11 +7,11 @@ export type CharacterCardData = {
   portraitUrl: string | null;
   summary: string; // "Especie (Legado) · Clase N"
   systemName: string;
-  status: "active" | "retired" | "dead";
+  status: "active" | "retired" | "dead" | "npc";
   campaign: { id: string; name: string } | null;
 };
 
-const STATUS_LABEL = { retired: "Retirado", dead: "Fallecido" } as const;
+const STATUS_LABEL = { retired: "Retirado", dead: "Fallecido", npc: "PNJ" } as const;
 
 export default function CharacterCard({ character: c, index }: { character: CharacterCardData; index: number }) {
   return (

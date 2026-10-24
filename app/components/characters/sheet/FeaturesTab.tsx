@@ -5,7 +5,7 @@ import { bareName, refKey } from "@/lib/rules/dnd2024/equipmentRefs";
 import type { Ref } from "@/lib/rules/types";
 import Bbcode from "@/app/components/Bbcode";
 import { card } from "@/app/components/formStyles";
-import { CLASS_ICONS } from "@/app/components/icons/classes";
+import RoundIcon from "@/app/components/RoundIcon";
 
 type Props = { groups: FeatureGroup[]; entries: Map<string, CatalogEntry> };
 
@@ -17,26 +17,32 @@ function Description({ entry, missing }: { entry: CatalogEntry | undefined; miss
   return text ? <Bbcode source={text} className="text-sm" /> : <p className="text-sm text-muted">Sin descripción.</p>;
 }
 
+// Identificador de la entrada (o de su entrada padre: la especie de un legado, la clase de una subclase)
+const idOf = (entry: CatalogEntry | undefined, ref: Ref | null) => entry?.identifier || bareName(ref?.key ?? "");
+
 function GroupHeading({ group, entry }: { group: FeatureGroup; entry: CatalogEntry | undefined }) {
   const title = entry ? (entry.nameEs ?? entry.name) : group.title;
   if (group.source === "class") {
-    const Icon = CLASS_ICONS[entry?.identifier || bareName(group.ref?.key ?? "")];
     return (
       <div className="flex items-center gap-3">
-        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-surface text-brand-soft">
-          {Icon ? <Icon size={32} /> : <Sparkles size={24} aria-hidden="true" />}
-        </span>
+        <RoundIcon kind="class" id={idOf(entry, group.ref)} label={title} size={48} />
         <h3 className="font-heading text-xl font-bold">{title} <span className="text-muted">Nivel {group.level}</span></h3>
       </div>
     );
   }
-  const Icon = { feat: Award, subclass: Sparkles, option: ListChecks, species: Dna, lineage: Dna, class: Dna }[group.source];
   const kind = { species: "Especie", lineage: "Legado", subclass: "Subclase", option: "", feat: "", class: "" }[group.source];
+  const icon = group.source === "species" ? <RoundIcon kind="species" id={idOf(entry, group.ref)} label={title} size={40} />
+    : group.source === "lineage" && entry?.parent ? <RoundIcon kind="species" id={bareName(entry.parent.key)} label={title} size={40} />
+    : group.source === "subclass" && entry?.parent ? <RoundIcon kind="class" id={bareName(entry.parent.key)} label={title} size={40} />
+    : null;
+  const Icon = { feat: Award, subclass: Sparkles, option: ListChecks, species: Dna, lineage: Dna, class: Dna }[group.source];
   return (
     <div className="flex items-center gap-3">
-      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-surface text-brand-soft">
-        <Icon size={20} aria-hidden="true" />
-      </span>
+      {icon ?? (
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 border-white bg-surface text-brand-soft">
+          <Icon size={18} aria-hidden="true" />
+        </span>
+      )}
       <h3 className="font-heading text-xl font-bold">
         {title}
         {kind && <span className="ml-2 text-sm font-semibold uppercase tracking-wide text-muted">{kind}</span>}

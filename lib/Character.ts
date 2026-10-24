@@ -20,7 +20,7 @@ const CharacterSchema = new Schema(
     origin: { type: String, enum: ["internal", "external"] },
 
     // En activo, retirado o fallecido
-    status: { type: String, enum: ["active", "retired", "dead"], default: "active" },
+    status: { type: String, enum: ["active", "retired", "dead", "npc"], default: "active" },
     portraitId: { type: Schema.Types.ObjectId, ref: "CampaignImage" },
     imageId: { type: Schema.Types.ObjectId, ref: "CampaignImage" },
     backstory: { type: String, default: "", maxlength: 100000 }, // BBCode

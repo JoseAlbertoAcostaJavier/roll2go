@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { BookPlus, LoaderCircle, WandSparkles } from "lucide-react";
+import { BookPlus, LoaderCircle } from "lucide-react";
 import type { SpellOption } from "@/lib/rules/catalog";
 import type { CasterBlock } from "@/lib/rules/dnd2024/derive";
 import { bareName, refKey } from "@/lib/rules/dnd2024/equipmentRefs";
@@ -10,7 +10,7 @@ import { EMPTY_SPELL_FILTER, matchesSpellFilter, type SpellFilter } from "@/lib/
 import type { SpellOp } from "@/lib/rules/dnd2024/spellOps";
 import type { Ref } from "@/lib/rules/types";
 import { card, field, labelClass, primaryButton } from "@/app/components/formStyles";
-import { CLASS_ICONS } from "@/app/components/icons/classes";
+import RoundIcon from "@/app/components/RoundIcon";
 import RuleSelect from "../RuleSelect";
 import SpellFilters from "./SpellFilters";
 import SpellList, { type SpellOpener, type SpellRowItem } from "./SpellList";
@@ -90,7 +90,6 @@ export default function CasterBlockView({ block, listId, iconId, spells, isOwner
   const [tab, setTab] = useState<ListTab>("preparados");
   const [filter, setFilter] = useState<SpellFilter>(EMPTY_SPELL_FILTER);
   const [copyRef, setCopyRef] = useState<Ref | null>(null);
-  const Icon = CLASS_ICONS[iconId];
   const { mode } = block;
 
   const classList = useMemo(() => [...spells.values()].filter((s) => s.data.classes.includes(listId)), [spells, listId]);
@@ -158,9 +157,7 @@ export default function CasterBlockView({ block, listId, iconId, spells, isOwner
   return (
     <section className={`${card} animate-fade-up`} aria-labelledby={`${tabId("preparados")}-title`}>
       <div className="mb-4 flex items-center gap-3">
-        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-surface text-brand-soft">
-          {Icon ? <Icon size={32} /> : <WandSparkles size={24} aria-hidden="true" />}
-        </span>
+        <RoundIcon kind="class" id={iconId} label={block.name} size={48} />
         <h3 id={`${tabId("preparados")}-title`} className="font-heading text-xl font-bold">{block.name}</h3>
       </div>
 

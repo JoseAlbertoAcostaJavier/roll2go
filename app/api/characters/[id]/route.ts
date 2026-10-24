@@ -13,7 +13,7 @@ import { MAX_XP, TEXT_LIMITS } from "@/lib/rules/dnd2024/validate";
 
 type Ctx = { params: Promise<{ id: string }> };
 
-const STATUSES = ["active", "retired", "dead"] as const;
+const STATUSES = ["active", "retired", "dead", "npc"] as const;
 const MAX_NAME = 80;
 const MAX_BACKSTORY = 100000;
 

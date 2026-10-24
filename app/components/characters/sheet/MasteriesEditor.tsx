@@ -63,8 +63,8 @@ export default function MasteriesEditor({
     <section className={`${card} mb-6 animate-fade-up`}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-surface text-brand-soft">
-            <Swords size={20} aria-hidden="true" />
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 border-white bg-surface text-brand-soft">
+            <Swords size={18} aria-hidden="true" />
           </span>
           <h3 className="font-heading text-xl font-bold">Maestrías con armas</h3>
         </div>

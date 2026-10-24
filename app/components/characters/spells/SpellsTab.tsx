@@ -101,7 +101,7 @@ export default function SpellsTab({ characterId, isOwner, initial, lists, spells
       {other.length > 0 && (
         <section className={`${card} animate-fade-up`} aria-labelledby="other-spells-title">
           <div className="mb-2 flex items-center gap-3">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-surface text-brand-soft">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 border-white bg-surface text-brand-soft">
               <Sparkles size={20} aria-hidden="true" />
             </span>
             <h3 id="other-spells-title" className="font-heading text-xl font-bold">Otros</h3>

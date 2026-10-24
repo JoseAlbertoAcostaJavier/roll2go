@@ -15,7 +15,7 @@ import { validateSheet } from "@/lib/rules/dnd2024/validate";
 import { ALIGNMENTS } from "@/lib/rules/dnd2024/alignments";
 import { parsePronouns } from "@/lib/rules/dnd2024/names";
 
-const STATUSES = ["active", "retired", "dead"] as const;
+const STATUSES = ["active", "retired", "dead", "npc"] as const;
 const MAX_NAME = 80;
 const MAX_BACKSTORY = 100000;
 const MAX_BOOKS = 50;
