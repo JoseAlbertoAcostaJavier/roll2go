@@ -75,6 +75,21 @@ describe("loadSheetEntries", () => {
     expect(asked.filter((k) => k.startsWith("classFeature:")).every((k) => levelOf(k) <= 3)).toBe(true);
   });
 
+  it("carga los rasgos opcionales que conserva y las opciones de rasgo del catálogo (no las escritas a mano)", async () => {
+    const sheet = v2();
+    sheet.levels[1].choices = [
+      { type: "optionalFeature", source: "p", value: [{ ref: ref("optionalFeature:careful spell|xphb"), name: "x" }] },
+      { type: "featureOption", source: "f", value: { ref: ref("classFeature:protector|cleric|xphb|1"), name: "x" } },
+      { type: "featureOption", source: "g", value: { ref: { book: "builtin", key: "option:hunters-prey:horde-breaker" }, name: "x" } },
+    ];
+    const { calls, fetch } = fetcher();
+    await loadSheetEntries(sheet, [B], fetch);
+    const asked = calls.flat().map((r) => r.key);
+    expect(asked).toContain("optionalFeature:careful spell|xphb");
+    expect(asked).toContain("classFeature:protector|cleric|xphb|1");
+    expect(asked.some((k) => k.startsWith("option:"))).toBe(false);
+  });
+
   it("no repite referencias y consulta por tandas", async () => {
     const { calls, fetch } = fetcher();
     await loadSheetEntries(v2(), [B], fetch);

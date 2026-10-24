@@ -1,8 +1,10 @@
 // Entradas del catálogo que necesita la ficha: especie, legado, trasfondo y su dote de origen, clases y subclases
-// con sus rasgos hasta el nivel actual, dotes elegidas y objetos del inventario (y, en una hoja v1, el equipo
-// inicial elegido con el contenido de los paquetes). Puro: quien llama inyecta la consulta en lote al catálogo.
+// con sus rasgos hasta el nivel actual, dotes y rasgos opcionales elegidos, opciones de rasgo elegidas y objetos del
+// inventario (y, en una hoja v1, el equipo inicial elegido con el contenido de los paquetes). Puro: quien llama
+// inyecta la consulta en lote al catálogo.
 import type { CatalogEntry } from "@/lib/rules/catalog";
 import { equipmentRefs, refKey } from "@/lib/rules/dnd2024/equipmentRefs";
+import { heldOptionalFeatures } from "@/lib/rules/dnd2024/levels";
 import type { AnySheet } from "@/lib/rules/dnd2024/sheet";
 import { summarizeClasses } from "@/lib/rules/dnd2024/upgrade";
 import type { BackgroundData, ClassData, LevelFeature, Ref, SubclassData } from "@/lib/rules/types";
@@ -26,6 +28,13 @@ function wantedRefs(sheet: AnySheet, entries: Map<string, CatalogEntry>): Ref[] 
     ? sheet.levels.flatMap((l) => l.choices.flatMap((c) =>
       c.type === "feat" ? c.value.map((f) => f.ref) : c.type === "asi" && "feat" in c.value ? [c.value.feat.ref] : []))
     : [];
+  // Las opciones escritas a mano (libro `builtin`) no están en el catálogo y no se piden
+  const options = sheet.version === 2
+    ? [
+      ...heldOptionalFeatures(sheet.levels).map((o) => o.ref),
+      ...sheet.levels.flatMap((l) => l.choices.flatMap((c) => (c.type === "featureOption" ? [c.value.ref] : []))),
+    ]
+    : [];
   const inventory = sheet.version === 2 ? sheet.inventory.items.flatMap((i) => (i.ref ? [i.ref] : [])) : [];
   const bg = data<BackgroundData>(sheet.background.ref);
 
@@ -40,6 +49,7 @@ function wantedRefs(sheet: AnySheet, entries: Map<string, CatalogEntry>): Ref[] 
       ...(c.subclass ? [c.subclass, ...upTo(data<SubclassData>(c.subclass)?.features, c.level)] : []),
     ]),
     ...feats,
+    ...options,
     ...inventory,
   ];
 

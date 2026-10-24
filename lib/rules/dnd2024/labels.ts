@@ -17,6 +17,15 @@ export function featFitsCategories(data: FeatData | null | undefined, codes: rea
   return codes.some((c) => FEAT_CATEGORIES[c] === data.category);
 }
 
+// Progresiones de rasgos opcionales de 5etools (por su nombre en minúsculas) → nombre en español
+const OPTIONAL_FEATURE_LABELS: Record<string, string> = {
+  metamagic: "Metamagia",
+  "eldritch invocations": "Invocaciones sobrenaturales",
+  maneuvers: "Maniobras",
+};
+/** «Maneuvers» → «Maniobras»; las que no están, tal cual. */
+export const optionalFeatureLabel = (name: string) => OPTIONAL_FEATURE_LABELS[name.toLowerCase()] ?? name;
+
 export const ABILITY_NAMES: Record<Ability, string> = {
   str: "Fuerza", dex: "Destreza", con: "Constitución", int: "Inteligencia", wis: "Sabiduría", cha: "Carisma",
 };

@@ -1,4 +1,4 @@
-import { Award, ChevronDown, Dna, Sparkles } from "lucide-react";
+import { Award, ChevronDown, Dna, ListChecks, Sparkles } from "lucide-react";
 import type { CatalogEntry } from "@/lib/rules/catalog";
 import type { FeatureGroup } from "@/lib/rules/dnd2024/derive";
 import { bareName, refKey } from "@/lib/rules/dnd2024/equipmentRefs";
@@ -30,8 +30,8 @@ function GroupHeading({ group, entry }: { group: FeatureGroup; entry: CatalogEnt
       </div>
     );
   }
-  const Icon = group.source === "feat" ? Award : group.source === "subclass" ? Sparkles : Dna;
-  const kind = { species: "Especie", lineage: "Legado", subclass: "Subclase", feat: "", class: "" }[group.source];
+  const Icon = { feat: Award, subclass: Sparkles, option: ListChecks, species: Dna, lineage: Dna, class: Dna }[group.source];
+  const kind = { species: "Especie", lineage: "Legado", subclass: "Subclase", option: "", feat: "", class: "" }[group.source];
   return (
     <div className="flex items-center gap-3">
       <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-surface text-brand-soft">
@@ -45,7 +45,8 @@ function GroupHeading({ group, entry }: { group: FeatureGroup; entry: CatalogEnt
   );
 }
 
-// Rasgos por origen: especie, legado, cada clase y subclase, y dotes. Cada rasgo es plegable; el primero, abierto.
+// Rasgos por origen: especie, legado, cada clase y subclase, rasgos opcionales elegidos y dotes. Cada rasgo es
+// plegable; el primero, abierto.
 export default function FeaturesTab({ groups, entries }: Props) {
   const get = (ref: Ref | null) => (ref ? entries.get(refKey(ref)) : undefined);
 
@@ -85,7 +86,10 @@ export default function FeaturesTab({ groups, entries }: Props) {
                     <details open={i === 0} className="group/feat">
                       <summary className="flex cursor-pointer list-none items-center gap-3 py-3 hover:text-white">
                         <ChevronDown size={16} aria-hidden="true" className="shrink-0 text-muted transition-transform group-open/feat:rotate-180" />
-                        <span className="flex-1 font-semibold">{f.name}</span>
+                        <span className="flex-1 font-semibold">
+                          {f.name}
+                          {f.chosen && <span className="ml-2 font-normal text-brand-soft">{f.chosen.join(", ")}</span>}
+                        </span>
                         {f.value && <span className="text-sm text-success">{f.value}</span>}
                         <span className="shrink-0 text-xs uppercase tracking-wide text-muted">Nivel {f.level}</span>
                       </summary>

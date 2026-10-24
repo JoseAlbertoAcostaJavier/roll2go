@@ -462,6 +462,37 @@ describe("derive", () => {
       const feats = derive(s, entries).features.find((g) => g.source === "feat")!.features;
       expect(feats.filter((f) => f.name !== "Magic Initiate; Cleric").map((f) => [f.name, f.level])).toEqual([["Archery", 4]]);
     });
+    it("Guerrero 3 Maestro de batalla: Combat Superiority, maniobras elegidas y opciones de rasgo en los rasgos", () => {
+      const bm = "subclass:battle master|fighter|xphb";
+      const MV = "progression:maneuvers|battle master|fighter|xphb";
+      const s = multi([["fighter", 4]], {
+        // Nivel total 4 = Guerrero 3; 5 = Guerrero 4 sustituye una maniobra
+        4: [
+          { type: "subclass", source: "class:subclass", value: named(bm) },
+          { type: "optionalFeature", source: MV, value: ["ambush", "parry", "rally"].map((k) => named(`optionalFeature:${k}|xphb`)) },
+        ],
+        5: [{
+          type: "optionalFeature", source: MV, value: [named("optionalFeature:riposte|xphb")],
+          replaced: [named("optionalFeature:parry|xphb")],
+        }],
+        // Opción escrita a mano (sin entrada de catálogo): se muestra con su nombre en español junto a su rasgo
+        2: [{
+          type: "featureOption", source: "subclassFeature:combat superiority|fighter|xphb|battle master|xphb|3",
+          value: { ref: { book: "builtin", key: "option:hunters-prey:horde-breaker" }, name: "x" },
+        }],
+      });
+      const r = derive(s, entries);
+      const sub = r.features.find((g) => g.source === "subclass")!;
+      const superiority = sub.features.find((f) => f.ref.key.startsWith("subclassFeature:combat superiority|"));
+      expect(superiority).toMatchObject({ level: 3, chosen: ["Rompehordas"] });
+      const maneuvers = r.features.find((g) => g.source === "option")!;
+      expect(maneuvers.title).toBe("Maniobras");
+      expect(maneuvers.features.map((f) => [f.ref.key, f.level])).toEqual([
+        ["optionalFeature:ambush|xphb", 4], ["optionalFeature:rally|xphb", 4], ["optionalFeature:riposte|xphb", 5],
+      ]);
+      // Van detrás de las clases y antes de las dotes
+      expect(r.features.map((g) => g.source).slice(-2)).toEqual(["option", "feat"]);
+    });
     it("una dote sustituida deja de aparecer", () => {
       const s = multi([["fighter", 2]], {
         2: [{ type: "feat", source: "fs", value: [named("feat:archery|xphb")] }],

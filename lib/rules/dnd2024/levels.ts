@@ -7,8 +7,8 @@ import type {
 import type { Derived } from "./derive";
 import { refKey } from "./equipmentRefs";
 import { FEATURE_CHOICES, REPLACEABLE_FIGHTING_STYLE, type ChoiceSpec } from "./featureChoices";
-import { ABILITY_NAMES } from "./labels";
-import type { Choice, Dnd2024SheetV2, FeatPickValue, LevelEntry } from "./sheet";
+import { ABILITY_NAMES, optionalFeatureLabel } from "./labels";
+import type { Choice, Dnd2024SheetV2, FeatPickValue, LevelEntry, Named } from "./sheet";
 import { SKILLS_SOURCE, SUBCLASS_SOURCE, summarizeClasses } from "./upgrade";
 
 /**
@@ -41,11 +41,6 @@ const EPIC_BOON = "EB";
 const NO_PROGRESSIONS: Pick<ClassData["progressions"], "feats" | "optionalFeatures"> = { feats: [], optionalFeatures: [] };
 
 const FEAT_LABELS: Record<string, string> = { FS: "Estilo de combate", EB: "Don épico", G: "Dote general" };
-const OPTIONAL_LABELS: Record<string, string> = {
-  Metamagic: "Metamagia",
-  "Eldritch Invocations": "Invocaciones sobrenaturales",
-  Maneuvers: "Maniobras",
-};
 
 /** Número acumulado en un nivel: el del mayor nivel de la progresión que no lo supera. */
 export function countAt(counts: LevelCounts | null | undefined, level: number): number {
@@ -137,7 +132,7 @@ export function pendingChoices(
       if (count <= 0 && known === 0) continue;
       out.push({
         type: "optionalFeature", source: `progression:${p.name.toLowerCase()}|${bare}`, count: Math.max(count, 0),
-        featureType: p.featureType, label: OPTIONAL_LABELS[p.name] ?? p.name, optionalReplace: known > 0,
+        featureType: p.featureType, label: optionalFeatureLabel(p.name), optionalReplace: known > 0,
       });
     }
   }
@@ -228,20 +223,37 @@ export function heldPicks(levels: LevelEntry[]): Map<string, FeatPickValue[]> {
   return held;
 }
 
-/** Dotes de las elecciones `feat` (estilos de combate, dones épicos…) que conserva, con el nivel total en que se ganaron. */
-export function heldFeats(levels: LevelEntry[]): (FeatPickValue & { level: number })[] {
+// Lo que conserva de las elecciones de tipo `type`, con el nivel total en que se ganó y la elección que lo dio
+function heldWithLevel(levels: LevelEntry[], type: "feat" | "optionalFeature") {
   const held = heldPicks(levels);
   // Si se volvió a elegir una que se había sustituido, cuenta la última vez
-  const last = new Map<string, FeatPickValue & { level: number }>();
+  const last = new Map<string, FeatPickValue & { level: number; source: string }>();
   for (const l of levels) {
     for (const c of l.choices) {
-      if (c.type !== "feat") continue;
+      if (c.type !== type) continue;
       for (const f of c.value) {
-        if (held.get(c.source)?.some((h) => refKey(h.ref) === refKey(f.ref))) last.set(`${c.source}|${refKey(f.ref)}`, { ...f, level: l.n });
+        if (held.get(c.source)?.some((h) => refKey(h.ref) === refKey(f.ref))) {
+          last.set(`${c.source}|${refKey(f.ref)}`, { ...f, level: l.n, source: c.source });
+        }
       }
     }
   }
   return [...last.values()];
+}
+
+/** Dotes de las elecciones `feat` (estilos de combate, dones épicos…) que conserva, con el nivel total en que se ganaron. */
+export function heldFeats(levels: LevelEntry[]): (FeatPickValue & { level: number })[] {
+  // (sin `source`, que solo usan los rasgos opcionales)
+  return heldWithLevel(levels, "feat")
+    .map(({ ref, name, ability, level }) => ({ ref, name, level, ...(ability ? { ability } : {}) }));
+}
+
+/**
+ * Rasgos opcionales (metamagia, invocaciones, maniobras) que conserva, con el nivel total en que se ganaron y la
+ * progresión que los da (`progression:maneuvers|…`).
+ */
+export function heldOptionalFeatures(levels: LevelEntry[]): (Named & { level: number; source: string })[] {
+  return heldWithLevel(levels, "optionalFeature");
 }
 
 /** Lo que piden los prerrequisitos de las dotes: nivel total, características, armaduras y lanzamiento de conjuros. */
