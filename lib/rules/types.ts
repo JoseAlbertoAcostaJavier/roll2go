@@ -143,6 +143,11 @@ export type BackgroundData = {
   equipment: Equipment;
 };
 
+/** Filtro de un conjuro a elegir: su nivel y, si se dan, las listas de clase, las escuelas o que sea ritual. */
+export type FeatSpellFilter = { level: number; classes?: string[]; schools?: string[]; ritual?: true };
+/** Conjuros a elegir de una dote: `count` que cumplan `filter`, desde el nivel de personaje `level`. */
+export type FeatSpellChoice = { level: number; count: number; filter: FeatSpellFilter };
+
 export type FeatData = {
   category: "origin" | "general" | "fightingStyle" | "epicBoon";
   /** Código de categoría de 5etools (`FS`, `FS:P`…): distingue los estilos de combate propios de una clase. */
@@ -154,6 +159,10 @@ export type FeatData = {
   spells?: SpellGrant[];
   /** Si da conjuros, aunque sean solo elegidos (Iniciado en la magia, Lanzador de rituales…). */
   grantsSpells?: true;
+  /** Conjuros que se eligen (Iniciado en la magia, Lanzador de rituales, la mitad elegida de Tocado por los feéricos…). */
+  spellChoices?: FeatSpellChoice[];
+  /** Características entre las que se elige la de lanzamiento de esos conjuros (Iniciado en la magia). */
+  spellAbility?: Ability[];
 };
 
 export type SpellData = {

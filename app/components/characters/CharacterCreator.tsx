@@ -7,18 +7,19 @@ import Bbcode from "@/app/components/Bbcode";
 import { card, cardTitle, errorClass, field, labelClass, primaryButton } from "@/app/components/formStyles";
 import type { CatalogEntry, EntryOption, SpellOption } from "@/lib/rules/catalog";
 import {
-  ABILITIES, type Ability, type BackgroundData, type ClassData, type Equipment, type FeatureData, type Pack, type Ref,
-  type SpeciesData,
+  ABILITIES, type Ability, type BackgroundData, type ClassData, type Equipment, type FeatData, type FeatureData, type Pack,
+  type Ref, type SpeciesData,
 } from "@/lib/rules/types";
 import type { AbilityMethod, Dnd2024Sheet } from "@/lib/rules/dnd2024/sheet";
 import { checkBackgroundBonus } from "@/lib/rules/dnd2024/abilities";
 import { totalsWithinLimit } from "@/lib/rules/dnd2024/assign";
 import { bareName, equipmentRefs, refKey } from "@/lib/rules/dnd2024/equipmentRefs";
 import { ABILITY_NAMES, sizeName, skillName, toolName } from "@/lib/rules/dnd2024/labels";
+import { featSpellPending } from "@/lib/rules/dnd2024/featSpells";
 import { pendingChoices, withBonusCantrips } from "@/lib/rules/dnd2024/levels";
 import { maxSpellLevel, preparedKey, spellListOf } from "@/lib/rules/dnd2024/spellcasting";
 import {
-  emptySpellPick, parseSpellPick, spellChoiceOf, spellPickMissing, type SpellPick,
+  emptySpellPick, featSpellsChoiceOf, featSpellsMissing, parseSpellPick, spellChoiceOf, spellPickMissing, type SpellPick,
 } from "@/lib/rules/dnd2024/spellPicks";
 import { PRONOUNS, type Pronoun } from "@/lib/rules/dnd2024/names";
 import type { CreationDraft } from "@/lib/rules/dnd2024/recreate";
@@ -34,6 +35,7 @@ import ImageFields from "./fields/ImageFields";
 import InfoFields from "./fields/InfoFields";
 import PronounsField from "./fields/PronounsField";
 import SkillPicker from "./fields/SkillPicker";
+import FeatSpellsStep from "./levelup/steps/FeatSpellsStep";
 import SpellsStep from "./levelup/steps/SpellsStep";
 import useCatalogEntries from "./useCatalogEntries";
 import StatusField from "./fields/StatusField";
@@ -62,6 +64,9 @@ type FormState = {
   /** Trucos y conjuros iniciales (o libro del Mago) y preparados iniciales (`libro:clave`). */
   spells: SpellPick;
   prepared: string[];
+  /** Conjuros de la dote del trasfondo (Iniciado en la magia…) y su característica de lanzamiento. */
+  featSpells: SpellPick;
+  featAbility: Ability | "";
   method: AbilityMethod;
   base: Base;
   rolls: Rolls | null;
@@ -103,6 +108,7 @@ const emptyForm = (): FormState => ({
   species: null, lineage: null, speciesSkills: [], size: null,
   background: null, bonus: {}, bgEquipment: "",
   klass: null, classChoices: {}, classEquipment: "", spells: emptySpellPick(), prepared: [],
+  featSpells: emptySpellPick(), featAbility: "",
   method: "pointBuy", base: { str: 8, dex: 8, con: 8, int: 8, wis: 8, cha: 8 }, rolls: null,
   alignment: "", appearance: "", age: "", backstory: "", languages: "", notes: "", xp: "",
 });
@@ -187,6 +193,10 @@ function parseDraft(raw: string | null, props: Props): FormState {
   if (form.klass) {
     form.spells = parseSpellPick(d.spells);
     form.prepared = [...new Set(strings(d.prepared).filter(Boolean))];
+  }
+  if (form.background) {
+    form.featSpells = parseSpellPick(d.featSpells);
+    form.featAbility = ABILITIES.includes(d.featAbility as Ability) ? (d.featAbility as Ability) : "";
   }
   if (!form.background) form.bgEquipment = "";
   if (!form.klass) form.classEquipment = "";
@@ -410,6 +420,12 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
     };
   }, [classData, classOpt, form.klass, spellPending, entries]);
   const spellsMissing = spellPending ? spellPickMissing(spellPending, form.spells) : null;
+  // Conjuros de la dote del trasfondo (Acólito → Iniciado en la magia)
+  const bgFeat = bgData?.feat ? entries.get(refKey(bgData.feat)) : undefined;
+  const featPending = useMemo(() => (bgFeat
+    ? featSpellPending([{ ref: bgFeat.ref, name: nameOf(bgFeat), data: bgFeat.data as FeatData | null }], (l) => l <= 1)[0] ?? null
+    : null), [bgFeat]);
+  const featSpellsLeft = featPending ? featSpellsMissing(featPending, form.featSpells, form.featAbility) : null;
   // Conjuros de nivel 1 que ya da otra cosa (especie, legado, dote del trasfondo, clase): no se eligen
   const grantedSpells = useMemo(() => [form.species, form.lineage, bgData?.feat ?? null, form.klass].flatMap((r) => {
     const data = r ? (entries.get(refKey(r))?.data as { spells?: { level: number; ref: Ref }[] } | undefined) : undefined;
@@ -465,6 +481,7 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
   else if (!form.bgEquipment && letters(bgData?.equipment).length) missing.push({ label: "Equipo del trasfondo", href: S.background });
   for (const p of unfinished(pending, form.classChoices)) missing.push({ label: p.label, href: S.klass });
   if (spellsMissing) missing.push({ label: "Conjuros", href: S.spells });
+  if (featPending && featSpellsLeft) missing.push({ label: featPending.label, href: S.background });
   if (classData && !form.classEquipment && letters(classData.equipment).length) missing.push({ label: "Equipo de clase", href: S.klass });
   if (Object.values(filledBase()).some((v) => v === null) || !abilitiesValid)
     missing.push({ label: "Puntuaciones de característica", href: S.abilities });
@@ -495,7 +512,10 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
     const skills = data?.skills ?? [];
     const speciesSkills = form.speciesSkills.map((s) => (skills.includes(s) ? "" : s));
     update(
-      { background: ref, bonus: {}, bgEquipment: "", speciesSkills, classChoices: withoutSkills(form.classChoices, skills) },
+      {
+        background: ref, bonus: {}, bgEquipment: "", speciesSkills, classChoices: withoutSkills(form.classChoices, skills),
+        featSpells: emptySpellPick(), featAbility: "",
+      },
       "background", "background.abilities", "background.equipment", "speciesChoices.skills", ...choiceErrorKeys(),
     );
   }
@@ -548,6 +568,7 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
           choices: [
             ...choicesFor(pending, form.classChoices),
             ...(spellPending ? [spellChoiceOf(spellPending, form.spells)].filter((c) => !!c) : []),
+            ...(featPending ? [featSpellsChoiceOf(featPending, form.featSpells, form.featAbility)] : []),
           ],
         }
         : null],
@@ -773,6 +794,24 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
             </>
           )}
           <FieldError errors={errors} keys={["background.equipment"]} />
+          {featPending && (
+            <div className="mt-5 animate-fade-in">
+              <h3 className="mb-3 font-heading text-lg font-bold">{featPending.label}</h3>
+              <FeatSpellsStep
+                id="creator-feat-spells"
+                p={featPending}
+                spells={props.spells}
+                granted={grantedSpells}
+                value={form.featSpells}
+                onChange={(featSpells) => update({ featSpells }, `levels.0.choices.${featPending.source}`)}
+                ability={form.featAbility}
+                onAbility={(featAbility) => update({ featAbility }, `levels.0.choices.${featPending.source}`)}
+                characterId={recreate?.characterId ?? null}
+                campaignId={campaign?.id ?? null}
+              />
+              <FieldError errors={errors} keys={[`levels.0.choices.${featPending.source}`]} />
+            </div>
+          )}
         </section>
 
         {/* 4. Clase */}

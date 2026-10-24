@@ -1,6 +1,6 @@
 // Rehacer la creación de un personaje de nivel 1: el borrador con el que se precarga el creador y lo que se sustituye
 // en la hoja al guardar.
-import type { Ref } from "@/lib/rules/types";
+import type { Ability, Ref } from "@/lib/rules/types";
 import { refKey } from "./equipmentRefs";
 import type { Choice, Dnd2024SheetV2 } from "./sheet";
 import { preparedKey } from "./spellcasting";
@@ -25,6 +25,9 @@ export type CreationDraft = {
   /** Trucos y conjuros iniciales (o libro) y preparados iniciales (claves `libro:clave`). */
   spells: SpellPick;
   prepared: string[];
+  /** Conjuros de la dote del trasfondo (Iniciado en la magia…) y su característica de lanzamiento. */
+  featSpells: SpellPick;
+  featAbility: Ability | "";
   method: Dnd2024SheetV2["abilityMethod"];
   base: Dnd2024SheetV2["baseAbilities"];
   rolls: Dnd2024SheetV2["rolls"];
@@ -73,6 +76,12 @@ export function creationDraft(
     spells.spells = spellChoice.value.spells.map((c) => refKey(c.ref));
   }
   const prepared = first ? (sheet.prepared[preparedKey(first.class.ref)] ?? []).map(refKey) : [];
+  const featChoice = first?.choices.find((c) => c.type === "featSpells");
+  const featSpells = emptySpellPick();
+  if (featChoice?.type === "featSpells") {
+    featSpells.cantrips = featChoice.value.cantrips.map((c) => refKey(c.ref));
+    featSpells.spells = featChoice.value.spells.map((c) => refKey(c.ref));
+  }
   return {
     name: character.name,
     pronouns: character.pronouns,
@@ -89,6 +98,8 @@ export function creationDraft(
     classEquipment: first?.equipment ?? "",
     spells,
     prepared,
+    featSpells,
+    featAbility: featChoice?.type === "featSpells" ? (featChoice.value.ability ?? "") : "",
     method: sheet.abilityMethod,
     base: sheet.baseAbilities,
     rolls: sheet.rolls,

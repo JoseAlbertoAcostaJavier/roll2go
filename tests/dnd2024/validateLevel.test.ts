@@ -31,6 +31,10 @@ extra("feat:boon of combat prowess|xphb", {
 extra("optionalFeature:armor of shadows|xphb", { featureType: ["EI"] }, "Armor of Shadows");
 extra("optionalFeature:mask of many faces|xphb", { featureType: ["EI"] }, "Mask of Many Faces");
 extra("optionalFeature:misty visions|xphb", { featureType: ["EI"] }, "Misty Visions");
+extra("spell:command|xphb", {
+  level: 1, school: "E", time: "", range: "", components: "", duration: "", concentration: false, ritual: false,
+  classes: ["cleric"], tags: [],
+}, "Command");
 // Conjuros: nombre, nivel y listas
 for (const [name, level, classes] of [
   ["eldritch blast", 0, ["warlock"]], ["chill touch", 0, ["warlock", "wizard"]], ["minor illusion", 0, ["warlock", "wizard"]],
@@ -154,6 +158,26 @@ describe("validateLevel", () => {
       .toHaveProperty([`choices.${ASI}`]);
   });
 
+  it("dote con un conjuro a elegir (Tocado por los feéricos): exige uno de nivel 1 de Encantamiento o Adivinación", async () => {
+    const fey = asi({ feat: client("feat:fey-touched|xphb"), ability: "wis" });
+    const SOURCE = "featSpells:feat:fey-touched|xphb";
+    const spells = (names: string[]) => ({
+      type: "featSpells", source: SOURCE, value: { cantrips: [], spells: names.map((n) => client(`spell:${n}|xphb`)) },
+    });
+    const r = await validateLevel(barbarian3(), input({ choices: [fey, mastery(), spells(["command"])] }), ctx());
+    if (!r.ok) throw new Error(JSON.stringify(r.errors));
+    expect(r.entry.choices.at(-1)).toEqual({
+      type: "featSpells", source: SOURCE,
+      value: { feat: ref("feat:fey-touched|xphb"), cantrips: [], spells: [{ ref: ref("spell:command|xphb"), name: "Command" }] },
+    });
+    expect(await errorsOf(barbarian3(), input({ choices: [fey, mastery()] })))
+      .toHaveProperty("choices", "Falta elegir: Conjuros de Fey-Touched.");
+    expect(await errorsOf(barbarian3(), input({ choices: [fey, mastery(), spells(["bless"])] })))
+      .toHaveProperty([`choices.${SOURCE}`]);
+    // Sin la dote, la elección sobra
+    expect(await errorsOf(barbarian3(), input({ choices: [asi({ abilities: { str: 2 } }), mastery(), spells(["command"])] })))
+      .toHaveProperty("choices", "Hay elecciones que este nivel no pide.");
+  });
   it("dote general en lugar de la mejora: prerrequisitos, característica que sube y nombre del catálogo", async () => {
     // FUE 15: cumple Gran maestro de armas; CAR 8: no cumple Actor
     const gwm = { feat: client("feat:great weapon master|xphb"), ability: "str" };

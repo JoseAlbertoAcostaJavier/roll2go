@@ -45,6 +45,12 @@ export type SpellChoice = {
 };
 
 /**
+ * Conjuros elegidos con una dote (Iniciado en la magia…): trucos, conjuros y, si la dote la deja elegir, la
+ * característica de lanzamiento.
+ */
+export type FeatSpellsValue = { feat: Ref; cantrips: Named[]; spells: Named[]; ability?: Ability };
+
+/**
  * Elección hecha al subir un nivel. `source` es la clave del rasgo o de la progresión que la pide. `replaced`: dote o
  * rasgo opcional de esa misma elección que se sustituye por uno de los de `value`.
  */
@@ -57,7 +63,8 @@ export type Choice =
   | { type: "featureOption"; source: string; value: Named }
   | { type: "skills"; source: string; value: string[] }
   | { type: "expertise"; source: string; value: string[] }
-  | { type: "spells"; source: string; value: SpellChoice };
+  | { type: "spells"; source: string; value: SpellChoice }
+  | { type: "featSpells"; source: string; value: FeatSpellsValue };
 
 /** Una entrada por nivel de personaje, en orden. */
 export type LevelEntry = {

@@ -14,3 +14,13 @@ notas del personaje.
 | Ilusiones mejoradas (Ilusionista 3) | `subclassFeature:improved illusions\|wizard\|xphb\|illusionist\|xphb\|3` | Ilusión menor (u otro truco de Mago si ya la conoce), que no cuenta para el límite. | Conceder el truco (o pedir otro si ya lo tiene) fuera del límite de trucos. |
 | Dominio de conjuros (Mago 18) | `classFeature:spell mastery\|wizard\|xphb\|18` | Un conjuro de nivel 1 y otro de nivel 2 del libro (con tiempo de una acción) siempre preparados y a voluntad; se pueden cambiar tras un descanso largo. | Elegirlos de su libro (en la ficha, como la tierra del Círculo de la Tierra) y mostrarlos como siempre preparados. |
 | Conjuros distintivos (Mago 20) | `classFeature:signature spells\|wizard\|xphb\|20` | Dos conjuros de nivel 3 del libro siempre preparados que se lanzan una vez por descanso sin espacio. | Elegirlos de su libro al ganar el rasgo y mostrarlos como siempre preparados. |
+
+## Conjuros de dotes
+
+Los conjuros a elegir de las dotes (`FeatData.spellChoices`, elección `featSpells`) se eligen al ganar la dote y, en
+Lanzador de rituales, en los niveles en que da más. Falta:
+
+- Sustituir uno de ellos al subir de nivel («Spell Change» de Iniciado en la magia).
+- La dote base de Iniciado en la magia, con sus tres listas alternativas, no pide nada (los trasfondos usan sus
+  versiones con una sola lista).
+- Rasgos opcionales con conjuros a elegir (Pacto del tomo: trucos y rituales).

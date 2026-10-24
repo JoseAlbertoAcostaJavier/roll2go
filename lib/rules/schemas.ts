@@ -158,6 +158,12 @@ const checks: { [K in EntryKind]: Check } = {
     "abilityIncrease?": abilities,
     "spells?": arrayOf(spellGrant),
     "grantsSpells?": oneOf(true),
+    "spellChoices?": arrayOf(shape({
+      level: int(1, 20),
+      count: int(1, 20),
+      filter: shape({ level: int(0, 9), "classes?": strings, "schools?": strings, "ritual?": oneOf(true) }),
+    })),
+    "spellAbility?": abilities,
   }),
   spell: shape({
     level: int(0, 9),

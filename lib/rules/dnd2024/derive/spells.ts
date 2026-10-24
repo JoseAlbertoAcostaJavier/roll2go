@@ -2,6 +2,7 @@
 // (combinados en multiclase y la Magia de pacto aparte) y los conjuros de especie, legado y dotes.
 import type { CatalogEntry } from "@/lib/rules/catalog";
 import { refKey } from "@/lib/rules/dnd2024/equipmentRefs";
+import { chosenFeatSpells } from "@/lib/rules/dnd2024/featSpells";
 import { chosenSpells, heldBonusCantrips, heldOptionalFeatures } from "@/lib/rules/dnd2024/levels";
 import type { Dnd2024SheetV2, Named } from "@/lib/rules/dnd2024/sheet";
 import { maxSpellLevel, PACT_SLOTS, preparedKey, slotLevels } from "@/lib/rules/dnd2024/spellcasting";
@@ -169,8 +170,12 @@ export function otherSpells(sheet: Dnd2024SheetV2, entries: Map<string, CatalogE
     const sub = entries.get(refKey(c.subclass.ref))?.data as SubclassData | undefined;
     add(upTo(sub?.spells, c.level), c.subclass.name);
   }
+  // Dotes: sus conjuros fijos y los elegidos con ellas (solo de las que conserva)
+  const chosen = chosenFeatSpells(sheet.levels);
   for (const f of characterFeats(sheet, background(sheet, entries))) {
-    add(upTo(featData(f.ref, entries)?.spells, level), `Dote: ${f.name ?? named(f.ref, entries).name}`);
+    const origin = `Dote: ${f.name ?? named(f.ref, entries).name}`;
+    add(upTo(featData(f.ref, entries)?.spells, level), origin);
+    out.push(...(chosen.get(refKey(f.ref)) ?? []).map((spell) => ({ spell, origin })));
   }
   // Invocaciones (y demás rasgos opcionales) con conjuros fijos
   for (const o of heldOptionalFeatures(sheet.levels)) {
@@ -190,7 +195,7 @@ const background = (sheet: Dnd2024SheetV2, entries: Map<string, CatalogEntry>) =
 
 /**
  * Bloques, espacios, otros conjuros y espacios gastados. `hasSpells`: si la ficha muestra la pestaña Conjuros
- * (también con una dote de conjuros elegidos, aunque aún no se guarden: `FeatData.grantsSpells`).
+ * (también con una dote de conjuros elegidos aunque aún no los tenga: `FeatData.grantsSpells`).
  */
 export function spellsSummary(
   sheet: Dnd2024SheetV2,

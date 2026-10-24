@@ -256,7 +256,7 @@ describe("validateSheet: elecciones de clase de nivel 1", () => {
   for (const [name, level, classes] of [
     ["light", 0, ["cleric", "wizard"]], ["sacred flame", 0, ["cleric"]], ["guidance", 0, ["cleric", "druid"]],
     ["thaumaturgy", 0, ["cleric"]], ["druidcraft", 0, ["druid"]], ["produce flame", 0, ["druid"]],
-    ["dancing lights", 0, ["wizard"]],
+    ["dancing lights", 0, ["wizard"]], ["sanctuary", 1, ["cleric"]],
     ["mage hand", 0, ["wizard"]], ["fire bolt", 0, ["wizard"]], ["fireball", 3, ["wizard"]],
     ...WIZARD_SPELLS.map((n) => [n, 1, ["wizard"]]),
   ] as [string, number, string[]][]) {
@@ -278,12 +278,24 @@ describe("validateSheet: elecciones de clase de nivel 1", () => {
   };
   const fnamed = (key: string) => ({ ref: fref(key), name: "cliente" });
   const skills = (value: string[]) => ({ type: "skills", source: "class:skills", value });
+  // Conjuros de Iniciado en la magia (Clérigo), la dote del Acólito; se añaden si la prueba no trae los suyos
+  const INITIATE = "featSpells:feat:magic initiate; cleric|xphb";
+  const initiateSpells = (cantrips: string[], spells: string[], ability?: string) => ({
+    type: "featSpells", source: INITIATE, value: {
+      cantrips: cantrips.map((n) => fnamed(`spell:${n}|xphb`)), spells: spells.map((n) => fnamed(`spell:${n}|xphb`)),
+      ...(ability ? { ability } : {}),
+    },
+  });
   const sheetFor = (cls: string, choices: unknown[]): Sheet => ({
     version: 1,
     species: fnamed("species:elf|xphb"),
     lineage: fnamed("lineage:drow|xphb"),
     background: { ...fnamed("background:acolyte|xphb"), abilities: { wis: 2, int: 1 }, equipment: "A" },
-    classes: [{ ...fnamed(`class:${cls}|xphb`), level: 1, subclass: null, equipment: "A", choices }],
+    classes: [{
+      ...fnamed(`class:${cls}|xphb`), level: 1, subclass: null, equipment: "A",
+      choices: choices.some((c) => (c as { type?: string }).type === "featSpells")
+        ? choices : [...choices, initiateSpells(["light", "sacred flame"], ["sanctuary"], "wis")],
+    }],
     abilityMethod: "standard",
     baseAbilities: { str: 15, dex: 14, con: 13, int: 12, wis: 10, cha: 8 },
     rolls: null,
@@ -329,6 +341,38 @@ describe("validateSheet: elecciones de clase de nivel 1", () => {
     const protector = [skills(["history", "medicine"]), order("classFeature:protector|cleric|xphb|1")];
     expect(errs(await validateSheet(sheetFor("cleric", [...protector, spellChoice("cleric", [...CLERIC_CANTRIPS, "thaumaturgy"])]), fctx)))
       .toHaveProperty([SOURCE], "Conjuros: elige 3 trucos.");
+  });
+  describe("Acólito → Iniciado en la magia (Clérigo)", () => {
+    const CLERIC = () => [skills(["history", "medicine"]), order("classFeature:protector|cleric|xphb|1"), spellChoice("cleric", CLERIC_CANTRIPS)];
+    const fighter = (spells: unknown) => validateSheet(sheetFor("cleric", [...CLERIC(), spells]), fctx);
+    it("exige 2 trucos y 1 conjuro de nivel 1 de la lista del Clérigo y la característica", async () => {
+      const r = await fighter(initiateSpells(["light", "guidance"], ["sanctuary"], "wis"));
+      if (!r.ok) throw new Error(JSON.stringify(r.errors));
+      expect(r.sheet.levels[0].choices.at(-1)).toEqual({
+        type: "featSpells", source: INITIATE, value: {
+          feat: fref("feat:magic initiate; cleric|xphb"),
+          cantrips: [{ ref: fref("spell:light|xphb"), name: "light" }, { ref: fref("spell:guidance|xphb"), name: "guidance" }],
+          spells: [{ ref: fref("spell:sanctuary|xphb"), name: "sanctuary" }], ability: "wis",
+        },
+      });
+    });
+    it("uno de la lista del Mago, de otro nivel, en número distinto o sin característica → error", async () => {
+      const PATH = `levels.0.choices.${INITIATE}`;
+      expect(errs(await fighter(initiateSpells(["light", "mage hand"], ["sanctuary"], "wis"))))
+        .toHaveProperty([PATH], "Conjuros de Magic Initiate; Cleric: mage hand no se puede elegir con esta dote.");
+      expect(errs(await fighter(initiateSpells(["light", "guidance"], ["magic missile"], "wis")))).toHaveProperty([PATH]);
+      expect(errs(await fighter(initiateSpells(["light"], ["sanctuary"], "wis"))))
+        .toHaveProperty([PATH], "Conjuros de Magic Initiate; Cleric: elige 2 trucos.");
+      expect(errs(await fighter(initiateSpells(["light", "guidance"], ["sanctuary"]))))
+        .toHaveProperty([PATH], "Conjuros de Magic Initiate; Cleric: elige la característica de lanzamiento.");
+    });
+    it("sin elegirlos → falta", async () => {
+      const r = await validateSheet(sheetFor("cleric", [...CLERIC(), { type: "featSpells", source: "x" }]), fctx);
+      expect(errs(r)["levels.0.choices"]).toBe("Hay elecciones que este nivel no pide.");
+      const sheet = sheetFor("cleric", CLERIC());
+      sheet.classes[0].choices = (sheet.classes[0].choices as { type: string }[]).filter((c) => c.type !== "featSpells");
+      expect(errs(await validateSheet(sheet, fctx))["levels.0.choices"]).toBe("Falta elegir: Conjuros de Magic Initiate; Cleric.");
+    });
   });
   it("un truco que ya da el legado (Drow → Luces danzantes) no se puede elegir", async () => {
     const r = await validateSheet(sheetFor("wizard", [
@@ -493,7 +537,7 @@ describe("validateSheet: elecciones de clase de nivel 1", () => {
     ]);
     const ok = await validateSheet(rogue(["stealth", "insight"]), fctx);
     if (!ok.ok) throw new Error(JSON.stringify(ok.errors));
-    expect(ok.sheet.levels[0].choices.map((c) => c.type)).toEqual(["skills", "weaponMastery", "expertise"]);
+    expect(ok.sheet.levels[0].choices.map((c) => c.type)).toEqual(["skills", "weaponMastery", "expertise", "featSpells"]);
     // Pericia en una habilidad sin competencia, o repetida
     const expertiseKey = "levels.0.choices.classFeature:expertise|rogue|xphb|1";
     expect(choiceErrors(await validateSheet(rogue(["stealth", "athletics"]), fctx))).toEqual([expertiseKey]);

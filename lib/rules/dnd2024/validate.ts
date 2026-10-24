@@ -10,6 +10,7 @@ import { abilityScores } from "./derive/abilities";
 import { weaponProficient } from "./derive/attacks";
 import { casterBlocks, spellSlots } from "./derive/spells";
 import { FEATURE_OPTION_LABELS } from "./featureChoices";
+import { checkFeatSpellChoices, featSpellPending, splitFeatSpells } from "./featSpells";
 import { ABILITY_NAMES, SKILL_NAMES, featFitsCategories } from "./labels";
 import {
   meetsFeatPrerequisite, pendingChoices, withBonusCantrips, type FeatPrerequisiteCtx, type PendingChoice,
@@ -197,13 +198,20 @@ export async function validateSheet(input: unknown, ctx: ValidateCtx): Promise<V
       const bgFeat = bg?.feat ? ((await ctx.resolve(bg.feat))?.data as FeatData | undefined) : undefined;
       const spellsGranted = [species?.spells, lineageData?.spells, bgFeat?.spells, cls.spells, subData?.spells]
         .flatMap((list) => (list ?? []).filter((g) => g.level <= 1).map((g) => g.ref));
-      const checked = await checkChoices(pending, raw.choices, {
+      // (los conjuros de la dote del trasfondo, aparte)
+      const split = splitFeatSpells(raw.choices);
+      const checked = await checkChoices(pending, split.rest, {
         path: "levels.0.choices", entries: classEntries, resolve: ctx.resolve, skills: takenSkills,
         weapons: cls.weapons, level: 1, subclass, spellsGranted,
       });
-      for (const [k, msg] of Object.entries(checked.errors)) err(k, msg);
-      if (Object.keys(checked.errors).length) ok = false;
-      choices = checked.choices;
+      const featEntry = bgFeat && bg ? await ctx.resolve(bg.feat) : null;
+      const featSpells = await checkFeatSpellChoices(
+        featEntry ? featSpellPending([{ ref: featEntry.ref, name: featEntry.nameEs || featEntry.name, data: bgFeat }], (l) => l <= 1) : [],
+        split.featSpells, { path: "levels.0.choices", books: ctx.books, resolve: ctx.resolve },
+      );
+      for (const [k, msg] of Object.entries({ ...featSpells.errors, ...checked.errors })) err(k, msg);
+      if (Object.keys(checked.errors).length || Object.keys(featSpells.errors).length) ok = false;
+      choices = [...checked.choices, ...featSpells.choices];
 
       const eq = raw.equipment;
       if (typeof eq !== "string" || !has(cls.equipment, eq)) err("classes.0.equipment", "Elige el equipo de la clase.");

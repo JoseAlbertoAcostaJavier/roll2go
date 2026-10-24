@@ -5,8 +5,8 @@
 // padre siempre está en el mismo libro. Todas las claves llevan el tipo delante (`spell:fireball|xphb`).
 import { ABILITIES } from "../types";
 import type {
-  Ability, ClassTable, EntryData, EntryKind, Equipment, FeatureData, LevelCounts, LevelFeature, MulticlassData,
-  NameGender, OptionalFeatureData, Pack, Ref, Spellcasting, SpellcastingProgression, SpellGrant,
+  Ability, ClassTable, EntryData, EntryKind, Equipment, FeatSpellChoice, FeatSpellFilter, FeatureData, LevelCounts,
+  LevelFeature, MulticlassData, NameGender, OptionalFeatureData, Pack, Ref, Spellcasting, SpellcastingProgression, SpellGrant,
 } from "../types";
 import { normalizeName, validateEntryData } from "../schemas";
 import { entriesToBbcode } from "./toBbcode";
@@ -254,6 +254,48 @@ function blockGrants(additional: unknown[], unleveled?: number): SpellGrant[] {
   return grants.sort((a, b) => a.level - b.level);
 }
 
+/**
+ * `additionalSpells` → conjuros a elegir (`{ choose: "level=1|class=Cleric", count }`) por nivel de personaje (los
+ * que no tienen nivel, desde el 1). Con varios bloques alternativos con nombre no se elige nada (se usa una versión de
+ * la dote), y los filtros que no se entienden se omiten.
+ */
+function spellChoices(additional: unknown[]): FeatSpellChoice[] {
+  if (alternativeBlocks(additional)) return [];
+  const out: FeatSpellChoice[] = [];
+  const walk = (v: unknown, level: number): void => {
+    if (Array.isArray(v)) v.forEach((x) => walk(x, level));
+    else if (isObj(v) && typeof v.choose === "string") {
+      const filter = chooseFilter(v.choose);
+      if (filter) out.push({ level, count: typeof v.count === "number" ? v.count : 1, filter });
+    } else if (isObj(v)) Object.values(v).forEach((x) => walk(x, level));
+  };
+  for (const block of additional.filter(isObj)) {
+    for (const group of ["known", "prepared", "innate", "expanded"]) {
+      if (!isObj(block[group])) continue;
+      for (const [lvl, value] of Object.entries(block[group] as Rec)) {
+        const level = lvl === "_" ? 1 : Number(lvl);
+        if (Number.isInteger(level) && level >= 1) walk(value, level);
+      }
+    }
+  }
+  return out.sort((a, b) => a.level - b.level);
+}
+
+// "level=1|class=Cleric;Druid", "level=1|school=E;D", "level=1|components & miscellaneous=ritual"
+function chooseFilter(choose: string): FeatSpellFilter | null {
+  const filter: Partial<FeatSpellFilter> = {};
+  for (const part of choose.split("|")) {
+    const [k, v = ""] = part.split("=").map((x) => x.trim());
+    const key = lower(k);
+    if (key === "level" && /^\d$/.test(v)) filter.level = Number(v);
+    else if (key === "class") filter.classes = v.split(";").map((c) => toIdentifier(c));
+    else if (key === "school") filter.schools = v.split(";").map((x) => x.toUpperCase());
+    else if (key === "components & miscellaneous" && lower(v) === "ritual") filter.ritual = true;
+    else return null;
+  }
+  return filter.level === undefined ? null : (filter as FeatSpellFilter);
+}
+
 // Los objetos con `choose` (elección del jugador) o `all` (lista ampliada por filtro), p. ej.
 // `{ choose: "level=0;1|class=Wizard" }`, no son conjuros fijos y se omiten
 const collectStrings = (v: unknown): string[] =>
@@ -423,6 +465,10 @@ export function normalizeFeat(raw: Rec): NormalizedEntry {
   const spells = spellGrants(additional, 1);
   if (spells.length) data.spells = spells;
   if (additional.length) data.grantsSpells = true;
+  const choices = spellChoices(additional);
+  if (choices.length) data.spellChoices = choices;
+  const choose = additional.length === 1 && isObj(additional[0]) && isObj(additional[0].ability) ? additional[0].ability.choose : null;
+  if (choices.length && Array.isArray(choose) && choose.every(isAbility)) data.spellAbility = choose;
   return entry<"feat">(header("feat", raw, keyOf("feat", str(raw.name), str(raw.source))), data);
 }
 

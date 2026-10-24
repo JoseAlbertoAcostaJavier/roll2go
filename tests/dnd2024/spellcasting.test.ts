@@ -252,6 +252,20 @@ describe("otros conjuros", () => {
     expect(d.hasSpells).toBe(true);
     expect(d.spells.blocks).toEqual([]);
   });
+  it("conjuros elegidos con Iniciado en la magia (Acólito), con su origen", () => {
+    const initiate = ref("feat:magic initiate; cleric|xphb");
+    const s = sheetOf(["barbarian"], { 1: [{
+      type: "featSpells", source: "featSpells:feat:magic initiate; cleric|xphb",
+      value: { feat: initiate, cantrips: [spell("light"), spell("guidance")], spells: [spell("bless")], ability: "wis" },
+    }] });
+    s.background = { ref: ref("background:acolyte|xphb"), name: "Acólito", abilities: {}, equipment: "A" };
+    expect(otherSpells(s, entries).map((o) => [o.spell.name, o.origin])).toEqual([
+      ["light", "Dote: Magic Initiate; Cleric"], ["guidance", "Dote: Magic Initiate; Cleric"], ["bless", "Dote: Magic Initiate; Cleric"],
+    ]);
+    // Si ya no tiene la dote, no los conserva
+    s.background = { ref: ref("background:none|xphb"), name: "Ninguno", abilities: {}, equipment: "A" };
+    expect(otherSpells(s, entries)).toEqual([]);
+  });
   it("dote con conjuros fijos: Tocado por los feéricos → Paso brumoso", () => {
     const fey: Named = { ref: ref("feat:fey-touched|xphb"), name: "Tocado por los feéricos" };
     const s = sheetOf(times("barbarian", 4), { 4: [{ type: "asi", source: "x", value: { feat: fey } }] });

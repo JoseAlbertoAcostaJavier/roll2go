@@ -33,6 +33,8 @@ type Props = {
   mode: SpellcastingMode;
   /** Lista de conjuros de la clase (`SpellData.classes`). */
   listId: string;
+  /** En lugar de la lista de la clase, los que acepta (conjuros de una dote) y el título de la lista. */
+  accepts?: { test: (s: SpellOption) => boolean; title: string };
   maxLevel: number;
   /** Elección de conjuros del nivel; sin ella (Paladín 1), solo se preparan. */
   pending: PendingChoice | null;
@@ -74,9 +76,10 @@ export default function SpellsStep(props: Props) {
   const opener = useRef<HTMLElement | null>(null);
 
   const byKey = useMemo(() => new Map(props.spells.map((s) => [refKey(s.ref), s])), [props.spells]);
+  const accepts = props.accepts?.test;
   const list = useMemo(
-    () => props.spells.filter((s) => s.data.classes.includes(props.listId)).sort(byLevelAndName),
-    [props.spells, props.listId],
+    () => props.spells.filter((s) => (accepts ? accepts(s) : s.data.classes.includes(props.listId))).sort(byLevelAndName),
+    [props.spells, props.listId, accepts],
   );
   const tags = useMemo(() => [...new Set(list.flatMap((s) => s.data.tags))].sort((a, b) => a.localeCompare(b, "es")), [list]);
 
@@ -263,12 +266,16 @@ export default function SpellsStep(props: Props) {
       })}
 
       <div>
-        <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">Lista de {props.casterName}</h3>
+        <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">
+          {props.accepts?.title ?? `Lista de ${props.casterName}`}
+        </h3>
         <SpellFilters id={`${id}-filters`} value={filter} onChange={setFilter} tags={tags} />
         <p className="mb-1 text-xs text-muted" aria-live="polite">{filtered.length} conjuros</p>
         <SpellList
           items={filtered}
-          empty={list.length === 0 ? "No hay conjuros de esta clase en los libros del personaje." : "Ningún conjuro coincide con los filtros."}
+          empty={list.length === 0
+            ? `No hay conjuros ${props.accepts ? "para elegir" : "de esta clase"} en los libros del personaje.`
+            : "Ningún conjuro coincide con los filtros."}
           onOpen={open}
           href={spellUrl}
         />

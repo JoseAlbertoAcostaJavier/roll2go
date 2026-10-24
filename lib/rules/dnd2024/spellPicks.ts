@@ -1,6 +1,6 @@
 // Elección de conjuros en el creador y en el asistente de subir de nivel (spec de conjuros §4.2 y §4.3): lo que lleva
 // marcado el usuario (claves `libro:clave`), lo que le falta y la elección `spells` que se envía. Funciones puras.
-import type { Ref } from "@/lib/rules/types";
+import type { Ability, Ref } from "@/lib/rules/types";
 import type { PendingChoice } from "./levels";
 import type { Choice, SpellChoice } from "./sheet";
 
@@ -76,4 +76,25 @@ export function spellChoiceOf(p: PendingChoice, pick: SpellPick | undefined): Ch
   }
   if (p.count === 0 && !value.replace && !value.replaceCantrip) return null;
   return { type: "spells", source: p.source, value };
+}
+
+/** Lo que falta en la elección de conjuros de una dote: sus conjuros y, si la dote la deja elegir, la característica. */
+export function featSpellsMissing(p: PendingChoice, pick: SpellPick | undefined, ability: Ability | "" | undefined): string | null {
+  return spellPickMissing(p, pick)
+    ?? (p.featSpells?.abilities && !p.featSpells.abilities.includes(ability as Ability) ? "elegir la característica de lanzamiento" : null);
+}
+
+/** Elección `featSpells` para enviar (sin nombres: los pone el servidor). */
+export function featSpellsChoiceOf(p: PendingChoice, pick: SpellPick | undefined, ability: Ability | "" | undefined): Choice {
+  const v = pick ?? emptySpellPick();
+  const named = (k: string) => ({ ref: refOf(k), name: "" });
+  return {
+    type: "featSpells", source: p.source,
+    value: {
+      feat: p.featSpells?.feat ?? p.spells!.class,
+      cantrips: v.cantrips.slice(0, p.spells?.cantrips ?? 0).map(named),
+      spells: v.spells.slice(0, p.spells?.spells ?? 0).map(named),
+      ...(ability && p.featSpells?.abilities?.includes(ability) ? { ability } : {}),
+    },
+  };
 }

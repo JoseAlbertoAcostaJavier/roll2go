@@ -92,6 +92,26 @@ test("dotes con conjuros: los fijos en `spells` y `grantsSpells` también si sol
   const initiate = find("feat", "feat:magic initiate; cleric|xphb")!.data as FeatData;
   expect(initiate.spells).toBeUndefined();
   expect(initiate.grantsSpells).toBe(true);
+  // Conjuros elegidos: filtros de `choose` por nivel de personaje y la característica elegible
+  expect(initiate.spellChoices).toEqual([
+    { level: 1, count: 2, filter: { level: 0, classes: ["cleric"] } },
+    { level: 1, count: 1, filter: { level: 1, classes: ["cleric"] } },
+  ]);
+  expect(initiate.spellAbility).toEqual(["int", "wis", "cha"]);
+  expect(fey.spellChoices).toEqual([{ level: 1, count: 1, filter: { level: 1, schools: ["E", "D"] } }]);
+  expect(fey.spellAbility).toBeUndefined();
+  const ritual = normalizeFeat({
+    name: "Ritual Caster", source: "XPHB", category: "G",
+    additionalSpells: [{ prepared: {
+      1: [{ choose: "level=1|components & miscellaneous=ritual", count: 2 }],
+      5: [{ choose: "level=1|components & miscellaneous=ritual", count: 1 }],
+    } }],
+  }).data as FeatData;
+  expect(ritual.spellChoices).toEqual([
+    { level: 1, count: 2, filter: { level: 1, ritual: true } }, { level: 5, count: 1, filter: { level: 1, ritual: true } },
+  ]);
+  // Con varias listas alternativas (la dote base de Iniciado en la magia) no hay elección: se usa una de sus versiones
+  expect((find("feat", "feat:magic initiate|xphb")!.data as FeatData).spellChoices).toBeUndefined();
   const alert = normalizeFeat({ name: "Alert", source: "XPHB", category: "O" }).data;
   expect(alert).not.toHaveProperty("grantsSpells");
   expect(alert).not.toHaveProperty("spells");

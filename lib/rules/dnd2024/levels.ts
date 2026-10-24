@@ -2,7 +2,8 @@
 // puras: las usan el asistente de subir de nivel, el creador (nivel 1) y la validación del servidor.
 import type { CatalogEntry } from "@/lib/rules/catalog";
 import type {
-  Ability, ClassData, FeatureData, LevelCounts, LevelFeature, OptionalFeatureData, Ref, SpellcastingMode, SubclassData,
+  Ability, ClassData, FeatSpellFilter, FeatureData, LevelCounts, LevelFeature, OptionalFeatureData, Ref, SpellcastingMode,
+  SubclassData,
 } from "@/lib/rules/types";
 import type { Derived } from "./derive";
 import { refKey } from "./equipmentRefs";
@@ -35,6 +36,11 @@ export type PendingChoice = {
   optionalReplace?: boolean;
   optionalReplaceCantrip?: boolean;
   spells?: SpellsPending;
+  /**
+   * En la elección de conjuros de una dote (`featSpells`): la dote, el filtro de los trucos y el de los conjuros, y las
+   * características de lanzamiento entre las que se elige. Los números van en `spells` (con la dote como `class`).
+   */
+  featSpells?: { feat: Ref; cantrip?: FeatSpellFilter; spell?: FeatSpellFilter; abilities?: Ability[] };
 };
 
 export type SpellsPending = {
