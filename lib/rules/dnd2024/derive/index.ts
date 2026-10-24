@@ -4,7 +4,6 @@
 import type { CatalogEntry } from "@/lib/rules/catalog";
 import { bareName, refKey } from "@/lib/rules/dnd2024/equipmentRefs";
 import type { AnySheet, Named } from "@/lib/rules/dnd2024/sheet";
-import { heldFeats } from "@/lib/rules/dnd2024/levels";
 import { currentMasteries } from "@/lib/rules/dnd2024/masteries";
 import { summarizeClasses, upgradeSheet } from "@/lib/rules/dnd2024/upgrade";
 import type {
@@ -13,12 +12,14 @@ import type {
 import { abilityScores, saveRows, skillRows, type AbilityScores, type SaveRow, type SkillRow } from "./abilities";
 import { armorClass, UNARMORED_CLASSES, type ArmorData, type UnarmoredClass } from "./ac";
 import { unarmedAttack, weaponAttack, weaponProficient, type Attack } from "./attacks";
-import { featureGroups, type FeatPick, type FeatureGroup } from "./features";
+import { characterFeats, featureGroups, type FeatureGroup } from "./features";
 import { hitPoints } from "./hp";
+import { spellsSummary, type SpellsSummary } from "./spells";
 import { carriedWeight } from "./weight";
 
 export type { Attack } from "./attacks";
 export type { FeatureGroup } from "./features";
+export type { CasterBlock, OtherSpell, Slots, SpellsSummary } from "./spells";
 export { armorClass } from "./ac";
 export { weaponAttack } from "./attacks";
 
@@ -47,6 +48,10 @@ export type Derived = {
   /** En libras. */
   weight: { total: number; capacity: number; over: boolean };
   features: FeatureGroup[];
+  /** Conjuros: un bloque por clase lanzadora, espacios, conjuros de especie, legado y dotes, y espacios gastados. */
+  spells: SpellsSummary;
+  /** Si tiene conjuros de alguna fuente (la ficha muestra la pestaña Conjuros). */
+  hasSpells: boolean;
   /** Nombres guardados de las referencias que ya no existen en el catálogo. */
   missing: string[];
 };
@@ -98,14 +103,7 @@ export function derive(input: AnySheet, entries: Map<string, CatalogEntry>): Der
   const mods = Object.fromEntries(Object.entries(abilities).map(([a, v]) => [a, v.mod])) as Record<Ability, number>;
   const choices = sheet.levels.flatMap((l) => l.choices.map((c) => ({ ...c, n: l.n })));
 
-  // Dotes: la de origen del trasfondo, las elegidas en lugar de una mejora de característica y las de las elecciones
-  // de dote que conserva (sin las sustituidas)
-  const feats: FeatPick[] = backgroundData?.feat ? [{ ref: backgroundData.feat, name: null, level: 1 }] : [];
-  for (const c of choices) {
-    if (c.type === "asi" && "feat" in c.value) feats.push({ ref: c.value.feat.ref, name: c.value.feat.name, level: c.n });
-  }
-  for (const f of heldFeats(sheet.levels)) feats.push({ ref: f.ref, name: f.name, level: f.level });
-  feats.sort((a, b) => a.level - b.level);
+  const feats = characterFeats(sheet, backgroundData);
   const featKeys = feats.map((f) => f.ref.key);
 
   // Competencias: todas las de la primera clase y, de las demás, las de multiclase
@@ -183,6 +181,7 @@ export function derive(input: AnySheet, entries: Map<string, CatalogEntry>): Der
     attacks,
     weight: carriedWeight(sheet.inventory, entries, abilities.str.score, size),
     features: featureGroups(sheet, summary, feats, entries),
+    ...spellsSummary(sheet, { abilities, proficiencyBonus }, entries),
     missing: uniq(missing),
   };
 }

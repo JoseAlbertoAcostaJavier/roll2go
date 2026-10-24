@@ -32,6 +32,17 @@ export type Dnd2024Sheet = {
 export type FeatPickValue = Named & { ability?: Ability };
 
 /**
+ * Conjuros elegidos en un nivel para una clase (o subclase lanzadora): trucos nuevos, conjuros aprendidos (modo
+ * `levelUp`) o entradas del libro (modo `spellbook`) y, opcionalmente, un conjuro o truco que se sustituye por otro.
+ */
+export type SpellChoice = {
+  class: Ref;
+  cantrips: Named[];
+  spells: Named[];
+  replace?: { out: Named; in: Named };
+};
+
+/**
  * Elección hecha al subir un nivel. `source` es la clave del rasgo o de la progresión que la pide. `replaced`: dote o
  * rasgo opcional de esa misma elección que se sustituye por uno de los de `value`.
  */
@@ -44,8 +55,7 @@ export type Choice =
   | { type: "featureOption"; source: string; value: Named }
   | { type: "skills"; source: string; value: string[] }
   | { type: "expertise"; source: string; value: string[] }
-  // La forma de las elecciones de conjuros llega con la parte 5
-  | { type: "spells"; source: string; value: unknown };
+  | { type: "spells"; source: string; value: SpellChoice };
 
 /** Una entrada por nivel de personaje, en orden. */
 export type LevelEntry = {

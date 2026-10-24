@@ -4,9 +4,9 @@ import type { CatalogEntry } from "@/lib/rules/catalog";
 import { refKey } from "@/lib/rules/dnd2024/equipmentRefs";
 import { FEATURE_OPTION_LABELS } from "@/lib/rules/dnd2024/featureChoices";
 import { optionalFeatureLabel } from "@/lib/rules/dnd2024/labels";
-import { heldOptionalFeatures } from "@/lib/rules/dnd2024/levels";
+import { heldFeats, heldOptionalFeatures } from "@/lib/rules/dnd2024/levels";
 import type { Dnd2024SheetV2, Named } from "@/lib/rules/dnd2024/sheet";
-import type { ClassData, LevelFeature, Ref, SubclassData } from "@/lib/rules/types";
+import type { BackgroundData, ClassData, LevelFeature, Ref, SubclassData } from "@/lib/rules/types";
 
 export type FeatureGroup = {
   title: string;
@@ -24,6 +24,21 @@ export type FeatureGroup = {
 
 /** Dote del personaje con el nivel total en que se obtuvo. */
 export type FeatPick = { ref: Ref; name: string | null; level: number };
+
+/**
+ * Dotes del personaje: la de origen del trasfondo, las elegidas en lugar de una mejora de característica y las de las
+ * elecciones de dote que conserva (sin las sustituidas), por nivel.
+ */
+export function characterFeats(sheet: Dnd2024SheetV2, background: BackgroundData | undefined): FeatPick[] {
+  const feats: FeatPick[] = background?.feat ? [{ ref: background.feat, name: null, level: 1 }] : [];
+  for (const l of sheet.levels) {
+    for (const c of l.choices) {
+      if (c.type === "asi" && "feat" in c.value) feats.push({ ref: c.value.feat.ref, name: c.value.feat.name, level: l.n });
+    }
+  }
+  for (const f of heldFeats(sheet.levels)) feats.push({ ref: f.ref, name: f.name, level: f.level });
+  return feats.sort((a, b) => a.level - b.level);
+}
 
 // Columna de la tabla de clase (etiqueta en español del importador) con el valor de cada rasgo, por su nombre en la
 // clave del rasgo
