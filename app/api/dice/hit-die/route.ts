@@ -2,11 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { sessionOf } from "@/lib/campaignApi";
 import { loadCharacterFor } from "@/lib/characterAccess";
 import { rateLimit, tooManyRequests } from "@/lib/rateLimit";
-import { HIT_DICE, rollHitDie, signHitDie } from "@/lib/rules/dnd2024/rolls";
+import { HIT_DICE, hitDieValue, signHitDie } from "@/lib/rules/dnd2024/rolls";
 import { MAX_LEVEL } from "@/lib/rules/dnd2024/validateLevel";
 
 // Tira un dado de golpe para el siguiente nivel de un personaje { characterId, die } (solo el dueño) y devuelve
-// { value, token }: el token va ligado al usuario, al personaje y a ese nivel, y se comprueba al guardar el nivel.
+// { value, token }: el token va ligado al usuario, al personaje y a ese nivel, y se comprueba al guardar el nivel. La
+// tirada es determinista (hitDieValue): repetirla devuelve el mismo valor.
 export async function POST(req: NextRequest) {
   const session = await sessionOf(req);
   if (!session) return NextResponse.json({ error: "Inicia sesión." }, { status: 401 });
@@ -31,6 +32,6 @@ export async function POST(req: NextRequest) {
   const n = found.sheet.levels.length + 1;
   if (n > MAX_LEVEL) return NextResponse.json({ error: `El nivel máximo es ${MAX_LEVEL}.` }, { status: 400 });
 
-  const value = rollHitDie(die as number);
+  const value = hitDieValue(session.id, characterId, n, die as number);
   return NextResponse.json({ value, token: signHitDie(session.id, { characterId, n, die: die as number, value }) });
 }

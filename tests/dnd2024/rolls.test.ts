@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import {
-  rollAbilityScoresDetailed, rollHitDie, signHitDie, signRolls, verifyHitDie, verifyRolls, type HitDieRoll,
+  hitDieValue, rollAbilityScoresDetailed, signHitDie, signRolls, verifyHitDie, verifyRolls, type HitDieRoll,
 } from "@/lib/rules/dnd2024/rolls";
 
 const H = 3600 * 1000;
@@ -78,8 +78,29 @@ describe("dado de golpe", () => {
   it("un token de tiradas de característica no vale como dado de golpe", () => {
     expect(verifyHitDie("u1", roll(), signRolls("u1", [9], now), now)).toBe(false);
   });
-  it("rollHitDie da valores de 1 al dado", () => {
-    expect(rollHitDie(8, () => 0)).toBe(1);
-    expect(rollHitDie(8, () => 0.999)).toBe(8);
+  it("hitDieValue: la misma tirada da siempre el mismo valor, de 1 al dado", () => {
+    expect(hitDieValue("u1", "c1", 4, 10)).toBe(hitDieValue("u1", "c1", 4, 10));
+    for (const die of [6, 8, 10, 12]) {
+      const seen = new Set<number>();
+      for (let n = 2; n <= 200; n++) seen.add(hitDieValue("u1", `c${n}`, n % 20 + 1, die));
+      expect([...seen].sort((a, b) => a - b)).toEqual(Array.from({ length: die }, (_, i) => i + 1));
+    }
+  });
+  it("hitDieValue depende del usuario, el personaje, el nivel y el secreto", () => {
+    const base = hitDieValue("u1", "c1", 4, 12);
+    // Con 12 caras, al menos uno de varios cambios debe dar otro valor
+    const others = [
+      ...["u2", "u3", "u4"].map((u) => hitDieValue(u, "c1", 4, 12)),
+      ...["c2", "c3", "c4"].map((c) => hitDieValue("u1", c, 4, 12)),
+      ...[5, 6, 7].map((n) => hitDieValue("u1", "c1", n, 12)),
+    ];
+    expect(others.some((v) => v !== base)).toBe(true);
+    const old = process.env.AUTH_SECRET;
+    const values = (s: string) => {
+      process.env.AUTH_SECRET = s;
+      return Array.from({ length: 10 }, (_, n) => hitDieValue("u1", "c1", n + 2, 12));
+    };
+    expect(values("otro")).not.toEqual(values("secreto-de-prueba"));
+    process.env.AUTH_SECRET = old;
   });
 });

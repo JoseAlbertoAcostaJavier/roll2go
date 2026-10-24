@@ -44,8 +44,15 @@ export function verifyRolls(userId: string, values: number[], token: string, now
 export const HIT_DICE = [6, 8, 10, 12] as const;
 const isHitDie = (die: unknown): die is number => HIT_DICE.includes(die as (typeof HIT_DICE)[number]);
 
-/** Tirada de un dado de golpe (1..die). */
-export const rollHitDie = (die: number, rng: () => number = Math.random) => Math.floor(rng() * die) + 1;
+/**
+ * Tirada del dado de golpe `die` para el nivel total `n` del personaje: sale de la firma del servidor sobre esos datos,
+ * así que repetirla da siempre el mismo valor (1..die) y no se puede volver a tirar hasta que salga uno alto.
+ */
+export function hitDieValue(userId: string, characterId: string, n: number, die: number): number {
+  // 48 bits de la firma: el sesgo del módulo es despreciable
+  const bits = parseInt(hmac(`hit-die-value|${userId}|${characterId}|${n}|${die}`).slice(0, 12), 16);
+  return (bits % die) + 1;
+}
 
 /** Tirada de dado de golpe para el nivel total `n` del personaje `characterId`. */
 export type HitDieRoll = { characterId: string; n: number; die: number; value: number };
