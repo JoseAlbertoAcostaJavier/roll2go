@@ -7,8 +7,14 @@ import { Campaign } from "@/lib/Campaign";
 import { requireUser } from "@/lib/currentUser";
 import { loadCharacterFor } from "@/lib/characterAccess";
 import { booksByIds } from "@/lib/rules/books";
+import { listMasteryWeapons } from "@/lib/rules/catalog";
 import { derive } from "@/lib/rules/dnd2024/derive";
-import { refKey } from "@/lib/rules/dnd2024/equipmentRefs";
+import { weaponProficient } from "@/lib/rules/dnd2024/derive/attacks";
+import { bareName, refKey } from "@/lib/rules/dnd2024/equipmentRefs";
+import {
+  currentMasteries, isMasteryWeapon, masteryCount, masteryLabel, masteryMeleeOnly,
+} from "@/lib/rules/dnd2024/masteries";
+import { parsePronouns, pronounsText } from "@/lib/rules/dnd2024/names";
 import type { BackgroundData, ItemData } from "@/lib/rules/types";
 import SheetHeader from "@/app/components/characters/sheet/SheetHeader";
 import SheetTabs, { isSheetTab, SHEET_TABS, type SheetTab } from "@/app/components/characters/sheet/SheetTabs";
@@ -16,6 +22,7 @@ import InfoTab from "@/app/components/characters/sheet/InfoTab";
 import BackgroundTab from "@/app/components/characters/sheet/BackgroundTab";
 import FeaturesTab from "@/app/components/characters/sheet/FeaturesTab";
 import EquipmentTab, { type ItemInfo } from "@/app/components/characters/sheet/EquipmentTab";
+import MasteriesEditor from "@/app/components/characters/sheet/MasteriesEditor";
 import type { CharacterStatus } from "@/app/components/characters/sheet/StatusBadge";
 
 type Props = {
@@ -25,6 +32,13 @@ type Props = {
 
 // Pestañas disponibles: Conjuros llega con la parte 5
 const TABS: SheetTab[] = ["info", "trasfondo", "rasgos", "equipo"];
+
+// Avisos al volver de una acción (`?saved=…`)
+const NOTICES: Record<string, string> = {
+  level: "Nivel guardado correctamente",
+  "level-deleted": "Nivel borrado",
+  creation: "Creación rehecha correctamente",
+};
 
 // Lectura compartida entre generateMetadata y la página (una sola carga por petición)
 const loadForRead = cache((userId: string, id: string) => loadCharacterFor(userId, id, "read"));
@@ -72,6 +86,22 @@ export default async function CharacterPage({ params, searchParams }: Props) {
     itemInfo[line.id] = { weight: data?.weight ?? 0, equippable: !!(data?.armor || data?.weapon) };
   }
 
+  // Maestrías con armas: las actuales y, para cambiarlas, las armas con maestría y competencia (del Bárbaro, solo
+  // cuerpo a cuerpo)
+  const allowedMasteries = masteryCount(sheet, entries);
+  const masteryRefs = currentMasteries(sheet);
+  const masteryWeapons = allowedMasteries > 0 || masteryRefs.length > 0 ? await listMasteryWeapons(found.books) : [];
+  const weaponLabel = (w: (typeof masteryWeapons)[number]) =>
+    masteryLabel(w.nameEs ?? w.name, (w.data as ItemData | null)?.weapon?.mastery);
+  const masteryOptions = masteryWeapons
+    .filter((w) => isMasteryWeapon(w.data as ItemData, masteryMeleeOnly(sheet, entries))
+      && weaponProficient(w.data as ItemData, [w.name, bareName(w.ref.key)], d.weapons))
+    .map((w) => ({ id: refKey(w.ref), label: weaponLabel(w) }));
+  const masteryCurrent = masteryRefs.map((r) => {
+    const w = masteryWeapons.find((x) => refKey(x.ref) === refKey(r));
+    return { id: refKey(r), label: w ? weaponLabel(w) : bareName(r.key) };
+  });
+
   const base = `/characters/${id}`;
   // Las pestañas inactivas se ocultan en pantalla, pero se imprimen todas seguidas
   const panel = (t: SheetTab) => ({
@@ -86,16 +116,19 @@ export default async function CharacterPage({ params, searchParams }: Props) {
 
   return (
     <div className="mx-auto max-w-280 px-4 py-8 sm:px-5">
+      {/* Con otro aviso (p. ej. tras borrar un nivel desde la propia ficha) la cabecera se monta de nuevo para mostrarlo */}
       <SheetHeader
+        key={String(query.saved ?? "")}
         id={id}
         name={c.name}
+        pronouns={pronounsText(parsePronouns(((c.pronouns ?? []) as string[]).join(",")) ?? [])}
         portraitUrl={c.portraitId ? `/api/images/${c.portraitId}` : null}
         status={(c.status ?? "active") as CharacterStatus}
         summary={[species, classes].filter(Boolean).join(" ")}
         level={d.level}
         campaign={campaign}
         isOwner={isOwner}
-        notice={query.saved ? "Cambios guardados" : null}
+        notice={query.saved ? (NOTICES[String(query.saved)] ?? "Cambios guardados") : null}
         backHref={isOwner || !campaign ? "/characters" : `/campaigns/${campaign.id}/characters`}
       />
 
@@ -110,7 +143,8 @@ export default async function CharacterPage({ params, searchParams }: Props) {
 
       <section {...panel("info")}>
         {panelTitle("info")}
-        <InfoTab d={d} characterId={id} isOwner={isOwner} />
+        {/* Los editores guardan su estado: al borrar un nivel desde la ficha se montan de nuevo con los PG recortados */}
+        <InfoTab key={d.level} d={d} characterId={id} isOwner={isOwner} />
       </section>
       <section {...panel("trasfondo")}>
         {panelTitle("trasfondo")}
@@ -124,6 +158,14 @@ export default async function CharacterPage({ params, searchParams }: Props) {
       </section>
       <section {...panel("rasgos")}>
         {panelTitle("rasgos")}
+        <MasteriesEditor
+          key={d.level}
+          characterId={id}
+          isOwner={isOwner}
+          allowed={allowedMasteries}
+          current={masteryCurrent}
+          options={masteryOptions}
+        />
         <FeaturesTab groups={d.features} entries={entries} />
       </section>
       <section {...panel("equipo")}>

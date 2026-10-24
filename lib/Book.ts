@@ -12,6 +12,8 @@ const BookSchema = new Schema(
     language: { type: String, default: "es", maxlength: 8 },
     // private: solo el autor. public: lo ve cualquiera (la Librería llegará más adelante).
     visibility: { type: String, enum: ["private", "public"], default: "private", index: true },
+    // false = libro de apoyo que no se ofrece como libro de reglas (p. ej. las tablas de nombres de la Guía de Xanathar)
+    listed: { type: Boolean, default: true },
     license: {
       // "own" = creación del usuario; "srd" = SRD con CC BY 4.0; "official" = contenido protegido
       type: { type: String, enum: ["own", "srd", "official"], default: "own" },

@@ -59,12 +59,14 @@ const stepBtn =
 const countOf = (list: (number | null)[], v: number) => list.filter((x) => x === v).length;
 
 export default function AbilityScores({
-  method, base, rolls, backgroundAbilities, backgroundBonus, onChange, onRequestRolls,
+  method, base, rolls, rollDice = null, backgroundAbilities, backgroundBonus, onChange, onRequestRolls,
 }: {
   method: AbilityMethod;
   /** Con `pointBuy`, un valor vacío se muestra como 8: el padre debería partir del valor por defecto del método. */
   base: Base;
   rolls: number[] | null;
+  /** Los 4 dados de cada tirada (mismo orden que `rolls`), para mostrarlos al pasar el ratón o enfocar. */
+  rollDice?: number[][] | null;
   backgroundAbilities: Ability[];
   backgroundBonus: Bonus;
   /** Cada cambio informa también de `valid` (ningún total > 20). */
@@ -74,7 +76,6 @@ export default function AbilityScores({
   const [pending, setPending] = useState<AbilityMethod | null>(null); // método pedido, a la espera de confirmar
   const [loadingRolls, setLoadingRolls] = useState(false);
   const [rollsError, setRollsError] = useState("");
-  const [drag, setDrag] = useState<{ value: number; x: number; y: number } | null>(null);
 
   const emit = (patch: Partial<Omit<Next, "valid">>) => {
     const next = { method, base, rolls, backgroundBonus, ...patch };
@@ -137,26 +138,6 @@ export default function AbilityScores({
   function clear(ability: Ability) {
     emit({ base: { ...base, [ability]: null } });
   }
-
-  // Arrastre con eventos pointer (ratón y táctil); se suelta sobre una casilla con data-ability
-  const dragProps = (value: number) => ({
-    onPointerDown: (e: React.PointerEvent<HTMLElement>) => {
-      e.currentTarget.setPointerCapture(e.pointerId);
-      setDrag({ value, x: e.clientX, y: e.clientY });
-    },
-    onPointerMove: (e: React.PointerEvent<HTMLElement>) => {
-      if (drag) setDrag({ value: drag.value, x: e.clientX, y: e.clientY });
-    },
-    onPointerUp: (e: React.PointerEvent<HTMLElement>) => {
-      if (!drag) return;
-      const target = document.elementFromPoint(e.clientX, e.clientY)?.closest<HTMLElement>("[data-ability]");
-      const ability = target?.dataset.ability as Ability | undefined;
-      setDrag(null);
-      if (ability && ABILITIES.includes(ability)) place(ability, value);
-    },
-    onPointerCancel: () => setDrag(null),
-    style: { touchAction: "none" as const },
-  });
 
   // ---- reparto de puntos y manual ----
   const [min, max] = method === "pointBuy" ? [8, 15] : [3, 20];
@@ -238,21 +219,12 @@ export default function AbilityScores({
       )}
 
       {usesPool && pool.length > 0 && (
-        <div className="flex flex-wrap gap-2" role="group" aria-label="Fichas para repartir">
+        <div className="flex flex-wrap gap-2" role="group" aria-label={method === "roll" ? "Tiradas para repartir" : "Valores para repartir"}>
           {pool.map((v, i) => {
             // la ficha está usada si hay más casillas con ese valor que fichas iguales anteriores
             const used = countOf(assigned, v) > countOf(pool.slice(0, i), v);
-            return (
-              <span
-                key={i}
-                {...(used ? {} : dragProps(v))}
-                className={`flex h-10 w-10 select-none items-center justify-center rounded-md border font-heading text-lg font-bold ${
-                  used ? "border-line text-muted opacity-40" : "cursor-grab border-brand bg-brand/10 active:cursor-grabbing"
-                }`}
-              >
-                {v}
-              </span>
-            );
+            const dice = method === "roll" ? rollDice?.[i] : undefined;
+            return <PoolChip key={i} value={v} used={used} dice={dice} />;
           })}
         </div>
       )}
@@ -287,17 +259,9 @@ export default function AbilityScores({
                     <span className="block font-semibold">{NAMES[a]}</span>
                     <span className="block text-xs text-muted">{DESCRIPTIONS[a]}</span>
                   </th>
-                  <td className="px-3 py-2 text-center" data-ability={usesPool ? a : undefined}>
+                  <td className="px-3 py-2 text-center">
                     {usesPool ? (
                       <div className="flex items-center justify-center gap-2">
-                        <span
-                          {...(value !== null ? dragProps(value) : {})}
-                          className={`flex h-9 w-9 select-none items-center justify-center rounded-md border font-heading font-bold ${
-                            over ? "cursor-grab border-brand-soft bg-brand/20" : value !== null ? "cursor-grab border-brand bg-brand/10" : "border-dashed border-line text-muted"
-                          }`}
-                        >
-                          {value ?? "—"}
-                        </span>
                         <select
                           aria-label={`Valor de ${NAMES[a]}`}
                           className="w-20 rounded-md border border-line bg-surface px-1 py-1.5 text-fg disabled:opacity-60"
@@ -358,15 +322,43 @@ export default function AbilityScores({
         </p>
       )}
 
-      {drag && (
-        <span
-          aria-hidden="true"
-          className="pointer-events-none fixed z-50 flex h-10 w-10 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-md border border-brand bg-panel font-heading text-lg font-bold shadow-lg"
-          style={{ left: drag.x, top: drag.y }}
-        >
-          {drag.value}
-        </span>
-      )}
     </div>
+  );
+}
+
+// Índice del dado descartado (el menor; si hay empate, el último de ellos)
+const droppedIndex = (dice: number[]) => dice.lastIndexOf(Math.min(...dice));
+const dieColor = (n: number) => (n === 1 ? "border-brand-soft text-brand-soft" : n === 6 ? "border-success text-success" : "border-line");
+
+/* Ficha de una tirada o valor por repartir. Con los dados de la tirada, al pasar el ratón o enfocarla se muestran: el
+   descartado atenuado, los 1 en rojo y los 6 en verde. */
+function PoolChip({ value, used, dice }: { value: number; used: boolean; dice?: number[] }) {
+  const chip = `flex h-10 w-10 select-none items-center justify-center rounded-md border font-heading text-lg font-bold ${
+    used ? "border-line text-muted opacity-40" : "border-brand bg-brand/10"
+  }`;
+  if (!dice?.length) return <span className={chip}>{value}</span>;
+  const dropped = droppedIndex(dice);
+  const label = `${value}: dados ${dice.join(", ")}; se descarta el ${dice[dropped]}`;
+  return (
+    <span className="group relative">
+      <span tabIndex={0} aria-label={label} className={`${chip} cursor-help focus-visible:outline-2 focus-visible:outline-brand`}>
+        {value}
+      </span>
+      <span
+        role="tooltip"
+        className="pointer-events-none invisible absolute bottom-full left-1/2 z-20 mb-2 flex -translate-x-1/2 gap-1 rounded-md border border-line bg-panel p-2 opacity-0 shadow-lg transition-opacity group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100"
+      >
+        {dice.map((n, i) => (
+          <span
+            key={i}
+            className={`flex h-7 w-7 items-center justify-center rounded border font-heading text-sm font-bold ${dieColor(n)} ${
+              i === dropped ? "opacity-35 line-through" : ""
+            }`}
+          >
+            {n}
+          </span>
+        ))}
+      </span>
+    </span>
   );
 }

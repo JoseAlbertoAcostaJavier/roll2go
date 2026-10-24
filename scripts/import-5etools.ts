@@ -1,6 +1,8 @@
 // Importa una fuente de 5etools (por defecto el Player's Handbook 2024, XPHB) como libro oficial en MongoDB.
 // Es idempotente: reimportar actualiza lo existente y borra lo que ya no llega.
-// Uso: npm run import:5etools -- --data <carpeta data de 5etools> [--source XPHB] [--srd-only] [--dry-run]
+// Uso: npm run import:5etools -- --data <carpeta data de 5etools> [--source XPHB] [--only tipo,tipo] [--srd-only] [--dry-run]
+// Con --only solo se importan (y se borran) entradas de esos tipos; p. ej. las tablas de nombres de la Guía de Xanathar:
+// npm run import:5etools -- --data <carpeta> --source XGE --only nameTable
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import mongoose from "mongoose";
@@ -12,16 +14,21 @@ try {
 
 import { connectDB } from "../lib/mongodb";
 import { Book } from "../lib/Book";
-import { BookEntry } from "../lib/BookEntry";
-import { BOOK_PLACEHOLDER, normalizeAll, type RawFiles } from "../lib/rules/import/normalize";
+import { BookEntry, ENTRY_KINDS } from "../lib/BookEntry";
+import {
+  BOOK_PLACEHOLDER, normalizeAll, textChoiceFeatures, unreachableFeatures, type RawFiles,
+} from "../lib/rules/import/normalize";
 import { planImport } from "../lib/rules/import/plan";
 import { matchFoundry, type FoundryFiles } from "../lib/rules/import/foundry";
 import { normalizeName } from "../lib/rules/schemas";
+import { FEATURE_CHOICES, SPECIFIED_CHOICES } from "../lib/rules/dnd2024/featureChoices";
 import es from "../lib/rules/i18n/es.json";
 
 const SRD_ATTRIBUTION =
   'This work includes material from the System Reference Document 5.2 ("SRD 5.2") by Wizards of the Coast LLC, available at https://www.dndbeyond.com/srd. The SRD 5.2 is licensed under the Creative Commons Attribution 4.0 International License, available at https://creativecommons.org/licenses/by/4.0/legalcode.';
-const BOOK_NAMES: Record<string, string> = { XPHB: "Manual del Jugador 2024" };
+const BOOK_NAMES: Record<string, string> = { XPHB: "Manual del Jugador 2024", XGE: "Guía de Xanathar para todo" };
+// Libros de apoyo que no se ofrecen como libros de reglas (de la Guía de Xanathar solo se importan las tablas de nombres)
+const UNLISTED = new Set(["XGE"]);
 const BATCH = 500;
 
 function fail(msg: string): never {
@@ -30,11 +37,12 @@ function fail(msg: string): never {
 }
 
 function parseArgs(argv: string[]) {
-  const o = { data: "", source: "XPHB", srdOnly: false, dryRun: false };
+  const o = { data: "", source: "XPHB", srdOnly: false, dryRun: false, only: [] as string[] };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--data") o.data = argv[++i] ?? "";
     else if (a === "--source") o.source = argv[++i] ?? "";
+    else if (a === "--only") o.only = (argv[++i] ?? "").split(",").map((k) => k.trim()).filter(Boolean);
     else if (a === "--srd-only") o.srdOnly = true;
     else if (a === "--dry-run") o.dryRun = true;
     else fail(`Argumento desconocido: ${a}`);
@@ -42,6 +50,8 @@ function parseArgs(argv: string[]) {
   if (!o.data) fail("Falta --data <carpeta data de 5etools>.");
   if (!o.source) fail("Falta el valor de --source.");
   if (!existsSync(o.data)) fail(`No existe la carpeta: ${o.data}`);
+  const unknown = o.only.filter((k) => !(ENTRY_KINDS as readonly string[]).includes(k));
+  if (unknown.length) fail(`Tipos desconocidos en --only: ${unknown.join(", ")}`);
   return o;
 }
 
@@ -75,6 +85,8 @@ function loadRaw(data: string, srdOnly: boolean): RawFiles {
     spellSources: j("spells/sources.json"),
     classes: readAll(path.join(data, "class"), "class-"),
     classFluff: srdOnly ? [] : readAll(path.join(data, "class"), "fluff-class-"),
+    optionalFeatures: j("optionalfeatures.json"),
+    names: j("names.json"),
   };
 }
 
@@ -101,7 +113,10 @@ async function main() {
   const source = args.source.toUpperCase();
   const dict = es as Record<string, string>;
 
-  const { entries, errors } = normalizeAll(loadRaw(args.data, args.srdOnly), source);
+  const normalized = normalizeAll(loadRaw(args.data, args.srdOnly), source);
+  const wanted = (kind: string) => args.only.length === 0 || args.only.includes(kind);
+  const entries = normalized.entries.filter((e) => wanted(e.kind));
+  const errors = normalized.errors.filter((e) => wanted(e.key.split(":")[0]));
   const foundry = matchFoundry(entries, loadFoundry(args.data));
 
   await connectDB();
@@ -109,6 +124,7 @@ async function main() {
   const existingBook = await Book.findOne(bookFilter).select("_id").lean();
   const existingKeys = existingBook
     ? ((await BookEntry.find({ book: existingBook._id }).select("key").lean()) as { key: string }[]).map((e) => e.key)
+      .filter((k) => wanted(k.split(":")[0]))
     : [];
   const { upserts, deletes } = planImport(existingKeys, entries, { srdOnly: args.srdOnly });
   const existing = new Set(existingKeys);
@@ -122,6 +138,7 @@ async function main() {
         $set: {
           systemId: "dnd-2024",
           visibility: "public",
+          listed: !UNLISTED.has(source),
           license: args.srdOnly
             ? { type: "srd", attribution: SRD_ATTRIBUTION, sourceUrl: "https://www.dndbeyond.com/srd" }
             : { type: "official", attribution: "", sourceUrl: "" },
@@ -171,7 +188,7 @@ async function main() {
   }
 
   // ---------- informe ----------
-  console.log(`\nImportación de ${source}${args.dryRun ? " (simulación, no se escribe nada)" : ""}${args.srdOnly ? " [solo SRD]" : ""}`);
+  console.log(`\nImportación de ${source}${args.dryRun ? " (simulación, no se escribe nada)" : ""}${args.srdOnly ? " [solo SRD]" : ""}${args.only.length ? ` [solo ${args.only.join(", ")}]` : ""}`);
   console.log("\nEntradas por tipo:");
   for (const [kind, n] of count(upserts.map((e) => e.kind))) console.log(`  ${kind}: ${n}`);
   console.log(`\nTotal: ${upserts.length} | creadas: ${created} | actualizadas: ${updated} | borradas: ${deletes.length}`);
@@ -186,6 +203,17 @@ async function main() {
     if (["spell", "item", "classFeature", "subclassFeature"].includes(kind)) console.log(`  ${kind}: ${keys.length}`);
     else console.log(`  ${kind} (${keys.length}): ${keys.join(", ")}`);
   }
+  const textChoices = textChoiceFeatures(upserts, SPECIFIED_CHOICES);
+  console.log(`\nRasgos con elección en texto sin especificación: ${textChoices.length}`);
+  for (const key of textChoices) console.log(`  ${key}`);
+  // Con --only puede faltar la clase o la subclase que cuelga los rasgos: solo tiene sentido con todo importado
+  if (!args.only.length) {
+    const unreachable = unreachableFeatures(upserts, Object.keys(FEATURE_CHOICES));
+    console.log(`
+Rasgos inalcanzables desde su clase o subclase: ${unreachable.length}`);
+    for (const key of unreachable) console.log(`  ${key}`);
+  }
+
   console.log("\nLa caché del catálogo se renueva en 1 hora (o borra .next/cache).");
 
   await mongoose.disconnect();

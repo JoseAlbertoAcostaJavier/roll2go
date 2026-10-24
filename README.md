@@ -8,3 +8,8 @@ Tras desplegar la ficha de personaje (hojas `sheet.version` 2), ejecuta una vez:
 
 - `npm run import:5etools -- --data <carpeta data de 5etools>`: vuelve a importar el catálogo (corrige las competencias de armas del Pícaro y el Monje).
 - `npm run migrate:levels`: convierte los personajes antiguos a la hoja v2. Los que no se pueden convertir (falta su clase o su trasfondo en el catálogo) se listan al final y se quedan como estaban.
+
+Tras desplegar la subida de nivel:
+
+- Vuelve a ejecutar `npm run import:5etools -- --data <carpeta data de 5etools>` (rasgos enlazados de clase y subclase, estilos de combate por clase, maestrías solo con armas base) y **reinicia el servidor** después: el catálogo se guarda en caché hasta 1 h.
+- Los personajes que ya tomaron un nivel con rasgos que antes no se importaban (p. ej. el nivel 3 de subclase: Student of War, Hunter's Prey…) no reciben esas elecciones solos: hay que borrar ese nivel y volver a subirlo.

@@ -7,6 +7,7 @@ const NotificationSchema = new Schema({
   actor: { type: Schema.Types.ObjectId, ref: "User" }, // quien la provoca
   campaign: { type: Schema.Types.ObjectId, ref: "Campaign" },
   post: { type: Schema.Types.ObjectId }, // mensaje del foro al que se refiere (para enlazar directo al hilo)
+  character: { type: Schema.Types.ObjectId, ref: "Character" }, // personaje al que se refiere (para enlazar a su ficha)
   text: { type: String, maxlength: 500 }, // solo en avisos de Roll2Go
   count: { type: Number, default: 1 }, // mensajes seguidos agrupados en una sola notificación
   read: { type: Boolean, default: false },

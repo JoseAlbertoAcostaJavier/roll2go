@@ -5,6 +5,13 @@ import type { ItemData, Pack, Ref } from "@/lib/rules/types";
 
 export const refKey = (ref: Ref) => `${ref.book}:${ref.key}`;
 
+/** Nombre de la clave sin tipo ni fuente: "item:longsword|xphb" → "longsword". */
+export const bareName = (key: string) => key.replace(/^[^:]*:/, "").split("|")[0];
+
+/** Si `v` tiene la forma de una referencia `{ book, key }`. */
+export const isRef = (v: unknown): v is Ref =>
+  typeof v === "object" && v !== null && typeof (v as Ref).book === "string" && typeof (v as Ref).key === "string";
+
 export function equipmentRefs(options: Pack[][], lookup: (key: string) => CatalogEntry | null | undefined): Ref[] {
   const found = new Map<string, Ref>();
   const visit = (ref: Ref) => {

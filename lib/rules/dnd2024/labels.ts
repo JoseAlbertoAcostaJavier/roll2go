@@ -1,5 +1,30 @@
 // Nombres en español de los identificadores que guarda el catálogo en minúsculas e inglés (habilidades, etc.).
-import type { Ability } from "@/lib/rules/types";
+import type { Ability, FeatData } from "@/lib/rules/types";
+
+/** Categoría de dote de 5etools (y de las elecciones de `pendingChoices`) → `FeatData.category`. */
+export const FEAT_CATEGORIES: Record<string, FeatData["category"]> = {
+  O: "origin", G: "general", FS: "fightingStyle", "FS:P": "fightingStyle", "FS:R": "fightingStyle", EB: "epicBoon",
+};
+
+/**
+ * Si una dote vale para una elección de dote de las categorías `codes` (`FS`, `FS:P`, `G`…). Se compara el código de
+ * 5etools (`categoryCode`): «Guerrero bendito» (`FS:P`) es un estilo de combate solo del Paladín. Las dotes sin
+ * código (importadas antes de guardarlo o de libros propios) se comparan por su categoría.
+ */
+export function featFitsCategories(data: FeatData | null | undefined, codes: readonly string[] = []): boolean {
+  if (!data) return false;
+  if (data.categoryCode) return codes.includes(data.categoryCode);
+  return codes.some((c) => FEAT_CATEGORIES[c] === data.category);
+}
+
+// Progresiones de rasgos opcionales de 5etools (por su nombre en minúsculas) → nombre en español
+const OPTIONAL_FEATURE_LABELS: Record<string, string> = {
+  metamagic: "Metamagia",
+  "eldritch invocations": "Invocaciones sobrenaturales",
+  maneuvers: "Maniobras",
+};
+/** «Maneuvers» → «Maniobras»; las que no están, tal cual. */
+export const optionalFeatureLabel = (name: string) => OPTIONAL_FEATURE_LABELS[name.toLowerCase()] ?? name;
 
 export const ABILITY_NAMES: Record<Ability, string> = {
   str: "Fuerza", dex: "Destreza", con: "Constitución", int: "Inteligencia", wis: "Sabiduría", cha: "Carisma",
@@ -124,7 +149,7 @@ const WEAPON_PROPERTY_NAMES: Record<string, string> = {
 };
 const MASTERY_NAMES: Record<string, string> = {
   cleave: "Hendir", graze: "Rozar", nick: "Mellar", push: "Empujar", sap: "Debilitar", slow: "Ralentizar",
-  topple: "Derribar", vex: "Incordiar",
+  topple: "Derribar", vex: "Vejar",
 };
 export const damageTypeName = (code: string) => DAMAGE_TYPE_NAMES[code] ?? code;
 export const weaponPropertyName = (code: string) => WEAPON_PROPERTY_NAMES[code] ?? code;

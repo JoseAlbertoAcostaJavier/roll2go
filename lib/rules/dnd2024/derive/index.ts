@@ -2,11 +2,13 @@
 // usan el resumen del asistente, la ficha, la subida de nivel y el exportador a Foundry. Recorre el historial de
 // niveles (`levels`) y el inventario de la hoja v2; una v1 se convierte antes en memoria.
 import type { CatalogEntry } from "@/lib/rules/catalog";
-import { refKey } from "@/lib/rules/dnd2024/equipmentRefs";
+import { bareName, refKey } from "@/lib/rules/dnd2024/equipmentRefs";
 import type { AnySheet, Named } from "@/lib/rules/dnd2024/sheet";
+import { heldFeats } from "@/lib/rules/dnd2024/levels";
+import { currentMasteries } from "@/lib/rules/dnd2024/masteries";
 import { summarizeClasses, upgradeSheet } from "@/lib/rules/dnd2024/upgrade";
 import type {
-  Ability, BackgroundData, ClassData, ItemData, LineageData, Ref, SpeciesData,
+  Ability, BackgroundData, ClassData, FeatData, ItemData, LineageData, Ref, SpeciesData,
 } from "@/lib/rules/types";
 import { abilityScores, saveRows, skillRows, type AbilityScores, type SaveRow, type SkillRow } from "./abilities";
 import { armorClass, UNARMORED_CLASSES, type ArmorData, type UnarmoredClass } from "./ac";
@@ -56,10 +58,9 @@ type ClassExtras = {
 };
 
 const uniq = <T>(list: T[]) => [...new Set(list)];
-// "class:monk|xphb" → "monk"
-const bareName = (key: string) => key.replace(/^[^:]*:/, "").split("|")[0];
 const proficiencyOf = (level: number) => Math.ceil(Math.max(level, 1) / 4) + 1;
 
+const EPIC_BOON: FeatData["category"] = "epicBoon";
 // La dote Alerta suma el bonificador de competencia a la iniciativa
 const ALERT_FEAT = "feat:alert|xphb";
 const ARMOR_WARNING = "Sin competencia con esta armadura";
@@ -92,16 +93,19 @@ export function derive(input: AnySheet, entries: Map<string, CatalogEntry>): Der
 
   const level = sheet.levels.length;
   const proficiencyBonus = proficiencyOf(level);
-  const abilities = abilityScores(sheet);
+  const isEpicBoon = (r: Ref) => (entries.get(refKey(r))?.data as FeatData | undefined)?.category === EPIC_BOON;
+  const abilities = abilityScores(sheet, isEpicBoon);
   const mods = Object.fromEntries(Object.entries(abilities).map(([a, v]) => [a, v.mod])) as Record<Ability, number>;
   const choices = sheet.levels.flatMap((l) => l.choices.map((c) => ({ ...c, n: l.n })));
 
-  // Dotes: la de origen del trasfondo y las elegidas al subir de nivel
+  // Dotes: la de origen del trasfondo, las elegidas en lugar de una mejora de característica y las de las elecciones
+  // de dote que conserva (sin las sustituidas)
   const feats: FeatPick[] = backgroundData?.feat ? [{ ref: backgroundData.feat, name: null, level: 1 }] : [];
   for (const c of choices) {
     if (c.type === "asi" && "feat" in c.value) feats.push({ ref: c.value.feat.ref, name: c.value.feat.name, level: c.n });
-    if (c.type === "feat") for (const f of c.value) feats.push({ ref: f.ref, name: f.name, level: c.n });
   }
+  for (const f of heldFeats(sheet.levels)) feats.push({ ref: f.ref, name: f.name, level: f.level });
+  feats.sort((a, b) => a.level - b.level);
   const featKeys = feats.map((f) => f.ref.key);
 
   // Competencias: todas las de la primera clase y, de las demás, las de multiclase
@@ -140,7 +144,8 @@ export function derive(input: AnySheet, entries: Map<string, CatalogEntry>): Der
   const martialArts = monk < 0 || bodyArmor || shield ? null
     : (classData[monk]?.table?.columns.find((c) => MARTIAL_ARTS_COLUMN.test(c.label))?.values[summary[monk].level - 1]
       || martialArtsFallback(summary[monk].level));
-  const masteries = new Set(choices.flatMap((c) => (c.type === "weaponMastery" ? c.value.map((r) => r.key) : [])));
+  // Maestrías actuales (se pueden cambiar en la ficha); en hojas anteriores, las elegidas al subir de nivel
+  const masteries = new Set(currentMasteries(sheet).map((r) => r.key));
   const attacks = equipped.filter((e) => e.data.weapon).map((e) => weaponAttack(
     { ...e.data, name: e.name }, mods, proficiencyBonus,
     weaponProficient(e.data, [e.name, bareName(e.key)], weapons), masteries.has(e.key), martialArts,

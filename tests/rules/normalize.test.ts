@@ -3,11 +3,12 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { inlineTags } from "@/lib/rules/import/toBbcode";
 import {
-  normalizeAll, normalizeBackground, expandVersions, resolveCopy, toIdentifier,
+  normalizeAll, normalizeBackground, expandVersions, resolveCopy, textChoiceFeatures, toIdentifier, unreachableFeatures,
   type NormalizedEntry, type RawFiles,
 } from "@/lib/rules/import/normalize";
 import type {
-  BackgroundData, ClassData, ItemData, LineageData, SpeciesData, SpellData, SubclassData,
+  BackgroundData, ClassData, FeatureData, ItemData, LineageData, NameTableData, OptionalFeatureData, SpeciesData, SpellData,
+  SubclassData,
 } from "@/lib/rules/types";
 
 const fixture = (f: string) =>
@@ -80,7 +81,7 @@ test("dote con versiones (Magic Initiate)", () => {
   expect(find("feat", "feat:magic initiate|xphb")).toBeDefined();
   const cleric = find("feat", "feat:magic initiate; cleric|xphb");
   expect(cleric).toBeDefined();
-  expect(cleric!.data).toMatchObject({ category: "origin", repeatable: true });
+  expect(cleric!.data).toMatchObject({ category: "origin", categoryCode: "O", repeatable: true });
   expect(cleric!.description).not.toContain("Druid");
 });
 
@@ -335,4 +336,268 @@ test("competencias de armas con {@filter}: queda el texto visible", () => {
   expect(errs).toEqual([]);
   expect((es.find((e) => e.key === "class:rogue|xphb")!.data as ClassData).weapons)
     .toEqual(["simple", "Martial weapons that have the Finesse or Light property"]);
+});
+
+describe("progresiones, tabla, multiclase y rasgos opcionales", () => {
+  const r = normalizeAll({
+    classes: ["class-barbarian.json", "class-sorcerer.json", "class-fighter.json", "class-cleric.json"].map(fixture),
+    optionalFeatures: fixture("optionalfeatures.json"),
+  }, "XPHB");
+  const get = (key: string) => r.entries.find((e) => e.key === key)!;
+  const cls = (name: string) => get(`class:${name}|xphb`).data as ClassData;
+
+  test("sin errores", () => {
+    expect(r.errors).toEqual([]);
+  });
+  test("Hechicero: metamagia acumulada por nivel y conjuros", () => {
+    const p = cls("sorcerer").progressions;
+    expect(p.optionalFeatures[0]).toEqual({ name: "Metamagic", featureType: ["MM"], levels: { 2: 2, 10: 4, 17: 6 } });
+    expect(p.feats).toEqual([{ category: ["EB"], levels: { 19: 1 } }]);
+    expect(p.cantrips).toHaveLength(20);
+    expect(p.cantrips?.[0]).toBe(4);
+    expect(p.prepared?.slice(0, 3)).toEqual([2, 4, 6]);
+    expect(p.spellbook).toBeNull();
+    expect(p.weaponMastery).toBeNull();
+    expect(cls("sorcerer").multiclass.proficiencies).toEqual({ armor: [], weapons: [], tools: [], skills: null });
+  });
+  test("Bárbaro: maestrías, requisito de multiclase y tabla", () => {
+    const data = cls("barbarian");
+    expect(data.progressions.weaponMastery).toEqual({ 1: 2, 4: 3, 10: 4 });
+    expect(data.multiclass.requirements).toEqual({ abilities: ["str"], any: false });
+    expect(data.multiclass.proficiencies).toEqual({ armor: ["shield"], weapons: ["martial"], tools: [], skills: null });
+    expect(data.table.columns.map((c) => c.label)).toEqual(["Furias", "Daño de furia", "Maestría con armas"]);
+    expect(data.table.columns.every((c) => c.values.length === 20)).toBe(true);
+    expect(data.table.columns[0].values.slice(0, 3)).toEqual(["2", "2", "3"]);
+    expect(data.table.columns[1].values[0]).toBe("+2");
+    expect(data.subclassTitle).toBe("Senda primitiva");
+  });
+  test("Guerrero: estilo de combate y requisito alternativo", () => {
+    const data = cls("fighter");
+    expect(data.progressions.feats[0].category).toContain("FS");
+    expect(data.progressions.feats[0].levels).toEqual({ 1: 1 });
+    expect(data.progressions.weaponMastery).toEqual({ 1: 3, 4: 4, 10: 5, 16: 6 });
+    expect(data.multiclass.requirements).toEqual({ abilities: ["str", "dex"], any: true });
+  });
+  test("Clérigo: tabla con espacios de conjuro y ceros como «—»", () => {
+    const labels = cls("cleric").table.columns.map((c) => c.label);
+    expect(labels.slice(0, 4)).toEqual(["Canalizar divinidad", "Trucos", "Conjuros preparados", "Espacios de nivel 1"]);
+    expect(labels).toHaveLength(12);
+    const channel = cls("cleric").table.columns[0].values;
+    expect(channel[0]).toBe("—");
+    expect(channel[1]).toBe("2");
+  });
+  test("rasgo con opciones (Orden divina) y mejora de característica", () => {
+    const order = get("classFeature:divine order|cleric|xphb|1").data as FeatureData;
+    expect(order.options).toEqual([
+      { book: "__BOOK__", key: "classFeature:protector|cleric|xphb|1" },
+      { book: "__BOOK__", key: "classFeature:thaumaturge|cleric|xphb|1" },
+    ]);
+    expect(r.entries.some((e) => e.key === order.options![0].key)).toBe(true);
+    expect((get("classFeature:ability score improvement|fighter|xphb|4").data as FeatureData).asi).toBe(true);
+    const style = get("classFeature:fighting style|fighter|xphb|1").data as FeatureData;
+    expect(style.asi).toBeUndefined();
+    expect(style.options).toBeUndefined();
+  });
+  test("rasgos opcionales: tipo y prerrequisitos", () => {
+    const step = get("optionalFeature:ascendant step|xphb");
+    expect(step.kind).toBe("optionalFeature");
+    expect(step.parent).toBeNull();
+    expect((step.data as OptionalFeatureData).prerequisite?.level).toBe(5);
+    expect(step.data).toEqual({ featureType: ["EI"], prerequisite: { level: 5 } });
+    expect(get("optionalFeature:eldritch smite|xphb").data).toEqual({
+      featureType: ["EI"], prerequisite: { level: 5, pact: "optionalFeature:pact of the blade|xphb" },
+    });
+    expect(get("optionalFeature:careful spell|xphb").data).toEqual({ featureType: ["MM"] });
+    expect(r.entries.filter((e) => e.kind === "optionalFeature")).toHaveLength(4);
+  });
+  test("progresiones de subclase: maniobras del Maestro de batalla y estilo del Campeón", () => {
+    const battleMaster = get("subclass:battle master|fighter|xphb").data as SubclassData;
+    expect(battleMaster.progressions).toEqual({
+      feats: [],
+      optionalFeatures: [{ name: "Maneuvers", featureType: ["MV:B"], levels: { 3: 3, 7: 5, 10: 7, 15: 9 } }],
+    });
+    const champion = get("subclass:champion|fighter|xphb").data as SubclassData;
+    expect(champion.progressions).toEqual({ feats: [{ category: ["FS"], levels: { 7: 1 } }], optionalFeatures: [] });
+  });
+  test("rasgos anidados en la cabecera de subclase (Maestro de batalla)", () => {
+    const features = (get("subclass:battle master|fighter|xphb").data as SubclassData).features;
+    const bm = (name: string, level: number) => `subclassFeature:${name}|fighter|xphb|battle master|xphb|${level}`;
+    expect(features.map((f) => [f.ref.key, f.level])).toEqual([
+      [bm("battle master", 3), 3],
+      [bm("combat superiority", 3), 3],
+      [bm("student of war", 3), 3],
+      [bm("maneuver options", 3), 3],
+      [bm("know your enemy", 7), 7],
+      [bm("improved combat superiority", 10), 10],
+      [bm("relentless", 15), 15],
+      [bm("ultimate combat superiority", 18), 18],
+    ]);
+    // Los anidados existen como entradas
+    for (const f of features.slice(1, 4)) expect(r.entries.some((e) => e.key === f.ref.key)).toBe(true);
+  });
+  test("todos los rasgos importados son alcanzables desde su clase o subclase", () => {
+    expect(unreachableFeatures(r.entries, ["subclassFeature:student of war|fighter|xphb|battle master|xphb|3"]))
+      .toEqual([]);
+    // Una elección escrita a mano para un rasgo que no se importa o no cuelga de nadie se lista
+    expect(unreachableFeatures(r.entries, ["subclassFeature:nada|fighter|xphb|battle master|xphb|3"]))
+      .toEqual(["subclassFeature:nada|fighter|xphb|battle master|xphb|3"]);
+  });
+});
+
+test("rasgos anidados: no entra en bloques `options`, no duplica y sigue anidando", () => {
+  const sub = (name: string, level: number, entries: unknown[]) => ({
+    name, source: "XPHB", className: "Fighter", classSource: "XPHB",
+    subclassShortName: "Champion", subclassSource: "XPHB", level, entries,
+  });
+  const nested = (name: string, level = 3) => ({
+    type: "refSubclassFeature", subclassFeature: `${name}|Fighter|XPHB|Champion|XPHB|${level}`,
+  });
+  const { entries: es, errors: errs } = normalizeAll({
+    classes: [{
+      subclass: [{
+        name: "Champion", shortName: "Champion", source: "XPHB", className: "Fighter", classSource: "XPHB",
+        subclassFeatures: ["Champion|Fighter|XPHB|Champion|XPHB|3", "Uno|Fighter|XPHB|Champion|XPHB|3"],
+      }],
+      subclassFeature: [
+        sub("Champion", 3, ["Texto", nested("Uno"), { type: "entries", entries: [nested("Dos")] },
+          { type: "options", count: 1, entries: [nested("Opción")] }]),
+        sub("Uno", 3, ["Uno"]),
+        sub("Dos", 3, ["Dos", nested("Tres")]),
+        sub("Tres", 3, ["Tres"]),
+        sub("Opción", 3, ["Opción"]),
+      ],
+    }],
+  }, "XPHB");
+  expect(errs).toEqual([]);
+  const features = (es.find((e) => e.key === "subclass:champion|fighter|xphb")!.data as SubclassData).features;
+  expect(features.map((f) => f.ref.key.split("|")[0])).toEqual([
+    "subclassFeature:champion", "subclassFeature:dos", "subclassFeature:tres", "subclassFeature:uno",
+  ]);
+});
+
+test("rasgos de clase anidados (Artes marciales del Monje)", () => {
+  const files: RawFiles = { classes: [fixture("class-monk.json")] };
+  const { entries: es } = normalizeAll(files, "XPHB");
+  const monk = es.find((e) => e.key === "class:monk|xphb")!.data as ClassData;
+  const keys = monk.features.map((f) => f.ref.key);
+  const at = keys.indexOf("classFeature:martial arts|monk|xphb|1");
+  expect(keys.slice(at, at + 4)).toEqual([
+    "classFeature:martial arts|monk|xphb|1", "classFeature:bonus unarmed strike|monk|xphb|1",
+    "classFeature:martial arts die|monk|xphb|1", "classFeature:dexterous attacks|monk|xphb|1",
+  ]);
+});
+
+test("opciones de rasgo de subclase y dentro de listas (`items`)", () => {
+  const { entries: es, errors: errs } = normalizeAll({
+    classes: [{
+      subclassFeature: [{
+        name: "Elección", source: "XPHB", className: "Fighter", classSource: "XPHB",
+        subclassShortName: "Champion", subclassSource: "XPHB", level: 3,
+        entries: [{ type: "list", items: [{ type: "options", count: 1, entries: [
+          { type: "refSubclassFeature", subclassFeature: "Uno|Fighter|XPHB|Champion|XPHB|3" },
+          { type: "refSubclassFeature", subclassFeature: "Dos|Fighter|XPHB|Champion|XPHB|3|XTEST" },
+          { type: "refOptionalfeature", optionalfeature: "Parry|XPHB" },
+        ] }] }],
+      }],
+    }],
+  }, "XPHB");
+  expect(errs).toEqual([]);
+  expect((es[0].data as FeatureData).options?.map((o) => o.key)).toEqual([
+    "subclassFeature:uno|fighter|xphb|champion|xphb|3",
+    "subclassFeature:dos|fighter|xphb|champion|xphb|3|xtest",
+    "optionalFeature:parry|xphb",
+  ]);
+});
+
+describe("progresiones escritas a mano", () => {
+  const base = {
+    source: "XPHB", hd: { number: 1, faces: 8 }, proficiency: ["cha", "wis"], primaryAbility: [{ cha: true }],
+    startingEquipment: { defaultData: [{ A: [{ value: 100 }] }] },
+  };
+  test("lista de 20 valores → acumulado solo donde cambia (Brujo) y libro de conjuros (Mago)", () => {
+    const warlock = { ...base, name: "Warlock", optionalfeatureProgression: [{ name: "Eldritch Invocations", featureType: ["EI"],
+      progression: [1, 3, 3, 3, 5, 5, 6, 6, 7, 7, 7, 8, 8, 8, 9, 9, 9, 10, 10, 10] }] };
+    const wizard = { ...base, name: "Wizard", spellsKnownProgressionFixed: [6, ...Array(19).fill(2)] };
+    const { entries: es, errors: errs } = normalizeAll({ classes: [{ class: [warlock, wizard] }] }, "XPHB");
+    expect(errs).toEqual([]);
+    const data = (key: string) => es.find((e) => e.key === key)!.data as ClassData;
+    expect(data("class:warlock|xphb").progressions.optionalFeatures[0].levels)
+      .toEqual({ 1: 1, 2: 3, 5: 5, 7: 6, 9: 7, 12: 8, 15: 9, 18: 10 });
+    expect(data("class:wizard|xphb").progressions.spellbook?.slice(0, 2)).toEqual([6, 2]);
+    // Sin `subclassTitle` en los datos se usa el del diccionario; sin tabla, una tabla vacía que valida
+    expect(data("class:wizard|xphb").subclassTitle).toBe("Tradición arcana");
+    expect(data("class:wizard|xphb").table).toEqual({ columns: [] });
+  });
+  test("tabla con dados, velocidad y filas que faltan; habilidades de multiclase", () => {
+    const monk = { ...base, name: "Monk",
+      classTableGroups: [{ colLabels: ["Martial Arts", "Unarmored Movement", "Raro"], rows: [
+        [{ type: "dice", toRoll: [{ number: 1, faces: 6 }] }, { type: "bonusSpeed", value: 0 }, "x"],
+        [{ type: "dice", toRoll: [{ number: 2, faces: 6 }] }, { type: "bonusSpeed", value: 10 }, 3],
+      ] }],
+      multiclassing: { proficienciesGained: { skills: [{ choose: { from: ["stealth", "acrobatics"], count: 1 } }],
+        tools: ["{@item Thieves' Tools|XPHB}"] } } };
+    const { entries: es, errors: errs } = normalizeAll({ classes: [{ class: [monk] }] }, "XPHB");
+    expect(errs).toEqual([]);
+    const data = es[0].data as ClassData;
+    expect(data.table.columns.map((c) => c.label)).toEqual(["Artes marciales", "Movimiento sin armadura", "Raro"]);
+    expect(data.table.columns[0].values.slice(0, 3)).toEqual(["1d6", "2d6", ""]);
+    expect(data.table.columns[1].values.slice(0, 2)).toEqual(["—", "+10 pies"]);
+    expect(data.table.columns[2].values.slice(0, 2)).toEqual(["x", "3"]);
+    expect(data.multiclass.proficiencies.skills).toEqual({ count: 1, from: ["stealth", "acrobatics"] });
+    expect(data.multiclass.proficiencies.tools).toEqual(["Thieves' Tools"]);
+  });
+});
+
+test("rasgos con elección en el texto sin especificar", () => {
+  const feature = (key: string, description: string, data: Partial<FeatureData> = {}): NormalizedEntry => ({
+    kind: key.startsWith("subclassFeature") ? "subclassFeature" : "classFeature", key, identifier: "", parent: null,
+    name: key, description, srd52: false, data: { level: 1, className: "Rogue", ...data },
+  });
+  const list = [
+    feature("classFeature:expertise|rogue|xphb|1", "You gain Expertise in two skills of your choice. Choose Stealth."),
+    feature("classFeature:divine order|cleric|xphb|1", "Choose one.", { options: [{ book: "b", key: "k" }] }),
+    feature("subclassFeature:x|rogue|xphb|y|xphb|3", "You CHOOSE one skill."),
+    feature("classFeature:rage|barbarian|xphb|1", "Chooses nothing here."),
+    feature("classFeature:specified|rogue|xphb|6", "Choose two skills."),
+    feature("classFeature:primal knowledge|barbarian|xphb|3", "Proficiency in another skill of your choice."),
+    feature("classFeature:ability score improvement|rogue|xphb|4", "A feat of your choice.", { asi: true }),
+  ];
+  expect(textChoiceFeatures(list, new Set(["classFeature:specified|rogue|xphb|6"]))).toEqual([
+    "classFeature:expertise|rogue|xphb|1", "subclassFeature:x|rogue|xphb|y|xphb|3",
+    "classFeature:primal knowledge|barbarian|xphb|3",
+  ]);
+});
+
+describe("tablas de nombres (names.json, Guía de Xanathar)", () => {
+  const { entries: names, errors: errs } = normalizeAll({ names: fixture("names.json") }, "XGE");
+  const table = (species: string) => names.find((e) => e.key === `nameTable:${species}|xge`);
+
+  test("Enano: femenina, masculina y clan; el clan duergar no es un apellido", () => {
+    expect(errs).toEqual([]);
+    const dwarf = table("dwarf");
+    expect(dwarf).toMatchObject({ kind: "nameTable", name: "Dwarf", identifier: "dwarf" });
+    const data = dwarf!.data as NameTableData;
+    expect(data.species).toBe("dwarf");
+    expect(data.tables.map((t) => [t.option, t.gender])).toEqual([
+      ["Female", "female"], ["Male", "male"], ["Clan", "family"], ["Duergar Clan", "other"],
+    ]);
+    expect(data.tables[0].names).toEqual(["Anbera", "Artin", "Audhild", "Balifra"]);
+  });
+  test("Elfo: «Female Adult» es femenina, «Child» es otra y «Family» son apellidos", () => {
+    const data = table("elf")!.data as NameTableData;
+    expect(data.tables.map((t) => [t.option, t.gender])).toEqual([
+      ["Child", "other"], ["Female Adult", "female"], ["Male Adult", "male"], ["Family", "family"],
+    ]);
+  });
+  test("Humano: «Arabic, Female» es femenina", () => {
+    const data = table("human")!.data as NameTableData;
+    expect(data.tables[0]).toMatchObject({ option: "Arabic, Female", gender: "female" });
+  });
+});
+
+test("objetos: la rareza solo se guarda en los mágicos", () => {
+  const item = (name: string, rarity: string) => ({ name, source: "XPHB", type: "M", rarity, weapon: true, dmg1: "1d8" });
+  const { entries: es } = normalizeAll({ items: { item: [item("Sword", "none"), item("Sword +1", "rare")] } }, "XPHB");
+  expect((es.find((e) => e.key === "item:sword|xphb")!.data as ItemData).rarity).toBeUndefined();
+  expect((es.find((e) => e.key === "item:sword +1|xphb")!.data as ItemData).rarity).toBe("rare");
 });

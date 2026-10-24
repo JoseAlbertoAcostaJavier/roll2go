@@ -12,7 +12,7 @@ export type Ref = { book: string; key: string };
 
 export type EntryKind =
   | "species" | "lineage" | "class" | "subclass" | "classFeature" | "subclassFeature"
-  | "background" | "feat" | "spell" | "item" | "language" | "skill";
+  | "background" | "feat" | "spell" | "item" | "language" | "skill" | "optionalFeature" | "nameTable";
 
 /** Elemento de equipo: una entrada del catálogo, monedas (pc) o un texto libre. */
 export type Pack = { ref?: Ref; quantity?: number; value?: number; displayName?: string };
@@ -42,6 +42,38 @@ export type LineageData = {
 
 export type SpellcastingProgression = "full" | "half" | "pact" | null;
 
+/** Número acumulado por nivel de clase, solo en los niveles en que cambia: `{ 2: 2, 10: 4, 17: 6 }`. */
+export type LevelCounts = Record<number, number>;
+
+export type ClassProgressions = {
+  /** Dotes de una categoría (`FS`, `EB`…) que se ganan por nivel. */
+  feats: { category: string[]; levels: LevelCounts }[];
+  /** Rasgos opcionales de un tipo (`MM`, `EI`…) que se conocen por nivel. */
+  optionalFeatures: { name: string; featureType: string[]; levels: LevelCounts }[];
+  /** Armas con maestría por nivel. */
+  weaponMastery: LevelCounts | null;
+  /** Trucos conocidos en cada nivel de clase (20 valores). */
+  cantrips: number[] | null;
+  /** Conjuros preparados en cada nivel de clase (20 valores). */
+  prepared: number[] | null;
+  /** Conjuros que se añaden al libro en cada nivel de clase (20 valores; el Mago empieza con 6). */
+  spellbook: number[] | null;
+};
+
+/** Tabla de la clase: columnas con nombre en español y un valor de texto por nivel (20). */
+export type ClassTable = { columns: { label: string; values: string[] }[] };
+
+export type MulticlassData = {
+  /** 13 o más en estas características; con `any`, basta una de ellas. */
+  requirements: { abilities: Ability[]; any: boolean };
+  proficiencies: {
+    armor: string[];
+    weapons: string[];
+    tools: string[];
+    skills: { count: number; from: string[] } | null;
+  };
+};
+
 export type ClassData = {
   hitDie: 6 | 8 | 10 | 12;
   primaryAbility: Ability[];
@@ -55,17 +87,34 @@ export type ClassData = {
   asiLevels: number[];
   spellcasting: { ability: Ability; progression: SpellcastingProgression; table: number[][] } | null;
   features: LevelFeature[];
+  progressions: ClassProgressions;
+  table: ClassTable;
+  multiclass: MulticlassData;
+  /** Nombre del grupo de subclases en español («Senda primitiva», «Dominio divino»…). */
+  subclassTitle: string;
 };
 
 export type SubclassData = {
   features: LevelFeature[];
   spells: { level: number; ref: Ref }[];
+  /** Dotes y rasgos opcionales propios de la subclase (estilo de combate del Campeón, maniobras…). */
+  progressions: Pick<ClassProgressions, "feats" | "optionalFeatures">;
 };
 
 export type FeatureData = {
   level: number;
   className: string;
   subclassName?: string;
+  /** Opciones entre las que se elige una (rasgos de clase o rasgos opcionales). */
+  options?: Ref[];
+  /** Mejora de característica (o dote general). */
+  asi?: true;
+};
+
+/** Invocación, metamagia, maniobra… `pact` y `feature` son claves de otro `optionalFeature`. */
+export type OptionalFeatureData = {
+  featureType: string[];
+  prerequisite?: { level?: number; spell?: Ref; pact?: string; feature?: string };
 };
 
 export type BackgroundData = {
@@ -78,6 +127,8 @@ export type BackgroundData = {
 
 export type FeatData = {
   category: "origin" | "general" | "fightingStyle" | "epicBoon";
+  /** Código de categoría de 5etools (`FS`, `FS:P`…): distingue los estilos de combate propios de una clase. */
+  categoryCode?: string;
   prerequisite?: string;
   repeatable: boolean;
   abilityIncrease?: Ability[];
@@ -99,12 +150,19 @@ export type ItemData = {
   type: string;
   weight: number;
   value: number; // pc
+  /** Rareza de un objeto mágico (`uncommon`, `rare`…); los objetos normales no la llevan. */
+  rarity?: string;
   armor?: { ac: number; dexCap: number | null; stealthDisadvantage: boolean; category: string };
   weapon?: { damage: string; damageType: string; properties: string[]; mastery?: string; category: string };
   contents?: { ref: Ref; quantity: number }[];
 };
 
 export type LanguageData = { type: "standard" | "rare" };
+
+/** Género de una tabla de nombres; `family` son apellidos o clanes y `other`, el resto (niños, virtudes…). */
+export type NameGender = "male" | "female" | "family" | "other";
+/** Tablas de nombres de una especie (`species` es su identificador: `dwarf`, `half-orc`…). */
+export type NameTableData = { species: string; tables: { option: string; gender: NameGender; names: string[] }[] };
 export type SkillData = { ability: Ability };
 
 export type EntryData = {
@@ -120,4 +178,6 @@ export type EntryData = {
   item: ItemData;
   language: LanguageData;
   skill: SkillData;
+  optionalFeature: OptionalFeatureData;
+  nameTable: NameTableData;
 };

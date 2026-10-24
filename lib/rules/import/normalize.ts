@@ -5,11 +5,13 @@
 // padre siempre está en el mismo libro. Todas las claves llevan el tipo delante (`spell:fireball|xphb`).
 import { ABILITIES } from "../types";
 import type {
-  Ability, EntryData, EntryKind, Equipment, LevelFeature, Pack, Ref, SpellGrant,
+  Ability, ClassTable, EntryData, EntryKind, Equipment, FeatureData, LevelCounts, LevelFeature, MulticlassData,
+  NameGender, OptionalFeatureData, Pack, Ref, SpellGrant,
 } from "../types";
 import { normalizeName, validateEntryData } from "../schemas";
 import { entriesToBbcode } from "./toBbcode";
-import { ABILITY_NAMES, CHOICE_LABELS, proficiencyName, skillName, toolName } from "../dnd2024/labels";
+import { ABILITY_NAMES, CHOICE_LABELS, FEAT_CATEGORIES, proficiencyName, skillName, toolName } from "../dnd2024/labels";
+import es from "../i18n/es.json";
 
 export const BOOK_PLACEHOLDER = "__BOOK__";
 
@@ -41,8 +43,12 @@ export type RawFiles = {
   spellSources?: Record<string, Record<string, { class?: { name: string; source: string }[] }>>;
   /** Un elemento por `class/class-*.json`. */
   classes?: { class?: unknown[]; subclass?: unknown[]; classFeature?: unknown[]; subclassFeature?: unknown[] }[];
+  /** `optionalfeatures.json` (invocaciones, metamagia, maniobras…). */
+  optionalFeatures?: { optionalfeature?: unknown[] };
   /** Un elemento por `class/fluff-class-*.json` (texto de presentación de cada clase). */
   classFluff?: { classFluff?: unknown[] }[];
+  /** `names.json`: tablas de nombres por especie (Guía de Xanathar para todo). */
+  names?: { name?: unknown[] };
 };
 
 /** Datos de contexto que necesitan algunos normalizadores. */
@@ -354,10 +360,6 @@ export function normalizeBackground(raw: Rec): NormalizedEntry {
   });
 }
 
-const FEAT_CATEGORIES: Record<string, EntryData["feat"]["category"]> = {
-  O: "origin", G: "general", FS: "fightingStyle", "FS:P": "fightingStyle", "FS:R": "fightingStyle", EB: "epicBoon",
-};
-
 /** Texto breve en inglés de los requisitos de una dote (se traducirá con el diccionario). */
 function prerequisiteText(pre: unknown): string | undefined {
   const parts = asArr(pre).map((p) => {
@@ -381,6 +383,7 @@ function prerequisiteText(pre: unknown): string | undefined {
 export function normalizeFeat(raw: Rec): NormalizedEntry {
   const data: EntryData["feat"] = {
     category: FEAT_CATEGORIES[str(raw.category)] ?? (str(raw.category) as EntryData["feat"]["category"]),
+    ...(str(raw.category) ? { categoryCode: str(raw.category) } : {}),
     repeatable: raw.repeatable === true,
   };
   const prerequisite = prerequisiteText(raw.prerequisite);
@@ -485,6 +488,7 @@ export function normalizeItem(raw: Rec): NormalizedEntry {
     weight: typeof raw.weight === "number" ? raw.weight : 0,
     value: typeof raw.value === "number" ? raw.value : 0,
   };
+  if (str(raw.rarity) && raw.rarity !== "none") data.rarity = str(raw.rarity);
   if (type in ARMOR && typeof raw.ac === "number") {
     data.armor = { ac: raw.ac, ...ARMOR[type], stealthDisadvantage: raw.stealth === true };
   }
@@ -556,6 +560,137 @@ function classSummary(raw: Rec, data: EntryData["class"], anySkills: boolean): s
   return lines.map(([k, v]) => `[b]${k}:[/b] ${v}`).join("\n");
 }
 
+/** Progresión de 5etools (`{ "2": 2, "10": 4 }` o lista de 20 valores) → acumulado solo en los niveles en que cambia. */
+function levelCounts(progression: unknown): LevelCounts {
+  const out: LevelCounts = {};
+  if (Array.isArray(progression)) {
+    let previous = 0;
+    progression.forEach((n, i) => {
+      if (typeof n === "number" && n !== previous) out[i + 1] = previous = n;
+    });
+  } else if (isObj(progression)) {
+    for (const [level, n] of Object.entries(progression)) if (typeof n === "number") out[Number(level)] = n;
+  }
+  return out;
+}
+
+const perLevel = (v: unknown): number[] | null =>
+  Array.isArray(v) && v.length ? v.map((n) => (typeof n === "number" ? n : 0)) : null;
+
+/** Dotes y rasgos opcionales por nivel (de una clase o de una subclase). */
+function choiceProgressions(raw: Rec): EntryData["subclass"]["progressions"] {
+  return {
+    feats: asArr(raw.featProgression).filter(isObj)
+      .map((p) => ({ category: asArr(p.category).map(str), levels: levelCounts(p.progression) })),
+    optionalFeatures: asArr(raw.optionalfeatureProgression).filter(isObj).map((p) => ({
+      name: str(p.name), featureType: asArr(p.featureType).map(str), levels: levelCounts(p.progression),
+    })),
+  };
+}
+
+function classProgressions(raw: Rec): EntryData["class"]["progressions"] {
+  return {
+    ...choiceProgressions(raw),
+    weaponMastery: isObj(raw.itemMasteriesProgression) ? levelCounts(raw.itemMasteriesProgression) : null,
+    cantrips: perLevel(raw.cantripProgression),
+    prepared: perLevel(raw.preparedSpellsProgression),
+    spellbook: perLevel(raw.spellsKnownProgressionFixed),
+  };
+}
+
+// Columnas de las tablas de clase del Manual del Jugador 2024
+const TABLE_LABELS: Record<string, string> = {
+  Rages: "Furias",
+  "Rage Damage": "Daño de furia",
+  "Weapon Mastery": "Maestría con armas",
+  "Bardic Die": "Dado de inspiración bárdica",
+  Cantrips: "Trucos",
+  "Prepared Spells": "Conjuros preparados",
+  "Channel Divinity": "Canalizar divinidad",
+  "Wild Shape": "Forma salvaje",
+  "Second Wind": "Nuevas energías",
+  "Martial Arts": "Artes marciales",
+  "Focus Points": "Puntos de concentración",
+  "Unarmored Movement": "Movimiento sin armadura",
+  "Favored Enemy": "Enemigo predilecto",
+  "Sneak Attack": "Ataque furtivo",
+  "Sorcery Points": "Puntos de hechicería",
+  Invocations: "Invocaciones",
+  "Spell Slots": "Espacios de conjuro",
+  "Slot Level": "Nivel de espacio",
+};
+
+/**
+ * Celda de la tabla de clase → texto: `{ type: "bonus", value: 2 }` → «+2», dados → «1d6», 0 → «—» (como el libro).
+ * Quien lea los valores como números debe tratar «—» como 0.
+ */
+function tableCell(v: unknown): string {
+  if (typeof v === "number") return v === 0 ? "—" : String(v);
+  if (typeof v === "string") return plainText(v);
+  if (!isObj(v)) return "";
+  const value = typeof v.value === "number" ? v.value : 0;
+  const signed = (unit: string) => (value === 0 ? "—" : `${value > 0 ? "+" : ""}${value}${unit}`);
+  switch (v.type) {
+    case "dice":
+      return asArr(v.toRoll).filter(isObj)
+        .map((d) => `${typeof d.number === "number" ? d.number : 1}d${String(d.faces)}`).join(" + ");
+    case "bonus": return signed("");
+    case "bonusSpeed": return signed(" pies");
+    default: return typeof v.value === "number" ? String(v.value) : "";
+  }
+}
+
+/** `classTableGroups` → columnas con 20 valores (los espacios de conjuro, una columna por nivel de conjuro). */
+function classTable(groups: unknown): ClassTable {
+  const columns: ClassTable["columns"] = [];
+  for (const g of asArr(groups)) {
+    if (!isObj(g)) continue;
+    const slots = Array.isArray(g.rowsSpellProgression);
+    const rows = asArr(slots ? g.rowsSpellProgression : g.rows);
+    asArr(g.colLabels).forEach((l, i) => {
+      const label = plainText(str(l));
+      columns.push({
+        label: slots ? `Espacios de nivel ${i + 1}` : TABLE_LABELS[label] ?? label,
+        values: Array.from({ length: 20 }, (_, level) => {
+          const row = rows[level];
+          return Array.isArray(row) ? tableCell(row[i]) : "";
+        }),
+      });
+    });
+  }
+  return { columns };
+}
+
+/** Requisitos (13+ en la característica principal) y competencias al entrar en la clase como multiclase. */
+function multiclassData(raw: Rec, ctx: NormalizeContext): MulticlassData {
+  // `[{ str: true }, { dex: true }]` → Fuerza o Destreza; `[{ dex: true, wis: true }]` → las dos
+  const primary = asArr(raw.primaryAbility).filter(isObj);
+  const multi = isObj(raw.multiclassing) ? raw.multiclassing : {};
+  const gained = isObj(multi.proficienciesGained) ? multi.proficienciesGained : {};
+  const skillBlock = asArr(gained.skills)[0];
+  let skills: MulticlassData["proficiencies"]["skills"] = null;
+  if (isObj(skillBlock) && isObj(skillBlock.choose)) {
+    skills = {
+      count: typeof skillBlock.choose.count === "number" ? skillBlock.choose.count : 1,
+      from: asArr(skillBlock.choose.from).map(str),
+    };
+  } else if (isObj(skillBlock) && typeof skillBlock.any === "number") {
+    skills = { count: skillBlock.any, from: ctx.skillNames };
+  }
+  const texts = (v: unknown) => asArr(v).map((x) => plainText(str(x)));
+  return {
+    requirements: {
+      abilities: ABILITIES.filter((a) => primary.some((p) => p[a] === true)),
+      any: primary.length > 1,
+    },
+    proficiencies: { armor: texts(gained.armor), weapons: texts(gained.weapons), tools: texts(gained.tools), skills },
+  };
+}
+
+/** Título de subclase en español (`subclassTitle:barbarian|xphb` en el diccionario); si no está, el original. */
+const subclassTitle = (raw: Rec) =>
+  (es as Record<string, string>)[`subclassTitle:${lower(`${str(raw.name)}|${str(raw.source)}`)}`] ?? str(raw.subclassTitle);
+
 export function normalizeClass(raw: Rec, ctx: NormalizeContext): NormalizedEntry {
   const prof = isObj(raw.startingProficiencies) ? raw.startingProficiencies : {};
   const skillBlock = asArr(prof.skills)[0];
@@ -594,6 +729,10 @@ export function normalizeClass(raw: Rec, ctx: NormalizeContext): NormalizedEntry
       }
       : null,
     features,
+    progressions: classProgressions(raw),
+    table: classTable(raw.classTableGroups),
+    multiclass: multiclassData(raw, ctx),
+    subclassTitle: subclassTitle(raw),
   };
   // Descripción: la propia, si no la del `fluff` y, si tampoco hay, un resumen hecho con los datos
   const head = header("class", raw, key);
@@ -616,21 +755,100 @@ export function normalizeSubclass(raw: Rec): NormalizedEntry {
     features: asArr(raw.subclassFeatures).map((f) => featureRef(f, "subclassFeature"))
       .filter((x): x is LevelFeature => x !== null),
     spells: spellGrants(asArr(raw.additionalSpells)).map(({ level, ref: r }) => ({ level, ref: r })),
+    progressions: choiceProgressions(raw),
   });
 }
 
+/** Clave de rasgo de clase: `classFeature:nombre|clase|fuente de la clase|nivel` (+ `|fuente` si es otra). */
+const classFeatureKey = (name: string, className: string, classSource: string, level: string, source: string) => {
+  const sourceSuffix = !source || lower(source) === lower(classSource) ? "" : `|${source}`;
+  return prefixed("classFeature", `${name}|${className}|${classSource}|${level}${sourceSuffix}`);
+};
+
+/** Clave de rasgo de subclase: `subclassFeature:nombre|clase|fuente|subclase|fuente de la subclase|nivel` (+ `|fuente`). */
+const subclassFeatureKey = (parts: string[], source: string) => {
+  const sourceSuffix = !source || lower(source) === lower(parts[4]) ? "" : `|${source}`;
+  return prefixed("subclassFeature", parts.join("|") + sourceSuffix);
+};
+
+/**
+ * Elemento de un bloque `options`: `refClassFeature` (`"Protector|Cleric|XPHB|1|XPHB"`), `refSubclassFeature`
+ * (`"Nombre|Clase|XPHB|Subclase|XPHB|3"`) o `refOptionalfeature`.
+ */
+function optionRef(o: unknown): Ref | null {
+  if (!isObj(o)) return null;
+  if (o.type === "refClassFeature") {
+    const [name, className, classSource, level, source] = str(o.classFeature).split("|");
+    return level ? { book: BOOK_PLACEHOLDER, key: classFeatureKey(name, className, classSource, level, source ?? "") } : null;
+  }
+  if (o.type === "refSubclassFeature") {
+    const parts = str(o.subclassFeature).split("|");
+    return parts.length >= 6 ? { book: BOOK_PLACEHOLDER, key: subclassFeatureKey(parts.slice(0, 6), parts[6] ?? "") } : null;
+  }
+  if (o.type === "refOptionalfeature" && str(o.optionalfeature)) return ref("optionalFeature", cleanRefKey(str(o.optionalfeature)));
+  return null;
+}
+
+/** Datos comunes de los rasgos: opciones entre las que elegir (bloques `options`) y mejora de característica. */
+function featureExtras(raw: Rec): Pick<FeatureData, "options" | "asi"> {
+  const options: Ref[] = [];
+  const walk = (v: unknown): void => {
+    if (Array.isArray(v)) v.forEach(walk);
+    else if (isObj(v) && v.type === "options") {
+      for (const o of asArr(v.entries)) {
+        const r = optionRef(o);
+        if (r) options.push(r);
+      }
+    } else if (isObj(v)) {
+      walk(v.entries);
+      walk(v.items); // listas (`type: "list"`) con bloques dentro
+    }
+  };
+  walk(raw.entries);
+  return {
+    ...(options.length ? { options } : {}),
+    ...(lower(str(raw.name)) === "ability score improvement" ? { asi: true as const } : {}),
+  };
+}
+
+const classFeatureKeyOf = (raw: Rec) =>
+  classFeatureKey(str(raw.name), str(raw.className), str(raw.classSource), String(raw.level), str(raw.source));
+
 export function normalizeClassFeature(raw: Rec): NormalizedEntry {
-  const sourceSuffix = lower(str(raw.source)) === lower(str(raw.classSource)) ? "" : `|${str(raw.source)}`;
-  const key = prefixed("classFeature", `${str(raw.name)}|${str(raw.className)}|${str(raw.classSource)}|${String(raw.level)}${sourceSuffix}`);
+  const key = classFeatureKeyOf(raw);
   return entry<"classFeature">(header("classFeature", raw, key, {
     parent: { key: keyOf("class", str(raw.className), str(raw.classSource)) },
-  }), { level: raw.level as number, className: str(raw.className) });
+  }), { level: raw.level as number, className: str(raw.className), ...featureExtras(raw) });
+}
+
+const subclassFeatureKeyOf = (raw: Rec) => subclassFeatureKey([raw.name, raw.className, raw.classSource,
+  raw.subclassShortName, raw.subclassSource, raw.level].map(String), str(raw.source));
+
+/**
+ * Rasgos enlazados en el texto de otro rasgo (`refClassFeature`, `refSubclassFeature`): en el XPHB la cabecera de una
+ * subclase solo enlaza sus rasgos reales, y algunos rasgos de clase enlazan sus partes (Artes marciales, Canalizar
+ * divinidad…). No entra en bloques `options`, que son opciones a elegir y no rasgos que se ganan.
+ */
+function nestedFeatures(entries: unknown): LevelFeature[] {
+  const out: LevelFeature[] = [];
+  const walk = (v: unknown): void => {
+    if (Array.isArray(v)) v.forEach(walk);
+    else if (isObj(v) && (v.type === "refClassFeature" || v.type === "refSubclassFeature")) {
+      const r = optionRef(v);
+      const parts = str(v.type === "refClassFeature" ? v.classFeature : v.subclassFeature).split("|");
+      const level = Number(parts[v.type === "refClassFeature" ? 3 : 5]);
+      if (r && Number.isInteger(level)) out.push({ ref: r, level });
+    } else if (isObj(v) && v.type !== "options") {
+      walk(v.entries);
+      walk(v.items);
+    }
+  };
+  walk(entries);
+  return out;
 }
 
 export function normalizeSubclassFeature(raw: Rec, ctx: NormalizeContext): NormalizedEntry {
-  const sourceSuffix = lower(str(raw.source)) === lower(str(raw.subclassSource)) ? "" : `|${str(raw.source)}`;
-  const key = prefixed("subclassFeature", [raw.name, raw.className, raw.classSource, raw.subclassShortName,
-    raw.subclassSource, raw.level].map(String).join("|") + sourceSuffix);
+  const key = subclassFeatureKeyOf(raw);
   const sub = ctx.subclasses.get(subclassLookup(
     str(raw.subclassShortName), str(raw.className), str(raw.classSource), str(raw.subclassSource)));
   return entry<"subclassFeature">(header("subclassFeature", raw, key, {
@@ -639,7 +857,87 @@ export function normalizeSubclassFeature(raw: Rec, ctx: NormalizeContext): Norma
     level: raw.level as number,
     className: str(raw.className),
     subclassName: sub?.name ?? str(raw.subclassShortName),
+    ...featureExtras(raw),
   });
+}
+
+/** Invocación, metamagia o maniobra. Los prerrequisitos de otro rasgo opcional guardan su clave. */
+export function normalizeOptionalFeature(raw: Rec): NormalizedEntry {
+  const data: OptionalFeatureData = { featureType: asArr(raw.featureType).map(str) };
+  // Varias alternativas de prerrequisito se cumplen con una; en el XPHB siempre hay una sola
+  const pre = asArr(raw.prerequisite).find(isObj);
+  if (pre) {
+    const p: NonNullable<OptionalFeatureData["prerequisite"]> = {};
+    const level = isObj(pre.level) ? pre.level.level : pre.level;
+    if (typeof level === "number") p.level = level;
+    // Los conjuros a elegir (`{ choose: "level=0|class=Warlock" }`) no son una referencia y se omiten
+    const spell = asArr(pre.spell).find((s) => typeof s === "string");
+    if (typeof spell === "string") p.spell = ref("spell", cleanRefKey(spell));
+    for (const o of asArr(pre.optionalfeature).map(str).filter(Boolean)) {
+      const key = prefixed("optionalFeature", cleanRefKey(o));
+      if (/^pact of the /i.test(o)) p.pact = key;
+      else p.feature = key;
+    }
+    if (Object.keys(p).length) data.prerequisite = p;
+  }
+  return entry<"optionalFeature">(
+    header("optionalFeature", raw, keyOf("optionalFeature", str(raw.name), str(raw.source))), data);
+}
+
+// «Female», «Female Adult», «Arabic, Female» → female; «Clan» y «Family» son apellidos; el resto («Child»,
+// «Virtue», «Duergar Clan»…), otra tabla
+function nameGender(option: string): NameGender {
+  const o = lower(option);
+  if (/\bfemale\b/.test(o)) return "female";
+  if (/\bmale\b/.test(o)) return "male";
+  return o === "clan" || o === "family" ? "family" : "other";
+}
+
+export function normalizeNameTable(raw: Rec): NormalizedEntry {
+  const head = header("nameTable", raw, keyOf("nameTable", str(raw.name), str(raw.source)), { description: "" });
+  const tables = asArr(raw.tables).filter(isObj).map((t) => ({
+    option: str(t.option),
+    gender: nameGender(str(t.option)),
+    names: [...new Set(asArr(t.table).map((r) => (isObj(r) ? str(r.result).trim() : "")).filter(Boolean))],
+  }));
+  return entry<"nameTable">(head, { species: head.identifier, tables });
+}
+
+/**
+ * Rasgos de clase y subclase cuyo texto pide elegir («choose», «of your choice») sin un bloque `options`, sin ser una
+ * mejora de característica y sin una especificación escrita a mano (`specified`: claves de rasgo). El importador los
+ * lista para que no quede ninguna elección sin pedir.
+ */
+export function textChoiceFeatures(entries: NormalizedEntry[], specified: ReadonlySet<string>): string[] {
+  return entries
+    .filter((e) => (e.kind === "classFeature" || e.kind === "subclassFeature")
+      && /\bchoose\b|\bof your choice\b/i.test(e.description)
+      && !(e.data as FeatureData).options?.length
+      && !(e.data as FeatureData).asi
+      && !specified.has(e.key))
+    .map((e) => e.key);
+}
+
+/**
+ * Rasgos de clase y subclase que ningún personaje llegaría a tener: ni están en los rasgos de una clase o subclase ni
+ * son opciones de un rasgo alcanzable. `required` son claves que deben ser alcanzables aunque no se hayan importado
+ * (las elecciones escritas a mano); también se listan si faltan.
+ */
+export function unreachableFeatures(entries: NormalizedEntry[], required: Iterable<string>): string[] {
+  const byKey = new Map(entries.map((e) => [e.key, e]));
+  const reachable = new Set<string>();
+  const queue = entries.flatMap((e) =>
+    e.kind === "class" || e.kind === "subclass" ? (e.data as { features: LevelFeature[] }).features.map((f) => f.ref.key) : []);
+  for (let key = queue.pop(); key !== undefined; key = queue.pop()) {
+    if (reachable.has(key)) continue;
+    reachable.add(key);
+    const e = byKey.get(key);
+    if (e?.kind === "classFeature" || e?.kind === "subclassFeature") {
+      queue.push(...((e.data as FeatureData).options ?? []).map((o) => o.key));
+    }
+  }
+  const imported = entries.filter((e) => e.kind === "classFeature" || e.kind === "subclassFeature").map((e) => e.key);
+  return [...new Set([...imported, ...required])].filter((key) => !reachable.has(key));
 }
 
 // ---------- todo junto ----------
@@ -727,11 +1025,42 @@ export function normalizeAll(files: RawFiles, source: string): {
   for (const i of fromSource("item", itemPool)) run("item", i, () => normalizeItem(i));
   for (const l of fromSource("language", files.languages?.language)) run("language", l, () => normalizeLanguage(l));
   for (const s of skills) run("skill", s, () => normalizeSkill(s));
+  // Rasgos sin normalizar por clave, para seguir los enlaces de su texto
+  const rawFeatures = new Map<string, Rec>();
   for (const f of classFiles) {
     for (const c of fromSource("class", f.class)) run("class", c, () => normalizeClass(c, ctx));
-    for (const c of fromSource("classFeature", f.classFeature)) run("classFeature", c, () => normalizeClassFeature(c));
+    for (const c of fromSource("classFeature", f.classFeature)) {
+      rawFeatures.set(classFeatureKeyOf(c), c);
+      run("classFeature", c, () => normalizeClassFeature(c));
+    }
   }
   for (const s of subclasses) run("subclass", s, () => normalizeSubclass(s));
-  for (const f of classFiles) for (const s of fromSource("subclassFeature", f.subclassFeature)) run("subclassFeature", s, () => normalizeSubclassFeature(s, ctx));
+  for (const f of classFiles) {
+    for (const s of fromSource("subclassFeature", f.subclassFeature)) {
+      rawFeatures.set(subclassFeatureKeyOf(s), s);
+      run("subclassFeature", s, () => normalizeSubclassFeature(s, ctx));
+    }
+  }
+  // Cada clase y subclase gana los rasgos enlazados desde los suyos, justo detrás del que los enlaza y sin repetir
+  for (const e of entries) {
+    if (e.kind !== "class" && e.kind !== "subclass") continue;
+    const data = e.data as { features: LevelFeature[] };
+    const seen = new Set(data.features.map((f) => f.ref.key));
+    const features: LevelFeature[] = [];
+    const add = (f: LevelFeature) => {
+      features.push(f);
+      for (const n of nestedFeatures(rawFeatures.get(f.ref.key)?.entries)) {
+        if (seen.has(n.ref.key)) continue;
+        seen.add(n.ref.key);
+        add(n);
+      }
+    };
+    data.features.forEach(add);
+    data.features = features;
+  }
+  for (const o of fromSource("optionalFeature", files.optionalFeatures?.optionalfeature)) {
+    run("optionalFeature", o, () => normalizeOptionalFeature(o));
+  }
+  for (const n of fromSource("nameTable", files.names?.name)) run("nameTable", n, () => normalizeNameTable(n));
   return { entries, errors };
 }

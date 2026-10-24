@@ -1,33 +1,47 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
-import { LoaderCircle } from "lucide-react";
+import { LoaderCircle, TriangleAlert } from "lucide-react";
 import Bbcode from "@/app/components/Bbcode";
-import { CLASS_ICONS } from "@/app/components/icons/classes";
 import { card, cardTitle, errorClass, field, labelClass, primaryButton } from "@/app/components/formStyles";
 import type { CatalogEntry, EntryOption } from "@/lib/rules/catalog";
-import { ABILITIES, type Ability, type BackgroundData, type ClassData, type Equipment, type Pack, type Ref, type SpeciesData } from "@/lib/rules/types";
+import {
+  ABILITIES, type Ability, type BackgroundData, type ClassData, type Equipment, type FeatureData, type Pack, type Ref,
+  type SpeciesData,
+} from "@/lib/rules/types";
 import type { AbilityMethod, Dnd2024Sheet } from "@/lib/rules/dnd2024/sheet";
 import { checkBackgroundBonus } from "@/lib/rules/dnd2024/abilities";
 import { totalsWithinLimit } from "@/lib/rules/dnd2024/assign";
-import { equipmentRefs, refKey } from "@/lib/rules/dnd2024/equipmentRefs";
+import { bareName, equipmentRefs, refKey } from "@/lib/rules/dnd2024/equipmentRefs";
 import { ABILITY_NAMES, sizeName, skillName, toolName } from "@/lib/rules/dnd2024/labels";
+import { pendingChoices } from "@/lib/rules/dnd2024/levels";
+import { PRONOUNS, type Pronoun } from "@/lib/rules/dnd2024/names";
+import type { CreationDraft } from "@/lib/rules/dnd2024/recreate";
+import { SKILLS_SOURCE } from "@/lib/rules/dnd2024/upgrade";
 import AbilityScores from "./AbilityScores";
 import CharacterSummary, { type MissingItem } from "./CharacterSummary";
+import ClassBadge from "./ClassBadge";
+import ClassFeaturesSection, { choicesFor, refFromKey, unfinished, type ChoiceValues } from "./ClassFeaturesSection";
+import NameGeneratorButton from "./NameGeneratorButton";
 import RuleSelect from "./RuleSelect";
 import FieldError from "./fields/FieldError";
 import ImageFields from "./fields/ImageFields";
 import InfoFields from "./fields/InfoFields";
+import PronounsField from "./fields/PronounsField";
+import SkillPicker from "./fields/SkillPicker";
+import useCatalogEntries from "./useCatalogEntries";
 import StatusField from "./fields/StatusField";
 import { LIMITS, STATUSES, type Status } from "./fields/constants";
 
 type Size = "S" | "M" | "L";
 type Base = Record<Ability, number | null>;
+type Rolls = { values: number[]; token: string; dice?: number[][] };
 
 // Lo que rellena el usuario; se guarda tal cual como borrador (salvo las imágenes)
 type FormState = {
   name: string;
+  pronouns: Pronoun[];
   status: Status;
   species: Ref | null;
   lineage: Ref | null;
@@ -37,11 +51,12 @@ type FormState = {
   bonus: Partial<Record<Ability, number>>;
   bgEquipment: string;
   klass: Ref | null;
-  classSkills: string[];
+  /** Elecciones de nivel 1 de la clase (habilidades incluidas), por `source` de `pendingChoices`. */
+  classChoices: ChoiceValues;
   classEquipment: string;
   method: AbilityMethod;
   base: Base;
-  rolls: { values: number[]; token: string } | null;
+  rolls: Rolls | null;
   alignment: string;
   appearance: string;
   age: string;
@@ -60,14 +75,24 @@ type Props = {
   lineages: Record<string, EntryOption[]>;
   classes: EntryOption[];
   backgrounds: EntryOption[];
+  /** Dotes (con `data`), para los estilos de combate. */
+  feats: EntryOption[];
+  /** Rasgos opcionales (con `data`): invocaciones, metamagia, maniobras… */
+  optionalFeatures: EntryOption[];
+  /** Armas con propiedad de maestría (con `data`). */
+  weapons: EntryOption[];
+  /**
+   * Rehacer la creación de un personaje de nivel 1: se precarga con su creación actual (si no hay borrador propio) y
+   * se guarda con `PUT /api/characters/[id]/creation`. Sin campaña, imágenes, estado ni información (no cambian).
+   */
+  recreate?: { characterId: string; initial: CreationDraft };
 };
 
-
 const emptyForm = (): FormState => ({
-  name: "", status: "active",
+  name: "", pronouns: [], status: "active",
   species: null, lineage: null, speciesSkills: [], size: null,
   background: null, bonus: {}, bgEquipment: "",
-  klass: null, classSkills: [], classEquipment: "",
+  klass: null, classChoices: {}, classEquipment: "",
   method: "pointBuy", base: { str: 8, dex: 8, con: 8, int: 8, wis: 8, cha: 8 }, rolls: null,
   alignment: "", appearance: "", age: "", backstory: "", languages: "", notes: "", xp: "",
 });
@@ -78,8 +103,6 @@ const defaultBase = (m: AbilityMethod) => (m === "pointBuy" ? 8 : m === "manual"
 const sameRef = (a: Ref | null, b: Ref | null) => !!a && !!b && a.book === b.book && a.key === b.key;
 const findOption = (list: EntryOption[], ref: Ref | null) => (ref ? list.find((o) => sameRef(o.ref, ref)) ?? null : null);
 const nameOf = (e: { nameEs: string | null; name: string }) => e.nameEs ?? e.name;
-// "item:explorer's pack|xphb" → "explorer's pack"
-const bareName = (key: string) => key.replace(/^[^:]*:/, "").split("|")[0];
 const letters = (eq: Equipment | undefined) => Object.keys(eq ?? {}).sort();
 const fmtGold = (copper: number) => `${(copper / 100).toLocaleString("es-ES", { maximumFractionDigits: 2 })} po`;
 
@@ -92,6 +115,8 @@ const S = {
 // ---------- borrador ----------
 
 const draftKeyOf = (systemId: string, campaignId?: string) => `roll2go:new-character:${systemId}:${campaignId ?? "none"}`;
+// Al rehacer, un borrador por personaje (no pisa el de un personaje nuevo)
+const recreateDraftKey = (characterId: string) => `roll2go:recreate-character:${characterId}`;
 const noSubscribe = () => () => {};
 
 function readDraft(key: string): string | null {
@@ -128,8 +153,12 @@ function parseDraft(raw: string | null, props: Props): FormState {
   if (isObj(d.bonus)) {
     for (const a of ABILITIES) if (d.bonus[a] === 1 || d.bonus[a] === 2) form.bonus[a] = d.bonus[a] as number;
   }
-  if (isObj(d.rolls) && Array.isArray(d.rolls.values) && d.rolls.values.every((v) => typeof v === "number") && typeof d.rolls.token === "string")
-    form.rolls = { values: d.rolls.values as number[], token: d.rolls.token };
+  if (isObj(d.rolls) && Array.isArray(d.rolls.values) && d.rolls.values.every((v) => typeof v === "number") && typeof d.rolls.token === "string") {
+    const dice = d.rolls.dice;
+    const validDice = Array.isArray(dice) && dice.every((x) => Array.isArray(x) && x.every((n) => typeof n === "number"));
+    form.rolls = { values: d.rolls.values as number[], token: d.rolls.token, ...(validDice ? { dice: dice as number[][] } : {}) };
+  }
+  form.pronouns = PRONOUNS.map((p) => p.id).filter((id) => strings(d.pronouns).includes(id));
 
   const asRef = (v: unknown): Ref | null =>
     isObj(v) && typeof v.book === "string" && typeof v.key === "string" ? { book: v.book, key: v.key } : null;
@@ -140,32 +169,11 @@ function parseDraft(raw: string | null, props: Props): FormState {
   form.klass = findOption(props.classes, asRef(d.klass))?.ref ?? null;
   form.speciesSkills = form.species ? strings(d.speciesSkills) : [];
   form.size = ["S", "M", "L"].includes(d.size as string) && form.species ? (d.size as Size) : null;
-  form.classSkills = form.klass ? strings(d.classSkills) : [];
+  if (form.klass && isObj(d.classChoices))
+    for (const [source, v] of Object.entries(d.classChoices)) form.classChoices[source] = strings(v);
   if (!form.background) form.bgEquipment = "";
   if (!form.klass) form.classEquipment = "";
   return form;
-}
-
-// ---------- entradas del catálogo pedidas al servidor (descripciones y objetos del equipo) ----------
-
-function useCatalogEntries(refs: Ref[], campaignId: string | null) {
-  // undefined = cargando; null = no disponible
-  const [cache, setCache] = useState<Record<string, CatalogEntry | null>>({});
-  const requested = useRef(new Set<string>());
-  useEffect(() => {
-    const qs = campaignId ? `?campaign=${encodeURIComponent(campaignId)}` : "";
-    for (const ref of refs) {
-      const k = refKey(ref);
-      if (requested.current.has(k)) continue;
-      requested.current.add(k);
-      // Las claves llevan ":" y "|": van codificadas en la dirección
-      fetch(`/api/rules/entries/${encodeURIComponent(ref.book)}/${encodeURIComponent(ref.key)}${qs}`)
-        .then((res) => (res.ok ? res.json() : null))
-        .then((data) => setCache((c) => ({ ...c, [k]: (data?.entry as CatalogEntry | undefined) ?? null })))
-        .catch(() => setCache((c) => ({ ...c, [k]: null })));
-    }
-  }, [refs, campaignId]);
-  return cache;
 }
 
 // Entrada ligera del listado como entrada completa, para `derive` (solo usa `data` y los nombres)
@@ -230,53 +238,14 @@ function EquipmentChoice({
   );
 }
 
-function SkillChecks({
-  name, from, count, value, onChange, locked = {},
-}: {
-  name: string;
-  from: string[];
-  count: number;
-  value: string[];
-  onChange: (skills: string[]) => void;
-  /** Habilidades que ya da otra fuente, con el texto de esa fuente: se muestran desactivadas. */
-  locked?: Record<string, string>;
-}) {
-  const full = value.length >= count;
-  return (
-    <fieldset>
-      <legend className={labelClass}>
-        {name} <span className="font-normal text-muted">· elige {count} ({value.length}/{count})</span>
-      </legend>
-      <div className="grid gap-2 sm:grid-cols-2">
-        {from.map((s) => {
-          const lockedBy = locked[s];
-          const isLocked = lockedBy !== undefined;
-          const checked = value.includes(s);
-          return (
-            <label key={s} className="flex cursor-pointer items-center gap-2 text-sm has-disabled:cursor-not-allowed has-disabled:opacity-50">
-              <input
-                type="checkbox"
-                className="h-4 w-4 accent-brand"
-                checked={checked}
-                disabled={isLocked || (!checked && full)}
-                onChange={() => onChange(checked ? value.filter((x) => x !== s) : [...value, s])}
-              />
-              {skillName(s)}
-              {isLocked && <span className="text-xs text-muted">({lockedBy})</span>}
-            </label>
-          );
-        })}
-      </div>
-    </fieldset>
-  );
-}
-
 // ---------- componente ----------
 
 /* Asistente de creación de personajes de D&D 2024. Se monta en el navegador para poder recuperar el borrador
    de localStorage antes del primer pintado del formulario. */
 export default function CharacterCreator(props: Props) {
-  const draftKey = draftKeyOf(props.systemId, props.campaign?.id);
+  const draftKey = props.recreate
+    ? recreateDraftKey(props.recreate.characterId)
+    : draftKeyOf(props.systemId, props.campaign?.id);
   const draft = useSyncExternalStore(noSubscribe, () => readDraft(draftKey), () => undefined);
   if (draft === undefined)
     return (
@@ -284,11 +253,13 @@ export default function CharacterCreator(props: Props) {
         <LoaderCircle size={16} className="animate-spin" aria-hidden="true" /> Cargando…
       </p>
     );
-  return <CreatorForm {...props} draftKey={draftKey} draft={draft} />;
+  // Al rehacer sin borrador propio, se empieza por la creación actual
+  const start = draft ?? (props.recreate ? JSON.stringify(props.recreate.initial) : null);
+  return <CreatorForm {...props} draftKey={draftKey} draft={start} />;
 }
 
 function CreatorForm(props: Props & { draftKey: string; draft: string | null }) {
-  const { campaign, draftKey } = props;
+  const { campaign, draftKey, recreate } = props;
   const router = useRouter();
   const [form, setForm] = useState<FormState>(() => parseDraft(props.draft, props));
   const [portrait, setPortrait] = useState<File | null>(null);
@@ -297,6 +268,8 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
   const [formError, setFormError] = useState("");
   const [loading, setLoading] = useState(false);
   const [scrollTick, setScrollTick] = useState(0);
+  // Al rehacer, el primer envío pide confirmar que se reinicia el inventario
+  const [confirming, setConfirming] = useState(false);
 
   // Borrador: se guarda en cada cambio (si el navegador no deja, se sigue sin borrador)
   useEffect(() => {
@@ -341,12 +314,14 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
   // Habilidades que ya dan otras fuentes: no se pueden volver a elegir
   const { fixedLocked, classLocked } = useMemo(() => {
     const fixed: Record<string, string> = {};
-    for (const s of speciesData?.skills.fixed ?? []) fixed[s] = "de la especie";
-    for (const s of bgData?.skills ?? []) fixed[s] = "del trasfondo";
+    for (const s of speciesData?.skills.fixed ?? []) fixed[s] = "especie";
+    for (const s of bgData?.skills ?? []) fixed[s] = "trasfondo";
     const forClass: Record<string, string> = { ...fixed };
-    for (const s of form.speciesSkills) forClass[s] ??= "de la especie";
+    for (const s of form.speciesSkills.filter(Boolean)) forClass[s] ??= "especie";
     return { fixedLocked: fixed, classLocked: forClass };
   }, [speciesData, bgData, form.speciesSkills]);
+  const lockedHint = (locked: Record<string, string>) =>
+    Object.entries(locked).map(([s, from]) => `${skillName(s)} (${from})`).join(", ");
 
   // ---- entradas que se piden al servidor ----
   const [cacheRefs, setCacheRefs] = useState<Ref[]>([]);
@@ -359,11 +334,20 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
       ),
     [classData, bgData, cache],
   );
+  // Rasgos de nivel 1 de la clase, sus opciones (Orden divina…) y lo elegido de las listas (para la descripción)
+  const featureRefs = useMemo(() => {
+    const features = (classData?.features ?? []).filter((f) => f.level === 1).map((f) => f.ref);
+    const options = features.flatMap((r) => (cache[refKey(r)]?.data as FeatureData | undefined)?.options ?? []);
+    const picked = Object.values(form.classChoices).flat()
+      .filter((k) => /^[^:]+:(feat|optionalFeature):/.test(k))
+      .map(refFromKey);
+    return [...features, ...options, ...picked];
+  }, [classData, cache, form.classChoices]);
   const wanted = useMemo(() => {
     const list: Ref[] = [];
     for (const r of [form.species, form.lineage, form.background, form.klass, bgData?.feat ?? null]) if (r) list.push(r);
-    return [...list, ...equipmentNeeded];
-  }, [form.species, form.lineage, form.background, form.klass, bgData, equipmentNeeded]);
+    return [...list, ...equipmentNeeded, ...featureRefs];
+  }, [form.species, form.lineage, form.background, form.klass, bgData, equipmentNeeded, featureRefs]);
   // Solo cambia la lista (y se piden entradas) cuando aparece alguna referencia nueva
   const wantedKey = wanted.map(refKey).sort().join("\n");
   const [lastKey, setLastKey] = useState("");
@@ -382,6 +366,12 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
     for (const [k, e] of Object.entries(cache)) if (e) map.set(k, e);
     return map;
   }, [props.species, props.lineages, props.classes, props.backgrounds, cache]);
+
+  // Elecciones de nivel 1 de la clase (las mismas que exige el servidor); las de los rasgos aparecen al cargarlos
+  const pending = useMemo(
+    () => (form.klass ? pendingChoices({ levels: [] }, form.klass, 1, entries) : []),
+    [form.klass, entries],
+  );
 
   // ---- hoja ----
   const filledBase = (): Record<Ability, number | null> => {
@@ -402,7 +392,11 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
         equipment: equipmentLoading ? "" : form.bgEquipment,
       },
       classes: form.klass
-        ? [{ ref: form.klass, name: "", level: 1, subclass: null, skills: form.classSkills, equipment: equipmentLoading ? "" : form.classEquipment }]
+        ? [{
+          ref: form.klass, name: "", level: 1, subclass: null,
+          skills: (form.classChoices[SKILLS_SOURCE] ?? []).filter(Boolean),
+          equipment: equipmentLoading ? "" : form.classEquipment,
+        }]
         : [],
       abilityMethod: form.method,
       baseAbilities: Object.fromEntries(ABILITIES.map((a) => [a, form.base[a] ?? def])) as Record<Ability, number>,
@@ -420,13 +414,13 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
   if (!form.name.trim()) missing.push({ label: "Nombre", href: S.details });
   if (!form.species) missing.push({ label: "Especie", href: S.details });
   if (hasLineages && !form.lineage) missing.push({ label: "Legado", href: S.details });
-  if (speciesData?.skills.choose && form.speciesSkills.length !== speciesData.skills.choose.count)
+  if (speciesData?.skills.choose && form.speciesSkills.filter(Boolean).length !== speciesData.skills.choose.count)
     missing.push({ label: "Habilidades de especie", href: S.details });
   if (speciesData && speciesData.size.length > 1 && !form.size) missing.push({ label: "Tamaño", href: S.details });
   if (!form.klass) missing.push({ label: "Clase", href: S.details });
   if (!form.background) missing.push({ label: "Trasfondo", href: S.background });
   else if (!form.bgEquipment && letters(bgData?.equipment).length) missing.push({ label: "Equipo del trasfondo", href: S.background });
-  if (classData && form.classSkills.length !== classData.skills.count) missing.push({ label: "Habilidades de clase", href: S.klass });
+  for (const p of unfinished(pending, form.classChoices)) missing.push({ label: p.label, href: S.klass });
   if (classData && !form.classEquipment && letters(classData.equipment).length) missing.push({ label: "Equipo de clase", href: S.klass });
   if (Object.values(filledBase()).some((v) => v === null) || !abilitiesValid)
     missing.push({ label: "Puntuaciones de característica", href: S.abilities });
@@ -434,42 +428,57 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
     missing.push({ label: "Bonificación del trasfondo", href: S.abilities });
 
   // ---- cambios con efectos en cadena ----
+  // Errores de las elecciones de clase (se borran juntos al cambiar algo que les afecta)
+  const choiceErrorKeys = () => Object.keys(errors).filter((k) => k.startsWith("levels.0.choices"));
+  // Las habilidades que pasa a dar otra fuente dejan de estar elegidas en las elecciones de clase
+  const withoutSkills = (values: ChoiceValues, skills: string[]): ChoiceValues => {
+    const lower = skills.map((s) => s.toLowerCase());
+    return Object.fromEntries(Object.entries(values).map(([k, v]) => [k, v.map((s) => (lower.includes(s.toLowerCase()) ? "" : s))]));
+  };
+
   function chooseSpecies(ref: Ref | null) {
     if (sameRef(ref, form.species)) return;
     const data = findOption(props.species, ref)?.data as SpeciesData | undefined;
-    // Las habilidades de clase no pueden repetir las fijas de la nueva especie
-    const classSkills = form.classSkills.filter((s) => !data?.skills.fixed.includes(s));
     update(
-      { species: ref, lineage: null, speciesSkills: [], size: null, classSkills },
-      "species", "lineage", "speciesChoices.skills", "speciesChoices.size", "classes.0.skills",
+      { species: ref, lineage: null, speciesSkills: [], size: null, classChoices: withoutSkills(form.classChoices, data?.skills.fixed ?? []) },
+      "species", "lineage", "speciesChoices.skills", "speciesChoices.size", ...choiceErrorKeys(),
     );
   }
   function chooseBackground(ref: Ref | null) {
     if (sameRef(ref, form.background)) return;
     const data = findOption(props.backgrounds, ref)?.data as BackgroundData | undefined;
     // Las habilidades de especie y de clase no pueden repetir las del nuevo trasfondo
-    const speciesSkills = form.speciesSkills.filter((s) => !data?.skills.includes(s));
-    const classSkills = form.classSkills.filter((s) => !data?.skills.includes(s));
+    const skills = data?.skills ?? [];
+    const speciesSkills = form.speciesSkills.map((s) => (skills.includes(s) ? "" : s));
     update(
-      { background: ref, bonus: {}, bgEquipment: "", speciesSkills, classSkills },
-      "background", "background.abilities", "background.equipment", "speciesChoices.skills", "classes.0.skills",
+      { background: ref, bonus: {}, bgEquipment: "", speciesSkills, classChoices: withoutSkills(form.classChoices, skills) },
+      "background", "background.abilities", "background.equipment", "speciesChoices.skills", ...choiceErrorKeys(),
     );
   }
   function chooseSpeciesSkills(skills: string[]) {
     // Una habilidad elegida para la especie deja de estar disponible como habilidad de clase
-    const classSkills = form.classSkills.filter((s) => !skills.includes(s));
-    update({ speciesSkills: skills, classSkills }, "speciesChoices.skills", "classes.0.skills");
+    update(
+      { speciesSkills: skills, classChoices: withoutSkills(form.classChoices, skills.filter(Boolean)) },
+      "speciesChoices.skills", ...choiceErrorKeys(),
+    );
   }
   function chooseClass(ref: Ref | null) {
     if (sameRef(ref, form.klass)) return;
-    update({ klass: ref, classSkills: [], classEquipment: "" }, "classes", "classes.0", "classes.0.level", "classes.0.subclass", "classes.0.skills", "classes.0.equipment");
+    update(
+      { klass: ref, classChoices: {}, classEquipment: "" },
+      "classes", "classes.0", "classes.0.level", "classes.0.subclass", "classes.0.equipment", ...choiceErrorKeys(),
+    );
+  }
+  function chooseClassOption(source: string, value: string[]) {
+    update({ classChoices: { ...form.classChoices, [source]: value } }, "levels.0.choices", `levels.0.choices.${source}`);
   }
 
   async function requestRolls() {
     const res = await fetch("/api/dice/ability-rolls", { method: "POST" });
     const data = await res.json().catch(() => null);
     if (!res.ok || !Array.isArray(data?.values) || typeof data?.token !== "string") throw new Error("tiradas");
-    update({ rolls: { values: data.values, token: data.token } }, "rolls", "baseAbilities");
+    const dice = Array.isArray(data.dice) ? (data.dice as number[][]) : undefined;
+    update({ rolls: { values: data.values, token: data.token, ...(dice ? { dice } : {}) } }, "rolls", "baseAbilities");
   }
 
   // ---- envío ----
@@ -477,6 +486,10 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
     ev.preventDefault();
     if (!abilitiesValid || loading) return;
     setFormError("");
+    if (recreate && !confirming) {
+      setConfirming(true);
+      return;
+    }
 
     const xp = form.xp.trim() === "" ? 0 : Number(form.xp); // NaN viaja como null y el servidor lo rechaza
     const sheet = {
@@ -484,11 +497,16 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
       species: form.species ? { ref: form.species, name: "" } : null,
       lineage: form.lineage ? { ref: form.lineage, name: "" } : null,
       background: form.background ? { ref: form.background, name: "", abilities: form.bonus, equipment: form.bgEquipment } : null,
-      classes: [form.klass ? { ref: form.klass, name: "", level: 1, subclass: null, skills: form.classSkills, equipment: form.classEquipment } : null],
+      classes: [form.klass
+        ? {
+          ref: form.klass, name: "", level: 1, subclass: null, equipment: form.classEquipment,
+          choices: choicesFor(pending, form.classChoices),
+        }
+        : null],
       abilityMethod: form.method,
       baseAbilities: filledBase(),
       rolls: form.method === "roll" ? form.rolls : null,
-      speciesChoices: { skills: form.speciesSkills, size: form.size },
+      speciesChoices: { skills: form.speciesSkills.filter(Boolean), size: form.size },
       alignment: form.alignment,
       appearance: form.appearance,
       age: form.age,
@@ -501,6 +519,7 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
     const fd = new FormData();
     fd.set("system", props.systemId);
     fd.set("name", form.name.trim());
+    fd.set("pronouns", form.pronouns.join(","));
     fd.set("status", form.status);
     fd.set("campaign", campaign?.id ?? "");
     fd.set("books", props.chosenBooks.join(","));
@@ -511,9 +530,12 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
 
     setLoading(true);
     try {
-      const res = await fetch("/api/characters", { method: "POST", body: fd });
+      const res = recreate
+        ? await fetch(`/api/characters/${recreate.characterId}/creation`, { method: "PUT", body: fd })
+        : await fetch("/api/characters", { method: "POST", body: fd });
       const data = await res.json().catch(() => null);
       if (!res.ok) {
+        setConfirming(false);
         if (data?.errors) {
           setErrors(data.errors);
           setScrollTick((t) => t + 1);
@@ -525,9 +547,10 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
       } catch {
         // almacenamiento no disponible
       }
-      router.push(`/characters/${data.id}`);
+      router.push(recreate ? `/characters/${recreate.characterId}?saved=creation` : `/characters/${data.id}`);
       router.refresh();
     } catch {
+      setConfirming(false);
       setFormError("No se pudo conectar con el servidor.");
     } finally {
       setLoading(false);
@@ -535,9 +558,16 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
   }
 
   // Errores sin un campo propio en el formulario: se muestran junto al botón
-  const generalErrors = Object.entries(errors).filter(([k]) => !SHOWN_ERRORS.has(k));
+  // (el legado solo tiene campo si la especie tiene legados; las elecciones de clase, en su sección)
+  // (al rehacer no están las secciones de campaña, imágenes, estado ni información)
+  const shown = (k: string) =>
+    k === "lineage"
+      ? hasLineages
+      : (SHOWN_ERRORS.has(k) && !(recreate && NOT_ON_RECREATE.has(k))) || k.startsWith("levels.0.choices");
+  const generalErrors = Object.entries(errors).filter(([k]) => !shown(k));
   const errorCount = Object.keys(errors).length;
-  const ClassIcon = form.klass ? CLASS_ICONS[bareName(form.klass.key)] : undefined;
+  const classIdentifier = form.klass ? (cache[refKey(form.klass)]?.identifier || bareName(form.klass.key)) : null;
+  const speciesIdentifier = form.species ? (cache[refKey(form.species)]?.identifier || bareName(form.species.key)) : "";
   const section = (i: number) => ({ className: `${card} animate-fade-up scroll-mt-24`, style: { animationDelay: `${i * 50}ms` } });
 
   return (
@@ -549,14 +579,26 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
           <div className="space-y-5">
             <div>
               <label htmlFor="name" className={labelClass}>Nombre *</label>
-              <input
-                id="name"
-                className={field}
-                maxLength={LIMITS.name}
-                value={form.name}
-                onChange={(e) => update({ name: e.target.value }, "name")}
-              />
+              <div className="flex flex-wrap items-start gap-2">
+                <input
+                  id="name"
+                  className={`${field} min-w-0 flex-1`}
+                  maxLength={LIMITS.name}
+                  value={form.name}
+                  onChange={(e) => update({ name: e.target.value }, "name")}
+                />
+                <NameGeneratorButton
+                  species={speciesIdentifier}
+                  pronouns={form.pronouns}
+                  onName={(name) => update({ name }, "name")}
+                />
+              </div>
               <FieldError errors={errors} keys={["name"]} />
+            </div>
+
+            <div>
+              <PronounsField value={form.pronouns} onChange={(pronouns) => update({ pronouns }, "pronouns")} />
+              <FieldError errors={errors} keys={["pronouns"]} />
             </div>
 
             <div>
@@ -565,35 +607,32 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
               {form.species && <Description entry={cache[refKey(form.species)]} />}
             </div>
 
-            <div>
-              <RuleSelect
-                id="lineage"
-                label="Legado"
-                options={lineageOptions}
-                value={form.lineage}
-                onChange={(ref) => update({ lineage: ref }, "lineage")}
-                disabled={!hasLineages}
-                placeholder={
-                  !form.species || hasLineages
-                    ? "Selecciona una opción"
-                    : speciesData?.hasLineages
-                      ? "No hay legados disponibles con los libros elegidos"
-                      : "Esta especie no tiene legados"
-                }
-              />
-              <FieldError errors={errors} keys={["lineage"]} />
-              {form.lineage && <Description entry={cache[refKey(form.lineage)]} />}
-            </div>
+            {hasLineages && (
+              <div className="animate-fade-in">
+                <RuleSelect
+                  id="lineage"
+                  label="Legado"
+                  options={lineageOptions}
+                  value={form.lineage}
+                  onChange={(ref) => update({ lineage: ref }, "lineage")}
+                />
+                <FieldError errors={errors} keys={["lineage"]} />
+                {form.lineage && <Description entry={cache[refKey(form.lineage)]} />}
+              </div>
+            )}
 
             {speciesData?.skills.choose && (
               <div>
-                <SkillChecks
-                  name="Habilidades de especie"
-                  from={speciesData.skills.choose.from}
+                <SkillPicker
+                  id="species-skills"
+                  label="Habilidades de especie"
                   count={speciesData.skills.choose.count}
+                  options={speciesData.skills.choose.from
+                    .filter((s) => fixedLocked[s] === undefined)
+                    .map((s) => ({ id: s, label: skillName(s) }))}
                   value={form.speciesSkills}
                   onChange={chooseSpeciesSkills}
-                  locked={fixedLocked}
+                  hint={Object.keys(fixedLocked).length ? `Ya tienes: ${lockedHint(fixedLocked)}.` : undefined}
                 />
                 <FieldError errors={errors} keys={["speciesChoices.skills"]} />
               </div>
@@ -618,31 +657,35 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
             <div>
               <div className="flex items-end gap-3">
                 <div className="min-w-0 flex-1">
-                  <RuleSelect id="class" label="Clase de nivel 1" options={props.classes} value={form.klass} onChange={chooseClass} />
+                  <RuleSelect id="class" label="Escoger clase inicial" options={props.classes} value={form.klass} onChange={chooseClass} />
                 </div>
-                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-line bg-surface text-brand-soft" aria-hidden="true">
-                  {ClassIcon ? <ClassIcon size={26} /> : null}
-                </span>
+                <ClassBadge identifier={classIdentifier} size={46} />
               </div>
               <FieldError errors={errors} keys={["classes", "classes.0", "classes.0.level", "classes.0.subclass"]} />
               {form.klass && <Description entry={cache[refKey(form.klass)]} />}
             </div>
 
-            <div>
-              <label htmlFor="campaign" className={labelClass}>Campaña</label>
-              <input id="campaign" className={field} value={campaign?.name ?? "Sin campaña"} readOnly disabled />
-              <FieldError errors={errors} keys={["campaign"]} />
-            </div>
+            {!recreate && (
+              <>
+                <div>
+                  <label htmlFor="campaign" className={labelClass}>Campaña</label>
+                  <input id="campaign" className={field} value={campaign?.name ?? "Sin campaña"} readOnly disabled />
+                  <FieldError errors={errors} keys={["campaign"]} />
+                </div>
 
-            <ImageFields errors={errors} onPortrait={setPortrait} onImage={setImage} />
+                <ImageFields errors={errors} onPortrait={setPortrait} onImage={setImage} />
+              </>
+            )}
           </div>
         </section>
 
         {/* 2. Estado */}
-        <section id="estado" {...section(1)}>
-          <h2 className={cardTitle}>Estado</h2>
-          <StatusField value={form.status} onChange={(status) => update({ status }, "status")} errors={errors} />
-        </section>
+        {!recreate && (
+          <section id="estado" {...section(1)}>
+            <h2 className={cardTitle}>Estado</h2>
+            <StatusField value={form.status} onChange={(status) => update({ status }, "status")} errors={errors} />
+          </section>
+        )}
 
         {/* 3. Trasfondo */}
         <section id="trasfondo" {...section(2)}>
@@ -682,20 +725,24 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
 
         {/* 4. Clase */}
         <section id="clase" {...section(3)}>
-          <h2 className={cardTitle}>Clase</h2>
+          <h2 className={cardTitle}>Rasgos de clase</h2>
           {!classData ? (
             <p className="text-sm text-muted">
               Elige una clase en <a href={S.details} className="text-brand-soft hover:underline">Detalles</a>.
             </p>
           ) : (
             <div className="space-y-5">
-              <SkillChecks
-                name="Habilidades de clase"
-                from={classData.skills.from}
-                count={classData.skills.count}
-                value={form.classSkills}
-                onChange={(skills) => update({ classSkills: skills }, "classes.0.skills")}
-                locked={classLocked}
+              <ClassFeaturesSection
+                classData={classData}
+                pending={pending}
+                values={form.classChoices}
+                onChange={chooseClassOption}
+                cache={cache}
+                takenSkills={classLocked}
+                feats={props.feats}
+                optionalFeatures={props.optionalFeatures}
+                weapons={props.weapons}
+                errors={errors}
               />
               <div>
                 <h3 className="mb-2 text-sm font-semibold">Equipo inicial</h3>
@@ -709,7 +756,7 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
               </div>
             </div>
           )}
-          <FieldError errors={errors} keys={["classes.0.skills", "classes.0.equipment"]} />
+          <FieldError errors={errors} keys={["classes.0.equipment"]} />
         </section>
 
         {/* 5. Puntuaciones de característica */}
@@ -719,6 +766,7 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
             method={form.method}
             base={form.base}
             rolls={form.rolls?.values ?? null}
+            rollDice={form.rolls?.dice ?? null}
             backgroundAbilities={bgData?.abilities ?? []}
             backgroundBonus={form.bonus}
             onChange={(n) =>
@@ -731,10 +779,12 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
         </section>
 
         {/* 6. Información */}
-        <section id="informacion" {...section(5)}>
-          <h2 className={cardTitle}>Información</h2>
-          <InfoFields values={form} errors={errors} onChange={update} />
-        </section>
+        {!recreate && (
+          <section id="informacion" {...section(5)}>
+            <h2 className={cardTitle}>Información</h2>
+            <InfoFields values={form} errors={errors} onChange={update} />
+          </section>
+        )}
 
         <div className="flex flex-wrap items-center justify-end gap-3">
           {generalErrors.map(([k, msg]) => (
@@ -742,9 +792,19 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
           ))}
           {formError && <p className={errorClass} role="alert">{formError}</p>}
           {!abilitiesValid && <p className="text-sm text-brand-soft">Ninguna característica puede superar 20.</p>}
+          {confirming && (
+            <p role="alert" className="flex animate-fade-in items-center gap-2 text-sm text-brand-soft">
+              <TriangleAlert size={16} aria-hidden="true" /> Se reiniciará el inventario con el equipo inicial elegido.
+            </p>
+          )}
+          {confirming && (
+            <button type="button" onClick={() => setConfirming(false)} disabled={loading} className="text-sm text-muted hover:text-white disabled:opacity-50">
+              Cancelar
+            </button>
+          )}
           <button type="submit" disabled={loading || !abilitiesValid} className={primaryButton}>
             {loading && <LoaderCircle size={16} className="animate-spin" aria-hidden="true" />}
-            Crear personaje
+            {!recreate ? "Crear personaje" : confirming ? "Sí, rehacer" : "Rehacer creación"}
             {errorCount > 0 && (
               <span className="rounded-full bg-white/20 px-2 text-xs">
                 {errorCount} {errorCount === 1 ? "problema" : "problemas"}
@@ -772,7 +832,12 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
 const SHOWN_ERRORS = new Set([
   "name", "species", "lineage", "speciesChoices.skills", "speciesChoices.size",
   "classes", "classes.0", "classes.0.level", "classes.0.subclass", "campaign", "portrait", "image",
-  "status", "background", "background.equipment", "classes.0.skills", "classes.0.equipment",
+  "status", "pronouns", "background", "background.equipment", "classes.0.equipment",
   "abilityMethod", "baseAbilities", "rolls", "background.abilities",
   "alignment", "age", "xp", "appearance", "backstory", "languages", "notes",
+]);
+
+// Campos que no aparecen al rehacer la creación
+const NOT_ON_RECREATE = new Set([
+  "campaign", "portrait", "image", "status", "alignment", "age", "xp", "appearance", "backstory", "languages", "notes",
 ]);

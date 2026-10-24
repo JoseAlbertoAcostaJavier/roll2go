@@ -18,6 +18,7 @@ type Input = {
   actor?: string;
   campaign?: string;
   post?: string;
+  character?: string;
   text?: string;
   quote?: string; // solo para el correo: el texto del mensaje recibido (no se guarda en la notificación)
 };
@@ -83,6 +84,7 @@ export async function notify(input: Input) {
     actor: input.actor,
     campaign: input.campaign,
     post: input.post,
+    character: input.character,
     text: input.text,
   });
 
@@ -104,7 +106,7 @@ export async function notify(input: Input) {
       : null,
   ]);
   const { text, href } = describeNotification(
-    { type: input.type, text: input.text, post: input.post },
+    { type: input.type, text: input.text, post: input.post, character: input.character },
     actor
       ? {
           username: actor.username,

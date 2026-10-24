@@ -87,3 +87,18 @@ Estos sí están en `es.json`, pero el nombre solo sale de una reseña (Espada y
 | subclass:clockwork sorcery\|sorcerer\|xphb | Clockwork Sorcery | Hechicería mecánica | verificar |
 | subclass:battle master\|fighter\|xphb | Battle Master | Maestro del combate | verificar |
 | subclass:beast master\|ranger\|xphb | Beast Master | Señor de las bestias | verificar |
+
+## Propiedades de maestría de las armas
+
+Están en `MASTERY_NAMES` de `lib/rules/dnd2024/labels.ts` (no en `es.json`). Se usan los nombres del plan; no se pudieron comprobar contra el SRD 5.2.1 en español.
+
+| id | nombre inglés | en uso | duda |
+| --- | --- | --- | --- |
+| cleave | Cleave | Hendir | Sin confirmar |
+| graze | Graze | Rozar | Sin confirmar |
+| nick | Nick | Mellar | Sin confirmar |
+| push | Push | Empujar | Sin confirmar |
+| sap | Sap | Debilitar | Sin confirmar |
+| slow | Slow | Ralentizar | Sin confirmar |
+| topple | Topple | Derribar | Sin confirmar |
+| vex | Vex | Vejar | Antes «Incordiar»; sin confirmar cuál usa la edición española |

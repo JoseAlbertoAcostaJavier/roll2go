@@ -5,26 +5,38 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { LoaderCircle } from "lucide-react";
 import { card, cardTitle, errorClass, field, labelClass, primaryButton } from "@/app/components/formStyles";
+import type { Pronoun } from "@/lib/rules/dnd2024/names";
+import NameGeneratorButton from "./NameGeneratorButton";
 import FieldError from "./fields/FieldError";
 import ImageFields from "./fields/ImageFields";
 import InfoFields, { type InfoValues } from "./fields/InfoFields";
+import PronounsField from "./fields/PronounsField";
 import StatusField from "./fields/StatusField";
 import { LIMITS, type Status } from "./fields/constants";
 
 type Initial = InfoValues & {
   name: string;
+  pronouns: Pronoun[];
   status: Status;
   portraitUrl: string | null;
   imageUrl: string | null;
 };
 
 // Errores con campo propio en el formulario; el resto va junto al botón de guardar
-const SHOWN_ERRORS = new Set(["name", "status", "portrait", "image", "alignment", "age", "xp", "appearance", "backstory", "languages", "notes"]);
+const SHOWN_ERRORS = new Set(["name", "pronouns", "status", "portrait", "image", "alignment", "age", "xp", "appearance", "backstory", "languages", "notes"]);
 
-/* Edición de los datos del personaje: nombre, estado, imágenes y los campos de información. */
-export default function CharacterEditForm({ characterId, initial }: { characterId: string; initial: Initial }) {
+/* Edición de los datos del personaje: nombre, pronombres, estado, imágenes y los campos de información.
+   `speciesIdentifier` es la especie para el generador de nombres. */
+export default function CharacterEditForm({
+  characterId, speciesIdentifier, initial,
+}: {
+  characterId: string;
+  speciesIdentifier: string;
+  initial: Initial;
+}) {
   const router = useRouter();
   const [name, setName] = useState(initial.name);
+  const [pronouns, setPronouns] = useState<Pronoun[]>(initial.pronouns);
   const [status, setStatus] = useState<Status>(initial.status);
   const [info, setInfo] = useState<InfoValues>({
     alignment: initial.alignment, age: initial.age, xp: initial.xp,
@@ -62,6 +74,7 @@ export default function CharacterEditForm({ characterId, initial }: { characterI
 
     const fd = new FormData();
     fd.set("name", name.trim());
+    fd.set("pronouns", pronouns.join(","));
     fd.set("status", status);
     for (const [k, v] of Object.entries(info)) fd.set(k, k === "xp" && v.trim() === "" ? "0" : v);
     if (portrait) fd.set("portrait", portrait);
@@ -99,17 +112,37 @@ export default function CharacterEditForm({ characterId, initial }: { characterI
         <div className="space-y-5">
           <div>
             <label htmlFor="name" className={labelClass}>Nombre *</label>
-            <input
-              id="name"
-              className={field}
-              maxLength={LIMITS.name}
-              value={name}
-              onChange={(e) => {
-                setName(e.target.value);
-                clearErrors(["name"]);
+            <div className="flex flex-wrap items-start gap-2">
+              <input
+                id="name"
+                className={`${field} min-w-0 flex-1`}
+                maxLength={LIMITS.name}
+                value={name}
+                onChange={(e) => {
+                  setName(e.target.value);
+                  clearErrors(["name"]);
+                }}
+              />
+              <NameGeneratorButton
+                species={speciesIdentifier}
+                pronouns={pronouns}
+                onName={(n) => {
+                  setName(n);
+                  clearErrors(["name"]);
+                }}
+              />
+            </div>
+            <FieldError errors={errors} keys={["name"]} />
+          </div>
+          <div>
+            <PronounsField
+              value={pronouns}
+              onChange={(p) => {
+                setPronouns(p);
+                clearErrors(["pronouns"]);
               }}
             />
-            <FieldError errors={errors} keys={["name"]} />
+            <FieldError errors={errors} keys={["pronouns"]} />
           </div>
           <ImageFields
             errors={errors}

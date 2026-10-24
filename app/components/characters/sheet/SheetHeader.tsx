@@ -2,15 +2,20 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ChevronLeft, CircleCheck, Pencil, Printer, User as UserIcon, X } from "lucide-react";
+import { ChevronLeft, ChevronsUp, CircleCheck, Pencil, Printer, User as UserIcon, X } from "lucide-react";
+import DeleteLevel from "../levelup/DeleteLevel";
 import StatusBadge, { type CharacterStatus } from "./StatusBadge";
 
+// Nivel total máximo (como MAX_LEVEL del servidor)
+const MAX_LEVEL = 20;
 const secondaryButton =
   "flex items-center gap-2 rounded-md border border-line px-3 py-2 text-sm font-semibold transition-colors hover:border-brand hover:text-white";
 
 export type SheetHeaderProps = {
   id: string;
   name: string;
+  /** «Él/Elle»; vacío si no los indica. */
+  pronouns: string;
   portraitUrl: string | null;
   status: CharacterStatus;
   /** «Especie (Legado) Clase N / Clase M». */
@@ -18,7 +23,7 @@ export type SheetHeaderProps = {
   level: number;
   campaign: { id: string; name: string } | null;
   isOwner: boolean;
-  /** Aviso tras volver de una acción (`?saved=1`). */
+  /** Aviso tras volver de una acción (`?saved=…`). */
   notice: string | null;
   backHref: string;
 };
@@ -79,7 +84,10 @@ export default function SheetHeader(p: SheetHeaderProps) {
             <StatusBadge status={p.status} isOwner={p.isOwner} />
           </div>
           <div className="min-w-0">
-            <h1 className="break-words font-heading text-3xl font-extrabold">{p.name}</h1>
+            <h1 className="break-words font-heading text-3xl font-extrabold">
+              {p.name}
+              {p.pronouns && <span className="ml-2 align-middle font-body text-base font-normal text-muted">({p.pronouns})</span>}
+            </h1>
             {p.summary && <p className="text-muted">{p.summary}</p>}
             <p className="mt-1 flex flex-wrap items-center gap-x-3 text-sm">
               {p.campaign ? (
@@ -95,8 +103,17 @@ export default function SheetHeader(p: SheetHeaderProps) {
         </div>
 
         <div className="flex flex-wrap items-center gap-2 print:hidden">
-          {/* «Subir de nivel» (solo dueño, oculto a nivel 20) vuelve con la página /characters/[id]/level-up, en el
-              plan de la parte 4 (spec §3.2); hasta entonces no se muestra para no enlazar a un 404 */}
+          {p.isOwner && p.level < MAX_LEVEL && (
+            <Link
+              href={`/characters/${p.id}/level-up`}
+              className="flex items-center gap-2 rounded-md bg-brand px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand-hover"
+            >
+              <ChevronsUp size={16} aria-hidden="true" /> Subir de nivel
+            </Link>
+          )}
+          {p.isOwner && p.level >= 2 && (
+            <DeleteLevel characterId={p.id} level={p.level} redirectTo={`/characters/${p.id}?saved=level-deleted`} />
+          )}
           {p.isOwner && (
             <Link href={`/characters/${p.id}/edit`} className={secondaryButton}>
               <Pencil size={16} aria-hidden="true" /> Editar

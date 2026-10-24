@@ -1,0 +1,370 @@
+{
+	"name": [
+		{
+			"name": "Dwarf",
+			"source": "XGE",
+			"page": 176,
+			"tables": [
+				{
+					"option": "Female",
+					"diceExpression": "d100",
+					"table": [
+						{
+							"min": 1,
+							"max": 2,
+							"result": "Anbera"
+						},
+						{
+							"min": 3,
+							"max": 4,
+							"result": "Artin"
+						},
+						{
+							"min": 5,
+							"max": 6,
+							"result": "Audhild"
+						},
+						{
+							"min": 7,
+							"max": 8,
+							"result": "Balifra"
+						}
+					]
+				},
+				{
+					"option": "Male",
+					"diceExpression": "d100",
+					"table": [
+						{
+							"min": 1,
+							"max": 2,
+							"result": "Adrik"
+						},
+						{
+							"min": 3,
+							"max": 4,
+							"result": "Alberich"
+						},
+						{
+							"min": 5,
+							"max": 6,
+							"result": "Baern"
+						},
+						{
+							"min": 7,
+							"max": 8,
+							"result": "Barendd"
+						}
+					]
+				},
+				{
+					"option": "Clan",
+					"diceExpression": "d100",
+					"table": [
+						{
+							"min": 1,
+							"max": 2,
+							"result": "Aranore"
+						},
+						{
+							"min": 3,
+							"max": 4,
+							"result": "Balderk"
+						},
+						{
+							"min": 5,
+							"max": 6,
+							"result": "Battlehammer"
+						},
+						{
+							"min": 7,
+							"max": 8,
+							"result": "Bigtoe"
+						}
+					]
+				},
+				{
+					"option": "Duergar Clan",
+					"diceExpression": "d12",
+					"table": [
+						{
+							"min": 1,
+							"max": 1,
+							"result": "Ashlord"
+						},
+						{
+							"min": 2,
+							"max": 2,
+							"result": "Battlegore"
+						},
+						{
+							"min": 3,
+							"max": 3,
+							"result": "Doomfist"
+						},
+						{
+							"min": 4,
+							"max": 4,
+							"result": "Earthlord"
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "Elf",
+			"source": "XGE",
+			"page": 176,
+			"tables": [
+				{
+					"option": "Child",
+					"diceExpression": "d100",
+					"table": [
+						{
+							"min": 1,
+							"max": 2,
+							"result": "Ael"
+						},
+						{
+							"min": 3,
+							"max": 4,
+							"result": "Ang"
+						},
+						{
+							"min": 5,
+							"max": 6,
+							"result": "Ara"
+						},
+						{
+							"min": 7,
+							"max": 8,
+							"result": "Ari"
+						}
+					]
+				},
+				{
+					"option": "Female Adult",
+					"diceExpression": "d100",
+					"table": [
+						{
+							"min": 1,
+							"max": 2,
+							"result": "Adrie"
+						},
+						{
+							"min": 3,
+							"max": 4,
+							"result": "Ahinar"
+						},
+						{
+							"min": 5,
+							"max": 6,
+							"result": "Althaea"
+						},
+						{
+							"min": 7,
+							"max": 8,
+							"result": "Anastrianna"
+						}
+					]
+				},
+				{
+					"option": "Male Adult",
+					"diceExpression": "d100",
+					"table": [
+						{
+							"min": 1,
+							"max": 2,
+							"result": "Adran"
+						},
+						{
+							"min": 3,
+							"max": 4,
+							"result": "Aelar"
+						},
+						{
+							"min": 5,
+							"max": 6,
+							"result": "Aerdeth"
+						},
+						{
+							"min": 7,
+							"max": 8,
+							"result": "Ahvain"
+						}
+					]
+				},
+				{
+					"option": "Family",
+					"diceExpression": "d100",
+					"table": [
+						{
+							"min": 1,
+							"max": 2,
+							"result": "Aloro"
+						},
+						{
+							"min": 3,
+							"max": 4,
+							"result": "Amakiir"
+						},
+						{
+							"min": 5,
+							"max": 6,
+							"result": "Amastacia"
+						},
+						{
+							"min": 7,
+							"max": 8,
+							"result": "Ariessus"
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "Gith",
+			"source": "MTF",
+			"page": 97,
+			"tables": [
+				{
+					"option": "Githyanki, Male",
+					"diceExpression": "d10",
+					"table": [
+						{
+							"min": 1,
+							"max": 1,
+							"result": "Elirdain"
+						},
+						{
+							"min": 2,
+							"max": 2,
+							"result": "Gaath"
+						},
+						{
+							"min": 3,
+							"max": 3,
+							"result": "Ja'adoc"
+						},
+						{
+							"min": 4,
+							"max": 4,
+							"result": "Kar'i'nas"
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "Human",
+			"source": "XGE",
+			"page": 181,
+			"tables": [
+				{
+					"option": "Arabic, Female",
+					"diceExpression": "d100",
+					"table": [
+						{
+							"min": 1,
+							"max": 2,
+							"result": "Aaliyah"
+						},
+						{
+							"min": 3,
+							"max": 4,
+							"result": "Aida"
+						},
+						{
+							"min": 5,
+							"max": 6,
+							"result": "Akilah"
+						},
+						{
+							"min": 7,
+							"max": 8,
+							"result": "Alia"
+						}
+					]
+				},
+				{
+					"option": "Arabic, Male",
+					"diceExpression": "d100",
+					"table": [
+						{
+							"min": 1,
+							"max": 2,
+							"result": "Abbad"
+						},
+						{
+							"min": 3,
+							"max": 4,
+							"result": "Abdul"
+						},
+						{
+							"min": 5,
+							"max": 6,
+							"result": "Achmed"
+						},
+						{
+							"min": 7,
+							"max": 8,
+							"result": "Akeem"
+						}
+					]
+				},
+				{
+					"option": "Celtic, Female",
+					"diceExpression": "d100",
+					"table": [
+						{
+							"min": 1,
+							"max": 2,
+							"result": "Aife"
+						},
+						{
+							"min": 3,
+							"max": 4,
+							"result": "Aina"
+						},
+						{
+							"min": 5,
+							"max": 6,
+							"result": "Alane"
+						},
+						{
+							"min": 7,
+							"max": 8,
+							"result": "Ardena"
+						}
+					]
+				},
+				{
+					"option": "Celtic, Male",
+					"diceExpression": "d100",
+					"table": [
+						{
+							"min": 1,
+							"max": 2,
+							"result": "Airell"
+						},
+						{
+							"min": 3,
+							"max": 4,
+							"result": "Airic"
+						},
+						{
+							"min": 5,
+							"max": 6,
+							"result": "Alan"
+						},
+						{
+							"min": 7,
+							"max": 8,
+							"result": "Anghus"
+						}
+					]
+				}
+			]
+		}
+	]
+}

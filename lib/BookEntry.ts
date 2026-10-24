@@ -15,6 +15,8 @@ export const ENTRY_KINDS: readonly EntryKind[] = [
   "item",
   "language",
   "skill",
+  "optionalFeature",
+  "nameTable",
 ];
 export type { EntryKind };
 

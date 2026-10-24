@@ -6,9 +6,10 @@ import { BookEntry } from "@/lib/BookEntry";
 import { Campaign } from "@/lib/Campaign";
 import { escapeRegex } from "@/lib/utils";
 import { visibleBooksOf } from "@/lib/rules/books";
+import { isMasteryWeapon } from "@/lib/rules/dnd2024/masteries";
 import { pickBooks } from "@/lib/rules/pickBooks";
 import { normalizeName, validateEntryData } from "@/lib/rules/schemas";
-import type { EntryKind, Ref } from "@/lib/rules/types";
+import type { EntryKind, ItemData, Ref } from "@/lib/rules/types";
 
 export { pickBooks };
 
@@ -40,7 +41,8 @@ export type CatalogEntry = EntryOption & {
 const MAX_RESULTS = 200;
 const CACHE_SECONDS = 3600;
 // Solo estos tipos devuelven `data` en el listado; el resto lo omite para aligerar la respuesta
-const KINDS_WITH_DATA: readonly EntryKind[] = ["species", "lineage", "class", "background"];
+// (las dotes y los rasgos opcionales, para filtrarlos por categoría en las elecciones de clase)
+const KINDS_WITH_DATA: readonly EntryKind[] = ["species", "lineage", "class", "background", "feat", "optionalFeature"];
 
 /* Libros que el usuario puede usar para crear un personaje:
    visibles (oficiales públicos del sistema + propios) ∩ campaña ∩ elegidos. */
@@ -130,6 +132,38 @@ export async function listEntries(opts: {
     .flatMap((l) => l.entries)
     .sort((a, b) => (a.sort < b.sort ? -1 : a.sort > b.sort ? 1 : 0))
     .slice(0, MAX_RESULTS)
+    .map((e) => e.option);
+}
+
+/* Armas con propiedad de maestría de un libro (con `data`), para elegir maestrías. Misma caché que el listado. */
+function listBookMasteryWeapons(bookId: string) {
+  return unstable_cache(
+    async (): Promise<Cached> => {
+      await connectDB();
+      const book = await Book.findById(bookId).select("name").lean();
+      if (!book) return { entries: [] };
+      const docs = (await BookEntry.find({ book: bookId, kind: "item", "data.weapon.mastery": { $exists: true } })
+        .select("-description -descriptionEs -foundry")
+        .sort({ nameLower: 1 })
+        .lean()) as unknown as EntryDoc[];
+      return {
+        entries: docs
+          .filter((d) => validateEntryData("item", d.data).ok && isMasteryWeapon(d.data as ItemData))
+          .map((d) => ({ sort: d.nameLower, option: toOption(d, book.name, true) })),
+      };
+    },
+    ["rules-mastery-weapons", bookId],
+    { tags: [`book:${bookId}`], revalidate: CACHE_SECONDS },
+  )();
+}
+
+/** Armas con propiedad de maestría de los libros dados, ordenadas por nombre. */
+export async function listMasteryWeapons(books: string[]): Promise<EntryOption[]> {
+  const ids = [...new Set(books)].filter((id) => mongoose.isValidObjectId(id)).sort();
+  const lists = await Promise.all(ids.map(listBookMasteryWeapons));
+  return lists
+    .flatMap((l) => l.entries)
+    .sort((a, b) => (a.sort < b.sort ? -1 : a.sort > b.sort ? 1 : 0))
     .map((e) => e.option);
 }
 
