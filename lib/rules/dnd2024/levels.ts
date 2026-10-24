@@ -17,8 +17,9 @@ import { SKILLS_SOURCE, SUBCLASS_SOURCE, summarizeClasses } from "./upgrade";
  * `classFeature:…`, `progression:metamagic|sorcerer|xphb`, `class:skills`, `class:subclass`, `multiclass:ranger|xphb`.
  * `from`: habilidades permitidas o nombres de las opciones escritas a mano; `options`: opciones del catálogo;
  * `category`: categorías de dote (`FS`, `EB`, `G`); `featureType`: tipo de rasgo opcional (`MM`, `EI`…);
- * `optionalReplace`: además puede sustituir uno de los rasgos opcionales (o el estilo de combate) que ya tiene; con
- * `count: 0`, el nivel solo permite esa sustitución. `spells`: en la elección de conjuros, la clase (o subclase
+ * `optionalReplace`: además puede sustituir uno de los rasgos opcionales (o el estilo de combate) que ya tiene (en la
+ * elección de conjuros, un conjuro aprendido); `optionalReplaceCantrip`: en la elección de conjuros, un truco; con
+ * `count: 0`, el nivel solo permite esas sustituciones. `spells`: en la elección de conjuros, la clase (o subclase
  * lanzadora), su modo, su lista (`SpellData.classes`), cuántos trucos y conjuros nuevos (aprendidos o entradas del
  * libro) y su nivel máximo; `count` es la suma.
  */
@@ -32,6 +33,7 @@ export type PendingChoice = {
   featureType?: string[];
   label: string;
   optionalReplace?: boolean;
+  optionalReplaceCantrip?: boolean;
   spells?: SpellsPending;
 };
 
@@ -191,7 +193,7 @@ export function pendingChoices(
 
   // 8. Conjuros de la clase o, si no lanza, de su subclase lanzadora (Caballero arcano…): trucos nuevos, conjuros
   // aprendidos (`levelUp`) o entradas del libro (`spellbook`); al subir un nivel que no es el primero, puede
-  // sustituir un truco o (en `levelUp`) un conjuro aprendido
+  // sustituir un truco y (en `levelUp`) un conjuro aprendido
   const caster = data.spellcasting
     ? { ref: classRef, casting: data.spellcasting, progressions: data.progressions }
     : subData?.spellcasting && subclass
@@ -205,9 +207,9 @@ export function pendingChoices(
     const spells = mode === "levelUp" ? gained(caster.progressions.prepared)
       : mode === "spellbook" ? at((caster.progressions as Partial<ClassData["progressions"]>).spellbook, newClassLevel)
       : 0;
-    const replace = at(caster.progressions.cantrips, newClassLevel - 1) > 0
-      || (mode === "levelUp" && at(caster.progressions.prepared, newClassLevel - 1) > 0);
-    if (cantrips + spells > 0 || replace) {
+    const replaceCantrip = at(caster.progressions.cantrips, newClassLevel - 1) > 0;
+    const replace = mode === "levelUp" && at(caster.progressions.prepared, newClassLevel - 1) > 0;
+    if (cantrips + spells > 0 || replace || replaceCantrip) {
       out.push({
         type: "spells", source: spellsSource(caster.ref), count: cantrips + spells, label: "Conjuros",
         spells: {
@@ -215,6 +217,7 @@ export function pendingChoices(
           cantrips, spells, maxLevel: maxSpellLevel(progression, newClassLevel),
         },
         ...(replace ? { optionalReplace: true } : {}),
+        ...(replaceCantrip ? { optionalReplaceCantrip: true } : {}),
       });
     }
   }

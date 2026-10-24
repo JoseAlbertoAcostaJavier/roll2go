@@ -546,7 +546,7 @@ export async function checkChoices(
       }
       out.push({ type: "weaponMastery", source: p.source, value: weapons });
     } else if (p.type === "spells" && p.spells) {
-      const r = await checkSpells(p.spells, !!p.optionalReplace, value, ctx, load);
+      const r = await checkSpells(p, p.spells, value, ctx, load);
       if ("error" in r) { bad(r.error); continue; }
       out.push({ type: "spells", source: p.source, value: r.value });
     } else {
@@ -557,9 +557,10 @@ export async function checkChoices(
 }
 
 // Elección de conjuros (spec de conjuros §2.4): exactamente los trucos y conjuros nuevos que pide el nivel, de la
-// lista de la clase y de nivel permitido, sin repetir los que ya tiene; y como mucho una sustitución del mismo tipo
+// lista de la clase y de nivel permitido, sin repetir los que ya tiene; y, si el nivel lo permite, sustituir un
+// conjuro aprendido (`replace`) y un truco (`replaceCantrip`) por otro del mismo tipo
 async function checkSpells(
-  p: NonNullable<PendingChoice["spells"]>, canReplace: boolean, raw: unknown, ctx: ChoicesCtx,
+  pending: PendingChoice, p: NonNullable<PendingChoice["spells"]>, raw: unknown, ctx: ChoicesCtx,
   load: (v: unknown, kind: string) => Promise<CatalogEntry | null>,
 ): Promise<{ error: string } | { value: SpellChoice }> {
   if (!isObj(raw)) return { error: "elige los conjuros." };
@@ -599,21 +600,26 @@ async function checkSpells(
   if (new Set(chosen.map((e) => refKey(e.ref))).size !== chosen.length) return { error: "conjuro repetido." };
 
   const value: SpellChoice = { class: p.class, cantrips: cantrips.map(toNamed), spells: spells.map(toNamed) };
-  if (raw.replace !== undefined) {
-    if (!canReplace || !isObj(raw.replace)) return { error: "no puedes sustituir conjuros en este nivel." };
-    const outRef = asRef(raw.replace.out);
-    // Sale un truco o, en modo `levelUp`, un conjuro aprendido (nunca uno del libro del Mago)
-    const outCantrip = outRef ? held.cantrips.find((h) => refKey(h.ref) === refKey(outRef)) : undefined;
-    const outSpell = outRef && p.mode === "levelUp" ? held.spells.find((h) => refKey(h.ref) === refKey(outRef)) : undefined;
-    const out = outCantrip ?? outSpell;
-    if (!out) return { error: "solo puedes sustituir un truco o un conjuro que ya conoces." };
-    const inEntry = await load(raw.replace.in, "spell");
+  // Sustituciones: un conjuro aprendido (solo `levelUp`: nunca sale uno del libro del Mago) y un truco
+  const swaps = [
+    { field: "replace", cantrip: false, allowed: !!pending.optionalReplace && p.mode === "levelUp", from: held.spells },
+    { field: "replaceCantrip", cantrip: true, allowed: !!pending.optionalReplaceCantrip, from: held.cantrips },
+  ] as const;
+  for (const s of swaps) {
+    const rawSwap = raw[s.field];
+    if (rawSwap === undefined) continue;
+    if (!s.allowed || !isObj(rawSwap)) return { error: `no puedes sustituir ${s.cantrip ? "trucos" : "conjuros"} en este nivel.` };
+    const outRef = asRef(rawSwap.out);
+    const out = outRef ? s.from.find((h) => refKey(h.ref) === refKey(outRef)) : undefined;
+    if (!out) return { error: `solo puedes sustituir ${s.cantrip ? "un truco" : "un conjuro"} que ya conoces.` };
+    const inEntry = await load(rawSwap.in, "spell");
     if (!inEntry) return { error: "conjuro no disponible." };
-    const bad = fits(inEntry, !!outCantrip);
+    const bad = fits(inEntry, s.cantrip);
     if (bad) return { error: bad };
     if (heldKeys.has(refKey(inEntry.ref)) || chosen.some((e) => refKey(e.ref) === refKey(inEntry.ref)))
       return { error: `ya tienes ${nameOf(inEntry)}.` };
-    value.replace = { out, in: toNamed(inEntry) };
+    chosen.push(inEntry);
+    value[s.field] = { out, in: toNamed(inEntry) };
   }
   return { value };
 }

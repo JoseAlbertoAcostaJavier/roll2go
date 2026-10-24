@@ -201,8 +201,10 @@ describe("pendingChoices", () => {
       });
     });
     it("Clérigo 2: sin trucos nuevos, pero puede sustituir uno", () => {
-      expect(spellsOf(pendingChoices(sheetWith([["cleric", 1]]), cls("cleric"), 2, catalog)))
-        .toMatchObject({ count: 0, optionalReplace: true, spells: { cantrips: 0, spells: 0 } });
+      const p = spellsOf(pendingChoices(sheetWith([["cleric", 1]]), cls("cleric"), 2, catalog));
+      expect(p).toMatchObject({ count: 0, optionalReplaceCantrip: true, spells: { cantrips: 0, spells: 0 } });
+      // (modo list: no hay conjuros aprendidos que sustituir)
+      expect(p?.optionalReplace).toBeUndefined();
     });
     it("Hechicero 1 y 3: trucos y conjuros aprendidos de su progresión; nivel máximo 2 a nivel 3", () => {
       const p = progressions("sorcerer");
@@ -210,7 +212,8 @@ describe("pendingChoices", () => {
         count: p.cantrips![0] + p.prepared![0], spells: { mode: "levelUp", list: "sorcerer", cantrips: 4, spells: 2, maxLevel: 1 },
       });
       expect(spellsOf(pendingChoices(sheetWith([["sorcerer", 2]]), cls("sorcerer"), 3, catalog))).toMatchObject({
-        optionalReplace: true, spells: { cantrips: p.cantrips![2] - p.cantrips![1], spells: p.prepared![2] - p.prepared![1], maxLevel: 2 },
+        optionalReplace: true, optionalReplaceCantrip: true,
+        spells: { cantrips: p.cantrips![2] - p.cantrips![1], spells: p.prepared![2] - p.prepared![1], maxLevel: 2 },
       });
     });
     it("Caballero arcano: la subclase lanzadora, con la lista del Mago, al elegirla a nivel 3", () => {

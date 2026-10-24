@@ -147,14 +147,14 @@ describe("bloques de lanzador", () => {
       .toEqual({ levels: { 1: 3 }, pact: null });
     expect(blocks(sheetOf(times("fighter", 2)))).toEqual([]);
   });
-  it("sustitución de un truco", () => {
+  it("sustitución de un truco y de un conjuro en la misma subida", () => {
     const s = sheetOf(["sorcerer", "sorcerer"], {
       1: [{ type: "spells", source: "x", value: { class: CLASSES.sorcerer.ref, cantrips: [spell("light"), spell("mage hand")], spells: [spell("sleep")] } }],
-      2: [{ type: "spells", source: "x", value: { class: CLASSES.sorcerer.ref, cantrips: [], spells: [spell("shield")], replace: { out: spell("light"), in: spell("fire bolt") } } }],
+      2: [{ type: "spells", source: "x", value: { class: CLASSES.sorcerer.ref, cantrips: [], spells: [spell("shield")], replaceCantrip: { out: spell("light"), in: spell("fire bolt") }, replace: { out: spell("sleep"), in: spell("grease") } } }],
     });
     const [b] = blocks(s);
     expect(b.cantrips.map((c) => c.name)).toEqual(["mage hand", "fire bolt"]);
-    expect(b.known.map((k) => k.name)).toEqual(["sleep", "shield"]);
+    expect(b.known.map((k) => k.name)).toEqual(["shield", "grease"]);
   });
   it("modo levelUp: aprendidos con sustitución y preparados = aprendidos", () => {
     const s = sheetOf(["sorcerer", "sorcerer"], {

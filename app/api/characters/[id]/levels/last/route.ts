@@ -62,7 +62,13 @@ export async function DELETE(req: NextRequest, { params }: Ctx) {
     { _id: id, "sheet.version": 2, "sheet.levels": { $size: before }, ...unchanged },
     { $set: set, $pop: { "sheet.levels": 1 } },
   );
-  if (res.matchedCount === 0)
-    return NextResponse.json({ error: "El personaje ha cambiado de nivel; recarga la página." }, { status: 409 });
+  if (res.matchedCount === 0) {
+    // Si sigue en el mismo nivel, lo que cambió entretanto fueron sus conjuros
+    const sameLevel = await Character.exists({ _id: id, "sheet.version": 2, "sheet.levels": { $size: before } });
+    const error = sameLevel
+      ? "El personaje ha cambiado mientras borrabas el nivel. Recarga la página."
+      : "El personaje ha cambiado de nivel; recarga la página.";
+    return NextResponse.json({ error }, { status: 409 });
+  }
   return NextResponse.json({ ok: true });
 }

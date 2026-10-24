@@ -94,12 +94,12 @@ export function chosenSpells(sheet: Pick<Dnd2024SheetV2, "levels">, cls: Ref): {
       const v: SpellChoice = c.value;
       cantrips.push(...v.cantrips);
       spells.push(...v.spells);
-      if (v.replace) {
-        const out = refKey(v.replace.out.ref);
-        const list = cantrips.some((s) => refKey(s.ref) === out) ? cantrips : spells;
-        const i = list.findIndex((s) => refKey(s.ref) === out);
+      // El truco sustituido sale de los trucos y el conjuro, de los aprendidos
+      for (const [list, swap] of [[cantrips, v.replaceCantrip], [spells, v.replace]] as const) {
+        if (!swap) continue;
+        const i = list.findIndex((s) => refKey(s.ref) === refKey(swap.out.ref));
         if (i >= 0) list.splice(i, 1);
-        list.push(v.replace.in);
+        list.push(swap.in);
       }
     }
   }

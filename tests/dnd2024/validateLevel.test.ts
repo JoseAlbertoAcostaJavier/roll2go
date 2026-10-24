@@ -265,16 +265,34 @@ describe("validateLevel", () => {
         expect((r.entry.choices[1].value as { replace: unknown }).replace).toEqual({
           out: { ref: ref("spell:hex|xphb"), name: "hex" }, in: { ref: ref("spell:charm person|xphb"), name: "charm person" },
         });
-        // También un truco por otro truco
+        // También un truco por otro truco (en `replaceCantrip`)
         const cantrip = { out: client("spell:chill touch|xphb"), in: client("spell:minor illusion|xphb") };
-        expect(await spellErrors(known(), learn(["witch bolt"], { replace: cantrip }))).toBeUndefined();
+        expect(await spellErrors(known(), learn(["witch bolt"], { replaceCantrip: cantrip }))).toBeUndefined();
+      });
+      it("sustituye un truco y un conjuro en la misma subida", async () => {
+        const body = learn(["witch bolt"], {
+          replace: { out: client("spell:hex|xphb"), in: client("spell:charm person|xphb") },
+          replaceCantrip: { out: client("spell:chill touch|xphb"), in: client("spell:minor illusion|xphb") },
+        });
+        const r = await validateLevel(known(), invocations(two, undefined, body), ctx());
+        if (!r.ok) throw new Error(JSON.stringify(r.errors));
+        expect(r.entry.choices[1].value).toMatchObject({
+          replace: { out: { name: "hex" }, in: { name: "charm person" } },
+          replaceCantrip: { out: { name: "chill touch" }, in: { name: "minor illusion" } },
+        });
       });
       it("sustitución no válida: uno que no conoce, de otro tipo, uno que ya tiene o el mismo que aprende → error", async () => {
         const bad = (out: string, inn: string, spells = ["witch bolt"]) =>
           spellErrors(known(), learn(spells, { replace: { out: client(`spell:${out}|xphb`), in: client(`spell:${inn}|xphb`) } }));
         expect(await bad("charm person", "hold person")).toMatch(/solo puedes sustituir/);
         expect(await bad("hex", "minor illusion")).toMatch(/no es un conjuro de nivel 1/);
-        expect(await bad("chill touch", "charm person")).toMatch(/no es un truco/);
+        // Un truco en `replace` o un conjuro de nivel en `replaceCantrip` → error
+        expect(await bad("chill touch", "minor illusion")).toMatch(/solo puedes sustituir un conjuro/);
+        const cantripSwap = (out: string, inn: string) => spellErrors(known(),
+          learn(["witch bolt"], { replaceCantrip: { out: client(`spell:${out}|xphb`), in: client(`spell:${inn}|xphb`) } }));
+        expect(await cantripSwap("hex", "charm person")).toMatch(/solo puedes sustituir un truco/);
+        expect(await cantripSwap("chill touch", "charm person")).toMatch(/no es un truco/);
+        expect(await cantripSwap("chill touch", "eldritch blast")).toBe("Conjuros: ya tienes eldritch blast.");
         expect(await bad("hex", "armor of agathys")).toBe("Conjuros: ya tienes armor of agathys.");
         expect(await bad("hex", "witch bolt")).toBe("Conjuros: ya tienes witch bolt.");
       });
@@ -314,9 +332,12 @@ describe("validateLevel", () => {
     });
     it("sustituye un truco, pero nunca un conjuro del libro", async () => {
       const replace = (out: string, inn: string) => ({ out: client(`spell:${out}|xphb`), in: client(`spell:${inn}|xphb`) });
-      expect(await spellErrors({ cantrips: [], spells: two, replace: replace("light", "minor illusion") })).toBeUndefined();
-      expect(await spellErrors({ cantrips: [], spells: two, replace: replace("burning hands", "charm person") }))
-        .toMatch(/solo puedes sustituir/);
+      expect(await spellErrors({ cantrips: [], spells: two, replaceCantrip: replace("light", "minor illusion") })).toBeUndefined();
+      // El libro no admite `replace` (modo spellbook), ni un conjuro del libro como truco
+      expect(await spellErrors({ cantrips: [], spells: two, replace: replace("burning hands", "magic missile") }))
+        .toMatch(/no puedes sustituir conjuros/);
+      expect(await spellErrors({ cantrips: [], spells: two, replaceCantrip: replace("burning hands", "minor illusion") }))
+        .toMatch(/solo puedes sustituir un truco/);
     });
   });
 

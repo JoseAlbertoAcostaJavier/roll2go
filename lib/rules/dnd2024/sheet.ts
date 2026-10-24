@@ -33,13 +33,15 @@ export type FeatPickValue = Named & { ability?: Ability };
 
 /**
  * Conjuros elegidos en un nivel para una clase (o subclase lanzadora): trucos nuevos, conjuros aprendidos (modo
- * `levelUp`) o entradas del libro (modo `spellbook`) y, opcionalmente, un conjuro o truco que se sustituye por otro.
+ * `levelUp`) o entradas del libro (modo `spellbook`) y, opcionalmente, en la misma subida, un conjuro aprendido
+ * (`replace`, solo modo `levelUp`) y un truco (`replaceCantrip`) que se sustituyen por otro del mismo tipo.
  */
 export type SpellChoice = {
   class: Ref;
   cantrips: Named[];
   spells: Named[];
   replace?: { out: Named; in: Named };
+  replaceCantrip?: { out: Named; in: Named };
 };
 
 /**
