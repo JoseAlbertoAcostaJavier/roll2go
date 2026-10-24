@@ -10,11 +10,11 @@ import type {
   Ability, BackgroundData, ClassData, FeatData, ItemData, LineageData, Ref, SpeciesData,
 } from "@/lib/rules/types";
 import {
-  abilityBreakdowns, modOf, saveBreakdowns, saveRows, skillBreakdowns, skillRows,
+  abilityBreakdowns, saveBreakdowns, saveRows, scoresFromBreakdowns, skillBreakdowns, skillRows,
   type AbilityScores, type SaveRow, type SkillRow,
 } from "./abilities";
-import { makeBreakdown, type Breakdown } from "./breakdown";
-import { armorClass, UNARMORED_CLASSES, type ArmorData, type UnarmoredClass } from "./ac";
+import { makeBreakdown, type Breakdown, type Part } from "./breakdown";
+import { armorClassBreakdown, UNARMORED_CLASSES, type ArmorData, type UnarmoredClass } from "./ac";
 import { unarmedAttack, weaponAttack, weaponProficient, type Attack } from "./attacks";
 import { characterFeats, featureGroups, type FeatureGroup } from "./features";
 import { hitPoints } from "./hp";
@@ -25,7 +25,7 @@ export type { Attack } from "./attacks";
 export type { Breakdown, Part } from "./breakdown";
 export type { FeatureGroup } from "./features";
 export type { CasterBlock, OtherSpell, Slots, SpellsSummary } from "./spells";
-export { armorClass } from "./ac";
+export { armorClass, armorClassBreakdown } from "./ac";
 export { weaponAttack } from "./attacks";
 
 export type Derived = {
@@ -83,11 +83,50 @@ const proficiencyOf = (level: number) => Math.ceil(Math.max(level, 1) / 4) + 1;
 const EPIC_BOON: FeatData["category"] = "epicBoon";
 // La dote Alerta suma el bonificador de competencia a la iniciativa
 const ALERT_FEAT = "feat:alert|xphb";
+// Velocidad: la dote Veloz, el Movimiento rápido del Bárbaro (sin armadura pesada) y el Movimiento sin armadura del
+// Monje (sin armadura ni escudo)
+const SPEEDY_FEAT = "feat:speedy|xphb";
+const SPEEDY_BONUS = 10;
+const FAST_MOVEMENT_LEVEL = 5;
+const FAST_MOVEMENT_BONUS = 10;
+const UNARMORED_MOVEMENT_LEVEL = 2;
+const UNARMORED_MOVEMENT_COLUMN = /movimiento sin armadura|unarmored movement/i;
+// Progresión del Manual si el catálogo no trae la tabla de clase: 2–5 → 10, 6–9 → 15… 18–20 → 30
+const unarmoredMovementFallback = (level: number) => 10 + 5 * Math.floor((level - 2) / 4);
+const DEFAULT_SPEED = 30;
+const HEAVY = "heavy";
 const ARMOR_WARNING = "Sin competencia con esta armadura";
 const SHIELD = "shield";
 // Dado de Artes marciales del Monje si el catálogo no trae la tabla de clase
 const MARTIAL_ARTS_COLUMN = /artes marciales|martial arts/i;
 const martialArtsFallback = (level: number) => (level <= 4 ? "1d6" : level <= 10 ? "1d8" : level <= 16 ? "1d10" : "1d12");
+
+/** Velocidad en pies: la de la especie o el legado y los bonificadores de clase y dotes. */
+export function speedBreakdown(input: {
+  base: number;
+  baseLabel: string;
+  barbarianLevel: number;
+  monkLevel: number;
+  /** Valor de la columna «Movimiento sin armadura» de la tabla del Monje a su nivel («+15 pies»), si existe. */
+  monkColumn: string | null;
+  heavyArmor: boolean;
+  anyArmor: boolean;
+  shield: boolean;
+  speedy: boolean;
+}): Breakdown {
+  const parts: Part[] = [{ label: input.baseLabel, value: input.base }];
+  if (input.barbarianLevel >= FAST_MOVEMENT_LEVEL && !input.heavyArmor) {
+    parts.push({ label: "Movimiento rápido", value: FAST_MOVEMENT_BONUS });
+  }
+  if (input.monkLevel >= UNARMORED_MOVEMENT_LEVEL && !input.anyArmor && !input.shield) {
+    const feet = input.monkColumn?.match(/\d+/);
+    parts.push({
+      label: "Movimiento sin armadura", value: feet ? Number(feet[0]) : unarmoredMovementFallback(input.monkLevel),
+    });
+  }
+  if (input.speedy) parts.push({ label: "Dote: Veloz", value: SPEEDY_BONUS });
+  return makeBreakdown(parts);
+}
 
 export function derive(input: AnySheet, entries: Map<string, CatalogEntry>): Derived {
   // Los ids de las líneas del inventario no influyen en el cálculo
@@ -119,8 +158,7 @@ export function derive(input: AnySheet, entries: Map<string, CatalogEntry>): Der
     return e ? e.nameEs ?? e.name : fallback;
   };
   const abilityParts = abilityBreakdowns(sheet, isEpicBoon, nameOf);
-  const abilities = Object.fromEntries(Object.entries(abilityParts)
-    .map(([a, b]) => [a, { score: b.total, mod: modOf(b.total) }])) as AbilityScores;
+  const abilities = scoresFromBreakdowns(abilityParts);
   const mods = Object.fromEntries(Object.entries(abilities).map(([a, v]) => [a, v.mod])) as Record<Ability, number>;
   const choices = sheet.levels.flatMap((l) => l.choices.map((c) => ({ ...c, n: l.n })));
 
@@ -159,12 +197,16 @@ export function derive(input: AnySheet, entries: Map<string, CatalogEntry>): Der
   const unarmored = summary.map((c) => bareName(c.class.ref.key))
     .filter((k): k is UnarmoredClass => (UNARMORED_CLASSES as string[]).includes(k));
   const shield = equipped.some((e) => e.data.armor?.category === SHIELD);
-  const acOf = (a: ArmorData | null) =>
-    armorClass({ dex: mods.dex, con: mods.con, wis: mods.wis, armor: a, shield, unarmored });
-  const bodyArmor = equipped.map((e) => e.data.armor).filter((a): a is ArmorData => !!a && a.category !== SHIELD)
-    .sort((a, b) => acOf(b) - acOf(a))[0] ?? null;
+  const acOf = (a: (ArmorData & { name: string }) | null) =>
+    armorClassBreakdown({ dex: mods.dex, con: mods.con, wis: mods.wis, armor: a, shield, unarmored });
+  // Con el nombre del objeto equipado, para el desglose
+  const bodyArmor = equipped.flatMap((e) => (e.data.armor && e.data.armor.category !== SHIELD
+    ? [{ ...e.data.armor, name: e.name }] : []))
+    .sort((a, b) => acOf(b).total - acOf(a).total)[0] ?? null;
   const armorWarning = (bodyArmor && !armor.includes(bodyArmor.category)) || (shield && !armor.includes(SHIELD))
     ? ARMOR_WARNING : null;
+  const acParts = acOf(bodyArmor);
+  const acBreakdown = armorWarning ? makeBreakdown(acParts.parts, [armorWarning]) : acParts;
 
   // Ataques: armas equipadas y sin armas. Las Artes marciales del Monje (su dado y la mejor de FUE y DES, sin armas y
   // con armas de monje) solo sin armadura de cuerpo ni escudo
@@ -180,9 +222,30 @@ export function derive(input: AnySheet, entries: Map<string, CatalogEntry>): Der
   ));
   attacks.push(unarmedAttack(mods, proficiencyBonus, martialArts));
 
-  const ac = acOf(bodyArmor);
-  const initiative = mods.dex + (featKeys.includes(ALERT_FEAT) ? proficiencyBonus : 0);
-  const speed = lineageData?.speed ?? speciesData?.speed ?? 30;
+  const initiativeBreakdown = makeBreakdown([
+    { label: "Modificador de Destreza", value: mods.dex },
+    ...(featKeys.includes(ALERT_FEAT) ? [{ label: "Dote: Alerta", value: proficiencyBonus }] : []),
+  ]);
+
+  // Velocidad: la del legado si la cambia; si no, la de la especie; sin catálogo, 30
+  const speedSource = lineageData?.speed !== undefined ? lineage : species;
+  const barbarian = summary.find((c) => bareName(c.class.ref.key) === "barbarian");
+  const speedParts = speedBreakdown({
+    base: lineageData?.speed ?? speciesData?.speed ?? DEFAULT_SPEED,
+    baseLabel: speedSource ? `Velocidad de ${speedSource.nameEs ?? speedSource.name}` : "Velocidad base",
+    barbarianLevel: barbarian?.level ?? 0,
+    monkLevel: monk < 0 ? 0 : summary[monk].level,
+    monkColumn: monk < 0 ? null : classData[monk]?.table?.columns
+      .find((c) => UNARMORED_MOVEMENT_COLUMN.test(c.label))?.values[summary[monk].level - 1] ?? null,
+    heavyArmor: bodyArmor?.category === HEAVY,
+    anyArmor: !!bodyArmor,
+    shield,
+    speedy: featKeys.includes(SPEEDY_FEAT),
+  });
+
+  const ac = acBreakdown.total;
+  const initiative = initiativeBreakdown.total;
+  const speed = speedParts.total;
   const size = sheet.speciesChoices.size ?? (speciesData?.size.length === 1 ? speciesData.size[0] : null);
 
   return {
@@ -211,10 +274,9 @@ export function derive(input: AnySheet, entries: Map<string, CatalogEntry>): Der
       abilities: abilityParts,
       saves: saveBreakdowns(abilities, saveProfs, proficiencyBonus),
       skills: skillBreakdowns(abilities, skillProfs, expertise, proficiencyBonus, jackOfAllTrades),
-      // Provisionales: la CA, la iniciativa y la velocidad se desglosan en la Tarea 2
-      ac: makeBreakdown([{ label: "Total", value: ac }]),
-      initiative: makeBreakdown([{ label: "Total", value: initiative }]),
-      speed: makeBreakdown([{ label: "Total", value: speed }]),
+      ac: acBreakdown,
+      initiative: initiativeBreakdown,
+      speed: speedParts,
     },
   };
 }

@@ -1,15 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { derive } from "@/lib/rules/dnd2024/derive";
+import { derive, speedBreakdown } from "@/lib/rules/dnd2024/derive";
 import {
   abilityBreakdowns, abilityScores, saveBreakdowns, SKILL_ABILITIES, skillBreakdowns, skillRows,
 } from "@/lib/rules/dnd2024/derive/abilities";
 import { makeBreakdown, type Breakdown } from "@/lib/rules/dnd2024/derive/breakdown";
-import type { Choice, Dnd2024Sheet, Dnd2024SheetV2 } from "@/lib/rules/dnd2024/sheet";
+import type { Choice, Dnd2024Sheet, Dnd2024SheetV2, InventoryItem } from "@/lib/rules/dnd2024/sheet";
 import { upgradeSheet } from "@/lib/rules/dnd2024/upgrade";
 import { ABILITIES, type Ability, type Ref } from "@/lib/rules/types";
 import { B, buildCatalog, ref } from "./fixtureCatalog";
 
-const entries = buildCatalog(["class-barbarian.json", "class-fighter.json"]);
+const entries = buildCatalog(["class-barbarian.json", "class-fighter.json", "class-monk.json"]);
 // No hay fixture del Bardo: basta una entrada de clase con su clave
 entries.set(`${B}:class:bard|xphb`, {
   ...entries.get(`${B}:class:barbarian|xphb`)!, ref: ref("class:bard|xphb"), name: "Bard",
@@ -190,6 +190,98 @@ describe("desglose de salvaciones y habilidades", () => {
       const d = derive(withoutAthletics(build(more)), entries);
       expect(d.breakdowns.skills.athletics.parts)
         .toEqual([{ label: "Modificador de Fuerza", value: d.abilities.str.mod }, { label: "Sin competencia", value: 0 }]);
+    }
+  });
+});
+
+const wear = (key: string, name: string): InventoryItem => ({ id: key, ref: ref(key), name, quantity: 1, equipped: true, notes: "" });
+
+describe("desglose de CA e iniciativa (derive)", () => {
+  it("CA con el nombre de la armadura equipada y el aviso en las notas", () => {
+    const s = build();
+    s.inventory.items.push(wear("item:chain mail|xphb", "Cota de malla"));
+    const d = derive(s, entries);
+    expect(d.breakdowns.ac.parts).toEqual([{ label: "Armadura: Cota de malla", value: 16 }]);
+    expect(d.armorWarning).not.toBeNull();
+    expect(d.breakdowns.ac.notes).toEqual([d.armorWarning]);
+    expect(derive(build(), entries).breakdowns.ac.notes).toBeUndefined();
+  });
+  it("iniciativa: Destreza y, con Alerta, la competencia", () => {
+    const d = derive(build(), entries);
+    expect(d.breakdowns.initiative.parts).toEqual([{ label: "Modificador de Destreza", value: d.abilities.dex.mod }]);
+    const alert = derive(build([["barbarian", 3]], { 4: [featAsi("feat:alert|xphb", "Alert", "dex")] }), entries);
+    expect(alert.breakdowns.initiative.parts).toEqual([
+      { label: "Modificador de Destreza", value: alert.abilities.dex.mod },
+      { label: "Dote: Alerta", value: alert.proficiencyBonus },
+    ]);
+    expect(alert.initiative).toBe(alert.abilities.dex.mod + alert.proficiencyBonus);
+  });
+});
+
+describe("desglose de velocidad", () => {
+  const none = {
+    base: 30, baseLabel: "Velocidad de Enano", barbarianLevel: 0, monkLevel: 0, monkColumn: null,
+    heavyArmor: false, anyArmor: false, shield: false, speedy: false,
+  };
+  it("solo la de la especie", () => {
+    expect(speedBreakdown(none)).toEqual({ parts: [{ label: "Velocidad de Enano", value: 30 }], total: 30 });
+  });
+  it("Movimiento rápido: Bárbaro 5 sin armadura pesada", () => {
+    expect(speedBreakdown({ ...none, barbarianLevel: 5, anyArmor: true }).parts)
+      .toContainEqual({ label: "Movimiento rápido", value: 10 });
+    expect(speedBreakdown({ ...none, barbarianLevel: 4 }).total).toBe(30);
+    expect(speedBreakdown({ ...none, barbarianLevel: 5, anyArmor: true, heavyArmor: true }).total).toBe(30);
+  });
+  it("Movimiento sin armadura: de la columna de la tabla o de la progresión del Manual", () => {
+    expect(speedBreakdown({ ...none, monkLevel: 6, monkColumn: "+15 pies" }).parts)
+      .toContainEqual({ label: "Movimiento sin armadura", value: 15 });
+    const fallback = (monkLevel: number) => speedBreakdown({ ...none, monkLevel }).total - 30;
+    expect([1, 2, 5, 6, 9, 10, 13, 14, 17, 18, 20].map(fallback)).toEqual([0, 10, 10, 15, 15, 20, 20, 25, 25, 30, 30]);
+    expect(speedBreakdown({ ...none, monkLevel: 6, shield: true }).total).toBe(30);
+    expect(speedBreakdown({ ...none, monkLevel: 6, anyArmor: true }).total).toBe(30);
+  });
+  it("dote Veloz", () => {
+    expect(speedBreakdown({ ...none, speedy: true }).parts).toContainEqual({ label: "Dote: Veloz", value: 10 });
+  });
+  it("derive: especie, especie perdida, Bárbaro 5, Monje 2 y 6 y Veloz", () => {
+    const elf = derive(build(), entries);
+    expect(elf.breakdowns.speed.parts).toEqual([{ label: "Velocidad de Elf", value: 30 }]);
+    const lost = build();
+    lost.species = { ref: ref("species:perdida|xphb"), name: "Perdida" };
+    lost.lineage = null;
+    expect(derive(lost, entries).breakdowns.speed.parts).toEqual([{ label: "Velocidad base", value: 30 }]);
+
+    const barb = build([["barbarian", 4]]);
+    expect(derive(barb, entries).breakdowns.speed.parts).toContainEqual({ label: "Movimiento rápido", value: 10 });
+    barb.inventory.items.push(wear("item:chain mail|xphb", "Cota de malla"));
+    expect(derive(barb, entries).speed).toBe(30);
+
+    const monk = (levels: number) => {
+      const s = build([["monk", levels]]);
+      s.levels = s.levels.slice(1).map((l, i) => ({ ...l, n: i + 1 }));
+      return s;
+    };
+    expect(derive(monk(2), entries).breakdowns.speed.parts).toContainEqual({ label: "Movimiento sin armadura", value: 10 });
+    expect(derive(monk(6), entries).speed).toBe(45);
+    const shielded = monk(6);
+    shielded.inventory.items.push(wear("item:shield|xphb", "Escudo"));
+    expect(derive(shielded, entries).speed).toBe(30);
+
+    const speedy = derive(build([["barbarian", 3]], { 4: [featAsi("feat:speedy|xphb", "Speedy", "dex")] }), entries);
+    expect(speedy.breakdowns.speed.parts).toContainEqual({ label: "Dote: Veloz", value: 10 });
+  });
+  it("derive: los totales de CA, iniciativa y velocidad coinciden con los valores", () => {
+    const shielded = build([["barbarian", 4]]);
+    shielded.inventory.items.push(wear("item:shield|xphb", "Escudo"), wear("item:studded leather armor|xphb", "Cuero"));
+    const sheets = [
+      build(), shielded, build([["monk", 5]]), build([["barbarian", 4], ["fighter", 2]], { 4: [featAsi("feat:alert|xphb", "Alert", "dex")] }),
+    ];
+    for (const s of sheets) {
+      const d = derive(s, entries);
+      for (const [b, v] of [[d.breakdowns.ac, d.ac], [d.breakdowns.initiative, d.initiative], [d.breakdowns.speed, d.speed]] as const) {
+        expect(b.total).toBe(v);
+        expect(sum(b)).toBe(v);
+      }
     }
   });
 });

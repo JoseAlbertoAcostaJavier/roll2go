@@ -76,9 +76,12 @@ export function abilityBreakdowns(
   return out;
 }
 
+/** Puntuaciones y modificadores a partir de los desgloses de `abilityBreakdowns`. */
+export const scoresFromBreakdowns = (b: Record<Ability, Breakdown>): AbilityScores =>
+  Object.fromEntries(ABILITIES.map((a) => [a, { score: b[a].total, mod: modOf(b[a].total) }])) as AbilityScores;
+
 export function abilityScores(sheet: Dnd2024SheetV2, isEpicBoon: (feat: Ref) => boolean = () => false): AbilityScores {
-  const b = abilityBreakdowns(sheet, isEpicBoon, (_r, fallback) => fallback);
-  return Object.fromEntries(ABILITIES.map((a) => [a, { score: b[a].total, mod: modOf(b[a].total) }])) as AbilityScores;
+  return scoresFromBreakdowns(abilityBreakdowns(sheet, isEpicBoon, (_r, fallback) => fallback));
 }
 
 export function saveBreakdowns(abilities: AbilityScores, proficient: Ability[], profBonus: number): Record<Ability, Breakdown> {
