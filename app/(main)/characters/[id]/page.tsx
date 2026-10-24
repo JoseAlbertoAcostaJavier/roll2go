@@ -7,7 +7,7 @@ import { Campaign } from "@/lib/Campaign";
 import { requireUser } from "@/lib/currentUser";
 import { loadCharacterFor } from "@/lib/characterAccess";
 import { booksByIds } from "@/lib/rules/books";
-import { listMasteryWeapons, listSpells } from "@/lib/rules/catalog";
+import { getEntries, listEntries, listMasteryWeapons, listSpells } from "@/lib/rules/catalog";
 import { derive } from "@/lib/rules/dnd2024/derive";
 import { weaponProficient } from "@/lib/rules/dnd2024/derive/attacks";
 import { bareName, refKey } from "@/lib/rules/dnd2024/equipmentRefs";
@@ -16,6 +16,7 @@ import {
 } from "@/lib/rules/dnd2024/masteries";
 import { parsePronouns, pronounsText } from "@/lib/rules/dnd2024/names";
 import { spellListOf } from "@/lib/rules/dnd2024/spellcasting";
+import { SKILL_TEXTS } from "@/lib/rules/dnd2024/statTexts";
 import type { BackgroundData, ItemData } from "@/lib/rules/types";
 import SheetHeader from "@/app/components/characters/sheet/SheetHeader";
 import SheetTabs, { isSheetTab, SHEET_TABS, type SheetTab } from "@/app/components/characters/sheet/SheetTabs";
@@ -124,6 +125,17 @@ export default async function CharacterPage({ params, searchParams }: Props) {
     ? (await listSpells(found.books)).filter((s) => s.data.classes.some((c) => listIds.has(c)) || ownSpells.has(refKey(s.ref)))
     : [];
 
+  // Habilidades sin texto propio en la pestaña Información: la descripción de su entrada del catálogo
+  const untexted = new Set(d.skills.map((s) => s.id).filter((s) => !SKILL_TEXTS[s]));
+  const skillTexts: Record<string, string> = {};
+  if (untexted.size > 0) {
+    const options = (await listEntries({ books: found.books, kind: "skill" }))
+      .filter((o) => untexted.has(o.name.toLowerCase()));
+    for (const e of await getEntries(options.map((o) => o.ref))) {
+      skillTexts[e.name.toLowerCase()] ??= e.descriptionEs || e.description;
+    }
+  }
+
   const base = `/characters/${id}`;
   // Las pestañas inactivas se ocultan en pantalla, pero se imprimen todas seguidas
   const panel = (t: SheetTab) => ({
@@ -166,7 +178,7 @@ export default async function CharacterPage({ params, searchParams }: Props) {
       <section {...panel("info")}>
         {panelTitle("info")}
         {/* Los editores guardan su estado: al borrar un nivel desde la ficha se montan de nuevo con los PG recortados */}
-        <InfoTab key={d.level} d={d} characterId={id} isOwner={isOwner} />
+        <InfoTab key={d.level} d={d} characterId={id} isOwner={isOwner} skillTexts={skillTexts} />
       </section>
       <section {...panel("trasfondo")}>
         {panelTitle("trasfondo")}

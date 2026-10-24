@@ -13,11 +13,12 @@ import {
   abilityBreakdowns, saveBreakdowns, saveRows, scoresFromBreakdowns, skillBreakdowns, skillRows,
   type AbilityScores, type SaveRow, type SkillRow,
 } from "./abilities";
-import { makeBreakdown, type Breakdown, type Part } from "./breakdown";
+import { makeBreakdown, type Breakdown } from "./breakdown";
 import { armorClassBreakdown, UNARMORED_CLASSES, type ArmorData, type UnarmoredClass } from "./ac";
 import { unarmedAttack, weaponAttack, weaponProficient, type Attack } from "./attacks";
 import { characterFeats, featureGroups, type FeatureGroup } from "./features";
 import { hitPoints } from "./hp";
+import { speedBreakdown } from "./speed";
 import { spellsSummary, type SpellsSummary } from "./spells";
 import { carriedWeight } from "./weight";
 
@@ -27,6 +28,7 @@ export type { FeatureGroup } from "./features";
 export type { CasterBlock, OtherSpell, Slots, SpellsSummary } from "./spells";
 export { armorClass, armorClassBreakdown } from "./ac";
 export { weaponAttack } from "./attacks";
+export { speedBreakdown } from "./speed";
 
 export type Derived = {
   /** Nivel total (número de entradas del historial). */
@@ -83,16 +85,9 @@ const proficiencyOf = (level: number) => Math.ceil(Math.max(level, 1) / 4) + 1;
 const EPIC_BOON: FeatData["category"] = "epicBoon";
 // La dote Alerta suma el bonificador de competencia a la iniciativa
 const ALERT_FEAT = "feat:alert|xphb";
-// Velocidad: la dote Veloz, el Movimiento rápido del Bárbaro (sin armadura pesada) y el Movimiento sin armadura del
-// Monje (sin armadura ni escudo)
+// Velocidad: la dote Veloz y la columna de la tabla del Monje con su Movimiento sin armadura
 const SPEEDY_FEAT = "feat:speedy|xphb";
-const SPEEDY_BONUS = 10;
-const FAST_MOVEMENT_LEVEL = 5;
-const FAST_MOVEMENT_BONUS = 10;
-const UNARMORED_MOVEMENT_LEVEL = 2;
 const UNARMORED_MOVEMENT_COLUMN = /movimiento sin armadura|unarmored movement/i;
-// Progresión del Manual si el catálogo no trae la tabla de clase: 2–5 → 10, 6–9 → 15… 18–20 → 30
-const unarmoredMovementFallback = (level: number) => 10 + 5 * Math.floor((level - 2) / 4);
 const DEFAULT_SPEED = 30;
 const HEAVY = "heavy";
 const ARMOR_WARNING = "Sin competencia con esta armadura";
@@ -100,33 +95,6 @@ const SHIELD = "shield";
 // Dado de Artes marciales del Monje si el catálogo no trae la tabla de clase
 const MARTIAL_ARTS_COLUMN = /artes marciales|martial arts/i;
 const martialArtsFallback = (level: number) => (level <= 4 ? "1d6" : level <= 10 ? "1d8" : level <= 16 ? "1d10" : "1d12");
-
-/** Velocidad en pies: la de la especie o el legado y los bonificadores de clase y dotes. */
-export function speedBreakdown(input: {
-  base: number;
-  baseLabel: string;
-  barbarianLevel: number;
-  monkLevel: number;
-  /** Valor de la columna «Movimiento sin armadura» de la tabla del Monje a su nivel («+15 pies»), si existe. */
-  monkColumn: string | null;
-  heavyArmor: boolean;
-  anyArmor: boolean;
-  shield: boolean;
-  speedy: boolean;
-}): Breakdown {
-  const parts: Part[] = [{ label: input.baseLabel, value: input.base }];
-  if (input.barbarianLevel >= FAST_MOVEMENT_LEVEL && !input.heavyArmor) {
-    parts.push({ label: "Movimiento rápido", value: FAST_MOVEMENT_BONUS });
-  }
-  if (input.monkLevel >= UNARMORED_MOVEMENT_LEVEL && !input.anyArmor && !input.shield) {
-    const feet = input.monkColumn?.match(/\d+/);
-    parts.push({
-      label: "Movimiento sin armadura", value: feet ? Number(feet[0]) : unarmoredMovementFallback(input.monkLevel),
-    });
-  }
-  if (input.speedy) parts.push({ label: "Dote: Veloz", value: SPEEDY_BONUS });
-  return makeBreakdown(parts);
-}
 
 export function derive(input: AnySheet, entries: Map<string, CatalogEntry>): Derived {
   // Los ids de las líneas del inventario no influyen en el cálculo

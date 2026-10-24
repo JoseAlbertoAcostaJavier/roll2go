@@ -1,13 +1,23 @@
+"use client";
+
+import { useState } from "react";
 import { TriangleAlert } from "lucide-react";
-import type { Derived } from "@/lib/rules/dnd2024/derive";
+import type { Breakdown, Derived } from "@/lib/rules/dnd2024/derive";
+import { PASSIVE_SKILLS } from "@/lib/rules/dnd2024/derive/abilities";
 import {
-  ABILITY_ABBR, ABILITY_NAMES, distanceText, metersText, proficiencyName, skillName, toolName,
+  ABILITY_ABBR, ABILITY_NAMES, distanceText, proficiencyName, skillName, toolName,
 } from "@/lib/rules/dnd2024/labels";
-import { ABILITIES } from "@/lib/rules/types";
+import {
+  ABILITY_TEXTS, AC_TEXT, INITIATIVE_TEXT, saveText, SKILL_TEXTS, SPEED_TEXT,
+} from "@/lib/rules/dnd2024/statTexts";
+import { ABILITIES, type Ability } from "@/lib/rules/types";
 import { card, cardTitle } from "@/app/components/formStyles";
 import HpEditor from "./HpEditor";
+import StatDialog from "./StatDialog";
 
 export const fmtMod = (m: number) => (m > 0 ? `+${m}` : m < 0 ? `−${-m}` : "+0");
+// «CAR» → «Car», para el título de una habilidad: «Engaño (Car)»
+const abbr = (a: Ability) => ABILITY_ABBR[a][0] + ABILITY_ABBR[a].slice(1).toLowerCase();
 
 // Marca de competencia: vacía, competencia o pericia (doble)
 function ProficiencyDot({ level }: { level: 0 | 1 | 2 }) {
@@ -21,20 +31,31 @@ function ProficiencyDot({ level }: { level: 0 | 1 | 2 }) {
   );
 }
 
-function StatBox({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="rounded-md border border-line bg-surface px-3 py-3 text-center">
-      <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted">{label}</p>
-      {children}
-    </div>
-  );
-}
+// Valores que abren su detalle: el área entera se puede pulsar, sin parecer un botón de acción
+const statButton =
+  "cursor-pointer transition-colors hover:bg-surface focus-visible:outline-2 focus-visible:outline-brand";
+const chip = "flex h-14 flex-col items-center justify-center rounded-md border border-line bg-surface px-2 text-center";
+const chipLabel = "flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-muted";
+const chipValue = "font-heading text-xl font-extrabold leading-tight";
 
-const bigValue = "font-heading text-2xl font-extrabold";
+// Valor abierto en el diálogo (uno a la vez) y el botón que lo abrió
+type Stat =
+  | { kind: "ability" | "save"; ability: Ability }
+  | { kind: "skill"; id: string }
+  | { kind: "ac" | "initiative" | "speed" };
+type Open = { stat: Stat; opener: HTMLElement };
+type Detail = { title: string; description: string; breakdown: Breakdown; unit?: "feet" | "plain" };
 
-type Props = { d: Derived; characterId: string; isOwner: boolean };
+type Props = {
+  d: Derived;
+  characterId: string;
+  isOwner: boolean;
+  /** Descripción del catálogo de las habilidades sin texto propio, por id. */
+  skillTexts?: Record<string, string>;
+};
 
-export default function InfoTab({ d, characterId, isOwner }: Props) {
+export default function InfoTab({ d, characterId, isOwner, skillTexts = {} }: Props) {
+  const [open, setOpen] = useState<Open | null>(null);
   const skills = [...d.skills].sort((a, b) => skillName(a.id).localeCompare(skillName(b.id), "es"));
   const other = [
     { label: "Armaduras", value: d.armor.map(proficiencyName).join(", ") },
@@ -44,51 +65,97 @@ export default function InfoTab({ d, characterId, isOwner }: Props) {
     { label: "Sentidos", value: d.darkvision ? `Visión en la oscuridad ${distanceText(d.darkvision)}` : "" },
   ];
 
+  // El botón se captura al pulsar (Safari no lo enfoca)
+  const show = (stat: Stat) => (e: React.MouseEvent<HTMLElement>) => setOpen({ stat, opener: e.currentTarget });
+
+  // Título, descripción y desglose del valor abierto
+  function detail(stat: Stat): Detail {
+    const b = d.breakdowns;
+    switch (stat.kind) {
+      case "ability":
+        return { title: ABILITY_NAMES[stat.ability], description: ABILITY_TEXTS[stat.ability], breakdown: b.abilities[stat.ability], unit: "plain" };
+      case "save":
+        return { title: `Salvación de ${ABILITY_NAMES[stat.ability]}`, description: saveText(stat.ability), breakdown: b.saves[stat.ability] };
+      case "skill": {
+        const row = d.skills.find((s) => s.id === stat.id);
+        return {
+          title: `${skillName(stat.id)}${row ? ` (${abbr(row.ability)})` : ""}`,
+          description: SKILL_TEXTS[stat.id] ?? skillTexts[stat.id] ?? "",
+          breakdown: b.skills[stat.id] ?? { parts: [], total: row?.total ?? 0 },
+        };
+      }
+      case "ac":
+        return { title: "Clase de armadura", description: AC_TEXT, breakdown: b.ac, unit: "plain" };
+      case "initiative":
+        return { title: "Iniciativa", description: INITIATIVE_TEXT, breakdown: b.initiative };
+      case "speed":
+        return { title: "Velocidad", description: SPEED_TEXT, breakdown: b.speed, unit: "feet" };
+    }
+  }
+
   return (
     <div className="space-y-6">
-      {/* Características: modificador grande y puntuación debajo */}
+      {/* Características: modificador grande y puntuación en una píldora; cada una abre su desglose */}
       <section aria-labelledby="abilities-title" className="animate-fade-up">
         <h3 id="abilities-title" className="sr-only">Características</h3>
         <ul className="grid grid-cols-3 gap-3 sm:grid-cols-6">
           {ABILITIES.map((a) => (
-            <li key={a} className="rounded-lg border border-line bg-panel px-2 py-3 text-center">
-              <p className="truncate text-xs font-semibold uppercase tracking-wide text-muted">{ABILITY_NAMES[a]}</p>
-              <p className="font-heading text-3xl font-extrabold">{fmtMod(d.abilities[a].mod)}</p>
-              <p className="mx-auto mt-1 w-10 rounded-full border border-line bg-surface text-sm font-bold">{d.abilities[a].score}</p>
+            <li key={a}>
+              <button
+                type="button"
+                onClick={show({ kind: "ability", ability: a })}
+                className={`${statButton} w-full rounded-lg border border-line bg-panel px-2 py-2 text-center`}
+              >
+                <span className="block truncate text-xs font-semibold uppercase tracking-wide text-muted">{ABILITY_NAMES[a]}</span>
+                <span className="block font-heading text-2xl font-extrabold leading-tight">{fmtMod(d.abilities[a].mod)}</span>
+                <span className="mx-auto mt-0.5 block w-10 rounded-full border border-line bg-surface text-sm font-bold">{d.abilities[a].score}</span>
+              </button>
             </li>
           ))}
         </ul>
       </section>
 
-      {/* Valores: PG, iniciativa, velocidad, CA y competencia */}
-      <section aria-label="Valores" className="grid animate-fade-up grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5" style={{ animationDelay: "50ms" }}>
-        <div className="col-span-2 sm:col-span-3 lg:col-span-1">
-          <StatBox label="Puntos de golpe">
-            {isOwner ? (
-              <HpEditor characterId={characterId} max={d.hp.max} current={d.hp.current} temp={d.hp.temp} />
-            ) : (
-              <p className={bigValue}>
-                {Math.min(d.hp.current, d.hp.max)}
-                <span className="text-base font-bold text-muted"> / {d.hp.max}</span>
-                {d.hp.temp > 0 && <span className="ml-1 text-base text-success">+{d.hp.temp}</span>}
-              </p>
-            )}
-          </StatBox>
-        </div>
-        <StatBox label="Iniciativa"><p className={bigValue}>{fmtMod(d.initiative)}</p></StatBox>
-        <StatBox label="Velocidad">
-          <p className={bigValue}>{d.speed} pies</p>
-          <p className="text-xs text-muted">({metersText(d.speed)})</p>
-        </StatBox>
-        <StatBox label="Clase de armadura">
-          <p className={bigValue}>{d.ac}</p>
-          {d.armorWarning && (
-            <p className="mt-1 flex items-center justify-center gap-1 text-xs text-brand-soft">
-              <TriangleAlert size={12} aria-hidden="true" /> {d.armorWarning}
+      {/* Franja de combate: PG y cuatro fichas compactas (en móvil, PG a todo el ancho y las fichas en 2 × 2) */}
+      <section
+        aria-label="Valores de combate"
+        className="grid animate-fade-up gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,3fr)]"
+        style={{ animationDelay: "50ms" }}
+      >
+        <div className="rounded-md border border-line bg-surface px-3 py-3 text-center">
+          <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted">Puntos de golpe</p>
+          {isOwner ? (
+            <HpEditor characterId={characterId} max={d.hp.max} current={d.hp.current} temp={d.hp.temp} />
+          ) : (
+            <p className="font-heading text-2xl font-extrabold">
+              {Math.min(d.hp.current, d.hp.max)}
+              <span className="text-base font-bold text-muted"> / {d.hp.max}</span>
+              {d.hp.temp > 0 && <span className="ml-1 text-base text-success">+{d.hp.temp}</span>}
             </p>
           )}
-        </StatBox>
-        <StatBox label="Bonif. competencia"><p className={bigValue}>{fmtMod(d.proficiencyBonus)}</p></StatBox>
+        </div>
+        <div className="grid grid-cols-2 content-start gap-3 sm:grid-cols-4">
+          <button type="button" onClick={show({ kind: "ac" })} className={`${chip} ${statButton}`}>
+            <span className={chipLabel}>
+              CA
+              {d.armorWarning && (
+                <TriangleAlert size={12} className="text-brand-soft" role="img" aria-label={d.armorWarning} />
+              )}
+            </span>
+            <span className={chipValue}>{d.ac}</span>
+          </button>
+          <button type="button" onClick={show({ kind: "initiative" })} className={`${chip} ${statButton}`}>
+            <span className={chipLabel}>Iniciativa</span>
+            <span className={chipValue}>{fmtMod(d.initiative)}</span>
+          </button>
+          <button type="button" onClick={show({ kind: "speed" })} className={`${chip} ${statButton}`}>
+            <span className={chipLabel}>Velocidad</span>
+            <span className={chipValue}>{d.speed} pies</span>
+          </button>
+          <div className={chip}>
+            <span className={chipLabel}>Competencia</span>
+            <span className={chipValue}>{fmtMod(d.proficiencyBonus)}</span>
+          </div>
+        </div>
       </section>
 
       <div className="grid gap-6 lg:grid-cols-[1fr_1.4fr]">
@@ -96,10 +163,16 @@ export default function InfoTab({ d, characterId, isOwner }: Props) {
           <h3 className={cardTitle}>Tiradas de salvación</h3>
           <ul className="divide-y divide-line">
             {d.saves.map((s) => (
-              <li key={s.ability} className="flex items-center gap-3 py-2">
-                <ProficiencyDot level={s.proficient ? 1 : 0} />
-                <span className="flex-1">{ABILITY_NAMES[s.ability]}</span>
-                <span className="font-heading font-bold">{fmtMod(s.total)}</span>
+              <li key={s.ability}>
+                <button
+                  type="button"
+                  onClick={show({ kind: "save", ability: s.ability })}
+                  className={`${statButton} flex w-full items-center gap-3 rounded px-1 py-2 text-left`}
+                >
+                  <ProficiencyDot level={s.proficient ? 1 : 0} />
+                  <span className="flex-1">{ABILITY_NAMES[s.ability]}</span>
+                  <span className="font-heading font-bold">{fmtMod(s.total)}</span>
+                </button>
               </li>
             ))}
           </ul>
@@ -109,12 +182,21 @@ export default function InfoTab({ d, characterId, isOwner }: Props) {
           <h3 className={cardTitle}>Habilidades</h3>
           <ul className="grid gap-x-6 sm:grid-cols-2">
             {skills.map((s) => (
-              <li key={s.id} className="flex items-center gap-3 border-b border-line py-1.5">
-                <ProficiencyDot level={s.proficiency} />
-                <span className="min-w-0 flex-1 truncate">
-                  {skillName(s.id)} <span className="text-xs text-muted">({ABILITY_ABBR[s.ability]})</span>
-                </span>
-                <span className="font-heading font-bold">{fmtMod(s.total)}</span>
+              <li key={s.id} className="border-b border-line">
+                <button
+                  type="button"
+                  onClick={show({ kind: "skill", id: s.id })}
+                  className={`${statButton} flex w-full items-center gap-3 rounded px-1 py-1.5 text-left`}
+                >
+                  <ProficiencyDot level={s.proficiency} />
+                  <span className="min-w-0 flex-1 truncate">
+                    {skillName(s.id)} <span className="text-xs text-muted">({ABILITY_ABBR[s.ability]})</span>
+                  </span>
+                  {PASSIVE_SKILLS.includes(s.id) && (
+                    <span className="shrink-0 text-xs text-muted">Pasiva {10 + s.total}</span>
+                  )}
+                  <span className="font-heading font-bold">{fmtMod(s.total)}</span>
+                </button>
               </li>
             ))}
           </ul>
@@ -167,6 +249,14 @@ export default function InfoTab({ d, characterId, isOwner }: Props) {
           ))}
         </dl>
       </section>
+
+      {open && (
+        <StatDialog
+          {...detail(open.stat)}
+          onClose={() => setOpen(null)}
+          opener={open.opener}
+        />
+      )}
     </div>
   );
 }

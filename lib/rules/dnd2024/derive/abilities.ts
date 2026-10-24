@@ -17,7 +17,7 @@ export const SKILL_ABILITIES: Record<string, Ability> = {
 };
 
 // Habilidades cuyo valor pasivo (10 + total) se muestra en la ficha
-const PASSIVE_SKILLS = ["perception", "insight", "investigation"];
+export const PASSIVE_SKILLS = ["perception", "insight", "investigation"];
 
 const ABILITY_CAP = 20;
 // Los dones épicos pueden subir una característica hasta 30
