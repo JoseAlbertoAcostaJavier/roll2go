@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { assignValue, exceedsLimit, maxBase, totalsWithinLimit } from "@/lib/rules/dnd2024/assign";
+import { assignValue, exceedsLimit, maxBase, poolSlots, totalsWithinLimit } from "@/lib/rules/dnd2024/assign";
 
 const empty = { str: null, dex: null, con: null, int: null, wis: null, cha: null };
 
@@ -34,5 +34,29 @@ describe("tope de 20", () => {
     expect(exceedsLimit(null, 2)).toBe(false);
     expect(totalsWithinLimit({ ...empty, str: 19 }, { str: 1 })).toBe(true);
     expect(totalsWithinLimit({ ...empty, str: 19 }, { str: 2 })).toBe(false);
+  });
+});
+
+describe("poolSlots", () => {
+  it("una opción por tirada, también las repetidas, de mayor a menor", () => {
+    const { slots } = poolSlots([15, 12, 15, 10, 8, 12], [null, null, null, null, null, null]);
+    expect(slots.map((s) => s.value)).toEqual([15, 15, 12, 12, 10, 8]);
+    expect(new Set(slots.map((s) => s.index)).size).toBe(6);
+    expect(slots.every((s) => s.owner === null)).toBe(true);
+  });
+
+  it("cada característica ocupa una tirada distinta aunque compartan valor", () => {
+    const { slots, selected } = poolSlots([15, 15, 10], [15, null, 15]);
+    expect(selected[0]).not.toBeNull();
+    expect(selected[2]).not.toBeNull();
+    expect(selected[0]).not.toBe(selected[2]);
+    expect(selected[1]).toBeNull();
+    expect(slots.filter((s) => s.value === 15).map((s) => s.owner).sort()).toEqual([0, 2]);
+    expect(slots.find((s) => s.value === 10)!.owner).toBeNull();
+  });
+
+  it("un valor asignado que ya no está en las tiradas no ocupa ninguna", () => {
+    const { selected } = poolSlots([12, 10], [18, 12]);
+    expect(selected).toEqual([null, 0]);
   });
 });

@@ -5,7 +5,7 @@ import { Dices, LoaderCircle, Minus, Plus } from "lucide-react";
 import { ABILITIES, type Ability } from "@/lib/rules/types";
 import type { AbilityMethod } from "@/lib/rules/dnd2024/sheet";
 import { POINT_BUY_TOTAL, STANDARD_ARRAY, checkBackgroundBonus, pointBuyCost } from "@/lib/rules/dnd2024/abilities";
-import { assignValue, exceedsLimit, maxBase, totalsWithinLimit } from "@/lib/rules/dnd2024/assign";
+import { assignValue, exceedsLimit, maxBase, poolSlots, totalsWithinLimit } from "@/lib/rules/dnd2024/assign";
 import { field, labelClass } from "../formStyles";
 
 type Base = Record<Ability, number | null>;
@@ -96,6 +96,8 @@ export default function AbilityScores({
   const defaultValue = method === "pointBuy" ? 8 : null;
   const valueOf = (a: Ability) => base[a] ?? defaultValue;
   const assigned = ABILITIES.map(valueOf);
+  // Una opción por tirada (las repetidas por separado), con la característica que ya la tiene
+  const { slots, selected } = poolSlots(pool, assigned);
 
   // ---- cambio de método ----
   const hasValues =
@@ -265,12 +267,16 @@ export default function AbilityScores({
                         <select
                           aria-label={`Valor de ${NAMES[a]}`}
                           className="w-20 rounded-md border border-line bg-surface px-1 py-1.5 text-fg disabled:opacity-60"
-                          value={value ?? ""}
+                          value={selected[i] ?? ""}
                           disabled={pool.length === 0}
-                          onChange={(e) => (e.target.value === "" ? clear(a) : place(a, Number(e.target.value)))}
+                          onChange={(e) => (e.target.value === "" ? clear(a) : place(a, pool[Number(e.target.value)]))}
                         >
                           <option value="">—</option>
-                          {[...new Set(pool)].sort((x, y) => y - x).map((v) => <option key={v} value={v}>{v}</option>)}
+                          {slots.map((s) => (
+                            <option key={s.index} value={s.index}>
+                              {s.owner !== null && s.owner !== i ? `${s.value} · ${NAMES[ABILITIES[s.owner]]}` : s.value}
+                            </option>
+                          ))}
                         </select>
                       </div>
                     ) : (

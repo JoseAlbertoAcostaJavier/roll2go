@@ -32,3 +32,23 @@ export function exceedsLimit(base: number | null, bonus: number): boolean {
 export function totalsWithinLimit(base: Record<Ability, number | null>, bonus: Partial<Record<Ability, number>>): boolean {
   return (Object.keys(base) as Ability[]).every((a) => !exceedsLimit(base[a], bonus[a] ?? 0));
 }
+
+export type PoolSlot = { index: number; value: number; owner: number | null };
+
+/**
+ * Las tiradas como opciones separadas (una por dado, también las repetidas), de mayor a menor. Cada valor asignado
+ * (`assigned[i]`, en el orden de las características) ocupa la primera tirada libre con ese valor: `owner` es la
+ * característica que la ocupa y `selected[i]` el índice de la tirada de cada característica (o null).
+ */
+export function poolSlots(pool: number[], assigned: (number | null)[]): { slots: PoolSlot[]; selected: (number | null)[] } {
+  const slots: PoolSlot[] = pool.map((value, index) => ({ index, value, owner: null }))
+    .sort((a, b) => b.value - a.value || a.index - b.index);
+  const selected = assigned.map((v, i) => {
+    if (v === null) return null;
+    const slot = slots.find((s) => s.value === v && s.owner === null);
+    if (!slot) return null;
+    slot.owner = i;
+    return slot.index;
+  });
+  return { slots, selected };
+}
