@@ -34,6 +34,10 @@ const sheet = (): Dnd2024SheetV2 => ({
       { type: "feat", source: "feats", value: [named("feat:alert|xphb")] },
       { type: "optionalFeature", source: "invocations", value: [named("optionalFeature:agonizing blast|xphb")] },
       { type: "subclass", source: "subclass", value: named("subclass:champion|fighter|xphb") },
+      {
+        type: "spells", source: "progression:spells|fighter|xphb",
+        value: { class: ref("class:fighter|xphb"), cantrips: [named("spell:light|xphb")], spells: [named("spell:sleep|xphb")] },
+      },
     ],
   }],
   classesSummary: [{ class: named("class:fighter|xphb", "Guerrero"), level: 1, subclass: null }],
@@ -68,6 +72,15 @@ describe("creationDraft", () => {
       feats: [k("feat:alert|xphb")],
       invocations: [k("optionalFeature:agonizing blast|xphb")],
     });
+  });
+  it("pasa los conjuros iniciales y los preparados de la clase a claves `libro:clave`", () => {
+    const d = creationDraft({ name: "Ana", pronouns: [], status: "active", backstory: "" }, sheet());
+    const k = (key: string) => `${ref(key).book}:${key}`;
+    expect(d.spells).toEqual({
+      cantrips: [k("spell:light|xphb")], spells: [k("spell:sleep|xphb")],
+      replace: { out: "", in: "" }, replaceCantrip: { out: "", in: "" },
+    });
+    expect(d.prepared).toEqual([k("spell:x|xphb")]);
   });
 });
 

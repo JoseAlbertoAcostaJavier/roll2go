@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { LoaderCircle, TriangleAlert } from "lucide-react";
 import Bbcode from "@/app/components/Bbcode";
 import { card, cardTitle, errorClass, field, labelClass, primaryButton } from "@/app/components/formStyles";
-import type { CatalogEntry, EntryOption } from "@/lib/rules/catalog";
+import type { CatalogEntry, EntryOption, SpellOption } from "@/lib/rules/catalog";
 import {
   ABILITIES, type Ability, type BackgroundData, type ClassData, type Equipment, type FeatureData, type Pack, type Ref,
   type SpeciesData,
@@ -16,6 +16,10 @@ import { totalsWithinLimit } from "@/lib/rules/dnd2024/assign";
 import { bareName, equipmentRefs, refKey } from "@/lib/rules/dnd2024/equipmentRefs";
 import { ABILITY_NAMES, sizeName, skillName, toolName } from "@/lib/rules/dnd2024/labels";
 import { pendingChoices } from "@/lib/rules/dnd2024/levels";
+import { maxSpellLevel, preparedKey, spellListOf } from "@/lib/rules/dnd2024/spellcasting";
+import {
+  emptySpellPick, parseSpellPick, spellChoiceOf, spellPickMissing, type SpellPick,
+} from "@/lib/rules/dnd2024/spellPicks";
 import { PRONOUNS, type Pronoun } from "@/lib/rules/dnd2024/names";
 import type { CreationDraft } from "@/lib/rules/dnd2024/recreate";
 import { SKILLS_SOURCE } from "@/lib/rules/dnd2024/upgrade";
@@ -30,6 +34,7 @@ import ImageFields from "./fields/ImageFields";
 import InfoFields from "./fields/InfoFields";
 import PronounsField from "./fields/PronounsField";
 import SkillPicker from "./fields/SkillPicker";
+import SpellsStep from "./levelup/steps/SpellsStep";
 import useCatalogEntries from "./useCatalogEntries";
 import StatusField from "./fields/StatusField";
 import { LIMITS, STATUSES, type Status } from "./fields/constants";
@@ -54,6 +59,9 @@ type FormState = {
   /** Elecciones de nivel 1 de la clase (habilidades incluidas), por `source` de `pendingChoices`. */
   classChoices: ChoiceValues;
   classEquipment: string;
+  /** Trucos y conjuros iniciales (o libro del Mago) y preparados iniciales (`libro:clave`). */
+  spells: SpellPick;
+  prepared: string[];
   method: AbilityMethod;
   base: Base;
   rolls: Rolls | null;
@@ -81,6 +89,8 @@ type Props = {
   optionalFeatures: EntryOption[];
   /** Armas con propiedad de maestría (con `data`). */
   weapons: EntryOption[];
+  /** Conjuros de los libros (sin descripción), para la sección Conjuros. */
+  spells: SpellOption[];
   /**
    * Rehacer la creación de un personaje de nivel 1: se precarga con su creación actual (si no hay borrador propio) y
    * se guarda con `PUT /api/characters/[id]/creation`. Sin campaña, imágenes, estado ni información (no cambian).
@@ -92,10 +102,13 @@ const emptyForm = (): FormState => ({
   name: "", pronouns: [], status: "active",
   species: null, lineage: null, speciesSkills: [], size: null,
   background: null, bonus: {}, bgEquipment: "",
-  klass: null, classChoices: {}, classEquipment: "",
+  klass: null, classChoices: {}, classEquipment: "", spells: emptySpellPick(), prepared: [],
   method: "pointBuy", base: { str: 8, dex: 8, con: 8, int: 8, wis: 8, cha: 8 }, rolls: null,
   alignment: "", appearance: "", age: "", backstory: "", languages: "", notes: "", xp: "",
 });
+
+// En la creación aún no conoce ningún conjuro
+const NO_SPELLS = { cantrips: [], spells: [] };
 
 // Valor por defecto de una casilla vacía según el método (las fichas de tiradas y predefinidos no tienen)
 const defaultBase = (m: AbilityMethod) => (m === "pointBuy" ? 8 : m === "manual" ? 10 : null);
@@ -109,7 +122,7 @@ const fmtGold = (copper: number) => `${(copper / 100).toLocaleString("es-ES", { 
 // Las secciones del formulario, para los enlaces de "Falta por completar"
 const S = {
   details: "#detalles", status: "#estado", background: "#trasfondo",
-  klass: "#clase", abilities: "#caracteristicas", info: "#informacion",
+  klass: "#clase", spells: "#conjuros", abilities: "#caracteristicas", info: "#informacion",
 } as const;
 
 // ---------- borrador ----------
@@ -171,6 +184,10 @@ function parseDraft(raw: string | null, props: Props): FormState {
   form.size = ["S", "M", "L"].includes(d.size as string) && form.species ? (d.size as Size) : null;
   if (form.klass && isObj(d.classChoices))
     for (const [source, v] of Object.entries(d.classChoices)) form.classChoices[source] = strings(v);
+  if (form.klass) {
+    form.spells = parseSpellPick(d.spells);
+    form.prepared = [...new Set(strings(d.prepared).filter(Boolean))];
+  }
   if (!form.background) form.bgEquipment = "";
   if (!form.klass) form.classEquipment = "";
   return form;
@@ -368,11 +385,28 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
   }, [props.species, props.lineages, props.classes, props.backgrounds, cache]);
 
   // Elecciones de nivel 1 de la clase (las mismas que exige el servidor); las de los rasgos aparecen al cargarlos.
-  // (La elección de conjuros tendrá su propia sección: por ahora no se muestra)
-  const pending = useMemo(
-    () => (form.klass ? pendingChoices({ levels: [] }, form.klass, 1, entries).filter((p) => p.type !== "spells") : []),
+  // La de conjuros va en su propia sección
+  const allPending = useMemo(
+    () => (form.klass ? pendingChoices({ levels: [] }, form.klass, 1, entries) : []),
     [form.klass, entries],
   );
+  const pending = allPending.filter((p) => p.type !== "spells");
+  const spellPending = allPending.find((p) => p.type === "spells") ?? null;
+
+  // Lanzamiento de la clase de nivel 1: lista, nivel máximo y preparados iniciales (modos `list` y `spellbook`)
+  const casting = useMemo(() => {
+    if (!classData?.spellcasting || !form.klass) return null;
+    const { mode, progression } = classData.spellcasting;
+    return {
+      name: classOpt ? nameOf(classOpt) : "",
+      mode,
+      listId: spellPending?.spells?.list ?? spellListOf(form.klass, entries.get(refKey(form.klass))?.identifier),
+      maxLevel: maxSpellLevel(progression, 1),
+      preparedLimit: mode === "levelUp" ? 0 : (classData.progressions.prepared?.[0] ?? 0),
+      always: (classData.spells ?? []).filter((s) => s.level <= 1).map((s) => refKey(s.ref)),
+    };
+  }, [classData, classOpt, form.klass, spellPending, entries]);
+  const spellsMissing = spellPending ? spellPickMissing(spellPending, form.spells) : null;
 
   // ---- hoja ----
   const filledBase = (): Record<Ability, number | null> => {
@@ -422,6 +456,7 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
   if (!form.background) missing.push({ label: "Trasfondo", href: S.background });
   else if (!form.bgEquipment && letters(bgData?.equipment).length) missing.push({ label: "Equipo del trasfondo", href: S.background });
   for (const p of unfinished(pending, form.classChoices)) missing.push({ label: p.label, href: S.klass });
+  if (spellsMissing) missing.push({ label: "Conjuros", href: S.spells });
   if (classData && !form.classEquipment && letters(classData.equipment).length) missing.push({ label: "Equipo de clase", href: S.klass });
   if (Object.values(filledBase()).some((v) => v === null) || !abilitiesValid)
     missing.push({ label: "Puntuaciones de característica", href: S.abilities });
@@ -466,10 +501,11 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
   function chooseClass(ref: Ref | null) {
     if (sameRef(ref, form.klass)) return;
     update(
-      { klass: ref, classChoices: {}, classEquipment: "" },
-      "classes", "classes.0", "classes.0.level", "classes.0.subclass", "classes.0.equipment", ...choiceErrorKeys(),
+      { klass: ref, classChoices: {}, classEquipment: "", spells: emptySpellPick(), prepared: [] },
+      "classes", "classes.0", "classes.0.level", "classes.0.subclass", "classes.0.equipment", "prepared", ...choiceErrorKeys(),
     );
   }
+  const spellErrorKeys = () => ["levels.0.choices", ...(spellPending ? [`levels.0.choices.${spellPending.source}`] : []), "prepared"];
   function chooseClassOption(source: string, value: string[]) {
     update({ classChoices: { ...form.classChoices, [source]: value } }, "levels.0.choices", `levels.0.choices.${source}`);
   }
@@ -501,9 +537,16 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
       classes: [form.klass
         ? {
           ref: form.klass, name: "", level: 1, subclass: null, equipment: form.classEquipment,
-          choices: choicesFor(pending, form.classChoices),
+          choices: [
+            ...choicesFor(pending, form.classChoices),
+            ...(spellPending ? [spellChoiceOf(spellPending, form.spells)].filter((c) => !!c) : []),
+          ],
         }
         : null],
+      // Preparados iniciales de la clase (solo los modos que preparan)
+      prepared: form.klass && casting && casting.preparedLimit > 0 && form.prepared.length
+        ? { [preparedKey(form.klass)]: form.prepared.map(refFromKey) }
+        : null,
       abilityMethod: form.method,
       baseAbilities: filledBase(),
       rolls: form.method === "roll" ? form.rolls : null,
@@ -760,8 +803,38 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
           <FieldError errors={errors} keys={["classes.0.equipment"]} />
         </section>
 
-        {/* 5. Puntuaciones de característica */}
-        <section id="caracteristicas" {...section(4)}>
+        {/* 5. Conjuros */}
+        {casting && form.klass && (
+          <section id="conjuros" {...section(4)}>
+            <h2 className={cardTitle}>Conjuros</h2>
+            <SpellsStep
+              id="creator-spells"
+              casterName={casting.name}
+              mode={casting.mode}
+              listId={casting.listId}
+              maxLevel={casting.maxLevel}
+              pending={spellPending}
+              spells={props.spells}
+              held={NO_SPELLS}
+              value={form.spells}
+              onChange={(spells) => update({ spells }, ...spellErrorKeys())}
+              prepared={casting.preparedLimit > 0
+                ? {
+                  limit: casting.preparedLimit,
+                  value: form.prepared,
+                  always: casting.always,
+                  onChange: (prepared) => update({ prepared }, ...spellErrorKeys()),
+                }
+                : undefined}
+              characterId={recreate?.characterId ?? null}
+              campaignId={campaign?.id ?? null}
+            />
+            <FieldError errors={errors} keys={[...(spellPending ? [`levels.0.choices.${spellPending.source}`] : []), "prepared"]} />
+          </section>
+        )}
+
+        {/* 6. Puntuaciones de característica */}
+        <section id="caracteristicas" {...section(5)}>
           <h2 className={cardTitle}>Puntuaciones de característica</h2>
           <AbilityScores
             method={form.method}
@@ -779,9 +852,9 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
           <FieldError errors={errors} keys={["abilityMethod", "baseAbilities", "rolls", "background.abilities"]} />
         </section>
 
-        {/* 6. Información */}
+        {/* 7. Información */}
         {!recreate && (
-          <section id="informacion" {...section(5)}>
+          <section id="informacion" {...section(6)}>
             <h2 className={cardTitle}>Información</h2>
             <InfoFields values={form} errors={errors} onChange={update} />
           </section>
@@ -835,7 +908,7 @@ const SHOWN_ERRORS = new Set([
   "classes", "classes.0", "classes.0.level", "classes.0.subclass", "campaign", "portrait", "image",
   "status", "pronouns", "background", "background.equipment", "classes.0.equipment",
   "abilityMethod", "baseAbilities", "rolls", "background.abilities",
-  "alignment", "age", "xp", "appearance", "backstory", "languages", "notes",
+  "alignment", "age", "xp", "appearance", "backstory", "languages", "notes", "prepared",
 ]);
 
 // Campos que no aparecen al rehacer la creación

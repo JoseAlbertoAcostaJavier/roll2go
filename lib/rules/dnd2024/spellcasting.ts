@@ -86,7 +86,8 @@ const SUBCLASS_SPELL_LISTS: Record<string, string> = {
 
 /**
  * Identificador de la lista de conjuros de una clase o subclase lanzadora (el que guarda `SpellData.classes`): el de
- * la clase (`wizard`) o, en las subclases, el de la tabla; si no está, el de la propia entrada.
+ * la clase (`wizard`) o, en las subclases, el de la tabla; si no está (o está vacío, como en las entradas ligeras del
+ * listado), el de la propia clave.
  */
 export const spellListOf = (caster: Ref, identifier: string | undefined) =>
-  SUBCLASS_SPELL_LISTS[caster.key] ?? identifier ?? caster.key.replace(/^[^:]*:/, "").split("|")[0];
+  SUBCLASS_SPELL_LISTS[caster.key] ?? (identifier || caster.key.replace(/^[^:]*:/, "").split("|")[0]);

@@ -15,8 +15,11 @@ export type SpellRowItem = {
   spell: SpellOption | null;
   /** Origen de un conjuro siempre preparado («Dominio de la vida», «Dote: Iniciado en la magia»). */
   origin?: string;
-  /** Casilla de preparar; sin ella la fila no la muestra. `reason`: por qué está desactivada. */
-  check?: { checked: boolean; disabled: boolean; reason?: string; onChange: () => void };
+  /**
+   * Casilla de preparar (o, al elegir conjuros, de aprender); sin ella la fila no la muestra. `reason`: por qué está
+   * desactivada; `label`: su nombre accesible (por defecto, «Preparar …»).
+   */
+  check?: { checked: boolean; disabled: boolean; reason?: string; label?: string; onChange: () => void };
   /** Atenuada (nivel demasiado alto para la clase). */
   dimmed?: boolean;
   /** Botón u otra acción al final de la fila. */
@@ -42,7 +45,7 @@ function Meta({ label, value, icon: Icon }: { label: string; value: string; icon
 
 // Fila de un conjuro: casilla (si se puede preparar), icono de escuela, nombre (abre su ficha), nivel y escuela, tiempo,
 // alcance, duración, componentes y el resumen
-function Row({ item, onOpen }: { item: SpellRowItem; onOpen: SpellOpener }) {
+function Row({ item, onOpen, href }: { item: SpellRowItem; onOpen: SpellOpener; href: (ref: Ref) => string }) {
   const s = item.spell;
   const Icon = s ? SCHOOL_ICONS[s.data.school] : undefined;
   const name = s ? (s.nameEs ?? s.name) : item.name;
@@ -59,7 +62,7 @@ function Row({ item, onOpen }: { item: SpellRowItem; onOpen: SpellOpener }) {
             checked={item.check.checked}
             disabled={item.check.disabled}
             onChange={item.check.onChange}
-            aria-label={`${item.check.checked ? "Dejar de preparar" : "Preparar"} ${name}`}
+            aria-label={item.check.label ?? `${item.check.checked ? "Dejar de preparar" : "Preparar"} ${name}`}
             aria-describedby={item.check.disabled && item.check.reason ? `${checkId}-why` : undefined}
           />
           {item.check.disabled && item.check.reason && <span id={`${checkId}-why`} className="sr-only">{item.check.reason}</span>}
@@ -71,7 +74,7 @@ function Row({ item, onOpen }: { item: SpellRowItem; onOpen: SpellOpener }) {
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
           <a
-            href={spellHref(item.ref)}
+            href={href(item.ref)}
             onClick={(e) => {
               if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
               e.preventDefault();
@@ -108,16 +111,18 @@ function Row({ item, onOpen }: { item: SpellRowItem; onOpen: SpellOpener }) {
   );
 }
 
-// Lista de conjuros de la pestaña Conjuros
-export default function SpellList({ items, empty, onOpen }: {
+// Lista de conjuros de la pestaña Conjuros (y de la elección de conjuros del creador y de subir de nivel). `href`:
+// enlace de la ficha de cada conjuro (por defecto, el de la pestaña)
+export default function SpellList({ items, empty, onOpen, href = spellHref }: {
   items: SpellRowItem[];
   empty: string;
   onOpen: SpellOpener;
+  href?: (ref: Ref) => string;
 }) {
   if (items.length === 0) return <p className="py-3 text-sm text-muted">{empty}</p>;
   return (
     <ul className="divide-y divide-line">
-      {items.map((it) => <Row key={refKey(it.ref)} item={it} onOpen={onOpen} />)}
+      {items.map((it) => <Row key={refKey(it.ref)} item={it} onOpen={onOpen} href={href} />)}
     </ul>
   );
 }

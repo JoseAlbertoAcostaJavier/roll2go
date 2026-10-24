@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { derive } from "@/lib/rules/dnd2024/derive";
 import { casterBlocks, otherSpells, spellSlots } from "@/lib/rules/dnd2024/derive/spells";
 import type { Choice, Dnd2024SheetV2, LevelEntry, Named } from "@/lib/rules/dnd2024/sheet";
-import { casterLevel, maxSpellLevel, spellbookSize } from "@/lib/rules/dnd2024/spellcasting";
+import { casterLevel, maxSpellLevel, spellbookSize, spellListOf } from "@/lib/rules/dnd2024/spellcasting";
 import type { ClassData, SubclassData } from "@/lib/rules/types";
 import { B, buildCatalog, ref } from "./fixtureCatalog";
 
@@ -237,5 +237,14 @@ describe("otros conjuros", () => {
     const d = derive(sheetOf(["barbarian"], {}, wood), entries);
     expect(d.hasSpells).toBe(true);
     expect(d.spells.other.map((o) => o.origin)).toEqual(["Legado: Elfo silvano"]);
+  });
+});
+
+describe("spellListOf", () => {
+  it("usa el identificador, la tabla de subclases o, si no hay identificador (o está vacío), la clave", () => {
+    expect(spellListOf({ book: "b", key: "class:cleric|xphb" }, "cleric")).toBe("cleric");
+    expect(spellListOf({ book: "b", key: "class:cleric|xphb" }, "")).toBe("cleric");
+    expect(spellListOf({ book: "b", key: "class:cleric|xphb" }, undefined)).toBe("cleric");
+    expect(spellListOf({ book: "b", key: "subclass:eldritch knight|fighter|xphb" }, "eldritch knight")).toBe("wizard");
   });
 });

@@ -32,10 +32,12 @@ function Field({ label, value }: { label: string; value: string }) {
 }
 
 // Ficha de un conjuro (spec de conjuros §4.1): se abre con `?spell=<libro:clave>` (enlace propio) y pide la
-// descripción al servidor, dentro de los libros del personaje. La descripción ya incluye la mejora a niveles
-// superiores, así que no se repite.
-export default function SpellDialog({ characterId, spells, opener }: {
-  characterId: string;
+// descripción al servidor, dentro de los libros del personaje (sin personaje, en el creador, los libros que puede usar
+// el usuario en la campaña). La descripción ya incluye la mejora a niveles superiores, así que no se repite.
+export default function SpellDialog({ characterId, campaignId = null, spells, opener }: {
+  characterId: string | null;
+  /** Sin personaje: campaña cuyos libros se usan. */
+  campaignId?: string | null;
   /** Conjuros ya cargados en la pestaña (para mostrar la cabecera mientras llega la descripción). */
   spells: Map<string, SpellOption>;
   /** Elemento que abrió la ficha (lo fija quien la abre); recibe el foco al cerrar. Con el enlace directo, ninguno. */
@@ -51,7 +53,11 @@ export default function SpellDialog({ characterId, spells, opener }: {
     if (!key) return;
     let stale = false;
     const ref = refFromKey(key);
-    fetch(`/api/characters/${characterId}/spells/${encodeURIComponent(ref.book)}/${encodeURIComponent(ref.key)}`)
+    const path = `${encodeURIComponent(ref.book)}/${encodeURIComponent(ref.key)}`;
+    const url = characterId
+      ? `/api/characters/${characterId}/spells/${path}`
+      : `/api/rules/entries/${path}${campaignId ? `?campaign=${encodeURIComponent(campaignId)}` : ""}`;
+    fetch(url)
       .then(async (res) => {
         const data = await res.json().catch(() => null);
         if (stale) return;
@@ -62,7 +68,7 @@ export default function SpellDialog({ characterId, spells, opener }: {
     return () => {
       stale = true;
     };
-  }, [key, characterId]);
+  }, [key, characterId, campaignId]);
 
   // Foco en el botón de cerrar al abrir; al cerrar vuelve a quien la abrió (no se usa document.activeElement: Safari
   // no enfoca los enlaces al pulsarlos)

@@ -3,6 +3,8 @@
 import type { Ref } from "@/lib/rules/types";
 import { refKey } from "./equipmentRefs";
 import type { Choice, Dnd2024SheetV2 } from "./sheet";
+import { preparedKey } from "./spellcasting";
+import { emptySpellPick, type SpellPick } from "./spellPicks";
 
 /** Borrador del creador (mismo formato que el que guarda en localStorage; el creador lo vuelve a comprobar). */
 export type CreationDraft = {
@@ -20,6 +22,9 @@ export type CreationDraft = {
   /** Elecciones de nivel 1 por `source`: habilidades o claves `libro:clave` de las entradas. */
   classChoices: Record<string, string[]>;
   classEquipment: string;
+  /** Trucos y conjuros iniciales (o libro) y preparados iniciales (claves `libro:clave`). */
+  spells: SpellPick;
+  prepared: string[];
   method: Dnd2024SheetV2["abilityMethod"];
   base: Dnd2024SheetV2["baseAbilities"];
   rolls: Dnd2024SheetV2["rolls"];
@@ -32,7 +37,7 @@ export type CreationDraft = {
   xp: string;
 };
 
-// Lo elegido en una elección, como lo guarda el creador (la subclase y los conjuros no se eligen en él)
+// Lo elegido en una elección, como lo guarda el creador (la subclase no se elige en él; los conjuros van aparte)
 function choiceValues(c: Choice): string[] | null {
   switch (c.type) {
     case "skills":
@@ -61,6 +66,13 @@ export function creationDraft(
     const v = choiceValues(c);
     if (v) classChoices[c.source] = v;
   }
+  const spellChoice = first?.choices.find((c) => c.type === "spells");
+  const spells = emptySpellPick();
+  if (spellChoice?.type === "spells") {
+    spells.cantrips = spellChoice.value.cantrips.map((c) => refKey(c.ref));
+    spells.spells = spellChoice.value.spells.map((c) => refKey(c.ref));
+  }
+  const prepared = first ? (sheet.prepared[preparedKey(first.class.ref)] ?? []).map(refKey) : [];
   return {
     name: character.name,
     pronouns: character.pronouns,
@@ -75,6 +87,8 @@ export function creationDraft(
     klass: first?.class.ref ?? null,
     classChoices,
     classEquipment: first?.equipment ?? "",
+    spells,
+    prepared,
     method: sheet.abilityMethod,
     base: sheet.baseAbilities,
     rolls: sheet.rolls,

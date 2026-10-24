@@ -4,8 +4,9 @@ import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "reac
 import { useRouter } from "next/navigation";
 import { Check, ChevronLeft, ChevronRight, LoaderCircle } from "lucide-react";
 import { card, primaryButton } from "@/app/components/formStyles";
-import type { CatalogEntry, EntryOption } from "@/lib/rules/catalog";
+import type { CatalogEntry, EntryOption, SpellOption } from "@/lib/rules/catalog";
 import { derive } from "@/lib/rules/dnd2024/derive";
+import { chosenSpells } from "@/lib/rules/dnd2024/derive/spells";
 import { refKey } from "@/lib/rules/dnd2024/equipmentRefs";
 import { FEATURE_OPTION_LABELS } from "@/lib/rules/dnd2024/featureChoices";
 import { ABILITY_NAMES, skillName } from "@/lib/rules/dnd2024/labels";
@@ -14,6 +15,7 @@ import {
 } from "@/lib/rules/dnd2024/levels";
 import { currentMasteries, masteryLabel } from "@/lib/rules/dnd2024/masteries";
 import type { Dnd2024SheetV2, LevelEntry } from "@/lib/rules/dnd2024/sheet";
+import { emptySpellPick } from "@/lib/rules/dnd2024/spellPicks";
 import { summarizeClasses } from "@/lib/rules/dnd2024/upgrade";
 import { ABILITIES, type Ability, type ClassData, type FeatData, type ItemData, type Ref, type SubclassData } from "@/lib/rules/types";
 import { nameFromKey, refFromKey, type ChoiceCtx } from "../ClassFeaturesSection";
@@ -31,6 +33,7 @@ import ConfirmStep from "./steps/ConfirmStep";
 import FeaturesStep from "./steps/FeaturesStep";
 import HpStep from "./steps/HpStep";
 import PickStep from "./steps/PickStep";
+import SpellsStep from "./steps/SpellsStep";
 import SubclassStep from "./steps/SubclassStep";
 
 type Props = {
@@ -46,6 +49,8 @@ type Props = {
   feats: EntryOption[];
   optionalFeatures: EntryOption[];
   weapons: EntryOption[];
+  /** Conjuros de las listas de las clases y subclases lanzadoras que puede subir (sin descripción). */
+  spells: SpellOption[];
 };
 
 type Step = { id: string; title: string; p?: PendingChoice };
@@ -109,7 +114,8 @@ function Wizard(props: Props & { draftKey: string; draft: string | null }) {
   const defaultClass = (classChoices.find((c) => c.key === lastClass && !c.blocked) ?? classChoices.find((c) => !c.blocked))?.key ?? "";
 
   const [state, setState] = useState<LevelUpState>(() => parseDraft(props.draft, {
-    classKey: defaultClass, subclassKey: "", values: {}, replaced: {}, featAbility: {}, asi: {}, hp: null, step: "class",
+    classKey: defaultClass, subclassKey: "", values: {}, replaced: {}, featAbility: {}, asi: {}, spells: {}, hp: null,
+    step: "class",
   }));
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
@@ -141,7 +147,6 @@ function Wizard(props: Props & { draftKey: string; draft: string | null }) {
 
   const pending = classEntry
     ? pendingChoices(sheet, classEntry.ref, classLevel, entries, chosenSub ? { subclass: chosenSub.ref } : {})
-      .filter((p) => p.type !== "spells")
     : [];
 
   // Estado efectivo: la subclase solo si es de la clase elegida; los PG solo si son del dado de esta clase
@@ -244,8 +249,18 @@ function Wizard(props: Props & { draftKey: string; draft: string | null }) {
     if (box && box.getBoundingClientRect().top < 0) box.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
+  // ---- conjuros: los que ya tiene la clase (en el Mago, su libro con los copiados) ----
+  const heldSpells = (p: PendingChoice) => {
+    if (!p.spells) return { cantrips: [], spells: [] };
+    const held = chosenSpells(sheet, p.spells.class);
+    return p.spells.mode === "spellbook" ? { ...held, spells: [...held.spells, ...sheet.spellbookExtra] } : held;
+  };
+  const spellNames = useMemo(() => new Map(props.spells.map((s) => [refKey(s.ref), nameOf(s)])), [props.spells]);
+
   // ---- resumen ----
   const keyLabel = (k: string): string => {
+    const spell = spellNames.get(k);
+    if (spell) return spell;
     if (k.startsWith("builtin:")) return FEATURE_OPTION_LABELS[k.slice(8)] ?? k.slice(8);
     const w = props.weapons.find((x) => refKey(x.ref) === k);
     if (w) return masteryLabel(nameOf(w), (w.data as ItemData).weapon?.mastery);
@@ -265,6 +280,12 @@ function Wizard(props: Props & { draftKey: string; draft: string | null }) {
         value = a.mode === "abilities"
           ? Object.entries(a.abilities).filter(([, v]) => v).map(([k, v]) => `${ABILITY_NAMES[k as Ability]} +${v}`).join(", ")
           : a.feat ? `${keyLabel(a.feat)}${a.ability ? ` (${ABILITY_NAMES[a.ability]} +1)` : ""}` : "";
+      } else if (p.type === "spells") {
+        const c = buildChoices({ ...env, pending: [p] })[0];
+        const v = c?.type === "spells" ? c.value : null;
+        const swaps = [v?.replaceCantrip, v?.replace].filter((x) => !!x)
+          .map((x) => `${keyLabel(refKey(x.in.ref))} sustituye a ${keyLabel(refKey(x.out.ref))}`);
+        value = [...(v ? [...v.cantrips, ...v.spells].map((x) => keyLabel(refKey(x.ref))) : []), ...swaps].join(", ") || "Sin cambios";
       } else {
         const picked = (state.values[p.source] ?? []).slice(0, slotsFor(p, effective)).filter(Boolean);
         value = picked.map((k) => (p.type === "skills" || p.type === "expertise" ? skillName(k) : keyLabel(k))).join(", ");
@@ -385,6 +406,25 @@ function Wizard(props: Props & { draftKey: string; draft: string | null }) {
           scores={scores}
           feats={generalFeats}
           entry={entry}
+        />
+      );
+    }
+    if (p.type === "spells" && p.spells) {
+      const caster = entries.get(refKey(p.spells.class));
+      return (
+        <SpellsStep
+          id={`spells-${n}`}
+          casterName={caster ? nameOf(caster) : className}
+          mode={p.spells.mode}
+          listId={p.spells.list}
+          maxLevel={p.spells.maxLevel}
+          pending={p}
+          spells={props.spells}
+          held={heldSpells(p)}
+          value={state.spells[p.source] ?? emptySpellPick()}
+          onChange={(v) => update({ spells: { ...state.spells, [p.source]: v } })}
+          characterId={characterId}
+          campaignId={props.campaignId}
         />
       );
     }
