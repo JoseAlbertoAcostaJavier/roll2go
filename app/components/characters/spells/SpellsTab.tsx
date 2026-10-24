@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Sparkles } from "lucide-react";
 import type { SpellOption } from "@/lib/rules/catalog";
 import type { SpellsSummary } from "@/lib/rules/dnd2024/derive";
@@ -25,6 +26,7 @@ type Props = {
 // Pestaña Conjuros (spec de conjuros §4.1): espacios comunes, un bloque por clase lanzadora y «Otros». Las
 // operaciones van una a una a PATCH /spells, que responde con el estado recalculado.
 export default function SpellsTab({ characterId, isOwner, initial, lists, spells }: Props) {
+  const router = useRouter();
   const [state, setState] = useState(initial);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -45,6 +47,8 @@ export default function SpellsTab({ characterId, isOwner, initial, lists, spells
         return false;
       }
       setState(data.spells as SpellsSummary);
+      // Otra tierra trae conjuros que pueden no estar en la lista cargada (de otras clases): se vuelve a pedir
+      if (op.op === "setOption") router.refresh();
       return true;
     } catch {
       setError("No se pudo conectar con el servidor.");
