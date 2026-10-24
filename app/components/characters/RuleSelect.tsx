@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Check, ChevronDown } from "lucide-react";
 import type { EntryOption } from "@/lib/rules/catalog";
 import type { Ref } from "@/lib/rules/types";
@@ -12,6 +13,23 @@ const sameRef = (a: Ref | null, b: Ref) => !!a && a.book === b.book && a.key ===
 const displayName = (o: EntryOption) => o.nameEs ?? o.name;
 // Espera tras la última tecla antes de buscar en el servidor
 const SEARCH_DELAY = 250;
+// Alto máximo de la lista (max-h-64) y separación con el campo
+const LIST_MAX = 256;
+const GAP = 4;
+
+type Place = { left: number; width: number; top?: number; bottom?: number; maxHeight: number };
+
+// Coloca la lista bajo el campo, o encima si no cabe debajo y arriba hay más sitio
+function placeFor(el: HTMLElement): Place {
+  const r = el.getBoundingClientRect();
+  const below = window.innerHeight - r.bottom - GAP * 2;
+  const above = r.top - GAP * 2;
+  const up = below < Math.min(LIST_MAX, 160) && above > below;
+  const maxHeight = Math.max(Math.min(LIST_MAX, up ? above : below), 96);
+  return up
+    ? { left: r.left, width: r.width, bottom: window.innerHeight - r.top + GAP, maxHeight }
+    : { left: r.left, width: r.width, top: r.bottom + GAP, maxHeight };
+}
 
 /* Desplegable con búsqueda (combobox accesible) para elegir una entrada de reglas. Con `loadOptions` la búsqueda
    se hace en remoto (con espera) en vez de filtrar `options` en local. */
@@ -32,6 +50,23 @@ export default function RuleSelect({
   const [active, setActive] = useState(0);
   const box = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const anchor = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLUListElement>(null);
+  const [place, setPlace] = useState<Place | null>(null);
+
+  // La lista se pinta en un portal con posición fija: así ninguna sección animada (que crea su propio contexto de
+  // apilamiento) la tapa. Sigue al campo al desplazar o cambiar el tamaño de la ventana.
+  useLayoutEffect(() => {
+    if (!open) return;
+    const update = () => anchor.current && setPlace(placeFor(anchor.current));
+    update();
+    window.addEventListener("scroll", update, true);
+    window.addEventListener("resize", update);
+    return () => {
+      window.removeEventListener("scroll", update, true);
+      window.removeEventListener("resize", update);
+    };
+  }, [open]);
 
   // Búsqueda remota: resultado de la última consulta y la entrada elegida (ya no está en `options`)
   const [remote, setRemote] = useState<{ q: string; list: EntryOption[]; failed: boolean } | null>(null);
@@ -72,7 +107,7 @@ export default function RuleSelect({
     setOpen(false);
     setQuery("");
   }
-  useDismiss(box, open, close);
+  useDismiss(box, open, close, listRef);
 
   function openList() {
     if (disabled) return;
@@ -119,7 +154,7 @@ export default function RuleSelect({
   return (
     <div ref={box} className="relative">
       <label htmlFor={id} className={labelClass}>{label}</label>
-      <div className="relative">
+      <div ref={anchor} className="relative">
         <input
           ref={inputRef}
           id={id}
@@ -149,12 +184,14 @@ export default function RuleSelect({
           className={`pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted transition-transform ${open ? "rotate-180" : ""}`}
         />
       </div>
-      {open && (
+      {open && place && createPortal(
         <ul
+          ref={listRef}
           id={listId}
           role="listbox"
           aria-label={label}
-          className="animate-pop absolute z-30 mt-1 max-h-64 w-full overflow-y-auto rounded-md border border-line bg-panel py-1 shadow-lg"
+          style={{ left: place.left, width: place.width, top: place.top, bottom: place.bottom, maxHeight: place.maxHeight }}
+          className="animate-pop fixed z-[60] overflow-y-auto rounded-md border border-line bg-panel py-1 shadow-lg"
         >
           {loading && filtered.length === 0 && <li className="px-3 py-2 text-sm text-muted">Buscando…</li>}
           {!loading && filtered.length === 0 && (
@@ -184,7 +221,8 @@ export default function RuleSelect({
               {sameRef(value, o.ref) && <Check size={14} aria-hidden="true" className="text-brand-soft" />}
             </li>
           ))}
-        </ul>
+        </ul>,
+        document.body,
       )}
     </div>
   );
