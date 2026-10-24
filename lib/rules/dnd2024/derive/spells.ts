@@ -2,13 +2,13 @@
 // (combinados en multiclase y la Magia de pacto aparte) y los conjuros de especie, legado y dotes.
 import type { CatalogEntry } from "@/lib/rules/catalog";
 import { refKey } from "@/lib/rules/dnd2024/equipmentRefs";
-import { chosenSpells, heldBonusCantrips } from "@/lib/rules/dnd2024/levels";
+import { chosenSpells, heldBonusCantrips, heldOptionalFeatures } from "@/lib/rules/dnd2024/levels";
 import type { Dnd2024SheetV2, Named } from "@/lib/rules/dnd2024/sheet";
 import { maxSpellLevel, PACT_SLOTS, preparedKey, slotLevels } from "@/lib/rules/dnd2024/spellcasting";
 import { summarizeClasses } from "@/lib/rules/dnd2024/upgrade";
 import type {
-  Ability, BackgroundData, ClassData, FeatData, LineageData, Ref, SpeciesData, Spellcasting, SpellcastingMode,
-  SpellcastingProgression, SubclassData,
+  Ability, BackgroundData, ClassData, FeatData, LineageData, OptionalFeatureData, Ref, SpeciesData, Spellcasting,
+  SpellcastingMode, SpellcastingProgression, SubclassData,
 } from "@/lib/rules/types";
 import type { AbilityScores } from "./abilities";
 import { characterFeats } from "./features";
@@ -148,7 +148,7 @@ export function spellSlots(sheet: Dnd2024SheetV2, entries: Map<string, CatalogEn
 
 /**
  * Conjuros que no son de una clase lanzadora: especie y legado (hasta el nivel total), dotes (los fijos, desde el
- * nivel total que piden) y clases y subclases que no lanzan (Guerrero psiónico…), con su origen.
+ * nivel total que piden), clases y subclases que no lanzan (Guerrero psiónico…) e invocaciones, con su origen.
  */
 export function otherSpells(sheet: Dnd2024SheetV2, entries: Map<string, CatalogEntry>): OtherSpell[] {
   const level = sheet.levels.length;
@@ -171,6 +171,13 @@ export function otherSpells(sheet: Dnd2024SheetV2, entries: Map<string, CatalogE
   }
   for (const f of characterFeats(sheet, background(sheet, entries))) {
     add(upTo(featData(f.ref, entries)?.spells, level), `Dote: ${f.name ?? named(f.ref, entries).name}`);
+  }
+  // Invocaciones (y demás rasgos opcionales) con conjuros fijos
+  for (const o of heldOptionalFeatures(sheet.levels)) {
+    const data = entries.get(refKey(o.ref))?.data as OptionalFeatureData | undefined;
+    if (!data?.spells?.length) continue;
+    const kind = data.featureType?.includes("EI") ? "Invocación" : "Rasgo";
+    add(upTo(data.spells, level), `${kind}: ${o.name || named(o.ref, entries).name}`);
   }
   return out;
 }

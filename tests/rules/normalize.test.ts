@@ -503,7 +503,11 @@ describe("progresiones, tabla, multiclase y rasgos opcionales", () => {
     expect(step.kind).toBe("optionalFeature");
     expect(step.parent).toBeNull();
     expect((step.data as OptionalFeatureData).prerequisite?.level).toBe(5);
-    expect(step.data).toEqual({ featureType: ["EI"], prerequisite: { level: 5 } });
+    expect(step.data).toEqual({
+      featureType: ["EI"], prerequisite: { level: 5 },
+      // Conjuro que da la invocación, desde que se tiene
+      spells: [{ level: 1, ref: { book: "__BOOK__", key: "spell:levitate|xphb" } }],
+    });
     expect(get("optionalFeature:eldritch smite|xphb").data).toEqual({
       featureType: ["EI"], prerequisite: { level: 5, pact: "optionalFeature:pact of the blade|xphb" },
     });

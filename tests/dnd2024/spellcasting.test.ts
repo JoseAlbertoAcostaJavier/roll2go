@@ -260,6 +260,15 @@ describe("otros conjuros", () => {
     ]);
     expect(derive(s, entries).hasSpells).toBe(true);
   });
+  it("invocación con conjuro (Paso ascendente → Levitar), con su origen", () => {
+    const step: Named = { ref: ref("optionalFeature:ascendant step|xphb"), name: "Paso ascendente" };
+    const s = sheetOf(times("warlock", 5), {
+      5: [{ type: "optionalFeature", source: "progression:eldritch invocations|warlock|xphb", value: [step] }],
+    });
+    expect(otherSpells(s, entries)).toEqual([
+      { spell: { ref: ref("spell:levitate|xphb"), name: "Levitate" }, origin: "Invocación: Paso ascendente" },
+    ]);
+  });
   it("con legado que da conjuros: tiene conjuros", () => {
     const wood: Named = { ref: ref("lineage:wood elf|xphb"), name: "Elfo silvano" };
     const d = derive(sheetOf(["barbarian"], {}, wood), entries);

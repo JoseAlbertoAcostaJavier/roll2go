@@ -186,6 +186,7 @@ const checks: { [K in EntryKind]: Check } = {
   optionalFeature: shape({
     featureType: strings,
     "prerequisite?": shape({ "level?": int(1, 20), "spell?": ref, "pact?": str, "feature?": str }),
+    "spells?": arrayOf(spellGrant),
   }),
   nameTable: shape({
     species: str,

@@ -131,6 +131,8 @@ export type FeatureData = {
 export type OptionalFeatureData = {
   featureType: string[];
   prerequisite?: { level?: number; spell?: Ref; pact?: string; feature?: string };
+  /** Conjuros fijos que da (Armadura de sombras → Armadura de mago), desde que se tiene (nivel 1). */
+  spells?: SpellGrant[];
 };
 
 export type BackgroundData = {

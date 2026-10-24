@@ -876,6 +876,9 @@ export function normalizeOptionalFeature(raw: Rec): NormalizedEntry {
     }
     if (Object.keys(p).length) data.prerequisite = p;
   }
+  // Conjuros fijos (Armadura de sombras, Paso ascendente…); los elegidos (Pacto del tomo) se omiten
+  const spells = spellGrants(asArr(raw.additionalSpells), 1);
+  if (spells.length) data.spells = spells;
   return entry<"optionalFeature">(
     header("optionalFeature", raw, keyOf("optionalFeature", str(raw.name), str(raw.source))), data);
 }
