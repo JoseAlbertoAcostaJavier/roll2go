@@ -5,17 +5,16 @@ import { TriangleAlert } from "lucide-react";
 import type { Breakdown, Derived } from "@/lib/rules/dnd2024/derive";
 import { PASSIVE_SKILLS } from "@/lib/rules/dnd2024/derive/abilities";
 import {
-  ABILITY_ABBR, ABILITY_NAMES, distanceText, proficiencyName, skillName, toolName,
+  ABILITY_ABBR, ABILITY_NAMES, distanceText, fmtMod, proficiencyName, skillName, toolName,
 } from "@/lib/rules/dnd2024/labels";
 import {
-  ABILITY_TEXTS, AC_TEXT, INITIATIVE_TEXT, saveText, SKILL_TEXTS, SPEED_TEXT,
+  ABILITY_TEXTS, AC_TEXT, INITIATIVE_TEXT, saveText, SKILL_TEXTS, SPEED_TEXT, type BreakdownUnit,
 } from "@/lib/rules/dnd2024/statTexts";
 import { ABILITIES, type Ability } from "@/lib/rules/types";
 import { card, cardTitle } from "@/app/components/formStyles";
 import HpEditor from "./HpEditor";
 import StatDialog from "./StatDialog";
 
-export const fmtMod = (m: number) => (m > 0 ? `+${m}` : m < 0 ? `−${-m}` : "+0");
 // «CAR» → «Car», para el título de una habilidad: «Engaño (Car)»
 const abbr = (a: Ability) => ABILITY_ABBR[a][0] + ABILITY_ABBR[a].slice(1).toLowerCase();
 
@@ -31,7 +30,8 @@ function ProficiencyDot({ level }: { level: 0 | 1 | 2 }) {
   );
 }
 
-// Valores que abren su detalle: el área entera se puede pulsar, sin parecer un botón de acción
+// Valores que abren su detalle: el área entera se puede pulsar, sin parecer un botón de acción. Al imprimir se ven
+// como texto (`data-print`, ver globals.css)
 const statButton =
   "cursor-pointer transition-colors hover:bg-surface focus-visible:outline-2 focus-visible:outline-brand";
 const chip = "flex h-14 flex-col items-center justify-center rounded-md border border-line bg-surface px-2 text-center";
@@ -41,20 +41,19 @@ const chipValue = "font-heading text-xl font-extrabold leading-tight";
 // Valor abierto en el diálogo (uno a la vez) y el botón que lo abrió
 type Stat =
   | { kind: "ability" | "save"; ability: Ability }
-  | { kind: "skill"; id: string }
+  | { kind: "skill"; id: string; ability: Ability }
   | { kind: "ac" | "initiative" | "speed" };
 type Open = { stat: Stat; opener: HTMLElement };
-type Detail = { title: string; description: string; breakdown: Breakdown; unit?: "feet" | "plain" };
+type Detail = { title: string; subject: string; description: string; breakdown: Breakdown; unit?: BreakdownUnit };
 
-type Props = {
-  d: Derived;
-  characterId: string;
-  isOwner: boolean;
-  /** Descripción del catálogo de las habilidades sin texto propio, por id. */
-  skillTexts?: Record<string, string>;
-};
+/** Los valores derivados que muestra la pestaña (solo esos viajan al navegador). */
+export type InfoData = Pick<Derived,
+  | "abilities" | "proficiencyBonus" | "hp" | "ac" | "armorWarning" | "initiative" | "speed" | "darkvision" | "saves"
+  | "skills" | "armor" | "weapons" | "tools" | "languages" | "attacks" | "breakdowns">;
 
-export default function InfoTab({ d, characterId, isOwner, skillTexts = {} }: Props) {
+type Props = { d: InfoData; characterId: string; isOwner: boolean };
+
+export default function InfoTab({ d, characterId, isOwner }: Props) {
   const [open, setOpen] = useState<Open | null>(null);
   const skills = [...d.skills].sort((a, b) => skillName(a.id).localeCompare(skillName(b.id), "es"));
   const other = [
@@ -72,24 +71,30 @@ export default function InfoTab({ d, characterId, isOwner, skillTexts = {} }: Pr
   function detail(stat: Stat): Detail {
     const b = d.breakdowns;
     switch (stat.kind) {
-      case "ability":
-        return { title: ABILITY_NAMES[stat.ability], description: ABILITY_TEXTS[stat.ability], breakdown: b.abilities[stat.ability], unit: "plain" };
-      case "save":
-        return { title: `Salvación de ${ABILITY_NAMES[stat.ability]}`, description: saveText(stat.ability), breakdown: b.saves[stat.ability] };
-      case "skill": {
-        const row = d.skills.find((s) => s.id === stat.id);
+      case "ability": {
+        const name = ABILITY_NAMES[stat.ability];
         return {
-          title: `${skillName(stat.id)}${row ? ` (${abbr(row.ability)})` : ""}`,
-          description: SKILL_TEXTS[stat.id] ?? skillTexts[stat.id] ?? "",
-          breakdown: b.skills[stat.id] ?? { parts: [], total: row?.total ?? 0 },
+          title: name, subject: `tu puntuación de ${name}`, description: ABILITY_TEXTS[stat.ability],
+          breakdown: b.abilities[stat.ability], unit: "plain",
         };
       }
+      case "save": {
+        const name = ABILITY_NAMES[stat.ability];
+        return {
+          title: `Salvación de ${name}`, subject: `la tirada de salvación de ${name}`, description: saveText(stat.ability),
+          breakdown: b.saves[stat.ability],
+        };
+      }
+      case "skill": {
+        const title = `${skillName(stat.id)} (${abbr(stat.ability)})`;
+        return { title, subject: title, description: SKILL_TEXTS[stat.id], breakdown: b.skills[stat.id] };
+      }
       case "ac":
-        return { title: "Clase de armadura", description: AC_TEXT, breakdown: b.ac, unit: "plain" };
+        return { title: "Clase de armadura", subject: "la Clase de armadura", description: AC_TEXT, breakdown: b.ac, unit: "plain" };
       case "initiative":
-        return { title: "Iniciativa", description: INITIATIVE_TEXT, breakdown: b.initiative };
+        return { title: "Iniciativa", subject: "la iniciativa", description: INITIATIVE_TEXT, breakdown: b.initiative };
       case "speed":
-        return { title: "Velocidad", description: SPEED_TEXT, breakdown: b.speed, unit: "feet" };
+        return { title: "Velocidad", subject: "la velocidad", description: SPEED_TEXT, breakdown: b.speed, unit: "feet" };
     }
   }
 
@@ -103,6 +108,8 @@ export default function InfoTab({ d, characterId, isOwner, skillTexts = {} }: Pr
             <li key={a}>
               <button
                 type="button"
+                aria-haspopup="dialog"
+                data-print="text"
                 onClick={show({ kind: "ability", ability: a })}
                 className={`${statButton} w-full rounded-lg border border-line bg-panel px-2 py-2 text-center`}
               >
@@ -134,7 +141,13 @@ export default function InfoTab({ d, characterId, isOwner, skillTexts = {} }: Pr
           )}
         </div>
         <div className="grid grid-cols-2 content-start gap-3 sm:grid-cols-4">
-          <button type="button" onClick={show({ kind: "ac" })} className={`${chip} ${statButton}`}>
+          <button
+            type="button"
+            aria-haspopup="dialog"
+            data-print="text"
+            onClick={show({ kind: "ac" })}
+            className={`${chip} ${statButton}`}
+          >
             <span className={chipLabel}>
               CA
               {d.armorWarning && (
@@ -143,11 +156,23 @@ export default function InfoTab({ d, characterId, isOwner, skillTexts = {} }: Pr
             </span>
             <span className={chipValue}>{d.ac}</span>
           </button>
-          <button type="button" onClick={show({ kind: "initiative" })} className={`${chip} ${statButton}`}>
+          <button
+            type="button"
+            aria-haspopup="dialog"
+            data-print="text"
+            onClick={show({ kind: "initiative" })}
+            className={`${chip} ${statButton}`}
+          >
             <span className={chipLabel}>Iniciativa</span>
             <span className={chipValue}>{fmtMod(d.initiative)}</span>
           </button>
-          <button type="button" onClick={show({ kind: "speed" })} className={`${chip} ${statButton}`}>
+          <button
+            type="button"
+            aria-haspopup="dialog"
+            data-print="text"
+            onClick={show({ kind: "speed" })}
+            className={`${chip} ${statButton}`}
+          >
             <span className={chipLabel}>Velocidad</span>
             <span className={chipValue}>{d.speed} pies</span>
           </button>
@@ -166,6 +191,8 @@ export default function InfoTab({ d, characterId, isOwner, skillTexts = {} }: Pr
               <li key={s.ability}>
                 <button
                   type="button"
+                  aria-haspopup="dialog"
+                  data-print="text"
                   onClick={show({ kind: "save", ability: s.ability })}
                   className={`${statButton} flex w-full items-center gap-3 rounded px-1 py-2 text-left`}
                 >
@@ -185,7 +212,9 @@ export default function InfoTab({ d, characterId, isOwner, skillTexts = {} }: Pr
               <li key={s.id} className="border-b border-line">
                 <button
                   type="button"
-                  onClick={show({ kind: "skill", id: s.id })}
+                  aria-haspopup="dialog"
+                  data-print="text"
+                  onClick={show({ kind: "skill", id: s.id, ability: s.ability })}
                   className={`${statButton} flex w-full items-center gap-3 rounded px-1 py-1.5 text-left`}
                 >
                   <ProficiencyDot level={s.proficiency} />

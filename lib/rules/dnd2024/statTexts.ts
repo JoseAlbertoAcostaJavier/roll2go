@@ -1,6 +1,6 @@
 // Descripciones breves de los valores de la pestaña Información (spec §5): textos propios en español, inspirados en
 // el SRD 5.2.1 en español (CC BY 4.0). Puro: lo usan la ficha y las pruebas.
-import { ABILITY_NAMES } from "@/lib/rules/dnd2024/labels";
+import { ABILITY_NAMES, fmtMod, metersText } from "@/lib/rules/dnd2024/labels";
 import type { Ability } from "@/lib/rules/types";
 
 /** Por id de habilidad (las 18 claves de `SKILL_ABILITIES`). */
@@ -70,3 +70,24 @@ export const INITIATIVE_TEXT =
 
 export const SPEED_TEXT =
   "La velocidad es la distancia que puedes recorrer en tu turno. Puedes repartir el movimiento antes y después de tu acción; el terreno difícil cuesta el doble.";
+
+/**
+ * Unidad de un desglose en el diálogo de detalle: sin unidad, modificadores con signo; `plain`, puntuación de
+ * característica o CA (la base y el total sin signo); `feet`, velocidad en pies (la base sin signo y el total con
+ * metros).
+ */
+export type BreakdownUnit = "plain" | "feet";
+
+const feetText = (f: number) => `${f} pies`;
+
+/** Valor de la fila `index` de un desglose: la primera de `plain` y `feet` es la base y no lleva signo. */
+export function partText(value: number, index: number, unit?: BreakdownUnit): string {
+  if (unit === "feet") return index === 0 ? feetText(value) : `${fmtMod(value)} pies`;
+  if (unit === "plain" && index === 0) return String(value);
+  return fmtMod(value);
+}
+
+export function totalText(total: number, unit?: BreakdownUnit): string {
+  if (unit === "feet") return `${feetText(total)} (${metersText(total)})`;
+  return unit === "plain" ? String(total) : fmtMod(total);
+}

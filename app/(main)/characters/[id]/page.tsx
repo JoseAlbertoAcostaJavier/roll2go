@@ -7,7 +7,7 @@ import { Campaign } from "@/lib/Campaign";
 import { requireUser } from "@/lib/currentUser";
 import { loadCharacterFor } from "@/lib/characterAccess";
 import { booksByIds } from "@/lib/rules/books";
-import { getEntries, listEntries, listMasteryWeapons, listSpells } from "@/lib/rules/catalog";
+import { listMasteryWeapons, listSpells } from "@/lib/rules/catalog";
 import { derive } from "@/lib/rules/dnd2024/derive";
 import { weaponProficient } from "@/lib/rules/dnd2024/derive/attacks";
 import { bareName, refKey } from "@/lib/rules/dnd2024/equipmentRefs";
@@ -16,11 +16,10 @@ import {
 } from "@/lib/rules/dnd2024/masteries";
 import { parsePronouns, pronounsText } from "@/lib/rules/dnd2024/names";
 import { spellListOf } from "@/lib/rules/dnd2024/spellcasting";
-import { SKILL_TEXTS } from "@/lib/rules/dnd2024/statTexts";
 import type { BackgroundData, ItemData } from "@/lib/rules/types";
 import SheetHeader from "@/app/components/characters/sheet/SheetHeader";
 import SheetTabs, { isSheetTab, SHEET_TABS, type SheetTab } from "@/app/components/characters/sheet/SheetTabs";
-import InfoTab from "@/app/components/characters/sheet/InfoTab";
+import InfoTab, { type InfoData } from "@/app/components/characters/sheet/InfoTab";
 import BackgroundTab from "@/app/components/characters/sheet/BackgroundTab";
 import FeaturesTab from "@/app/components/characters/sheet/FeaturesTab";
 import EquipmentTab, { type ItemInfo } from "@/app/components/characters/sheet/EquipmentTab";
@@ -125,16 +124,12 @@ export default async function CharacterPage({ params, searchParams }: Props) {
     ? (await listSpells(found.books)).filter((s) => s.data.classes.some((c) => listIds.has(c)) || ownSpells.has(refKey(s.ref)))
     : [];
 
-  // Habilidades sin texto propio en la pestaña Información: la descripción de su entrada del catálogo
-  const untexted = new Set(d.skills.map((s) => s.id).filter((s) => !SKILL_TEXTS[s]));
-  const skillTexts: Record<string, string> = {};
-  if (untexted.size > 0) {
-    const options = (await listEntries({ books: found.books, kind: "skill" }))
-      .filter((o) => untexted.has(o.name.toLowerCase()));
-    for (const e of await getEntries(options.map((o) => o.ref))) {
-      skillTexts[e.name.toLowerCase()] ??= e.descriptionEs || e.description;
-    }
-  }
+  // Pestaña Información: solo los valores que muestra (es un componente de cliente)
+  const info: InfoData = {
+    abilities: d.abilities, proficiencyBonus: d.proficiencyBonus, hp: d.hp, ac: d.ac, armorWarning: d.armorWarning,
+    initiative: d.initiative, speed: d.speed, darkvision: d.darkvision, saves: d.saves, skills: d.skills, armor: d.armor,
+    weapons: d.weapons, tools: d.tools, languages: d.languages, attacks: d.attacks, breakdowns: d.breakdowns,
+  };
 
   const base = `/characters/${id}`;
   // Las pestañas inactivas se ocultan en pantalla, pero se imprimen todas seguidas
@@ -178,7 +173,7 @@ export default async function CharacterPage({ params, searchParams }: Props) {
       <section {...panel("info")}>
         {panelTitle("info")}
         {/* Los editores guardan su estado: al borrar un nivel desde la ficha se montan de nuevo con los PG recortados */}
-        <InfoTab key={d.level} d={d} characterId={id} isOwner={isOwner} skillTexts={skillTexts} />
+        <InfoTab key={d.level} d={info} characterId={id} isOwner={isOwner} />
       </section>
       <section {...panel("trasfondo")}>
         {panelTitle("trasfondo")}

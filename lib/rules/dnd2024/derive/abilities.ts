@@ -1,5 +1,5 @@
 // Características, salvaciones y habilidades de la hoja v2, con su desglose.
-import { ABILITY_NAMES } from "@/lib/rules/dnd2024/labels";
+import { ABILITY_NAMES, fmtMod } from "@/lib/rules/dnd2024/labels";
 import { heldFeats } from "@/lib/rules/dnd2024/levels";
 import type { Dnd2024SheetV2 } from "@/lib/rules/dnd2024/sheet";
 import { ABILITIES, type Ability, type Ref } from "@/lib/rules/types";
@@ -23,7 +23,6 @@ const ABILITY_CAP = 20;
 // Los dones épicos pueden subir una característica hasta 30
 const EPIC_CAP = 30;
 export const modOf = (score: number) => Math.floor((score - 10) / 2);
-const signed = (m: number) => (m > 0 ? `+${m}` : m < 0 ? `−${-m}` : "+0");
 const modPart = (abilities: AbilityScores, a: Ability): Part =>
   ({ label: `Modificador de ${ABILITY_NAMES[a]}`, value: abilities[a].mod });
 
@@ -71,7 +70,7 @@ export function abilityBreakdowns(
     parts.push(...epic[a]);
     capped(EPIC_CAP);
     const total = parts.reduce((s, p) => s + p.value, 0);
-    out[a] = makeBreakdown(parts, [`Modificador ${signed(modOf(total))}`]);
+    out[a] = makeBreakdown(parts, [`Modificador ${fmtMod(modOf(total))}`]);
   }
   return out;
 }

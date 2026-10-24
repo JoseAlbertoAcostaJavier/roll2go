@@ -87,9 +87,14 @@
   body > :not(main) {
     display: none !important;
   }
-  button,
+  /* Los valores de la pestaña Información son botones que abren su detalle: se imprimen como texto */
+  button:not([data-print="text"]),
   nav {
     display: none !important;
+  }
+  [data-print="text"] {
+    cursor: auto;
+    outline: none !important;
   }
   * {
     animation: none !important;

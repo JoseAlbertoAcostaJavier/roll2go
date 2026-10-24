@@ -5,10 +5,10 @@ import { CircleCheck, LoaderCircle } from "lucide-react";
 import type { CatalogEntry } from "@/lib/rules/catalog";
 import { derive } from "@/lib/rules/dnd2024/derive";
 import type { Dnd2024Sheet } from "@/lib/rules/dnd2024/sheet";
+import { fmtMod } from "@/lib/rules/dnd2024/labels";
 
 export type MissingItem = { label: string; href: string };
 
-const fmtMod = (m: number) => (m > 0 ? `+${m}` : m < 0 ? `−${-m}` : "+0");
 
 /* Resumen lateral del asistente: valores derivados de lo elegido hasta ahora y lo que falta por completar.
    `entries` son las entradas del catálogo ya cargadas, por "libro:clave". */

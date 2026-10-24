@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { distanceText, toolName } from "@/lib/rules/dnd2024/labels";
+import { distanceText, fmtMod, toolName } from "@/lib/rules/dnd2024/labels";
 
 describe("toolName", () => {
   it("traduce herramientas y elecciones genéricas", () => {
@@ -19,5 +19,13 @@ describe("distanceText", () => {
     expect(distanceText(30)).toBe("30 pies (9 m)");
     expect(distanceText(25)).toBe("25 pies (7,5 m)");
     expect(distanceText(60)).toBe("60 pies (18 m)");
+  });
+});
+
+describe("fmtMod", () => {
+  it("pone signo al modificador, con «−» para los negativos", () => {
+    expect(fmtMod(3)).toBe("+3");
+    expect(fmtMod(0)).toBe("+0");
+    expect(fmtMod(-1)).toBe("−1");
   });
 });

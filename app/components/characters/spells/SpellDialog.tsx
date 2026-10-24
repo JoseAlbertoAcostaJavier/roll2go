@@ -99,7 +99,11 @@ export default function SpellDialog({ characterId, campaignId = null, spells, op
     } else if (e.key === "Tab" && box.current) {
       const items = [...box.current.querySelectorAll<HTMLElement>("button:not(:disabled), a[href]")];
       const [first, last] = [items[0], items[items.length - 1]];
-      if (e.shiftKey && document.activeElement === first) {
+      // Con el foco en la propia ventana (tras pulsar en su texto), Tab va al primero y Mayús+Tab al último
+      if (document.activeElement === box.current) {
+        e.preventDefault();
+        (e.shiftKey ? last : first).focus();
+      } else if (e.shiftKey && document.activeElement === first) {
         e.preventDefault();
         last.focus();
       } else if (!e.shiftKey && document.activeElement === last) {
@@ -120,8 +124,9 @@ export default function SpellDialog({ characterId, campaignId = null, spells, op
         aria-modal="true"
         aria-labelledby={`${uid}-title`}
         aria-busy={!current}
+        tabIndex={-1}
         onKeyDown={onKeyDown}
-        className="max-h-full w-full max-w-2xl animate-pop overflow-y-auto rounded-xl border border-line bg-panel p-5 shadow-[0_12px_40px_rgba(0,0,0,0.6)] sm:p-6"
+        className="max-h-full w-full max-w-2xl animate-pop outline-none overflow-y-auto rounded-xl border border-line bg-panel p-5 shadow-[0_12px_40px_rgba(0,0,0,0.6)] sm:p-6"
       >
         <div className="mb-4 flex items-start gap-3">
           <RoundIcon kind="school" id={data?.school} label={name || "Conjuro"} size={48} />

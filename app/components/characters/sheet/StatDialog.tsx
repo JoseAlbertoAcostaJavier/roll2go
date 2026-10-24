@@ -3,19 +3,17 @@
 import { useEffect, useId, useRef } from "react";
 import { X } from "lucide-react";
 import type { Breakdown } from "@/lib/rules/dnd2024/derive";
-import { metersText } from "@/lib/rules/dnd2024/labels";
-
-const fmtMod = (m: number) => (m > 0 ? `+${m}` : m < 0 ? `−${-m}` : "+0");
-const fmtFeet = (f: number) => (f < 0 ? `−${-f} pies` : `${f} pies`);
+import { partText, totalText, type BreakdownUnit } from "@/lib/rules/dnd2024/statTexts";
 
 // Detalle de un valor de la pestaña Información (spec §3): qué es y de dónde sale su número. Mismo comportamiento que
 // la ficha de conjuro: foco atrapado, Escape cierra y el foco vuelve al botón que lo abrió.
-export default function StatDialog({ title, description, breakdown, unit, onClose, opener }: {
+export default function StatDialog({ title, subject, description, breakdown, unit, onClose, opener }: {
   title: string;
+  /** A qué afecta el desglose, para la frase de entrada: «tu puntuación de Fuerza», «la Clase de armadura»… */
+  subject: string;
   description: string;
   breakdown: Breakdown;
-  /** `feet`: velocidad en pies (el total con metros); `plain`: total sin signo (puntuación de característica, CA). */
-  unit?: "feet" | "plain";
+  unit?: BreakdownUnit;
   onClose: () => void;
   /** Botón que abrió el diálogo (capturado al pulsar); recibe el foco al cerrar. */
   opener: HTMLElement | null;
@@ -41,7 +39,11 @@ export default function StatDialog({ title, description, breakdown, unit, onClos
     } else if (e.key === "Tab" && box.current) {
       const items = [...box.current.querySelectorAll<HTMLElement>("button:not(:disabled), a[href]")];
       const [first, last] = [items[0], items[items.length - 1]];
-      if (e.shiftKey && document.activeElement === first) {
+      // Con el foco en la propia ventana (tras pulsar en su texto), Tab va al primero y Mayús+Tab al último
+      if (document.activeElement === box.current) {
+        e.preventDefault();
+        (e.shiftKey ? last : first).focus();
+      } else if (e.shiftKey && document.activeElement === first) {
         e.preventDefault();
         last.focus();
       } else if (!e.shiftKey && document.activeElement === last) {
@@ -50,11 +52,6 @@ export default function StatDialog({ title, description, breakdown, unit, onClos
       }
     }
   }
-
-  const part = unit === "feet" ? fmtFeet : fmtMod;
-  const total = unit === "feet" ? `${fmtFeet(breakdown.total)} (${metersText(breakdown.total)})`
-    : unit === "plain" ? String(breakdown.total)
-    : fmtMod(breakdown.total);
 
   return (
     <div
@@ -66,8 +63,9 @@ export default function StatDialog({ title, description, breakdown, unit, onClos
         role="dialog"
         aria-modal="true"
         aria-labelledby={`${uid}-title`}
+        tabIndex={-1}
         onKeyDown={onKeyDown}
-        className="max-h-full w-full max-w-lg animate-pop overflow-y-auto rounded-xl border border-line bg-panel p-5 shadow-[0_12px_40px_rgba(0,0,0,0.6)] sm:p-6"
+        className="max-h-full w-full max-w-lg animate-pop outline-none overflow-y-auto rounded-xl border border-line bg-panel p-5 shadow-[0_12px_40px_rgba(0,0,0,0.6)] sm:p-6"
       >
         <div className="mb-4 flex items-start gap-3">
           <h3 id={`${uid}-title`} className="min-w-0 flex-1 font-heading text-2xl font-bold">{title}</h3>
@@ -86,18 +84,18 @@ export default function StatDialog({ title, description, breakdown, unit, onClos
           <p className="mb-4 rounded-md border border-line bg-surface p-3 text-sm">{description}</p>
         )}
 
-        <p className="mb-2 text-sm text-muted">Los modificadores que afectan a {title} son los siguientes:</p>
+        <p className="mb-2 text-sm text-muted">Los modificadores que afectan a {subject} son los siguientes:</p>
         <table className="w-full text-sm">
           <tbody className="divide-y divide-line">
             {breakdown.parts.map((p, i) => (
               <tr key={`${p.label}-${i}`}>
                 <th scope="row" className="py-1.5 pr-3 text-left font-normal">{p.label}</th>
-                <td className="py-1.5 text-right font-heading font-bold">{part(p.value)}</td>
+                <td className="py-1.5 text-right font-heading font-bold">{partText(p.value, i, unit)}</td>
               </tr>
             ))}
             <tr className="border-t-2 border-line">
               <th scope="row" className="py-1.5 pr-3 text-left font-bold">Total</th>
-              <td className="py-1.5 text-right font-heading font-extrabold">{total}</td>
+              <td className="py-1.5 text-right font-heading font-extrabold">{totalText(breakdown.total, unit)}</td>
             </tr>
           </tbody>
         </table>
