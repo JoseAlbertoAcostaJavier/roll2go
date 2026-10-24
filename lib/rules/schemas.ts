@@ -122,6 +122,7 @@ const checks: { [K in EntryKind]: Check } = {
     subclassLevel: int(1, 20),
     asiLevels: arrayOf(int(1, 20)),
     spellcasting: nullable(spellcasting),
+    "spells?": arrayOf(shape({ level: int(1, 20), ref })),
     features: arrayOf(levelFeature),
     progressions,
     table: classTable,
@@ -154,6 +155,8 @@ const checks: { [K in EntryKind]: Check } = {
     "prerequisite?": str,
     repeatable: bool,
     "abilityIncrease?": abilities,
+    "spells?": arrayOf(spellGrant),
+    "grantsSpells?": oneOf(true),
   }),
   spell: shape({
     level: int(0, 9),

@@ -77,26 +77,3 @@ export function spellbookSize(progressions: Pick<ClassProgressions, "spellbook">
 
 /** Clave de `sheet.prepared` para una clase (o subclase lanzadora). */
 export const preparedKey = (cls: Ref) => cls.key;
-
-/**
- * Dotes del Manual del Jugador 2024 que dan conjuros, por nombre (sin la variante: «magic initiate; cleric» →
- * «magic initiate»), con los que dan siempre. Los elegidos por el jugador (Iniciado en la magia, Lanzador de
- * rituales…) no se guardan todavía en la elección de la dote.
- */
-export const SPELL_FEATS: Record<string, string[]> = {
-  "magic initiate": [],
-  "ritual caster": [],
-  "blessed warrior": [],
-  "druidic warrior": [],
-  "fey touched": ["misty step"],
-  "shadow touched": ["invisibility"],
-  telepathic: ["detect thoughts"],
-  telekinetic: ["mage hand"],
-};
-
-/** Conjuros fijos de una dote del Manual del Jugador 2024, o null si la dote no da conjuros. */
-export function featSpells(feat: Ref): Ref[] | null {
-  const [name, source] = feat.key.replace(/^[^:]*:/, "").split("|");
-  const spells = source === "xphb" ? SPELL_FEATS[name.split(";")[0].trim()] : undefined;
-  return spells ? spells.map((s) => ({ book: feat.book, key: `spell:${s}|xphb` })) : null;
-}

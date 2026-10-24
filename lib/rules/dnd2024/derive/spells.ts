@@ -3,12 +3,10 @@
 import type { CatalogEntry } from "@/lib/rules/catalog";
 import { refKey } from "@/lib/rules/dnd2024/equipmentRefs";
 import type { Dnd2024SheetV2, Named, SpellChoice } from "@/lib/rules/dnd2024/sheet";
-import {
-  featSpells, maxSpellLevel, PACT_SLOTS, preparedKey, slotLevels,
-} from "@/lib/rules/dnd2024/spellcasting";
+import { maxSpellLevel, PACT_SLOTS, preparedKey, slotLevels } from "@/lib/rules/dnd2024/spellcasting";
 import { summarizeClasses } from "@/lib/rules/dnd2024/upgrade";
 import type {
-  Ability, BackgroundData, ClassData, LineageData, Ref, SpeciesData, Spellcasting, SpellcastingMode,
+  Ability, BackgroundData, ClassData, FeatData, LineageData, Ref, SpeciesData, Spellcasting, SpellcastingMode,
   SpellcastingProgression, SubclassData,
 } from "@/lib/rules/types";
 import type { AbilityScores } from "./abilities";
@@ -34,7 +32,7 @@ export type CasterBlock = {
   prepared: Ref[];
   /** Libro de conjuros (modo `spellbook`): entradas de los niveles y copiados. */
   spellbook: Named[];
-  /** Siempre preparados de la subclase; no cuentan para el límite. */
+  /** Siempre preparados de la clase y de la subclase; no cuentan para el límite. */
   always: OtherSpell[];
 };
 
@@ -51,10 +49,16 @@ const named = (ref: Ref, entries: Map<string, CatalogEntry>): Named => {
   return { ref, name: e ? (e.nameEs ?? e.name) : nameFromKey(ref.key) };
 };
 
+type Granted = { level: number; ref: Ref }[] | undefined;
+// Conjuros concedidos hasta un nivel
+const upTo = (list: Granted, max: number) => (list ?? []).filter((s) => s.level <= max).map((s) => s.ref);
+
 // Fuentes de lanzamiento: cada clase con lanzamiento y, si no lo tiene, su subclase lanzadora
 type Caster = {
   ref: Ref; name: string; level: number; casting: Spellcasting;
   progressions: Partial<Pick<ClassData["progressions"], "cantrips" | "prepared">>;
+  /** La clase (aunque lance su subclase), para sus conjuros siempre preparados. */
+  klass: { named: Named; data: ClassData | undefined };
   subclass: { named: Named; data: SubclassData | undefined } | null;
 };
 
@@ -64,10 +68,17 @@ function casters(sheet: Dnd2024SheetV2, entries: Map<string, CatalogEntry>): Cas
     const data = entries.get(refKey(c.class.ref))?.data as ClassData | undefined;
     const sub = c.subclass ? (entries.get(refKey(c.subclass.ref))?.data as SubclassData | undefined) : undefined;
     const subclass = c.subclass ? { named: c.subclass, data: sub } : null;
+    const klass = { named: c.class, data };
     if (data?.spellcasting) {
-      out.push({ ref: c.class.ref, name: c.class.name, level: c.level, casting: data.spellcasting, progressions: data.progressions, subclass });
+      out.push({
+        ref: c.class.ref, name: c.class.name, level: c.level, casting: data.spellcasting, progressions: data.progressions,
+        klass, subclass,
+      });
     } else if (c.subclass && sub?.spellcasting) {
-      out.push({ ref: c.subclass.ref, name: c.subclass.name, level: c.level, casting: sub.spellcasting, progressions: sub.progressions, subclass });
+      out.push({
+        ref: c.subclass.ref, name: c.subclass.name, level: c.level, casting: sub.spellcasting, progressions: sub.progressions,
+        klass, subclass,
+      });
     }
   }
   return out;
@@ -106,9 +117,11 @@ export function casterBlocks(
     const mod = derived.abilities[ability].mod;
     const { cantrips, spells } = chosenSpells(sheet, c.ref);
     const known = mode === "levelUp" ? spells : [];
-    // Los de la subclase hasta el nivel de clase (en las subclases lanzadoras, también los suyos)
-    const always = (c.subclass?.data?.spells ?? []).filter((s) => s.level <= c.level)
-      .map((s) => ({ spell: named(s.ref, entries), origin: c.subclass!.named.name }));
+    // Los de la clase y los de la subclase hasta el nivel de clase
+    const always = [
+      ...upTo(c.klass.data?.spells, c.level).map((r) => ({ spell: named(r, entries), origin: c.klass.named.name })),
+      ...(c.subclass ? upTo(c.subclass.data?.spells, c.level).map((r) => ({ spell: named(r, entries), origin: c.subclass!.named.name })) : []),
+    ];
     return {
       class: c.ref,
       name: c.name,
@@ -140,15 +153,13 @@ export function spellSlots(sheet: Dnd2024SheetV2, entries: Map<string, CatalogEn
 }
 
 /**
- * Conjuros que no son de una clase lanzadora: especie y legado (hasta el nivel total), dotes y subclases de clases
- * que no lanzan (Guerrero psiónico…), con su origen.
+ * Conjuros que no son de una clase lanzadora: especie y legado (hasta el nivel total), dotes (los fijos, desde el
+ * nivel total que piden) y clases y subclases que no lanzan (Guerrero psiónico…), con su origen.
  */
 export function otherSpells(sheet: Dnd2024SheetV2, entries: Map<string, CatalogEntry>): OtherSpell[] {
   const level = sheet.levels.length;
   const out: OtherSpell[] = [];
   const add = (refs: Ref[], origin: string) => out.push(...refs.map((r) => ({ spell: named(r, entries), origin })));
-  const upTo = (list: { level: number; ref: Ref }[] | undefined, max: number) =>
-    (list ?? []).filter((s) => s.level <= max).map((s) => s.ref);
 
   const species = entries.get(refKey(sheet.species.ref))?.data as SpeciesData | undefined;
   add(upTo(species?.spells, level), `Especie: ${sheet.species.name}`);
@@ -158,22 +169,27 @@ export function otherSpells(sheet: Dnd2024SheetV2, entries: Map<string, CatalogE
   }
   const casterRefs = new Set(casters(sheet, entries).map((c) => refKey(c.ref)));
   for (const c of summarizeClasses(sheet.levels)) {
-    if (!c.subclass || casterRefs.has(refKey(c.class.ref)) || casterRefs.has(refKey(c.subclass.ref))) continue;
+    if (casterRefs.has(refKey(c.class.ref)) || (c.subclass && casterRefs.has(refKey(c.subclass.ref)))) continue;
+    add(upTo((entries.get(refKey(c.class.ref))?.data as ClassData | undefined)?.spells, c.level), c.class.name);
+    if (!c.subclass) continue;
     const sub = entries.get(refKey(c.subclass.ref))?.data as SubclassData | undefined;
     add(upTo(sub?.spells, c.level), c.subclass.name);
   }
   for (const f of characterFeats(sheet, background(sheet, entries))) {
-    add(featSpells(f.ref) ?? [], `Dote: ${f.name ?? named(f.ref, entries).name}`);
+    add(upTo(featData(f.ref, entries)?.spells, level), `Dote: ${f.name ?? named(f.ref, entries).name}`);
   }
   return out;
 }
+
+const featData = (ref: Ref, entries: Map<string, CatalogEntry>) =>
+  entries.get(refKey(ref))?.data as FeatData | undefined;
 
 const background = (sheet: Dnd2024SheetV2, entries: Map<string, CatalogEntry>) =>
   entries.get(refKey(sheet.background.ref))?.data as BackgroundData | undefined;
 
 /**
  * Bloques, espacios, otros conjuros y espacios gastados. `hasSpells`: si la ficha muestra la pestaña Conjuros
- * (también con una dote de conjuros elegidos, aunque aún no se guarden).
+ * (también con una dote de conjuros elegidos, aunque aún no se guarden: `FeatData.grantsSpells`).
  */
 export function spellsSummary(
   sheet: Dnd2024SheetV2,
@@ -182,7 +198,7 @@ export function spellsSummary(
 ): { spells: SpellsSummary; hasSpells: boolean } {
   const blocks = casterBlocks(sheet, derived, entries);
   const other = otherSpells(sheet, entries);
-  const spellFeat = characterFeats(sheet, background(sheet, entries)).some((f) => featSpells(f.ref) !== null);
+  const spellFeat = characterFeats(sheet, background(sheet, entries)).some((f) => featData(f.ref, entries)?.grantsSpells);
   return {
     spells: { blocks, slots: spellSlots(sheet, entries), other, used: sheet.slotsUsed ?? {} },
     hasSpells: blocks.length > 0 || other.length > 0 || spellFeat,

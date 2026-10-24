@@ -3,12 +3,12 @@ import { derive } from "@/lib/rules/dnd2024/derive";
 import { casterBlocks, otherSpells, spellSlots } from "@/lib/rules/dnd2024/derive/spells";
 import type { Choice, Dnd2024SheetV2, LevelEntry, Named } from "@/lib/rules/dnd2024/sheet";
 import { casterLevel, maxSpellLevel, spellbookSize } from "@/lib/rules/dnd2024/spellcasting";
-import type { ClassData } from "@/lib/rules/types";
+import type { ClassData, SubclassData } from "@/lib/rules/types";
 import { B, buildCatalog, ref } from "./fixtureCatalog";
 
 const entries = buildCatalog([
   "class-barbarian.json", "class-cleric.json", "class-wizard.json", "class-paladin.json", "class-sorcerer.json",
-  "class-warlock.json",
+  "class-warlock.json", "class-fighter.json",
 ]);
 const classData = (key: string) => entries.get(`${B}:${key}`)!.data as ClassData;
 
@@ -19,7 +19,9 @@ const CLASSES: Record<string, Named> = {
   paladin: { ref: ref("class:paladin|xphb"), name: "Paladín" },
   sorcerer: { ref: ref("class:sorcerer|xphb"), name: "Hechicero" },
   warlock: { ref: ref("class:warlock|xphb"), name: "Brujo" },
+  fighter: { ref: ref("class:fighter|xphb"), name: "Guerrero" },
 };
+const EK: Named = { ref: ref("subclass:eldritch knight|fighter|xphb"), name: "Caballero arcano" };
 const spell = (name: string): Named => ({ ref: ref(`spell:${name}|xphb`), name });
 
 /**
@@ -119,6 +121,41 @@ describe("bloques de lanzador", () => {
   it("Paladín 5: nivel máximo 2 (½ hacia arriba)", () => {
     expect(blocks(sheetOf(times("paladin", 5)))[0].maxSpellLevel).toBe(2);
   });
+  it("Paladín 2: Castigo divino siempre preparado de la clase, que no cuenta", () => {
+    const s = sheetOf(["paladin", "paladin"]);
+    s.prepared = { "class:paladin|xphb": [spell("bless").ref] };
+    const [b] = blocks(s);
+    expect(b.always).toEqual([{ spell: { ref: ref("spell:divine smite|xphb"), name: "Divine smite" }, origin: "Paladín" }]);
+    expect(b.prepared).toEqual([spell("bless").ref]);
+    expect(b.preparedLimit).toBe(classData("class:paladin|xphb").progressions.prepared![1]);
+    expect(blocks(sheetOf(["paladin"]))[0].always).toEqual([]);
+  });
+  it("Caballero arcano: bloque de la subclase con sus límites y espacios de tercio", () => {
+    const s = sheetOf(times("fighter", 4), { 3: [{ type: "subclass", source: "class:subclass", value: EK }] });
+    const sub = entries.get(`${B}:${EK.ref.key}`)!.data as SubclassData;
+    const [b] = blocks(s);
+    expect(b).toMatchObject({
+      class: EK.ref, name: "Caballero arcano", ability: "int", mode: "levelUp", maxSpellLevel: 1,
+      cantripLimit: sub.progressions.cantrips![3], preparedLimit: sub.progressions.prepared![3],
+    });
+    expect(b.cantripLimit).toBe(2);
+    expect(b.preparedLimit).toBe(4);
+    // Una sola clase lanzadora: tabla del Caballero arcano (⌈4/3⌉ = 2 → 3 espacios)
+    expect(spellSlots(s, entries)).toEqual({ levels: { 1: 3 }, pact: null });
+    // Multiclase con Clérigo 1: ⌊4/3⌋ + 1 = 2 → 3 espacios
+    expect(spellSlots(sheetOf([...times("fighter", 4), "cleric"], { 3: [{ type: "subclass", source: "class:subclass", value: EK }] }), entries))
+      .toEqual({ levels: { 1: 3 }, pact: null });
+    expect(blocks(sheetOf(times("fighter", 2)))).toEqual([]);
+  });
+  it("sustitución de un truco", () => {
+    const s = sheetOf(["sorcerer", "sorcerer"], {
+      1: [{ type: "spells", source: "x", value: { class: CLASSES.sorcerer.ref, cantrips: [spell("light"), spell("mage hand")], spells: [spell("sleep")] } }],
+      2: [{ type: "spells", source: "x", value: { class: CLASSES.sorcerer.ref, cantrips: [], spells: [spell("shield")], replace: { out: spell("light"), in: spell("fire bolt") } } }],
+    });
+    const [b] = blocks(s);
+    expect(b.cantrips.map((c) => c.name)).toEqual(["mage hand", "fire bolt"]);
+    expect(b.known.map((k) => k.name)).toEqual(["sleep", "shield"]);
+  });
   it("modo levelUp: aprendidos con sustitución y preparados = aprendidos", () => {
     const s = sheetOf(["sorcerer", "sorcerer"], {
       1: [{ type: "spells", source: "x", value: { class: CLASSES.sorcerer.ref, cantrips: [spell("light")], spells: [spell("sleep"), spell("shield")] } }],
@@ -186,6 +223,14 @@ describe("otros conjuros", () => {
     const d = derive(s, entries);
     expect(d.hasSpells).toBe(true);
     expect(d.spells.blocks).toEqual([]);
+  });
+  it("dote con conjuros fijos: Tocado por los feéricos → Paso brumoso", () => {
+    const fey: Named = { ref: ref("feat:fey-touched|xphb"), name: "Tocado por los feéricos" };
+    const s = sheetOf(times("barbarian", 4), { 4: [{ type: "asi", source: "x", value: { feat: fey } }] });
+    expect(otherSpells(s, entries)).toEqual([
+      { spell: { ref: ref("spell:misty step|xphb"), name: "Misty step" }, origin: "Dote: Tocado por los feéricos" },
+    ]);
+    expect(derive(s, entries).hasSpells).toBe(true);
   });
   it("con legado que da conjuros: tiene conjuros", () => {
     const wood: Named = { ref: ref("lineage:wood elf|xphb"), name: "Elfo silvano" };

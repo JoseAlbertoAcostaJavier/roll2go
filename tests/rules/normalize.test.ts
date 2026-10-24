@@ -3,11 +3,11 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { inlineTags } from "@/lib/rules/import/toBbcode";
 import {
-  normalizeAll, normalizeBackground, expandVersions, resolveCopy, textChoiceFeatures, toIdentifier, unreachableFeatures,
+  normalizeAll, normalizeBackground, normalizeFeat, expandVersions, resolveCopy, textChoiceFeatures, toIdentifier, unreachableFeatures,
   type NormalizedEntry, type RawFiles,
 } from "@/lib/rules/import/normalize";
 import type {
-  BackgroundData, ClassData, FeatureData, ItemData, LineageData, NameTableData, OptionalFeatureData, SpeciesData, SpellData,
+  BackgroundData, ClassData, FeatData, FeatureData, ItemData, LineageData, NameTableData, OptionalFeatureData, SpeciesData, SpellData,
   SubclassData,
 } from "@/lib/rules/types";
 
@@ -83,6 +83,25 @@ test("dote con versiones (Magic Initiate)", () => {
   expect(cleric).toBeDefined();
   expect(cleric!.data).toMatchObject({ category: "origin", categoryCode: "O", repeatable: true });
   expect(cleric!.description).not.toContain("Druid");
+});
+
+test("dotes con conjuros: los fijos en `spells` y `grantsSpells` también si solo se eligen", () => {
+  const fey = find("feat", "feat:fey-touched|xphb")!.data as FeatData;
+  expect(fey.spells).toEqual([{ level: 1, ref: { book: "__BOOK__", key: "spell:misty step|xphb" } }]);
+  expect(fey.grantsSpells).toBe(true);
+  const initiate = find("feat", "feat:magic initiate; cleric|xphb")!.data as FeatData;
+  expect(initiate.spells).toBeUndefined();
+  expect(initiate.grantsSpells).toBe(true);
+  const alert = normalizeFeat({ name: "Alert", source: "XPHB", category: "O" }).data;
+  expect(alert).not.toHaveProperty("grantsSpells");
+  expect(alert).not.toHaveProperty("spells");
+});
+
+test("clase con conjuros siempre preparados (Paladín)", () => {
+  const { entries: es } = normalizeAll({ classes: [fixture("class-paladin.json")] }, "XPHB");
+  const paladin = es.find((e) => e.key === "class:paladin|xphb")!.data as ClassData;
+  expect(paladin.spells!.map((s) => [s.level, s.ref.key])).toEqual([[2, "spell:divine smite|xphb"], [5, "spell:find steed|xphb"]]);
+  expect((find("class", "class:barbarian|xphb")!.data as ClassData).spells).toEqual([]);
 });
 
 describe("clase (Bárbaro)", () => {

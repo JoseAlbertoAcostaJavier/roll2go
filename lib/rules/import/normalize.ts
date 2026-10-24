@@ -212,8 +212,11 @@ export function expandVersions(base: unknown): Rec[] {
 
 // ---------- piezas comunes ----------
 
-/** `additionalSpells` → conjuros fijos por nivel de personaje/clase. Las elecciones (`choose`) se omiten. */
-function spellGrants(additional: unknown[]): SpellGrant[] {
+/**
+ * `additionalSpells` → conjuros fijos por nivel de personaje/clase. Las elecciones (`choose`) se omiten. Con
+ * `unleveled`, los que no tienen nivel (`"_"`, como los de las dotes) se dan en ese nivel.
+ */
+function spellGrants(additional: unknown[], unleveled?: number): SpellGrant[] {
   const grants: SpellGrant[] = [];
   for (const block of additional) {
     if (!isObj(block)) continue;
@@ -222,7 +225,7 @@ function spellGrants(additional: unknown[]): SpellGrant[] {
       const byLevel = block[group];
       if (!isObj(byLevel)) continue;
       for (const [lvl, value] of Object.entries(byLevel)) {
-        const level = Number(lvl);
+        const level = lvl === "_" && unleveled !== undefined ? unleveled : Number(lvl);
         if (!Number.isInteger(level)) continue; // "_" = sin nivel, s1… = nivel de conjuro
         for (const s of collectStrings(value)) {
           grants.push({ level, ref: ref("spell", cleanRefKey(s)), ...(isAbility(ability) ? { ability } : {}) });
@@ -397,6 +400,11 @@ export function normalizeFeat(raw: Rec): NormalizedEntry {
     from.filter(isAbility).forEach((x) => increase.add(x));
   }
   if (increase.size) data.abilityIncrease = ABILITIES.filter((x) => increase.has(x));
+  // Conjuros: los fijos desde que se obtiene la dote; los elegidos solo marcan que da conjuros
+  const additional = asArr(raw.additionalSpells);
+  const spells = spellGrants(additional, 1);
+  if (spells.length) data.spells = spells;
+  if (additional.length) data.grantsSpells = true;
   return entry<"feat">(header("feat", raw, keyOf("feat", str(raw.name), str(raw.source))), data);
 }
 
@@ -679,6 +687,7 @@ export function normalizeClass(raw: Rec, ctx: NormalizeContext): NormalizedEntry
     subclassLevel: subclassAt?.level ?? 3,
     asiLevels: features.filter((f) => f.ref.key.startsWith("classFeature:ability score improvement|")).map((f) => f.level),
     spellcasting: spellcasting(raw, key),
+    spells: spellGrants(asArr(raw.additionalSpells)).map(({ level, ref: r }) => ({ level, ref: r })),
     features,
     progressions: classProgressions(raw),
     table: classTable(raw.classTableGroups),

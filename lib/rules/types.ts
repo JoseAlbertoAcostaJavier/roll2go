@@ -90,6 +90,8 @@ export type ClassData = {
   subclassLevel: number;
   asiLevels: number[];
   spellcasting: Spellcasting | null;
+  /** Conjuros siempre preparados de la clase por nivel de clase (Castigo divino del Paladín…). */
+  spells?: { level: number; ref: Ref }[];
   features: LevelFeature[];
   progressions: ClassProgressions;
   table: ClassTable;
@@ -141,6 +143,10 @@ export type FeatData = {
   prerequisite?: string;
   repeatable: boolean;
   abilityIncrease?: Ability[];
+  /** Conjuros fijos que da (Tocado por los feéricos → Paso brumoso), por nivel de personaje. */
+  spells?: SpellGrant[];
+  /** Si da conjuros, aunque sean solo elegidos (Iniciado en la magia, Lanzador de rituales…). */
+  grantsSpells?: true;
 };
 
 export type SpellData = {
