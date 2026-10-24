@@ -59,7 +59,7 @@ export default async function CampaignLogPage({
   return (
     <section>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <h2 className="font-heading text-lg font-bold uppercase tracking-wide">Diario de campaña</h2>
+        <h2 className="font-heading text-lg font-bold uppercase tracking-wide">Diario de {campaign.name}</h2>
         <Link
           href={`/campaigns/${id}/log/new`}
           className="flex items-center gap-2 rounded-md bg-brand px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-brand-hover"
@@ -67,7 +67,7 @@ export default async function CampaignLogPage({
           <Plus size={16} aria-hidden="true" /> Nueva nota
         </Link>
       </div>
-
+      <p className="mb-5 text-sm text-muted">En el diario de campaña encontrarás el resumen de tus partidas, incluyendo imágenes, para no perder detalle de las aventuras que habéis compartido.</p>      
       <nav aria-label="Filtrar notas" className="mb-5 flex flex-wrap gap-2">
         {FILTERS.map(([key, label]) => (
           <Link
