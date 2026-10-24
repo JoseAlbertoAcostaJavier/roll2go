@@ -6,6 +6,7 @@ import { ABILITIES, type Ability } from "@/lib/rules/types";
 import type { AbilityMethod } from "@/lib/rules/dnd2024/sheet";
 import { POINT_BUY_TOTAL, STANDARD_ARRAY, checkBackgroundBonus, pointBuyCost } from "@/lib/rules/dnd2024/abilities";
 import { assignValue, exceedsLimit, maxBase, poolSlots, totalsWithinLimit } from "@/lib/rules/dnd2024/assign";
+import { fmtMod } from "@/lib/rules/dnd2024/labels";
 import { field, labelClass } from "../formStyles";
 
 type Base = Record<Ability, number | null>;
@@ -50,7 +51,6 @@ const filledBase = (v: number): Base => ({ str: v, dex: v, con: v, int: v, wis: 
 const freshBase = (m: AbilityMethod): Base => (m === "pointBuy" ? filledBase(8) : m === "manual" ? filledBase(10) : emptyBase());
 
 const modOf = (total: number) => Math.floor((total - 10) / 2);
-const fmtMod = (m: number) => (m > 0 ? `+${m}` : m < 0 ? `−${-m}` : "+0");
 const modColor = (m: number) => (m > 0 ? "text-success" : m < 0 ? "text-brand-soft" : "text-muted");
 
 const stepBtn =

@@ -19,7 +19,7 @@ import { spellListOf } from "@/lib/rules/dnd2024/spellcasting";
 import type { BackgroundData, ItemData } from "@/lib/rules/types";
 import SheetHeader from "@/app/components/characters/sheet/SheetHeader";
 import SheetTabs, { isSheetTab, SHEET_TABS, type SheetTab } from "@/app/components/characters/sheet/SheetTabs";
-import InfoTab from "@/app/components/characters/sheet/InfoTab";
+import InfoTab, { type InfoData } from "@/app/components/characters/sheet/InfoTab";
 import BackgroundTab from "@/app/components/characters/sheet/BackgroundTab";
 import FeaturesTab from "@/app/components/characters/sheet/FeaturesTab";
 import EquipmentTab, { type ItemInfo } from "@/app/components/characters/sheet/EquipmentTab";
@@ -124,6 +124,13 @@ export default async function CharacterPage({ params, searchParams }: Props) {
     ? (await listSpells(found.books)).filter((s) => s.data.classes.some((c) => listIds.has(c)) || ownSpells.has(refKey(s.ref)))
     : [];
 
+  // Pestaña Información: solo los valores que muestra (es un componente de cliente)
+  const info: InfoData = {
+    abilities: d.abilities, proficiencyBonus: d.proficiencyBonus, hp: d.hp, ac: d.ac, armorWarning: d.armorWarning,
+    initiative: d.initiative, speed: d.speed, darkvision: d.darkvision, saves: d.saves, skills: d.skills, armor: d.armor,
+    weapons: d.weapons, tools: d.tools, languages: d.languages, attacks: d.attacks, breakdowns: d.breakdowns,
+  };
+
   const base = `/characters/${id}`;
   // Las pestañas inactivas se ocultan en pantalla, pero se imprimen todas seguidas
   const panel = (t: SheetTab) => ({
@@ -166,7 +173,7 @@ export default async function CharacterPage({ params, searchParams }: Props) {
       <section {...panel("info")}>
         {panelTitle("info")}
         {/* Los editores guardan su estado: al borrar un nivel desde la ficha se montan de nuevo con los PG recortados */}
-        <InfoTab key={d.level} d={d} characterId={id} isOwner={isOwner} />
+        <InfoTab key={d.level} d={info} characterId={id} isOwner={isOwner} />
       </section>
       <section {...panel("trasfondo")}>
         {panelTitle("trasfondo")}
