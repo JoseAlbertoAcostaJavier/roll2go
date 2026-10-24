@@ -1,12 +1,12 @@
 "use client";
 
 import { useId, type ReactNode } from "react";
-import { Clock, Crosshair, Hourglass, Lock, Shapes, WandSparkles, type LucideIcon } from "lucide-react";
+import { Clock, Crosshair, Hourglass, Lock, Shapes, type LucideIcon } from "lucide-react";
 import type { SpellOption } from "@/lib/rules/catalog";
 import { refKey } from "@/lib/rules/dnd2024/equipmentRefs";
 import { spellLevelLabel, spellSchoolName } from "@/lib/rules/dnd2024/spellText";
 import type { Ref } from "@/lib/rules/types";
-import { SCHOOL_ICONS } from "@/app/components/icons/schools";
+import RoundIcon from "@/app/components/RoundIcon";
 
 export type SpellRowItem = {
   ref: Ref;
@@ -47,7 +47,6 @@ function Meta({ label, value, icon: Icon }: { label: string; value: string; icon
 // alcance, duración, componentes y el resumen
 function Row({ item, onOpen, href }: { item: SpellRowItem; onOpen: SpellOpener; href: (ref: Ref) => string }) {
   const s = item.spell;
-  const Icon = s ? SCHOOL_ICONS[s.data.school] : undefined;
   const name = s ? (s.nameEs ?? s.name) : item.name;
   const checkId = useId();
 
@@ -68,9 +67,7 @@ function Row({ item, onOpen, href }: { item: SpellRowItem; onOpen: SpellOpener; 
           {item.check.disabled && item.check.reason && <span id={`${checkId}-why`} className="sr-only">{item.check.reason}</span>}
         </span>
       )}
-      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-surface text-brand-soft">
-        {Icon ? <Icon size={20} /> : <WandSparkles size={18} aria-hidden="true" />}
-      </span>
+      <RoundIcon kind="school" id={s?.data.school} label={item.name} size={36} />
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
           <a

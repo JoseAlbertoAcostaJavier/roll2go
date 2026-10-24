@@ -78,9 +78,7 @@ export default function ClassCard({ classEntry, classLevel, entry, collapsible =
   const description = classEntry.descriptionEs || classEntry.description;
   const heading = (
     <span className="flex items-center gap-3">
-      <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-line bg-surface text-brand-soft">
-        <ClassIcon entry={classEntry} size={28} />
-      </span>
+      <ClassIcon entry={classEntry} size={48} />
       <span className="min-w-0">
         <span className="block text-xs font-semibold uppercase tracking-wide text-muted">Nuevo nivel</span>
         <span className="block font-heading text-xl font-bold">{name} {classLevel}</span>

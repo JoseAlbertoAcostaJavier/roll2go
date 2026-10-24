@@ -14,7 +14,7 @@ import NewCharacterDialog from "@/app/components/characters/NewCharacterDialog";
 
 export const metadata: Metadata = { title: "Mis personajes" };
 
-const STATUSES = ["active", "retired", "dead", "all"] as const;
+const STATUSES = ["active", "retired", "dead", "npc", "all"] as const;
 const SORTS = ["recent", "name"] as const;
 
 // Devuelve el valor solo si es uno de los permitidos; si no, el valor por defecto
@@ -139,6 +139,7 @@ export default async function CharactersPage({
             <option value="active">Activos</option>
             <option value="retired">Retirados</option>
             <option value="dead">Fallecidos</option>
+            <option value="npc">PNJ</option>
             <option value="all">Todos</option>
           </select>
           <select name="sort" defaultValue={sort} aria-label="Ordenar por" className={field}>

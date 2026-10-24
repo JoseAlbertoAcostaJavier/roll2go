@@ -1,9 +1,9 @@
 "use client";
 
-import { Lock, Sparkles } from "lucide-react";
+import { Lock } from "lucide-react";
 import type { CatalogEntry } from "@/lib/rules/catalog";
 import { bareName } from "@/lib/rules/dnd2024/equipmentRefs";
-import { CLASS_ICONS } from "@/app/components/icons/classes";
+import RoundIcon from "@/app/components/RoundIcon";
 
 export type ClassChoice = {
   key: string;
@@ -15,8 +15,8 @@ export type ClassChoice = {
 };
 
 export function ClassIcon({ entry, size = 28 }: { entry: CatalogEntry | undefined; size?: number }) {
-  const Icon = entry ? CLASS_ICONS[entry.identifier || bareName(entry.ref.key)] : undefined;
-  return Icon ? <Icon size={size} /> : <Sparkles size={Math.round(size * 0.8)} aria-hidden="true" />;
+  const id = entry ? entry.identifier || bareName(entry.ref.key) : null;
+  return <RoundIcon kind="class" id={id} label={entry ? (entry.nameEs ?? entry.name) : ""} size={size} />;
 }
 
 /* Paso 1: subir en una clase que ya tiene o entrar en otra (multiclase). Las que no cumplen el requisito salen
@@ -52,9 +52,7 @@ export default function ClassStep({ options, value, onChange }: {
               onChange={() => onChange(o.key)}
               className="sr-only"
             />
-            <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-surface ${selected ? "text-brand-soft" : "text-muted"}`}>
-              <ClassIcon entry={o.entry} size={24} />
-            </span>
+            <ClassIcon entry={o.entry} size={40} />
             <span className="min-w-0 flex-1">
               <span className="block font-semibold">{o.entry.nameEs ?? o.entry.name}</span>
               <span className="block text-xs text-muted">

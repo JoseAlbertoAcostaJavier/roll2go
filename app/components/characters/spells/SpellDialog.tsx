@@ -2,12 +2,12 @@
 
 import { useEffect, useId, useRef, useState, type RefObject } from "react";
 import { useSearchParams } from "next/navigation";
-import { LoaderCircle, WandSparkles, X } from "lucide-react";
+import { LoaderCircle, X } from "lucide-react";
 import type { CatalogEntry, SpellOption } from "@/lib/rules/catalog";
 import { spellClassNames, spellLevelLabel, spellSchoolName } from "@/lib/rules/dnd2024/spellText";
 import type { SpellData } from "@/lib/rules/types";
 import Bbcode from "@/app/components/Bbcode";
-import { SCHOOL_ICONS } from "@/app/components/icons/schools";
+import RoundIcon from "@/app/components/RoundIcon";
 
 // "libro:spell:clave" → referencia (la clave también lleva ":")
 const refFromKey = (k: string) => ({ book: k.slice(0, k.indexOf(":")), key: k.slice(k.indexOf(":") + 1) });
@@ -88,7 +88,6 @@ export default function SpellDialog({ characterId, campaignId = null, spells, op
   const entry = current?.entry ?? null;
   const data = (entry?.data ?? option?.data ?? null) as SpellData | null;
   const name = entry ? (entry.nameEs ?? entry.name) : option ? (option.nameEs ?? option.name) : "";
-  const Icon = data ? SCHOOL_ICONS[data.school] : undefined;
   const attack = data?.tags.filter((t) => t === "Ataque de conjuro" || t.startsWith("Salvación de")).join(", ") ?? "";
   const description = entry ? entry.descriptionEs || entry.description : "";
 
@@ -125,9 +124,7 @@ export default function SpellDialog({ characterId, campaignId = null, spells, op
         className="max-h-full w-full max-w-2xl animate-pop overflow-y-auto rounded-xl border border-line bg-panel p-5 shadow-[0_12px_40px_rgba(0,0,0,0.6)] sm:p-6"
       >
         <div className="mb-4 flex items-start gap-3">
-          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-surface text-brand-soft">
-            {Icon ? <Icon size={28} /> : <WandSparkles size={24} aria-hidden="true" />}
-          </span>
+          <RoundIcon kind="school" id={data?.school} label={name || "Conjuro"} size={48} />
           <div className="min-w-0 flex-1">
             <h3 id={`${uid}-title`} className="font-heading text-2xl font-bold">{name || "Conjuro"}</h3>
             {data && (

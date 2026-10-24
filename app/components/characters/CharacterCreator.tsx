@@ -26,7 +26,7 @@ import type { CreationDraft } from "@/lib/rules/dnd2024/recreate";
 import { SKILLS_SOURCE } from "@/lib/rules/dnd2024/upgrade";
 import AbilityScores from "./AbilityScores";
 import CharacterSummary, { type MissingItem } from "./CharacterSummary";
-import ClassBadge from "./ClassBadge";
+import RoundIcon from "../RoundIcon";
 import ClassFeaturesSection, { choicesFor, refFromKey, unfinished, type ChoiceValues } from "./ClassFeaturesSection";
 import NameGeneratorButton from "./NameGeneratorButton";
 import RuleSelect from "./RuleSelect";
@@ -732,7 +732,7 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
                 <div className="min-w-0 flex-1">
                   <RuleSelect id="class" label="Escoger clase inicial" options={props.classes} value={form.klass} onChange={chooseClass} />
                 </div>
-                <ClassBadge identifier={classIdentifier} size={46} />
+                <RoundIcon kind="class" id={classIdentifier} label={classOpt ? (classOpt.nameEs ?? classOpt.name) : ""} size={46} />
               </div>
               <FieldError errors={errors} keys={["classes", "classes.0", "classes.0.level", "classes.0.subclass"]} />
               {form.klass && <Description entry={cache[refKey(form.klass)]} />}

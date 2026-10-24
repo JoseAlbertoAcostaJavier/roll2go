@@ -1,7 +1,8 @@
+import { StatusIcon } from "../sheet/StatusBadge";
 import FieldError from "./FieldError";
 import { STATUSES, type Status } from "./constants";
 
-/* Estado del personaje: en activo, retirado o fallecido. */
+/* Estado del personaje: en activo, retirado, fallecido o PNJ. */
 export default function StatusField({
   value, onChange, errors,
 }: {
@@ -11,7 +12,7 @@ export default function StatusField({
 }) {
   return (
     <>
-      <div role="radiogroup" aria-label="Estado" className="grid gap-3 sm:grid-cols-3">
+      <div role="radiogroup" aria-label="Estado" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {STATUSES.map((s) => (
           <label
             key={s.id}
@@ -19,6 +20,7 @@ export default function StatusField({
           >
             <span className="flex items-center gap-2 font-semibold">
               <input type="radio" name="status" value={s.id} checked={value === s.id} onChange={() => onChange(s.id)} className="accent-brand" />
+              <span className="text-brand-soft"><StatusIcon status={s.id} size={16} /></span>
               {s.label}
             </span>
             <span className="text-muted">{s.description}</span>

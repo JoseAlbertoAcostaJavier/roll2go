@@ -1,27 +1,33 @@
-import { Armchair, HeartPulse, Skull } from "lucide-react";
+import { iconSrc } from "@/lib/icons";
 
-export type CharacterStatus = "active" | "retired" | "dead";
+export type CharacterStatus = "active" | "retired" | "dead" | "npc";
 
 // Mismos textos que el selector de estado del creador
-const STATUS: Record<CharacterStatus, { label: string; description: string; icon: typeof HeartPulse; color: string }> = {
-  active: { label: "En activo", description: "¡En plena forma!", icon: HeartPulse, color: "bg-success text-black" },
-  retired: { label: "Retirado", description: "Ha colgado las armas.", icon: Armchair, color: "bg-muted text-black" },
-  dead: { label: "Fallecido", description: "Descanse en paz.", icon: Skull, color: "bg-brand text-white" },
+const STATUS: Record<CharacterStatus, { label: string; description: string; color: string }> = {
+  active: { label: "En activo", description: "¡En plena forma!", color: "bg-success text-black" },
+  retired: { label: "Retirado", description: "Ha colgado las armas.", color: "bg-muted text-black" },
+  dead: { label: "Fallecido", description: "Descanse en paz.", color: "bg-brand text-white" },
+  npc: { label: "PNJ", description: "Personaje no jugador, para el DM.", color: "bg-sky-600 text-white" },
 };
+
+/** Silueta del estado (public/images/status), teñida con el color del texto mediante una máscara. */
+export function StatusIcon({ status, size = 16 }: { status: CharacterStatus; size?: number }) {
+  const mask = `url(${iconSrc("status", status in STATUS ? status : "active")}) center / contain no-repeat`;
+  return <span aria-hidden="true" className="block bg-current" style={{ width: size, height: size, mask, WebkitMask: mask }} />;
+}
 
 // Icono de estado sobre el retrato, con su explicación al pasar el ratón o al enfocarlo
 export default function StatusBadge({ status, isOwner }: { status: CharacterStatus; isOwner: boolean }) {
   const s = STATUS[status] ?? STATUS.active;
-  const Icon = s.icon;
   return (
     <span className="group absolute -bottom-1.5 -right-1.5">
       <button
         type="button"
         aria-describedby="status-tip"
         aria-label={`Estado: ${s.label}`}
-        className={`flex h-7 w-7 items-center justify-center rounded-full border-2 border-panel ${s.color}`}
+        className={`flex h-8 w-8 items-center justify-center rounded-full border-2 border-white ${s.color}`}
       >
-        <Icon size={14} aria-hidden="true" />
+        <StatusIcon status={status} size={16} />
       </button>
       <span
         id="status-tip"
