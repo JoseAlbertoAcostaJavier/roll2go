@@ -11,8 +11,8 @@ import { EMPTY_SPELL_FILTER, matchesSpellFilter, type SpellFilter } from "@/lib/
 import type { SpellPick, SwapPick } from "@/lib/rules/dnd2024/spells/spellPicks";
 import { spellSchoolName } from "@/lib/rules/dnd2024/spells/spellTextClient";
 import type { Ref, SpellcastingMode } from "@/lib/rules/types";
-import { field, labelClass } from "@/app/components/formStyles";
-import RuleSelect from "../../RuleSelect";
+import { field, labelClass } from "@/app/components/ui/formStyles";
+import RuleSelect from "../../creator/RuleSelect";
 import { preparedFullNotice } from "../../spells/CasterBlockView";
 import SpellDialog from "../../spells/SpellDialog";
 import SpellFilters from "../../spells/SpellFilters";

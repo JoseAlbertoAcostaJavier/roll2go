@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import ProfileForm from "@/app/components/ProfileForm";
+import ProfileForm from "@/app/components/account/ProfileForm";
 import { requireUser } from "@/lib/server/auth/currentUser";
 import { User } from "@/lib/models/User";
 

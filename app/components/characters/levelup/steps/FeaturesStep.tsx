@@ -2,7 +2,7 @@
 
 import type { CatalogEntry } from "@/lib/rules/catalog/types";
 import type { Ref } from "@/lib/rules/types";
-import { FeatureList } from "../../ClassFeaturesSection";
+import { FeatureList } from "../../creator/ClassFeaturesSection";
 
 /* Rasgos automáticos: los rasgos nuevos de la clase y de la subclase en este nivel, plegables con su descripción. */
 export default function FeaturesStep({ level, classLevel, className, features, subclass, entry }: {

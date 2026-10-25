@@ -6,7 +6,7 @@ import type { SpellOption } from "@/lib/rules/catalog/types";
 import { refKey } from "@/lib/rules/dnd2024/sheet/equipmentRefs";
 import { spellLevelLabel, spellSchoolName } from "@/lib/rules/dnd2024/spells/spellTextClient";
 import type { Ref } from "@/lib/rules/types";
-import RoundIcon from "@/app/components/RoundIcon";
+import RoundIcon from "@/app/components/ui/RoundIcon";
 
 export type SpellRowItem = {
   ref: Ref;

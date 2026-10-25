@@ -8,7 +8,7 @@ import { loadCharacterFor } from "@/lib/server/characters/characterAccess";
 import { listEntries, listMasteryWeapons, type EntryOption } from "@/lib/server/catalog/catalog";
 import { creationDraft } from "@/lib/rules/dnd2024/creation/recreate";
 import type { SpeciesData } from "@/lib/rules/types";
-import CharacterCreator from "@/app/components/characters/CharacterCreator";
+import CharacterCreator from "@/app/components/characters/creator/CharacterCreator";
 
 export const metadata: Metadata = { title: "Rehacer creación" };
 

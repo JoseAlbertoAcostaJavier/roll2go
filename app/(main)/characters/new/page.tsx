@@ -10,7 +10,7 @@ import { system as rpgSystems } from "@/lib/utils/systems";
 import { first } from "@/lib/utils/utils";
 import { NotFoundError, listEntries, listMasteryWeapons, usableBooks, type EntryOption } from "@/lib/server/catalog/catalog";
 import type { SpeciesData } from "@/lib/rules/types";
-import CharacterCreator from "@/app/components/characters/CharacterCreator";
+import CharacterCreator from "@/app/components/characters/creator/CharacterCreator";
 
 export const metadata: Metadata = { title: "Nuevo personaje" };
 

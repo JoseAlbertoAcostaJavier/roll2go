@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { Check, ChevronLeft, ChevronRight, LoaderCircle } from "lucide-react";
-import { card, primaryButton } from "@/app/components/formStyles";
+import { card, primaryButton } from "@/app/components/ui/formStyles";
 import type { CatalogEntry, EntryOption } from "@/lib/rules/catalog/types";
 import { derive } from "@/lib/rules/dnd2024/derive";
 import { characterFeats } from "@/lib/rules/dnd2024/derive/features";
@@ -25,8 +25,8 @@ import { summarizeClasses } from "@/lib/rules/dnd2024/sheet/upgrade";
 import {
   ABILITIES, type Ability, type BackgroundData, type ClassData, type FeatData, type ItemData, type Ref, type SubclassData,
 } from "@/lib/rules/types";
-import { nameFromKey, refFromKey, type ChoiceCtx } from "../ClassFeaturesSection";
-import useCatalogEntries from "../useCatalogEntries";
+import { nameFromKey, refFromKey, type ChoiceCtx } from "../creator/ClassFeaturesSection";
+import useCatalogEntries from "../hooks/useCatalogEntries";
 import ClassCard from "./ClassCard";
 import DeleteLevel from "./DeleteLevel";
 import {
@@ -45,7 +45,7 @@ import FeatSpellsStep from "./steps/FeatSpellsStep";
 import SpellsStep from "./steps/SpellsStep";
 import SubclassStep from "./steps/SubclassStep";
 import SpellListsStatus from "../SpellListsStatus";
-import useSpellLists from "../useSpellLists";
+import useSpellLists from "../hooks/useSpellLists";
 
 type Props = {
   characterId: string;

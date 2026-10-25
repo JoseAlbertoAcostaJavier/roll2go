@@ -6,8 +6,8 @@ import { LoaderCircle, X } from "lucide-react";
 import type { CatalogEntry, SpellOption } from "@/lib/rules/catalog/types";
 import { spellLevelLabel, spellSchoolName } from "@/lib/rules/dnd2024/spells/spellTextClient";
 import type { SpellData } from "@/lib/rules/types";
-import Bbcode from "@/app/components/Bbcode";
-import RoundIcon from "@/app/components/RoundIcon";
+import Bbcode from "@/app/components/ui/Bbcode";
+import RoundIcon from "@/app/components/ui/RoundIcon";
 
 // "libro:spell:clave" → referencia (la clave también lleva ":")
 const refFromKey = (k: string) => ({ book: k.slice(0, k.indexOf(":")), key: k.slice(k.indexOf(":") + 1) });

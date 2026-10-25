@@ -1,14 +1,14 @@
 import Link from "next/link";
 import { Globe, Lock, Pencil, Plus } from "lucide-react";
-import Bbcode from "@/app/components/Bbcode";
-import ConfirmAction from "@/app/components/ConfirmAction";
+import Bbcode from "@/app/components/ui/Bbcode";
+import ConfirmAction from "@/app/components/ui/ConfirmAction";
 import { getCampaignAccess } from "@/lib/server/campaigns/campaignAccess";
 import { CampaignLogEntry } from "@/lib/models/CampaignLogEntry";
-import LocalDate from "@/app/components/LocalDate";
-import UserLink from "@/app/components/UserLink";
+import LocalDate from "@/app/components/ui/LocalDate";
+import UserLink from "@/app/components/ui/UserLink";
 import { loadUserCards } from "@/lib/server/account/userCards";
 import { first, pageFrom } from "@/lib/utils/utils";
-import Pagination from "@/app/components/Pagination";
+import Pagination from "@/app/components/ui/Pagination";
 
 const PAGE_SIZE = 10;
 const FILTERS = [

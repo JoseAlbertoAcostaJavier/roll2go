@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import AuthShell from "@/app/components/AuthShell";
-import RegisterForm from "@/app/components/RegisterForm";
+import AuthShell from "@/app/components/layout/AuthShell";
+import RegisterForm from "@/app/components/auth/RegisterForm";
 import { getCurrentUser } from "@/lib/server/auth/currentUser";
 
 

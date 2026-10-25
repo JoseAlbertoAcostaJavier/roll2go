@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
-import ForumPostForm from "@/app/components/ForumPostForm";
+import ForumPostForm from "@/app/components/forum/ForumPostForm";
 import { getCampaignAccess } from "@/lib/server/campaigns/campaignAccess";
 
 export default async function NewForumPostPage({ params }: { params: Promise<{ id: string }> }) {

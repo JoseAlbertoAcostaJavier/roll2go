@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import AuthShell from "@/app/components/AuthShell";
-import VerifyPending from "@/app/components/VerifyPending";
+import AuthShell from "@/app/components/layout/AuthShell";
+import VerifyPending from "@/app/components/auth/VerifyPending";
 
 export const metadata: Metadata = { title: "Verifica tu correo" };
 

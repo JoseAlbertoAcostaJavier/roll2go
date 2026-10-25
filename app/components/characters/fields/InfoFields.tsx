@@ -1,5 +1,5 @@
-import BbcodeEditor from "@/app/components/BbcodeEditor";
-import { field, labelClass } from "@/app/components/formStyles";
+import BbcodeEditor from "@/app/components/ui/BbcodeEditor";
+import { field, labelClass } from "@/app/components/ui/formStyles";
 import { ALIGNMENTS } from "@/lib/rules/dnd2024/sheet/alignments";
 import FieldError from "./FieldError";
 import { LIMITS, MAX_XP } from "./constants";

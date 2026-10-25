@@ -1,7 +1,7 @@
 import { BookOpen, UserRound } from "lucide-react";
-import Bbcode from "@/app/components/Bbcode";
-import ConfirmAction from "@/app/components/ConfirmAction";
-import UserLink from "@/app/components/UserLink";
+import Bbcode from "@/app/components/ui/Bbcode";
+import ConfirmAction from "@/app/components/ui/ConfirmAction";
+import UserLink from "@/app/components/ui/UserLink";
 import { getCampaignAccess } from "@/lib/server/campaigns/campaignAccess";
 import { Campaign } from "@/lib/models/Campaign";
 import { booksByIds } from "@/lib/server/catalog/books";

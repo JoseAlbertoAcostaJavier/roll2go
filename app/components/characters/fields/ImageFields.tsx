@@ -1,4 +1,4 @@
-import { ImagePicker } from "@/app/components/CampaignForm";
+import { ImagePicker } from "@/app/components/campaigns/CampaignForm";
 import { IMAGE_MB } from "./constants";
 
 /* Retrato e imagen del personaje. En la edición se pasan las imágenes actuales y las marcas de quitar. */

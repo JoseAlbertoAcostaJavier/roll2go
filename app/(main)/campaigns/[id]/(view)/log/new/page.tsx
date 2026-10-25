@@ -1,4 +1,4 @@
-import LogEntryForm from "@/app/components/LogEntryForm";
+import LogEntryForm from "@/app/components/campaigns/LogEntryForm";
 import { getCampaignAccess } from "@/lib/server/campaigns/campaignAccess";
 
 export default async function NewLogEntryPage({ params }: { params: Promise<{ id: string }> }) {

@@ -1,14 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import Avatar from "@/app/components/Avatar";
-import FriendActions from "@/app/components/FriendActions";
-import UserSearch from "@/app/components/UserSearch";
+import Avatar from "@/app/components/ui/Avatar";
+import FriendActions from "@/app/components/social/FriendActions";
+import UserSearch from "@/app/components/social/UserSearch";
 import { requireUser } from "@/lib/server/auth/currentUser";
 import { connectDB } from "@/lib/models/mongodb";
 import { Friendship } from "@/lib/models/Friendship";
 import { User } from "@/lib/models/User";
 import { relationOf, type Relation } from "@/lib/server/social/friends";
-import ConfirmAction from "@/app/components/ConfirmAction";
+import ConfirmAction from "@/app/components/ui/ConfirmAction";
 import { Block } from "@/lib/models/Block";
 import { loadUserCards } from "@/lib/server/account/userCards";
 export const metadata: Metadata = { title: "Social" };

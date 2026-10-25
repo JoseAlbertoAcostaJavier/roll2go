@@ -3,8 +3,8 @@
 import type { CatalogEntry } from "@/lib/rules/catalog/types";
 import { refKey } from "@/lib/rules/dnd2024/sheet/equipmentRefs";
 import type { Ref, SubclassData } from "@/lib/rules/types";
-import RuleSelect from "../../RuleSelect";
-import { Description, FeatureList } from "../../ClassFeaturesSection";
+import RuleSelect from "../../creator/RuleSelect";
+import { Description, FeatureList } from "../../creator/ClassFeaturesSection";
 
 /* Subclase: desplegable con las de la clase, su descripción y los rasgos que da en este nivel. */
 export default function SubclassStep({ label, className, classLevel, options, value, onChange, entry }: {

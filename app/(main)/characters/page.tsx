@@ -10,7 +10,7 @@ import { classesOf } from "@/lib/rules/dnd2024/sheet/upgrade";
 import { system as rpgSystems } from "@/lib/utils/systems";
 import { accentInsensitive, first } from "@/lib/utils/utils";
 import CharacterCard, { type CharacterCardData } from "@/app/components/characters/CharacterCard";
-import NewCharacterDialog from "@/app/components/characters/NewCharacterDialog";
+import NewCharacterDialog from "@/app/components/characters/creator/NewCharacterDialog";
 
 export const metadata: Metadata = { title: "Mis personajes" };
 

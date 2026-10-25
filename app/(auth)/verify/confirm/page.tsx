@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import AuthShell from "@/app/components/AuthShell";
-import VerifyConfirm from "@/app/components/VerifyConfirm";
+import AuthShell from "@/app/components/layout/AuthShell";
+import VerifyConfirm from "@/app/components/auth/VerifyConfirm";
 
 export const metadata: Metadata = { title: "Confirmar cuenta" };
 

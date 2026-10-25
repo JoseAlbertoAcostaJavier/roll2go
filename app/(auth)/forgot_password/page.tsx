@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import AuthShell from "@/app/components/AuthShell";
-import ForgotPasswordForm from "@/app/components/ForgotPasswordForm";
+import AuthShell from "@/app/components/layout/AuthShell";
+import ForgotPasswordForm from "@/app/components/auth/ForgotPasswordForm";
 import { COOKIE_NAME, verifySession, safeRedirect } from "@/lib/server/auth/auth";
 
 export const metadata: Metadata = { title: "Restablecer contraseña" };

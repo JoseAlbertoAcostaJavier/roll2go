@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { labelClass } from "@/app/components/formStyles";
+import { labelClass } from "@/app/components/ui/formStyles";
 
 /** `disabled`: motivo por el que no se puede elegir (p. ej. «Requiere nivel 5»); se muestra desactivada. */
 export type PickerOption = { id: string; label: string; disabled?: string };

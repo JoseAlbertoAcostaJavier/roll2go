@@ -1,5 +1,5 @@
-import DiceRoller from "@/app/components/DiceRoller";
-import SystemsGrid from "@/app/components/SystemsGrid";
+import DiceRoller from "@/app/components/ui/DiceRoller";
+import SystemsGrid from "@/app/components/layout/SystemsGrid";
 import type { Metadata } from "next";
 export const metadata: Metadata = { title: "Inicio" };
 export default function Page() {

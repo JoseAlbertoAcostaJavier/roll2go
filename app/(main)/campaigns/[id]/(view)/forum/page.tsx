@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { MessageSquare, MessagesSquare, Pin, Plus } from "lucide-react";
-import Avatar from "@/app/components/Avatar";
-import LocalDate from "@/app/components/LocalDate";
-import Pagination from "@/app/components/Pagination";
+import Avatar from "@/app/components/ui/Avatar";
+import LocalDate from "@/app/components/ui/LocalDate";
+import Pagination from "@/app/components/ui/Pagination";
 import { getCampaignAccess } from "@/lib/server/campaigns/campaignAccess";
 import { ForumPost } from "@/lib/models/ForumPost";
 import { THREADS_PER_PAGE } from "@/lib/shared/forum";

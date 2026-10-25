@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import JoinButton from "@/app/components/JoinButton";
+import JoinButton from "@/app/components/campaigns/JoinButton";
 import { COOKIE_NAME, verifySession } from "@/lib/server/auth/auth";
 import { connectDB } from "@/lib/models/mongodb";
 import { Campaign } from "@/lib/models/Campaign";

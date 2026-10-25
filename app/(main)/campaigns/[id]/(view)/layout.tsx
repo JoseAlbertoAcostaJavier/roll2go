@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ChevronLeft, Pencil } from "lucide-react";
-import CampaignTabs from "@/app/components/CampaignTabs";
+import CampaignTabs from "@/app/components/campaigns/CampaignTabs";
 import { getCampaignAccess } from "@/lib/server/campaigns/campaignAccess";
 import { system as rpgSystems } from "@/lib/utils/systems";
 

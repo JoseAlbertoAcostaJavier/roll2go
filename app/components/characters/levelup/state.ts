@@ -9,7 +9,7 @@ import {
 } from "@/lib/rules/dnd2024/spells/spellPicks";
 import { SUBCLASS_SOURCE } from "@/lib/rules/dnd2024/sheet/upgrade";
 import { ABILITIES, type Ability, type FeatData } from "@/lib/rules/types";
-import { choicesFor, refFromKey, type ChoiceValues } from "../ClassFeaturesSection";
+import { choicesFor, refFromKey, type ChoiceValues } from "../creator/ClassFeaturesSection";
 
 /** PG del nivel: la media o una tirada firmada, con el dado con que se obtuvieron (si cambia la clase, no valen). */
 export type HpPick = { method: "average" | "roll"; value: number; die: number; token?: string };

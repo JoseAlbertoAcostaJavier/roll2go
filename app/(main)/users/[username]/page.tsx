@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
-import ConfirmAction from "@/app/components/ConfirmAction";
-import FriendActions from "@/app/components/FriendActions";
-import ProfileCard from "@/app/components/ProfileCard";
+import ConfirmAction from "@/app/components/ui/ConfirmAction";
+import FriendActions from "@/app/components/social/FriendActions";
+import ProfileCard from "@/app/components/account/ProfileCard";
 import { requireUser } from "@/lib/server/auth/currentUser";
 import { getPublicProfile } from "@/lib/server/account/userProfile";
 import { relationBetween } from "@/lib/server/social/friends";

@@ -1,5 +1,5 @@
-import Navbar from "@/app/components/Navbar";
-import ChatAssistant from "@/app/components/ChatAssistant";
+import Navbar from "@/app/components/layout/Navbar";
+import ChatAssistant from "@/app/components/chat/ChatAssistant";
 import { countUnread } from "@/lib/server/notifications/notify";
 
 /* Layout de la página principal incluye: Navbar, footer y asistente de IA.   

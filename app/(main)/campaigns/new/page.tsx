@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import CampaignForm from "@/app/components/CampaignForm";
+import CampaignForm from "@/app/components/campaigns/CampaignForm";
 import { COOKIE_NAME, verifySession } from "@/lib/server/auth/auth";
 import { connectDB } from "@/lib/models/mongodb";
 import { system as rpgSystems } from "@/lib/utils/systems";

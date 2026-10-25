@@ -9,8 +9,8 @@ import type { PendingChoice } from "@/lib/rules/dnd2024/levels/pendingChoices";
 import type { Named } from "@/lib/rules/dnd2024/sheet/sheet";
 import type { SpellPick } from "@/lib/rules/dnd2024/spells/spellPicks";
 import type { Ability, FeatSpellFilter } from "@/lib/rules/types";
-import { field, labelClass } from "@/app/components/formStyles";
-import RuleSelect from "../../RuleSelect";
+import { field, labelClass } from "@/app/components/ui/formStyles";
+import RuleSelect from "../../creator/RuleSelect";
 import SpellsStep from "./SpellsStep";
 
 type Props = {

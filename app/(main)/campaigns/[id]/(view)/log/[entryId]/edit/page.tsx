@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import mongoose from "mongoose";
-import LogEntryForm from "@/app/components/LogEntryForm";
+import LogEntryForm from "@/app/components/campaigns/LogEntryForm";
 import { getCampaignAccess } from "@/lib/server/campaigns/campaignAccess";
 import { CampaignLogEntry } from "@/lib/models/CampaignLogEntry";
 

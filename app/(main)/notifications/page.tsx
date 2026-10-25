@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import NotificationList from "@/app/components/NotificationList";
+import NotificationList from "@/app/components/notifications/NotificationList";
 import { requireUser } from "@/lib/server/auth/currentUser";
 
 export const metadata: Metadata = { title: "Notificaciones" };

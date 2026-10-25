@@ -11,7 +11,7 @@ import {
   ABILITY_TEXTS, AC_TEXT, INITIATIVE_TEXT, saveText, SKILL_TEXTS, SPEED_TEXT, type BreakdownUnit,
 } from "@/lib/rules/dnd2024/sheet/statTexts";
 import { ABILITIES, type Ability } from "@/lib/rules/types";
-import { card, cardTitle } from "@/app/components/formStyles";
+import { card, cardTitle } from "@/app/components/ui/formStyles";
 import HpEditor from "./HpEditor";
 import StatDialog from "./StatDialog";
 

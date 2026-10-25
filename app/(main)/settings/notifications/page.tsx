@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import NotificationPrefsForm, { type Prefs } from "@/app/components/NotificationPrefsForm";
+import NotificationPrefsForm, { type Prefs } from "@/app/components/account/NotificationPrefsForm";
 import { requireUser } from "@/lib/server/auth/currentUser";
 import { User } from "@/lib/models/User";
 import { CAMPAIGN_EMAIL_PREFS, wantsEmail, type EmailPrefs } from "@/lib/shared/notificationText";

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import AccountForms from "@/app/components/AccountForms";
+import AccountForms from "@/app/components/account/AccountForms";
 import { requireUser } from "@/lib/server/auth/currentUser";
 import { User } from "@/lib/models/User";
 

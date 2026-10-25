@@ -1,6 +1,6 @@
 "use client";
 
-import { labelClass } from "@/app/components/formStyles";
+import { labelClass } from "@/app/components/ui/formStyles";
 import { PRONOUNS, type Pronoun } from "@/lib/rules/dnd2024/creation/names";
 
 /* Pronombres del personaje: Él, Ella, Elle (se pueden marcar varios o ninguno). */

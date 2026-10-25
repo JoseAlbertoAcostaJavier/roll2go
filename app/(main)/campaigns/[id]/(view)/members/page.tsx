@@ -1,8 +1,8 @@
-import ConfirmAction from "@/app/components/ConfirmAction";
-import ExpelMember from "@/app/components/ExpelMember";
-import InviteFriends, { type FriendOption } from "@/app/components/InviteFriends";
-import InviteLink from "@/app/components/InviteLink";
-import UserLink from "@/app/components/UserLink";
+import ConfirmAction from "@/app/components/ui/ConfirmAction";
+import ExpelMember from "@/app/components/campaigns/ExpelMember";
+import InviteFriends, { type FriendOption } from "@/app/components/campaigns/InviteFriends";
+import InviteLink from "@/app/components/campaigns/InviteLink";
+import UserLink from "@/app/components/ui/UserLink";
 import { getCampaignAccess } from "@/lib/server/campaigns/campaignAccess";
 import { Campaign } from "@/lib/models/Campaign";
 import { CampaignInvite } from "@/lib/models/CampaignInvite";
