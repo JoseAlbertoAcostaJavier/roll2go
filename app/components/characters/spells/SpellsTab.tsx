@@ -6,7 +6,7 @@ import { Sparkles } from "lucide-react";
 import type { SpellOption } from "@/lib/rules/catalog";
 import type { SpellsSummary } from "@/lib/rules/dnd2024/derive";
 import { bareName, refKey } from "@/lib/rules/dnd2024/equipmentRefs";
-import type { SpellOp } from "@/lib/rules/dnd2024/spellOps";
+import { PACT_SLOT, recoversOnShortRest, type SpellOp } from "@/lib/rules/dnd2024/spellOps";
 import { card } from "@/app/components/formStyles";
 import CasterBlockView from "./CasterBlockView";
 import SlotsBar from "./SlotsBar";
@@ -19,7 +19,7 @@ type Props = {
   initial: SpellsSummary;
   /** Por bloque (`libro:clave` de su clase): identificador de su lista de conjuros y de su icono. */
   lists: Record<string, { listId: string; iconId: string }>;
-  /** Conjuros de las listas de las clases y los que tiene el personaje, sin descripción. */
+  /** Conjuros que tiene el personaje y, con la pestaña abierta, los de las listas de sus clases, sin descripción. */
   spells: SpellOption[];
 };
 
@@ -65,6 +65,16 @@ export default function SpellsTab({ characterId, isOwner, initial, lists, spells
     window.history.pushState(null, "", spellHref(ref));
   };
 
+  // Qué recupera cada descanso: el largo, todo; el corto, la Magia de pacto y los Conjuros distintivos (solo hay botón
+  // si el personaje tiene algo de eso)
+  const limited = state.blocks.flatMap((b) => b.limited);
+  const shortLimited = limited.filter((l) => recoversOnShortRest(l.key));
+  const restores = {
+    long: Object.values(state.used).some((n) => n > 0) || limited.some((l) => l.used > 0),
+    short: (state.used[PACT_SLOT] ?? 0) > 0 || shortLimited.some((l) => l.used > 0),
+  };
+  const hasShortRest = !!state.slots.pact || shortLimited.length > 0;
+
   const other = state.other.map((o) => {
     const spell = byKey.get(refKey(o.spell.ref)) ?? null;
     return { ref: o.spell.ref, name: o.spell.name || bareName(o.spell.ref.key), spell, origin: o.origin };
@@ -81,6 +91,8 @@ export default function SpellsTab({ characterId, isOwner, initial, lists, spells
         used={state.used}
         onSet={isOwner ? (level, used) => void send({ op: "slot", level, used }) : null}
         onLongRest={isOwner ? () => void send({ op: "longRest" }) : null}
+        onShortRest={isOwner && hasShortRest ? () => void send({ op: "shortRest" }) : null}
+        restores={restores}
         busy={busy}
       />
 

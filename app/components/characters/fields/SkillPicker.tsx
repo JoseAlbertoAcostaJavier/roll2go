@@ -42,7 +42,8 @@ export default function SkillPicker({
   }
 
   return (
-    <fieldset>
+    // (min-w-0: un fieldset no encoge por debajo de su contenido y las opciones largas desbordan a 375 px)
+    <fieldset className="min-w-0">
       <legend className={labelClass}>
         {label} <span className="font-normal text-muted">· elige {count} ({chosen}/{count})</span>
       </legend>

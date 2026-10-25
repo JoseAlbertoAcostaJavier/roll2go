@@ -110,6 +110,20 @@ describe("removeLastLevel", () => {
     expect(r.ok && r.sheet.prepared).toEqual({ "class:cleric|xphb": [spells[0], spells[2]] });
     expect(r.ok && r.sheet.slotsUsed).toEqual({ 1: 3 });
   });
+  it("al borrar el nivel que dio la subclase, quita su alternativa de conjuros elegida", () => {
+    const druid = cls("class:druid|xphb", "Druida");
+    const land = ref("subclass:circle of the land|druid|xphb");
+    const sheet = sheetOf(
+      [lvl(1, druid, 1), lvl(2, druid, 2), lvl(3, druid, 3, [{ type: "subclass", source: "class:subclass", value: { ref: land, name: "Tierra" } }])],
+      { current: 20 }, { spellOption: { [land.key]: "Polar Land", otra: "Arid Land" } },
+    );
+    const r = removeLastLevel(sheet, 12);
+    expect(r.ok && r.sheet.spellOption).toEqual({ otra: "Arid Land" });
+    // Otro nivel no la toca
+    const later = sheetOf([...sheet.levels, lvl(4, druid, 4)], { current: 20 }, { spellOption: { [land.key]: "Polar Land" } });
+    const kept = removeLastLevel(later, 12);
+    expect(kept.ok && kept.sheet.spellOption).toEqual({ [land.key]: "Polar Land" });
+  });
   it("sin datos de conjuros no toca los preparados", () => {
     const sheet = sheetOf([lvl(1, cleric, 1), lvl(2, cleric, 2)], { current: 12 }, { prepared: { x: [] }, slotsUsed: { 1: 1 } });
     const r = removeLastLevel(sheet, 12);

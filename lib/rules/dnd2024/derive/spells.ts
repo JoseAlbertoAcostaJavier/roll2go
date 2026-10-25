@@ -3,9 +3,14 @@
 import type { CatalogEntry } from "@/lib/rules/catalog";
 import { refKey } from "@/lib/rules/dnd2024/equipmentRefs";
 import { chosenFeatSpells } from "@/lib/rules/dnd2024/featSpells";
-import { chosenSpells, heldBonusCantrips, heldOptionalFeatures } from "@/lib/rules/dnd2024/levels";
+import {
+  BONUS_SPELL_ORIGINS, IMPROVED_ILLUSIONS, IMPROVED_ILLUSIONS_CANTRIP, SIGNATURE_SPELLS, SPELL_MASTERY,
+} from "@/lib/rules/dnd2024/featureChoices";
+import {
+  chosenSpells, heldArcana, heldBonusCantrips, heldBonusSpells, heldOptionalFeatures, secretSpellLists,
+} from "@/lib/rules/dnd2024/levels";
 import type { Dnd2024SheetV2, Named } from "@/lib/rules/dnd2024/sheet";
-import { maxSpellLevel, PACT_SLOTS, preparedKey, slotLevels } from "@/lib/rules/dnd2024/spellcasting";
+import { maxSpellLevel, PACT_SLOTS, preparedKey, slotLevels, spellListOf } from "@/lib/rules/dnd2024/spellcasting";
 import { summarizeClasses } from "@/lib/rules/dnd2024/upgrade";
 import type {
   Ability, BackgroundData, ClassData, FeatData, LineageData, OptionalFeatureData, Ref, SpeciesData, Spellcasting,
@@ -17,6 +22,20 @@ import { characterFeats } from "./features";
 export { chosenSpells };
 
 export type OtherSpell = { spell: Named; origin: string };
+
+/**
+ * Conjuro que se lanza sin espacio un número de veces por descanso largo (Arcano místico, Conjuros distintivos), con
+ * sus usos gastados.
+ */
+export type LimitedSpell = { key: string; spell: Named; origin: string; max: number; used: number };
+
+/** Clave de los usos de un arcano en `sheet.limitedUsed`. */
+export const arcanumKey = (ref: Ref) => `arcanum:${refKey(ref)}`;
+/** Clave de los usos de un conjuro distintivo en `sheet.limitedUsed`. */
+export const signatureKey = (ref: Ref) => `signature:${refKey(ref)}`;
+
+/** Origen de los conjuros de Dominio de conjuros. */
+export const SPELL_MASTERY_ORIGIN = "Dominio de conjuros";
 
 export type CasterBlock = {
   /** Clase o, en las subclases lanzadoras (Caballero arcano…), la subclase. */
@@ -43,6 +62,20 @@ export type CasterBlock = {
    * conjuros de cada uno hasta el nivel de clase.
    */
   spellOptions?: { subclass: Ref; names: string[]; current: string | null; spells: Record<string, Ref[]> };
+  /** Con Secretos mágicos: las listas de las que elige los conjuros (no los trucos), incluida la suya. */
+  lists?: string[];
+  /** Conjuros con usos por descanso largo (Arcano místico, Conjuros distintivos). */
+  limited: LimitedSpell[];
+  /**
+   * Con Dominio de conjuros: el conjuro de nivel 1 y el de nivel 2 elegidos en la ficha (null si no hay o si ya no
+   * está en el libro).
+   */
+  mastery?: { 1: Ref | null; 2: Ref | null };
+  /**
+   * Con Conjuros distintivos sin elegir (hojas de antes del rasgo, en el último nivel): se eligen borrando el nivel 20 y
+   * subiéndolo de nuevo.
+   */
+  signatureMissing?: true;
 };
 
 export type Slots = { levels: Record<string, number>; pact: { count: number; level: number } | null };
@@ -57,6 +90,10 @@ const named = (ref: Ref, entries: Map<string, CatalogEntry>): Named => {
   const e = entries.get(refKey(ref));
   return { ref, name: e ? (e.nameEs ?? e.name) : nameFromKey(ref.key) };
 };
+
+// Si una clase o subclase tiene un rasgo hasta un nivel de clase
+const hasFeature = (data: { features: { ref: Ref; level: number }[] } | undefined, key: string, level: number) =>
+  !!data?.features.some((f) => f.ref.key === key && f.level <= level);
 
 type Granted = { level: number; ref: Ref }[] | undefined;
 // Conjuros concedidos hasta un nivel
@@ -109,12 +146,44 @@ export function casterBlocks(
     const options = c.subclass?.data?.spellOptions ?? [];
     const current = c.subclass && options.length ? (sheet.spellOption?.[preparedKey(c.subclass.named.ref)] ?? null) : null;
     const option = options.find((o) => o.name === current);
+    // Conjuros de los rasgos que no cuentan para los límites (Descubrimientos mágicos…), por la elección que los da
+    const bonus = heldBonusSpells(sheet.levels, c.klass.named.ref);
+    // Arcanos y conjuros distintivos: un uso cada uno
+    const limitedOf = (spell: Named, key: string, origin: string, max = 1): LimitedSpell =>
+      ({ key, spell, origin, max, used: Math.min(sheet.limitedUsed?.[key] ?? 0, max) });
+    const limited = [
+      ...heldArcana(sheet.levels, c.klass.named.ref).map((s) => limitedOf(s, arcanumKey(s.ref), "Arcano místico")),
+      ...(bonus.get(SIGNATURE_SPELLS) ?? [])
+        .map((s) => limitedOf(s, signatureKey(s.ref), BONUS_SPELL_ORIGINS[SIGNATURE_SPELLS])),
+    ];
+    const spellbook = mode === "spellbook" ? [...spells, ...sheet.spellbookExtra] : [];
+    // Dominio de conjuros: los elegidos en la ficha que siguen en el libro
+    const hasMastery = mode === "spellbook" && hasFeature(c.klass.data, SPELL_MASTERY, c.level);
+    const inBook = (r: Ref | undefined) => (r && spellbook.some((s) => refKey(s.ref) === refKey(r)) ? r : null);
+    const mastery = hasMastery ? { 1: inBook(sheet.spellMastery?.[1]), 2: inBook(sheet.spellMastery?.[2]) } : null;
+    // Ilusiones mejoradas: Ilusión menor (que la subclase también da en sus conjuros) con su origen, salvo que la
+    // conozca como truco de la clase o haya elegido otro truco en su lugar
+    const illusions = hasFeature(c.subclass?.data, IMPROVED_ILLUSIONS, c.level);
+    const isIllusion = (r: Ref) => r.key === IMPROVED_ILLUSIONS_CANTRIP;
+    const illusionRef = c.subclass?.data?.spells?.map((g) => g.ref).find(isIllusion)
+      ?? (c.subclass ? { book: c.subclass.named.ref.book, key: IMPROVED_ILLUSIONS_CANTRIP } : null);
+    const grantIllusion = illusions && !!illusionRef && !bonus.has(IMPROVED_ILLUSIONS)
+      && !cantrips.some((n) => isIllusion(n.ref));
+    const lists = refKey(c.ref) === refKey(c.klass.named.ref)
+      ? secretSpellLists(c.klass.data, c.level, spellListOf(c.ref, entries.get(refKey(c.ref))?.identifier))
+      : [];
     const always = [
       ...upTo(c.klass.data?.spells, c.level).map((r) => ({ spell: named(r, entries), origin: c.klass.named.name })),
       ...(c.subclass
         ? upTo([...(c.subclass.data?.spells ?? []), ...(option?.spells ?? [])], c.level)
+          .filter((r) => !(illusions && isIllusion(r)))
           .map((r) => ({ spell: named(r, entries), origin: c.subclass!.named.name }))
         : []),
+      ...(grantIllusion ? [{ spell: named(illusionRef!, entries), origin: BONUS_SPELL_ORIGINS[IMPROVED_ILLUSIONS] }] : []),
+      ...[...bonus].flatMap(([source, list]) =>
+        list.map((spell) => ({ spell, origin: BONUS_SPELL_ORIGINS[source] ?? c.name }))),
+      ...(mastery ? [mastery[1], mastery[2]] : [])
+        .flatMap((r) => (r ? [{ spell: named(r, entries), origin: SPELL_MASTERY_ORIGIN }] : [])),
     ];
     return {
       class: c.ref,
@@ -132,7 +201,7 @@ export function casterBlocks(
       // (un preparado que también está siempre preparado, p. ej. por la tierra elegida después, no ocupa sitio)
       prepared: mode === "levelUp" ? known.map((k) => k.ref)
         : (sheet.prepared[preparedKey(c.ref)] ?? []).filter((r) => !always.some((a) => refKey(a.spell.ref) === refKey(r))),
-      spellbook: mode === "spellbook" ? [...spells, ...sheet.spellbookExtra] : [],
+      spellbook,
       always,
       ...(c.subclass && options.length
         ? {
@@ -142,8 +211,24 @@ export function casterBlocks(
           },
         }
         : {}),
+      ...(lists.length ? { lists } : {}),
+      limited,
+      ...(mastery ? { mastery } : {}),
+      ...(hasFeature(c.klass.data, SIGNATURE_SPELLS, c.level) && !bonus.has(SIGNATURE_SPELLS)
+        ? { signatureMissing: true as const } : {}),
     };
   });
+}
+
+/**
+ * Referencias de los conjuros que tiene el personaje por cualquier vía: trucos, conocidos, libro, siempre preparados
+ * y los de especie, legado y dotes.
+ */
+export function knownSpellRefs(spells: Pick<SpellsSummary, "blocks" | "other">): Ref[] {
+  return [
+    ...spells.blocks.flatMap((b) => [...b.cantrips, ...b.known, ...b.spellbook, ...b.always.map((a) => a.spell)]),
+    ...spells.other.map((o) => o.spell),
+  ].map((n) => n.ref);
 }
 
 /** Espacios de conjuro: los normales (multiclase combinados) y la Magia de pacto aparte. */
@@ -159,7 +244,8 @@ export function spellSlots(sheet: Dnd2024SheetV2, entries: Map<string, CatalogEn
 
 /**
  * Conjuros que no son de una clase lanzadora: especie y legado (hasta el nivel total), dotes (los fijos, desde el
- * nivel total que piden), clases y subclases que no lanzan (Guerrero psiónico…) e invocaciones, con su origen.
+ * nivel total que piden, y los elegidos), clases y subclases que no lanzan (Guerrero psiónico…) e invocaciones (los
+ * fijos y los elegidos), con su origen.
  */
 export function otherSpells(sheet: Dnd2024SheetV2, entries: Map<string, CatalogEntry>): OtherSpell[] {
   const level = sheet.levels.length;
@@ -187,12 +273,13 @@ export function otherSpells(sheet: Dnd2024SheetV2, entries: Map<string, CatalogE
     add(upTo(featData(f.ref, entries)?.spells, level), origin);
     out.push(...(chosen.get(refKey(f.ref)) ?? []).map((spell) => ({ spell, origin })));
   }
-  // Invocaciones (y demás rasgos opcionales) con conjuros fijos
+  // Invocaciones (y demás rasgos opcionales) con conjuros fijos o elegidos (Pacto del tomo, con su nombre de origen)
   for (const o of heldOptionalFeatures(sheet.levels)) {
     const data = entries.get(refKey(o.ref))?.data as OptionalFeatureData | undefined;
-    if (!data?.spells?.length) continue;
-    const kind = data.featureType?.includes("EI") ? "Invocación" : "Rasgo";
-    add(upTo(data.spells, level), `${kind}: ${o.name || named(o.ref, entries).name}`);
+    const name = o.name || named(o.ref, entries).name;
+    const kind = data?.featureType?.includes("EI") ? "Invocación" : "Rasgo";
+    if (data?.spells?.length) add(upTo(data.spells, level), `${kind}: ${name}`);
+    out.push(...(chosen.get(refKey(o.ref)) ?? []).map((spell) => ({ spell, origin: name })));
   }
   return out;
 }

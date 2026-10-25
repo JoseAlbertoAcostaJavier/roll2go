@@ -128,23 +128,28 @@ export default async function CharacterPage({ params, searchParams }: Props) {
     return { id: refKey(r), label: w ? weaponLabel(w) : bareName(r.key) };
   });
 
-  // Conjuros: la lista de cada clase lanzadora (y los que ya tiene el personaje), sin descripción; se filtra en el
-  // navegador
+  // Conjuros: los que ya tiene el personaje (en todas las pestañas: se imprimen) y, solo con la pestaña Conjuros abierta,
+  // la lista de cada clase lanzadora, sin descripción; se filtra en el navegador. Cada pestaña es una navegación
+  // (`?tab=`), así que al abrir la de Conjuros la página vuelve con las listas
   const spellLists = Object.fromEntries(d.spells.blocks.map((b) => {
     const identifier = entries.get(refKey(b.class))?.identifier || undefined;
     return [refKey(b.class), { listId: spellListOf(b.class, identifier), iconId: identifier ?? bareName(b.class.key) }];
   }));
-  const listIds = new Set(Object.values(spellLists).map((l) => l.listId));
+  // (con Secretos mágicos, también sus otras listas)
+  const listIds = new Set([...Object.values(spellLists).map((l) => l.listId), ...d.spells.blocks.flatMap((b) => b.lists ?? [])]);
   const ownSpells = new Set([
     ...d.spells.blocks.flatMap((b) => [
       ...[...b.cantrips, ...b.known, ...b.spellbook].map((s) => refKey(s.ref)),
       ...b.prepared.map(refKey),
       ...b.always.map((a) => refKey(a.spell.ref)),
+      ...b.limited.map((l) => refKey(l.spell.ref)),
     ]),
     ...d.spells.other.map((o) => refKey(o.spell.ref)),
   ]);
+  const withLists = tab === "conjuros";
   const spellOptions = d.hasSpells
-    ? (await listSpells(found.books)).filter((s) => s.data.classes.some((c) => listIds.has(c)) || ownSpells.has(refKey(s.ref)))
+    ? (await listSpells(found.books))
+      .filter((s) => ownSpells.has(refKey(s.ref)) || (withLists && s.data.classes.some((c) => listIds.has(c))))
     : [];
 
   // Pestaña Información: solo los valores que muestra (es un componente de cliente)

@@ -211,7 +211,7 @@ export default function RuleSelect({
               className={`flex cursor-pointer items-center gap-2 px-3 py-2 text-sm ${i === active ? "bg-surface" : ""}`}
             >
               <span className="min-w-0 flex-1 truncate">
-                {displayName(o)} <span className="text-muted">· {o.bookName}</span>
+                {displayName(o)} {o.bookName && <span className="text-muted">· {o.bookName}</span>}
               </span>
               {o.srd52 && (
                 <span className="rounded border border-line px-1.5 text-[10px] font-bold text-muted" title="Incluido en el SRD 5.2">

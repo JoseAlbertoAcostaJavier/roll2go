@@ -82,6 +82,34 @@ describe("creationDraft", () => {
     });
     expect(d.prepared).toEqual([k("spell:x|xphb")]);
   });
+  it("pasa cada elección de conjuros de dote o invocación por su fuente, con la lista y la característica", () => {
+    const s = sheet();
+    s.levels[0].choices.push(
+      {
+        type: "featSpells", source: "featSpells:feat:magic initiate|xphb",
+        value: {
+          feat: ref("feat:magic initiate|xphb"), list: "druid", cantrips: [named("spell:druidcraft|xphb")],
+          spells: [named("spell:goodberry|xphb")], ability: "wis",
+        },
+      },
+      {
+        type: "featSpells", source: "featSpells:optionalFeature:pact of the tome|xphb",
+        value: { feat: ref("optionalFeature:pact of the tome|xphb"), cantrips: [named("spell:light|xphb")], spells: [] },
+      },
+    );
+    const d = creationDraft({ name: "Ana", pronouns: [], status: "active", backstory: "" }, s);
+    const k = (key: string) => `${ref(key).book}:${key}`;
+    expect(d.featSpells).toEqual({
+      "featSpells:feat:magic initiate|xphb": {
+        cantrips: [k("spell:druidcraft|xphb")], spells: [k("spell:goodberry|xphb")], list: "druid",
+        replace: { out: "", in: "" }, replaceCantrip: { out: "", in: "" },
+      },
+      "featSpells:optionalFeature:pact of the tome|xphb": {
+        cantrips: [k("spell:light|xphb")], spells: [], replace: { out: "", in: "" }, replaceCantrip: { out: "", in: "" },
+      },
+    });
+    expect(d.featAbility).toEqual({ "featSpells:feat:magic initiate|xphb": "wis" });
+  });
 });
 
 describe("creationUpdate", () => {

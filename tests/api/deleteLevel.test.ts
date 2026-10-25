@@ -28,7 +28,7 @@ const sheet = {
 
 // Sesión, acceso, catálogo y base de datos falsos: la escritura condicional siempre falla y `exists` dice si el
 // personaje sigue en el mismo nivel
-const db = vi.hoisted(() => ({ sameLevel: true }));
+const db = vi.hoisted(() => ({ sameLevel: true, sheet: null as unknown, updates: [] as unknown[] }));
 vi.mock("@/lib/campaignApi", () => ({ sessionOf: async () => ({ id: "u1" }) }));
 vi.mock("@/lib/rateLimit", () => ({
   rateLimit: async () => ({ ok: true }),
@@ -36,13 +36,19 @@ vi.mock("@/lib/rateLimit", () => ({
 }));
 vi.mock("@/lib/characterAccess", () => ({
   OUTDATED_SHEET_ERROR: "antigua",
-  loadCharacterFor: async () => ({ character: { sheet }, sheet, books: [B], entries: catalog, outdated: false }),
+  loadCharacterFor: async () => {
+    const current = (db.sheet ?? sheet) as Dnd2024SheetV2;
+    return { character: { sheet: current }, sheet: current, books: [B], entries: catalog, outdated: false };
+  },
 }));
 vi.mock("@/lib/rules/catalog", () => ({ getEntries: async () => [] }));
 vi.mock("@/lib/rules/dnd2024/sheetEntries", () => ({ loadSheetEntries: async () => catalog }));
 vi.mock("@/lib/Character", () => ({
   Character: {
-    updateOne: async () => ({ matchedCount: 0 }),
+    updateOne: async (...args: unknown[]) => {
+      db.updates.push(args);
+      return { matchedCount: 0 };
+    },
     exists: async () => (db.sameLevel ? { _id: "c1" } : null),
   },
 }));
@@ -66,5 +72,22 @@ describe("DELETE /api/characters/[id]/levels/last: conflictos", () => {
     expect(await remove()).toEqual({
       status: 409, json: { error: "El personaje ha cambiado mientras borrabas el nivel. Recarga la página." },
     });
+  });
+});
+
+describe("DELETE /api/characters/[id]/levels/last: alternativa de conjuros", () => {
+  it("al borrar el nivel que dio la subclase, quita su alternativa (si nadie la ha cambiado entretanto)", async () => {
+    const life = ref("subclass:life domain|cleric|xphb");
+    const three: LevelEntry[] = [...levels, {
+      n: 3, class: cleric, classLevel: 3, hp: { method: "average", value: 5 },
+      choices: [{ type: "subclass", source: "class:subclass", value: { ref: life, name: "Vida" } }],
+    }];
+    db.sheet = { ...sheet, levels: three, spellOption: { [life.key]: "Opción", otra: "Otra" } };
+    db.updates = [];
+    await remove();
+    const [filter, update] = db.updates[0] as [Record<string, unknown>, { $set: Record<string, unknown> }];
+    expect(update.$set["sheet.spellOption"]).toEqual({ otra: "Otra" });
+    expect(filter).toHaveProperty(["sheet.spellOption"]);
+    db.sheet = null;
   });
 });

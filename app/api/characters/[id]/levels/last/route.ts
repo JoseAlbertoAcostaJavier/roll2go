@@ -50,14 +50,22 @@ export async function DELETE(req: NextRequest, { params }: Ctx) {
   if (result.sheet.weaponMasteries && result.sheet.weaponMasteries.length !== found.sheet.weaponMasteries?.length) {
     set["sheet.weaponMasteries"] = result.sheet.weaponMasteries;
   }
-  // Los conjuros, solo si nadie los ha cambiado entretanto (si no, se perdería ese cambio)
+  // Los conjuros, solo si nadie los ha cambiado entretanto (si no, se perdería ese cambio); los usos por descanso
+  // largo, solo si la hoja los tiene
   const unchanged: Record<string, unknown> = {};
+  const stored = found.character.sheet as Record<string, unknown> | undefined;
   if (classesLoaded) {
-    const stored = found.character.sheet as Record<string, unknown> | undefined;
-    for (const field of ["prepared", "slotsUsed"] as const) {
+    for (const field of ["prepared", "slotsUsed", "limitedUsed"] as const) {
+      if (result.sheet[field] === undefined) continue;
       set[`sheet.${field}`] = result.sheet[field];
       unchanged[`sheet.${field}`] = unchangedFilter(stored?.[field]);
     }
+  }
+  // La alternativa de conjuros de la subclase que daba el nivel, igual
+  const options = result.sheet.spellOption;
+  if (options && Object.keys(options).length !== Object.keys(found.sheet.spellOption ?? {}).length) {
+    set["sheet.spellOption"] = options;
+    unchanged["sheet.spellOption"] = unchangedFilter(stored?.spellOption);
   }
   const res = await Character.updateOne(
     { _id: id, "sheet.version": 2, "sheet.levels": { $size: before }, ...unchanged },

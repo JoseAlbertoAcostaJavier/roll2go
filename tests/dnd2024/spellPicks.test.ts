@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type { PendingChoice } from "@/lib/rules/dnd2024/levels";
-import { emptySpellPick, parseSpellPick, spellChoiceOf, spellPickMissing } from "@/lib/rules/dnd2024/spellPicks";
+import {
+  bonusChoiceOf, bonusPickMissing, emptySpellPick, featSpellsChoiceOf, featSpellsMissing, parseSpellPick, spellChoiceOf,
+  spellPickMissing,
+} from "@/lib/rules/dnd2024/spellPicks";
 
 const SORCERER = { book: "b", key: "class:sorcerer|xphb" };
 const pending = (over: Partial<NonNullable<PendingChoice["spells"]>> = {}, extra: Partial<PendingChoice> = {}): PendingChoice => {
@@ -18,6 +21,10 @@ describe("parseSpellPick", () => {
     expect(parseSpellPick(null)).toEqual(emptySpellPick());
     expect(parseSpellPick({ cantrips: [k("light"), 3, k("light"), ""], spells: "x", replace: { out: k("a"), in: 1 } }))
       .toEqual({ cantrips: [k("light")], spells: [], replace: { out: k("a"), in: "" }, replaceCantrip: { out: "", in: "" } });
+  });
+  it("recupera las entradas gratis y la lista elegida", () => {
+    expect(parseSpellPick({ free: [k("shield"), 2], list: "druid" })).toMatchObject({ free: [k("shield")], list: "druid" });
+    expect(parseSpellPick({ free: [], list: 3 })).not.toHaveProperty("list");
   });
 });
 
@@ -70,5 +77,82 @@ describe("spellChoiceOf", () => {
     expect(spellChoiceOf(p, emptySpellPick())).toBeNull();
     expect(spellChoiceOf(p, { ...emptySpellPick(), replaceCantrip: { out: k("a"), in: k("b") } })?.value)
       .toMatchObject({ replaceCantrip: { out: named("a"), in: named("b") } });
+  });
+});
+
+describe("spellChoiceOf con Sabio de la escuela", () => {
+  it("envía de 0 a `count` entradas gratis", () => {
+    const p = pending({ mode: "spellbook", cantrips: 0, spells: 2, free: { count: 2, school: "A", maxLevel: 2 } });
+    const pick = { ...emptySpellPick(), spells: [k("sleep"), k("shield")] };
+    expect(spellPickMissing(p, pick)).toBeNull();
+    expect(spellChoiceOf(p, pick)?.value).toMatchObject({ free: [] });
+    expect(spellChoiceOf(p, { ...pick, free: [k("alarm"), k("armor"), k("x")] })?.value)
+      .toMatchObject({ free: [named("alarm"), named("armor")] });
+  });
+});
+
+const INITIATE = { book: "b", key: "feat:magic initiate|xphb" };
+const featPending = (extra: Partial<PendingChoice> = {}): PendingChoice => ({
+  type: "featSpells", source: "featSpells:feat:magic initiate|xphb", count: 3, label: "Conjuros de Iniciado",
+  spells: { class: INITIATE, mode: "levelUp", list: "", cantrips: 2, spells: 1, maxLevel: 1 },
+  featSpells: { feat: INITIATE, lists: ["cleric", "druid", "wizard"], abilities: ["int", "wis", "cha"] },
+  ...extra,
+});
+
+describe("featSpells", () => {
+  it("pide primero la lista y después los conjuros y la característica", () => {
+    const pick = { ...emptySpellPick(), cantrips: [k("light"), k("guidance")], spells: [k("bless")] };
+    expect(featSpellsMissing(featPending(), pick, "wis")).toBe("elegir la lista de conjuros");
+    expect(featSpellsMissing(featPending(), { ...pick, list: "cleric" }, "")).toBe("elegir la característica de lanzamiento");
+    expect(featSpellsMissing(featPending(), { ...pick, list: "cleric" }, "wis")).toBeNull();
+    expect(featSpellsChoiceOf(featPending(), { ...pick, list: "cleric" }, "wis")?.value).toMatchObject({ list: "cleric", ability: "wis" });
+    // Una lista que la dote no ofrece no se envía
+    expect(featSpellsChoiceOf(featPending(), { ...pick, list: "bard" }, "wis")?.value).not.toHaveProperty("list");
+  });
+  it("con solo el cambio opcional: sin cambio no se envía; con él, solo el cambio", () => {
+    const p = featPending({
+      count: 0, optionalReplace: true,
+      spells: { class: INITIATE, mode: "levelUp", list: "", cantrips: 0, spells: 0, maxLevel: 0 },
+      featSpells: { feat: INITIATE },
+    });
+    expect(featSpellsMissing(p, emptySpellPick(), "")).toBeNull();
+    expect(featSpellsChoiceOf(p, emptySpellPick(), "")).toBeNull();
+    const swap = { ...emptySpellPick(), replace: { out: k("bless"), in: "" } };
+    expect(featSpellsMissing(p, swap, "")).toBe("elegir el conjuro que entra");
+    expect(featSpellsChoiceOf(p, { ...swap, replace: { out: k("bless"), in: k("sleep") } }, "")).toEqual({
+      type: "featSpells", source: p.source,
+      value: { feat: INITIATE, cantrips: [], spells: [], replace: { out: named("bless"), in: named("sleep") } },
+    });
+  });
+});
+
+describe("arcanum y bonusSpells", () => {
+  const arcanum = (extra: Partial<PendingChoice> = {}): PendingChoice => ({
+    type: "arcanum", source: "classFeature:mystic arcanum|warlock|xphb|11", count: 1, label: "Arcano místico",
+    arcanum: { level: 6, list: "warlock" }, ...extra,
+  });
+  it("pide el arcano y lo envía como valor; la sustitución, aparte", () => {
+    expect(bonusPickMissing(arcanum(), undefined)).toBe("elegir 1 conjuro en Arcano místico");
+    const pick = { ...emptySpellPick(), spells: [k("eyebite")] };
+    expect(bonusChoiceOf(arcanum(), pick)).toEqual({ type: "arcanum", source: arcanum().source, value: named("eyebite") });
+  });
+  it("sin arcano nuevo: solo se envía si se sustituye uno", () => {
+    const p = arcanum({ count: 0, optionalReplace: true, arcanum: { list: "warlock" } });
+    expect(bonusPickMissing(p, undefined)).toBeNull();
+    expect(bonusChoiceOf(p, emptySpellPick())).toBeNull();
+    expect(bonusChoiceOf(p, { ...emptySpellPick(), replace: { out: k("eyebite"), in: k("mass suggestion") } })).toEqual({
+      type: "arcanum", source: p.source, value: null, replace: { out: named("eyebite"), in: named("mass suggestion") },
+    });
+  });
+  it("bonusSpells: exactamente `count`, con la sustitución opcional", () => {
+    const p: PendingChoice = {
+      type: "bonusSpells", source: "classFeature:magical discoveries|bard|xphb|lore|xphb|6", count: 2,
+      label: "Descubrimientos mágicos", optionalReplace: true,
+      bonusSpells: { class: SORCERER, lists: ["cleric", "druid", "wizard"], maxLevel: 3, origin: "Descubrimientos mágicos" },
+    };
+    expect(bonusPickMissing(p, { ...emptySpellPick(), spells: [k("bless")] })).toBe("elegir 1 conjuro en Descubrimientos mágicos");
+    expect(bonusChoiceOf(p, { ...emptySpellPick(), spells: [k("bless"), k("cure wounds"), k("x")] })).toEqual({
+      type: "bonusSpells", source: p.source, value: { spells: [named("bless"), named("cure wounds")] },
+    });
   });
 });

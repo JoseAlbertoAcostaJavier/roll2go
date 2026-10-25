@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { sessionOf } from "@/lib/campaignApi";
 import { booksByIds } from "@/lib/rules/books";
 import { NotFoundError, resolveRef, usableBooks } from "@/lib/rules/catalog";
+import { spellClassNames } from "@/lib/rules/dnd2024/spellText";
+import type { SpellData } from "@/lib/rules/types";
 
 type Ctx = { params: Promise<{ bookId: string; key: string }> };
 
@@ -34,7 +36,10 @@ export async function GET(req: NextRequest, { params }: Ctx) {
       campaignId: req.nextUrl.searchParams.get("campaign") || undefined,
     });
     const entry = await resolveRef({ book: bookId, key }, books);
-    return entry ? NextResponse.json({ entry }) : notFound();
+    if (!entry) return notFound();
+    // Un conjuro lleva también sus clases en español (la ficha del conjuro, en el cliente, no carga `es.json`)
+    if (!key.startsWith("spell:")) return NextResponse.json({ entry });
+    return NextResponse.json({ entry, classNames: spellClassNames((entry.data as SpellData | null)?.classes ?? []) });
   } catch (e) {
     if (e instanceof NotFoundError) return notFound();
     throw e;

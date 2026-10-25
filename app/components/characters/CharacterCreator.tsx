@@ -5,23 +5,24 @@ import { useRouter } from "next/navigation";
 import { LoaderCircle, TriangleAlert } from "lucide-react";
 import Bbcode from "@/app/components/Bbcode";
 import { card, cardTitle, errorClass, field, labelClass, primaryButton } from "@/app/components/formStyles";
-import type { CatalogEntry, EntryOption, SpellOption } from "@/lib/rules/catalog";
+import type { CatalogEntry, EntryOption } from "@/lib/rules/catalog";
 import {
-  ABILITIES, type Ability, type BackgroundData, type ClassData, type Equipment, type FeatData, type FeatureData, type Pack,
-  type Ref, type SpeciesData,
+  ABILITIES, type Ability, type BackgroundData, type ClassData, type Equipment, type FeatData, type FeatureData,
+  type OptionalFeatureData, type Pack, type Ref, type SpeciesData,
 } from "@/lib/rules/types";
 import type { AbilityMethod, Dnd2024Sheet } from "@/lib/rules/dnd2024/sheet";
 import { checkBackgroundBonus } from "@/lib/rules/dnd2024/abilities";
 import { totalsWithinLimit } from "@/lib/rules/dnd2024/assign";
 import { bareName, equipmentRefs, refKey } from "@/lib/rules/dnd2024/equipmentRefs";
 import { ABILITY_NAMES, sizeName, skillName, toolName } from "@/lib/rules/dnd2024/labels";
-import { featSpellPending } from "@/lib/rules/dnd2024/featSpells";
-import { pendingChoices, withBonusCantrips } from "@/lib/rules/dnd2024/levels";
+import { featSpellPending, featSpellsSource } from "@/lib/rules/dnd2024/featSpells";
+import { pendingChoices, withBonusCantrips, type PendingChoice } from "@/lib/rules/dnd2024/levels";
 import { maxSpellLevel, preparedKey, spellListOf } from "@/lib/rules/dnd2024/spellcasting";
 import {
   emptySpellPick, featSpellsChoiceOf, featSpellsMissing, parseSpellPick, spellChoiceOf, spellPickMissing, type SpellPick,
 } from "@/lib/rules/dnd2024/spellPicks";
 import { PRONOUNS, type Pronoun } from "@/lib/rules/dnd2024/names";
+import { pendingSpellLists } from "@/lib/rules/spellRows";
 import type { CreationDraft } from "@/lib/rules/dnd2024/recreate";
 import { SKILLS_SOURCE } from "@/lib/rules/dnd2024/upgrade";
 import AbilityScores from "./AbilityScores";
@@ -37,7 +38,9 @@ import PronounsField from "./fields/PronounsField";
 import SkillPicker from "./fields/SkillPicker";
 import FeatSpellsStep from "./levelup/steps/FeatSpellsStep";
 import SpellsStep from "./levelup/steps/SpellsStep";
+import SpellListsStatus from "./SpellListsStatus";
 import useCatalogEntries from "./useCatalogEntries";
+import useSpellLists from "./useSpellLists";
 import StatusField from "./fields/StatusField";
 import { LIMITS, STATUSES, type Status } from "./fields/constants";
 
@@ -64,9 +67,12 @@ type FormState = {
   /** Trucos y conjuros iniciales (o libro del Mago) y preparados iniciales (`libro:clave`). */
   spells: SpellPick;
   prepared: string[];
-  /** Conjuros de la dote del trasfondo (Iniciado en la magia…) y su característica de lanzamiento. */
-  featSpells: SpellPick;
-  featAbility: Ability | "";
+  /**
+   * Conjuros de la dote del trasfondo (Iniciado en la magia…) y de las invocaciones elegidas (Pacto del tomo), con la
+   * lista elegida, y su característica de lanzamiento, por `source` de la elección.
+   */
+  featSpells: Record<string, SpellPick>;
+  featAbility: Record<string, Ability>;
   method: AbilityMethod;
   base: Base;
   rolls: Rolls | null;
@@ -94,8 +100,6 @@ type Props = {
   optionalFeatures: EntryOption[];
   /** Armas con propiedad de maestría (con `data`). */
   weapons: EntryOption[];
-  /** Conjuros de los libros (sin descripción), para la sección Conjuros. */
-  spells: SpellOption[];
   /**
    * Rehacer la creación de un personaje de nivel 1: se precarga con su creación actual (si no hay borrador propio) y
    * se guarda con `PUT /api/characters/[id]/creation`. Sin campaña, imágenes, estado ni información (no cambian).
@@ -108,7 +112,7 @@ const emptyForm = (): FormState => ({
   species: null, lineage: null, speciesSkills: [], size: null,
   background: null, bonus: {}, bgEquipment: "",
   klass: null, classChoices: {}, classEquipment: "", spells: emptySpellPick(), prepared: [],
-  featSpells: emptySpellPick(), featAbility: "",
+  featSpells: {}, featAbility: {},
   method: "pointBuy", base: { str: 8, dex: 8, con: 8, int: 8, wis: 8, cha: 8 }, rolls: null,
   alignment: "", appearance: "", age: "", backstory: "", languages: "", notes: "", xp: "",
 });
@@ -194,9 +198,17 @@ function parseDraft(raw: string | null, props: Props): FormState {
     form.spells = parseSpellPick(d.spells);
     form.prepared = [...new Set(strings(d.prepared).filter(Boolean))];
   }
-  if (form.background) {
-    form.featSpells = parseSpellPick(d.featSpells);
-    form.featAbility = ABILITIES.includes(d.featAbility as Ability) ? (d.featAbility as Ability) : "";
+  // Conjuros de dotes e invocaciones por fuente (los borradores anteriores guardaban solo los de la dote del trasfondo)
+  const bgFeat = (findOption(props.backgrounds, form.background)?.data as BackgroundData | undefined)?.feat;
+  const legacy = bgFeat ? featSpellsSource(bgFeat) : "";
+  if (isObj(d.featSpells)) {
+    const picks = Array.isArray(d.featSpells.cantrips) ? (legacy ? { [legacy]: d.featSpells } : {}) : d.featSpells;
+    for (const [source, v] of Object.entries(picks)) form.featSpells[source] = parseSpellPick(v);
+  }
+  const abilities = typeof d.featAbility === "string" ? (legacy ? { [legacy]: d.featAbility } : {}) : d.featAbility;
+  if (isObj(abilities)) {
+    for (const [source, a] of Object.entries(abilities))
+      if (ABILITIES.includes(a as Ability)) form.featAbility[source] = a as Ability;
   }
   if (!form.background) form.bgEquipment = "";
   if (!form.klass) form.classEquipment = "";
@@ -403,7 +415,7 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
       .flatMap((p) => (form.classChoices[p.source] ?? []).filter(Boolean).map((k) => refFromKey(k).key));
     return withBonusCantrips(base, options);
   }, [form.klass, form.classChoices, entries]);
-  const pending = allPending.filter((p) => p.type !== "spells");
+  const pending = useMemo(() => allPending.filter((p) => p.type !== "spells"), [allPending]);
   const spellPending = allPending.find((p) => p.type === "spells") ?? null;
 
   // Lanzamiento de la clase de nivel 1: lista, nivel máximo y preparados iniciales (modos `list` y `spellbook`)
@@ -420,12 +432,29 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
     };
   }, [classData, classOpt, form.klass, spellPending, entries]);
   const spellsMissing = spellPending ? spellPickMissing(spellPending, form.spells) : null;
-  // Conjuros de la dote del trasfondo (Acólito → Iniciado en la magia)
+  // Conjuros de la dote del trasfondo (Acólito → Iniciado en la magia) y de las invocaciones elegidas (Pacto del tomo)
   const bgFeat = bgData?.feat ? entries.get(refKey(bgData.feat)) : undefined;
-  const featPending = useMemo(() => (bgFeat
+  const bgFeatPending = useMemo(() => (bgFeat
     ? featSpellPending([{ ref: bgFeat.ref, name: nameOf(bgFeat), data: bgFeat.data as FeatData | null }], (l) => l <= 1)[0] ?? null
     : null), [bgFeat]);
-  const featSpellsLeft = featPending ? featSpellsMissing(featPending, form.featSpells, form.featAbility) : null;
+  const invocationPending = useMemo(() => featSpellPending(
+    pending.filter((p) => p.type === "optionalFeature")
+      .flatMap((p) => (form.classChoices[p.source] ?? []).filter(Boolean))
+      .flatMap((k) => {
+        const o = props.optionalFeatures.find((x) => refKey(x.ref) === k);
+        return o ? [{ ref: o.ref, name: nameOf(o), data: o.data as OptionalFeatureData | null }] : [];
+      }),
+    (l) => l <= 1,
+  ), [pending, form.classChoices, props.optionalFeatures]);
+  const featPendings = [...(bgFeatPending ? [bgFeatPending] : []), ...invocationPending];
+  // Listas de conjuros, bajo demanda: la de la clase elegida y las de las dotes e invocaciones (al rehacer, de los libros
+  // del personaje)
+  const { spells, status: spellStatus, retry: retrySpells } = useSpellLists(
+    recreate ? { characterId: recreate.characterId } : { systemId: props.systemId, books: props.chosenBooks, campaignId: campaign?.id ?? null },
+    [...(casting ? [casting.listId] : []), ...featPendings.flatMap(pendingSpellLists)],
+  );
+  const featSpellsLeft = (p: PendingChoice) =>
+    featSpellsMissing(p, form.featSpells[p.source], form.featAbility[p.source] ?? "");
   // Conjuros de nivel 1 que ya da otra cosa (especie, legado, dote del trasfondo, clase): no se eligen
   const grantedSpells = useMemo(() => [form.species, form.lineage, bgData?.feat ?? null, form.klass].flatMap((r) => {
     const data = r ? (entries.get(refKey(r))?.data as { spells?: { level: number; ref: Ref }[] } | undefined) : undefined;
@@ -481,7 +510,9 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
   else if (!form.bgEquipment && letters(bgData?.equipment).length) missing.push({ label: "Equipo del trasfondo", href: S.background });
   for (const p of unfinished(pending, form.classChoices)) missing.push({ label: p.label, href: S.klass });
   if (spellsMissing) missing.push({ label: "Conjuros", href: S.spells });
-  if (featPending && featSpellsLeft) missing.push({ label: featPending.label, href: S.background });
+  for (const p of featPendings) {
+    if (featSpellsLeft(p)) missing.push({ label: p.label, href: p === bgFeatPending ? S.background : S.klass });
+  }
   if (classData && !form.classEquipment && letters(classData.equipment).length) missing.push({ label: "Equipo de clase", href: S.klass });
   if (Object.values(filledBase()).some((v) => v === null) || !abilitiesValid)
     missing.push({ label: "Puntuaciones de característica", href: S.abilities });
@@ -514,7 +545,8 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
     update(
       {
         background: ref, bonus: {}, bgEquipment: "", speciesSkills, classChoices: withoutSkills(form.classChoices, skills),
-        featSpells: emptySpellPick(), featAbility: "",
+        // (los de la dote del trasfondo anterior dejan de valer)
+        ...withoutFeatSpells(bgFeatPending ? [bgFeatPending.source] : []),
       },
       "background", "background.abilities", "background.equipment", "speciesChoices.skills", ...choiceErrorKeys(),
     );
@@ -526,10 +558,18 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
       "speciesChoices.skills", ...choiceErrorKeys(),
     );
   }
+  // Quita los conjuros elegidos con unas dotes o invocaciones (por fuente)
+  function withoutFeatSpells(sources: string[]): Pick<FormState, "featSpells" | "featAbility"> {
+    const drop = <T,>(r: Record<string, T>) => Object.fromEntries(Object.entries(r).filter(([k]) => !sources.includes(k)));
+    return { featSpells: drop(form.featSpells), featAbility: drop(form.featAbility) };
+  }
   function chooseClass(ref: Ref | null) {
     if (sameRef(ref, form.klass)) return;
     update(
-      { klass: ref, classChoices: {}, classEquipment: "", spells: emptySpellPick(), prepared: [] },
+      {
+        klass: ref, classChoices: {}, classEquipment: "", spells: emptySpellPick(), prepared: [],
+        ...withoutFeatSpells(invocationPending.map((p) => p.source)),
+      },
       "classes", "classes.0", "classes.0.level", "classes.0.subclass", "classes.0.equipment", "prepared", ...choiceErrorKeys(),
     );
   }
@@ -568,7 +608,10 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
           choices: [
             ...choicesFor(pending, form.classChoices),
             ...(spellPending ? [spellChoiceOf(spellPending, form.spells)].filter((c) => !!c) : []),
-            ...(featPending ? [featSpellsChoiceOf(featPending, form.featSpells, form.featAbility)] : []),
+            ...featPendings.flatMap((p) => {
+              const c = featSpellsChoiceOf(p, form.featSpells[p.source], form.featAbility[p.source] ?? "");
+              return c ? [c] : [];
+            }),
           ],
         }
         : null],
@@ -629,6 +672,30 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
       setLoading(false);
     }
   }
+
+  // Conjuros de una dote o invocación (en la sección de la que sale: trasfondo o clase)
+  const featSpellsSection = (p: PendingChoice, id: string) => {
+    const errorKey = `levels.0.choices.${p.source}`;
+    const ready = spellStatus(pendingSpellLists(p));
+    return (
+      <div key={p.source} className="mt-5 animate-fade-in">
+        <h3 className="mb-3 font-heading text-lg font-bold">{p.label}</h3>
+        {ready !== "ready" ? <SpellListsStatus error={ready === "error"} onRetry={retrySpells} /> : <FeatSpellsStep
+          id={id}
+          p={p}
+          spells={spells}
+          granted={grantedSpells}
+          value={form.featSpells[p.source] ?? emptySpellPick()}
+          onChange={(v) => update({ featSpells: { ...form.featSpells, [p.source]: v } }, errorKey)}
+          ability={form.featAbility[p.source] ?? ""}
+          onAbility={(a) => update({ featAbility: { ...form.featAbility, [p.source]: a } }, errorKey)}
+          characterId={recreate?.characterId ?? null}
+          campaignId={campaign?.id ?? null}
+        />}
+        <FieldError errors={errors} keys={[errorKey]} />
+      </div>
+    );
+  };
 
   // Errores sin un campo propio en el formulario: se muestran junto al botón
   // (el legado solo tiene campo si la especie tiene legados; las elecciones de clase, en su sección)
@@ -794,24 +861,7 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
             </>
           )}
           <FieldError errors={errors} keys={["background.equipment"]} />
-          {featPending && (
-            <div className="mt-5 animate-fade-in">
-              <h3 className="mb-3 font-heading text-lg font-bold">{featPending.label}</h3>
-              <FeatSpellsStep
-                id="creator-feat-spells"
-                p={featPending}
-                spells={props.spells}
-                granted={grantedSpells}
-                value={form.featSpells}
-                onChange={(featSpells) => update({ featSpells }, `levels.0.choices.${featPending.source}`)}
-                ability={form.featAbility}
-                onAbility={(featAbility) => update({ featAbility }, `levels.0.choices.${featPending.source}`)}
-                characterId={recreate?.characterId ?? null}
-                campaignId={campaign?.id ?? null}
-              />
-              <FieldError errors={errors} keys={[`levels.0.choices.${featPending.source}`]} />
-            </div>
-          )}
+          {bgFeatPending && featSpellsSection(bgFeatPending, "creator-feat-spells")}
         </section>
 
         {/* 4. Clase */}
@@ -835,6 +885,7 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
                 weapons={props.weapons}
                 errors={errors}
               />
+              {invocationPending.map((p, i) => featSpellsSection(p, `creator-invocation-spells-${i}`))}
               <div>
                 <h3 className="mb-2 text-sm font-semibold">Equipo inicial</h3>
                 <EquipmentChoice
@@ -854,14 +905,16 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
         {casting && form.klass && (
           <section id="conjuros" {...section(4)}>
             <h2 className={cardTitle}>Conjuros</h2>
-            <SpellsStep
+            {spellStatus([casting.listId]) !== "ready" ? (
+              <SpellListsStatus error={spellStatus([casting.listId]) === "error"} onRetry={retrySpells} />
+            ) : <SpellsStep
               id="creator-spells"
               casterName={casting.name}
               mode={casting.mode}
               listId={casting.listId}
               maxLevel={casting.maxLevel}
               pending={spellPending}
-              spells={props.spells}
+              spells={spells}
               held={NO_SPELLS}
               granted={grantedSpells}
               value={form.spells}
@@ -876,7 +929,7 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
                 : undefined}
               characterId={recreate?.characterId ?? null}
               campaignId={campaign?.id ?? null}
-            />
+            />}
             <FieldError errors={errors} keys={[...(spellPending ? [`levels.0.choices.${spellPending.source}`] : []), "prepared"]} />
           </section>
         )}

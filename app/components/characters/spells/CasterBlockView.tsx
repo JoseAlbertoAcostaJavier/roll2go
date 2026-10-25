@@ -1,17 +1,19 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { BookPlus, LoaderCircle } from "lucide-react";
+import { BookPlus, LoaderCircle, TriangleAlert } from "lucide-react";
 import type { SpellOption } from "@/lib/rules/catalog";
 import type { CasterBlock } from "@/lib/rules/dnd2024/derive";
 import { bareName, refKey } from "@/lib/rules/dnd2024/equipmentRefs";
 import { ABILITY_NAMES, spellOptionName, spellOptionTitle } from "@/lib/rules/dnd2024/labels";
 import { EMPTY_SPELL_FILTER, matchesSpellFilter, type SpellFilter } from "@/lib/rules/dnd2024/spellFilters";
-import type { SpellOp } from "@/lib/rules/dnd2024/spellOps";
+import { recoversOnShortRest, type SpellOp } from "@/lib/rules/dnd2024/spellOps";
 import type { Ref } from "@/lib/rules/types";
 import { card, field, labelClass, primaryButton } from "@/app/components/formStyles";
 import RoundIcon from "@/app/components/RoundIcon";
 import RuleSelect from "../RuleSelect";
+import LimitedUses from "./LimitedUses";
+import MasterySelector from "./MasterySelector";
 import SpellFilters from "./SpellFilters";
 import SpellList, { type SpellOpener, type SpellRowItem } from "./SpellList";
 
@@ -85,14 +87,18 @@ function SpellOptionPicker({ id, options, isOwner, busy, onChange }: {
 }
 
 // Un bloque por clase lanzadora (spec de conjuros §4.1): cabecera con característica, CD, ataque, preparados y
-// trucos, y las listas Preparados / Mi lista / Disponibles / Todos. Solo el dueño ve las casillas y los botones.
+// trucos, y las listas Preparados / Mi lista / Disponibles / Todos; con los rasgos de nivel alto, los conjuros con
+// usos por descanso (Arcano místico, Conjuros distintivos) y el Dominio de conjuros. Solo el dueño ve las casillas y
+// los botones.
 export default function CasterBlockView({ block, listId, iconId, spells, isOwner, busy, onOp, onOpen }: Props) {
   const [tab, setTab] = useState<ListTab>("preparados");
   const [filter, setFilter] = useState<SpellFilter>(EMPTY_SPELL_FILTER);
   const [copyRef, setCopyRef] = useState<Ref | null>(null);
   const { mode } = block;
 
-  const classList = useMemo(() => [...spells.values()].filter((s) => s.data.classes.includes(listId)), [spells, listId]);
+  // Con Secretos mágicos, también los conjuros (no los trucos) de sus otras listas
+  const classList = useMemo(() => [...spells.values()].filter((s) => s.data.classes.includes(listId)
+    || (!!block.lists && s.data.level >= 1 && s.data.classes.some((c) => block.lists!.includes(c)))), [spells, listId, block.lists]);
   const tags = useMemo(
     () => [...new Set(classList.flatMap((s) => s.data.tags))].sort((a, b) => a.localeCompare(b, "es")),
     [classList],
@@ -130,7 +136,19 @@ export default function CasterBlockView({ block, listId, iconId, spells, isOwner
   const cantrips = block.cantrips.map((c) => item(c.ref, c.name)).sort(byLevelAndName);
   const preparedItems = (mode === "levelUp" ? block.known.map((k) => item(k.ref, k.name)) : block.prepared.map((r) => item(r)))
     .sort(byLevelAndName);
-  const alwaysItems = block.always.map((a) => item(a.spell.ref, a.spell.name, { origin: a.origin })).sort(byLevelAndName);
+  // Los que tienen usos (Conjuros distintivos) van en su propia sección, con las casillas
+  const limitedKeys = new Set(block.limited.map((l) => refKey(l.spell.ref)));
+  const alwaysItems = block.always.filter((a) => !limitedKeys.has(refKey(a.spell.ref)))
+    .map((a) => item(a.spell.ref, a.spell.name, { origin: a.origin })).sort(byLevelAndName);
+  const limitedGroups = [...new Set(block.limited.map((l) => l.origin))].map((origin) => {
+    const items = block.limited.filter((l) => l.origin === origin);
+    return {
+      origin, items,
+      hint: items.every((l) => recoversOnShortRest(l.key))
+        ? "Lanzas cada uno una vez sin gastar espacio; los recuperas con un descanso corto o largo."
+        : "Lo lanzas una vez sin gastar espacio; lo recuperas con un descanso largo.",
+    };
+  });
 
   const filtered = classList.filter((s) => matchesSpellFilter(s, filter));
   const available = filtered.filter((s) => s.data.level <= block.maxSpellLevel).map((s) => item(s.ref));
@@ -184,6 +202,23 @@ export default function CasterBlockView({ block, listId, iconId, spells, isOwner
         />
       )}
 
+      {/* Mago 20 de antes de Conjuros distintivos: no puede subir más, así que los elige rehaciendo el nivel */}
+      {isOwner && block.signatureMissing && (
+        <p role="status" className="mb-4 flex items-start gap-2 rounded-md border border-line bg-surface p-3 text-sm text-muted print:hidden">
+          <TriangleAlert size={16} className="mt-0.5 shrink-0 text-brand-soft" aria-hidden="true" />
+          <span>Para elegir tus Conjuros distintivos, borra el nivel 20 y vuelve a subirlo.</span>
+        </p>
+      )}
+
+      <MasterySelector
+        id={`${tabId("preparados")}-mastery`}
+        block={block}
+        spells={spells}
+        isOwner={isOwner}
+        busy={busy}
+        onChange={(level, ref) => void onOp({ op: "setMastery", level, ref })}
+      />
+
       <div role="tablist" aria-label={`Listas de ${block.name}`} className="mb-4 flex gap-1 overflow-x-auto border-b border-line print:hidden">
         {tabs.map((t) => (
           <button
@@ -226,6 +261,18 @@ export default function CasterBlockView({ block, listId, iconId, spells, isOwner
                 onOpen={onOpen}
               />
             </div>
+            {limitedGroups.map((g) => (
+              <LimitedUses
+                key={g.origin}
+                title={g.origin}
+                hint={g.hint}
+                items={g.items}
+                spells={spells}
+                onSet={isOwner ? (key, used) => void onOp({ op: "limited", key, used }) : null}
+                busy={busy}
+                onOpen={onOpen}
+              />
+            ))}
             {alwaysItems.length > 0 && (
               <div>
                 <h4 className="text-sm font-semibold uppercase tracking-wide text-muted">Siempre preparados</h4>
