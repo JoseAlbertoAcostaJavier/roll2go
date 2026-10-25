@@ -597,3 +597,211 @@ describe("rasgos de conjuro de nivel alto", () => {
     });
   });
 });
+
+describe("conjuros extra del Bardo del Saber y del Mago", () => {
+  // Conjuros con escuela: nombre, nivel, escuela y listas
+  for (const [name, level, school, classes] of [
+    ["alarm", 1, "A", ["wizard", "ranger"]], ["arcane lock", 2, "A", ["wizard"]], ["counterspell", 3, "A", ["sorcerer", "warlock", "wizard"]],
+    ["silent image", 1, "I", ["bard", "sorcerer", "wizard"]], ["mirror image", 2, "I", ["sorcerer", "warlock", "wizard"]],
+    ["fireball", 3, "V", ["sorcerer", "wizard"]], ["lightning bolt", 3, "V", ["sorcerer", "wizard"]],
+    ["cure wounds", 1, "A", ["bard", "cleric", "druid"]], ["aid", 2, "A", ["bard", "cleric"]],
+    ["guardian of faith", 4, "C", ["cleric"]], ["spirit guardians", 3, "C", ["cleric"]], ["goodberry", 1, "C", ["druid"]],
+    ["eyebite", 6, "N", ["bard", "sorcerer", "warlock", "wizard"]],
+  ] as [string, number, string, string[]][]) {
+    extra(`spell:${name}|xphb`, {
+      level, school, time: "", range: "", components: "", duration: "", concentration: false, ritual: false, classes, tags: [],
+    }, name);
+  }
+  const spell = (name: string) => client(`spell:${name}|xphb`);
+  const held = (name: string) => named(ref(`spell:${name}|xphb`));
+  const hp = { method: "average", value: 5 };
+  const hpWizard = { method: "average", value: 4 };
+  const subclass = (key: string): Choice => ({ type: "subclass", source: "class:subclass", value: named(ref(key)) });
+  const spellsChoice = (cls: string, cantrips: string[], spells: string[]): Choice =>
+    ({ type: "spells", source: `progression:spells|${cls}|xphb`, value: { class: ref(`class:${cls}|xphb`), cantrips: cantrips.map(held), spells: spells.map(held) } });
+
+  describe("Descubrimientos mágicos (Saber 6)", () => {
+    const SOURCE = "subclassFeature:magical discoveries|bard|xphb|lore|xphb|6";
+    const LORE = subclass("subclass:college of lore|bard|xphb");
+    const bard = (n: number, extraChoices: Record<number, Choice[]> = {}) =>
+      sheetWith([["bard", n]], { 1: [spellsChoice("bard", ["vicious mockery"], ["healing word"])], 3: [LORE], ...extraChoices });
+    const body = (n: number, bonus: unknown, spellName = "silent image") => ({
+      expectedLevel: n, class: client("class:bard|xphb"), hp,
+      choices: [
+        { type: "spells", source: "progression:spells|bard|xphb", value: { cantrips: [], spells: [spell(spellName)] } },
+        ...(bonus === undefined ? [] : [{ type: "bonusSpells", source: SOURCE, value: bonus }]),
+      ],
+    });
+    const errorOf = async (n: number, bonus: unknown, sheet = bard(n - 1)) =>
+      (await errorsOf(sheet, body(n, bonus)))[`choices.${SOURCE}`];
+
+    it("Saber 6: 2 de Clérigo, Druida o Mago (un truco y un conjuro de nivel 3), con los nombres del catálogo", async () => {
+      const r = await validateLevel(bard(5), body(6, { spells: [spell("light"), spell("spirit guardians")] }), ctx());
+      if (!r.ok) throw new Error(JSON.stringify(r.errors));
+      expect(r.entry.choices.at(-1)).toEqual({
+        type: "bonusSpells", source: SOURCE, value: { spells: [held("light"), held("spirit guardians")] },
+      });
+    });
+    it("de un nivel sin espacios, de otra lista, que ya tiene, repetido o en número distinto de 2 → error", async () => {
+      expect(await errorOf(6, { spells: [spell("light"), spell("guardian of faith")] }))
+        .toBe("Descubrimientos mágicos: guardian of faith es de nivel 4; el máximo es 3.");
+      expect(await errorOf(6, { spells: [spell("light"), spell("vicious mockery")] }))
+        .toBe("Descubrimientos mágicos: vicious mockery no está en una lista permitida.");
+      expect(await errorOf(6, { spells: [spell("light"), spell("healing word")] })).toBe("Descubrimientos mágicos: ya tienes healing word.");
+      expect(await errorOf(6, { spells: [spell("light"), spell("silent image")] })).toBe("Descubrimientos mágicos: ya tienes silent image.");
+      expect(await errorOf(6, { spells: [spell("light"), spell("light")] })).toBe("Descubrimientos mágicos: ya tienes light.");
+      expect(await errorOf(6, { spells: [spell("light")] })).toBe("Descubrimientos mágicos: elige 2 conjuros.");
+      expect(await errorsOf(bard(5), body(6, undefined))).toHaveProperty("choices", "Falta elegir: Descubrimientos mágicos.");
+    });
+    it("Bardo 7: puede sustituir uno por otro que cumpla lo mismo (con el nivel máximo del 7); sin sustituir, nada", async () => {
+      const lore6 = bard(6, { 6: [{ type: "bonusSpells", source: SOURCE, value: { spells: [held("light"), held("goodberry")] } }] });
+      const r = await validateLevel(lore6, body(7, { spells: [], replace: { out: spell("goodberry"), in: spell("guardian of faith") } }), ctx());
+      if (!r.ok) throw new Error(JSON.stringify(r.errors));
+      expect(r.entry.choices.at(-1)).toEqual({
+        type: "bonusSpells", source: SOURCE, value: { spells: [], replace: { out: held("goodberry"), in: held("guardian of faith") } },
+      });
+      expect(await errorsOf(lore6, body(7, undefined))).toEqual({});
+      expect(await errorOf(7, { spells: [], replace: { out: spell("bless"), in: spell("aid") } }, lore6))
+        .toBe("Descubrimientos mágicos: solo puedes sustituir uno que ya tienes.");
+      expect(await errorOf(7, { spells: [], replace: { out: spell("goodberry"), in: spell("light") } }, lore6))
+        .toBe("Descubrimientos mágicos: ya tienes light.");
+      expect(await errorOf(7, { spells: [] }, lore6)).toBe("Descubrimientos mágicos: elige el conjuro que sustituyes.");
+      // En el 6 no hay nada que sustituir
+      expect(await errorOf(6, { spells: [spell("light"), spell("aid")], replace: { out: spell("light"), in: spell("bless") } }))
+        .toBe("Descubrimientos mágicos: no puedes sustituir conjuros en este nivel.");
+    });
+  });
+
+  describe("Sabio de la escuela e Ilusiones mejoradas (Mago 3)", () => {
+    const SPELLS = "progression:spells|wizard|xphb";
+    const IMPROVED = "subclassFeature:improved illusions|wizard|xphb|illusionist|xphb|3";
+    const wizard2 = (cantrips = ["light"]) => sheetWith([["wizard", 2]], { 1: [spellsChoice("wizard", cantrips, ["magic missile"])] });
+    const body = (sub: string, free: string[], more: unknown[] = []) => ({
+      expectedLevel: 3, class: client("class:wizard|xphb"), hp: hpWizard,
+      choices: [
+        { type: "subclass", source: "class:subclass", value: client(`subclass:${sub}|wizard|xphb`) },
+        { type: "spells", source: SPELLS, value: { cantrips: [], spells: [spell("shield"), spell("burning hands")], free: free.map(spell) } },
+        ...more,
+      ],
+    });
+
+    it("Abjurador 3: 2 gratis de Abjuración de nivel 1 o 2 que entran en el libro", async () => {
+      const r = await validateLevel(wizard2(), body("abjurer", ["alarm", "arcane lock"]), ctx());
+      if (!r.ok) throw new Error(JSON.stringify(r.errors));
+      expect(r.entry.choices.find((c) => c.type === "spells")?.value).toMatchObject({ free: [held("alarm"), held("arcane lock")] });
+    });
+    it("de otra escuela, de nivel 3, repetido o en número distinto de 2 → error", async () => {
+      const freeError = async (free: string[]) => (await errorsOf(wizard2(), body("abjurer", free)))[`choices.${SPELLS}`];
+      expect(await freeError(["alarm", "silent image"])).toBe("Conjuros: silent image no es de Abjuración.");
+      expect(await freeError(["alarm", "counterspell"])).toBe("Conjuros: counterspell no es un conjuro de nivel 1 a 2.");
+      expect(await freeError(["alarm", "alarm"])).toBe("Conjuros: conjuro repetido.");
+      expect(await freeError(["alarm"])).toBe("Conjuros: elige 2 conjuros gratis de Abjuración.");
+    });
+    it("Abjurador 5 (espacios de nivel 3): 1 gratis de hasta nivel 3", async () => {
+      const s = sheetWith([["wizard", 4]], { 1: [spellsChoice("wizard", ["light"], ["magic missile"])], 3: [subclass("subclass:abjurer|wizard|xphb")] });
+      const body5 = (free: string[]) => ({
+        expectedLevel: 5, class: client("class:wizard|xphb"), hp: hpWizard,
+        choices: [{ type: "spells", source: SPELLS, value: { cantrips: [], spells: [spell("shield"), spell("fireball")], free: free.map(spell) } }],
+      });
+      expect(await errorsOf(s, body5(["counterspell"]))).toEqual({});
+      expect((await errorsOf(s, body5(["alarm", "counterspell"])))[`choices.${SPELLS}`]).toBe("Conjuros: elige 1 conjuro gratis de Abjuración.");
+    });
+    it("Ilusionista 3 sin Ilusión menor: la recibe sin elegir (no pide truco)", async () => {
+      const r = await validateLevel(wizard2(), body("illusionist", ["silent image", "mirror image"]), ctx());
+      if (!r.ok) throw new Error(JSON.stringify(r.errors));
+      const bonus = { type: "bonusSpells", source: IMPROVED, value: { spells: [spell("chill touch")] } };
+      expect(await errorsOf(wizard2(), body("illusionist", ["silent image", "mirror image"], [bonus])))
+        .toHaveProperty("choices", "Hay elecciones que este nivel no pide.");
+    });
+    it("Ilusionista 3 que ya conoce Ilusión menor: pide 1 truco de Mago que no tenga", async () => {
+      const knows = wizard2(["light", "minor illusion"]);
+      const withBonus = (name: string) => body("illusionist", ["silent image", "mirror image"],
+        [{ type: "bonusSpells", source: IMPROVED, value: { spells: [spell(name)] } }]);
+      const r = await validateLevel(knows, withBonus("chill touch"), ctx());
+      if (!r.ok) throw new Error(JSON.stringify(r.errors));
+      expect(r.entry.choices.at(-1)).toEqual({ type: "bonusSpells", source: IMPROVED, value: { spells: [held("chill touch")] } });
+      const bonusError = async (name: string) => (await errorsOf(knows, withBonus(name)))[`choices.${IMPROVED}`];
+      expect(await bonusError("magic missile")).toBe("Ilusiones mejoradas: magic missile no es un truco.");
+      expect(await bonusError("minor illusion")).toBe("Ilusiones mejoradas: ya tienes minor illusion.");
+      expect(await bonusError("sacred flame")).toBe("Ilusiones mejoradas: sacred flame no está en una lista permitida.");
+      expect(await errorsOf(knows, body("illusionist", ["silent image", "mirror image"])))
+        .toHaveProperty("choices", "Falta elegir: Ilusiones mejoradas.");
+    });
+  });
+
+  describe("Conjuros distintivos (Mago 20)", () => {
+    const SOURCE = "classFeature:signature spells|wizard|xphb|20";
+    const wizard19 = () => sheetWith([["wizard", 19]], { 1: [spellsChoice("wizard", ["light"], ["magic missile", "fireball", "lightning bolt"])] });
+    const body = (names: string[], bookEntries = ["shield", "counterspell"]) => ({
+      expectedLevel: 20, class: client("class:wizard|xphb"), hp: hpWizard,
+      choices: [
+        { type: "spells", source: "progression:spells|wizard|xphb", value: { cantrips: [], spells: bookEntries.map(spell) } },
+        { type: "bonusSpells", source: SOURCE, value: { spells: names.map(spell) } },
+      ],
+    });
+    const errorOf = async (names: string[]) => (await errorsOf(wizard19(), body(names)))[`choices.${SOURCE}`];
+
+    it("2 de nivel 3 de su libro (también los que entran en él en este nivel)", async () => {
+      const r = await validateLevel(wizard19(), body(["fireball", "counterspell"]), ctx());
+      if (!r.ok) throw new Error(JSON.stringify(r.errors));
+      expect(r.entry.choices.at(-1)).toEqual({ type: "bonusSpells", source: SOURCE, value: { spells: [held("fireball"), held("counterspell")] } });
+    });
+    it("de otro nivel, fuera del libro o repetido → error", async () => {
+      expect(await errorOf(["fireball", "magic missile"])).toBe("Conjuros distintivos: magic missile no es un conjuro de nivel 3.");
+      const r = await errorsOf(wizard19(), body(["fireball", "lightning bolt"], ["shield", "alarm"]));
+      expect(r).toEqual({});
+      expect((await errorsOf(wizard19(), body(["fireball", "counterspell"], ["shield", "alarm"])))[`choices.${SOURCE}`])
+        .toBe("Conjuros distintivos: counterspell no está en tu libro de conjuros.");
+      expect(await errorOf(["fireball", "fireball"])).toBe("Conjuros distintivos: ya tienes fireball.");
+    });
+  });
+
+  describe("Arcano místico: sustitución desde Brujo 12", () => {
+    const ARCANUM = (n: number) => `classFeature:mystic arcanum|warlock|xphb|${n}`;
+    const warlock13 = () => sheetWith([["warlock", 13]], {
+      11: [{ type: "arcanum", source: ARCANUM(11), value: held("circle of death") }],
+      13: [{ type: "arcanum", source: ARCANUM(13), value: held("finger of death") }],
+    });
+    const body = (choice?: Record<string, unknown>) => ({
+      expectedLevel: 14, class: client("class:warlock|xphb"), hp,
+      choices: choice ? [{ type: "arcanum", source: ARCANUM(13), value: null, ...choice }] : [],
+    });
+    const errorOf = async (choice: Record<string, unknown>) => (await errorsOf(warlock13(), body(choice)))[`choices.${ARCANUM(13)}`];
+
+    it("Brujo 14: sin sustituir, nada; sustituye uno por otro de Brujo del mismo nivel", async () => {
+      expect(await errorsOf(warlock13(), body())).toEqual({});
+      const replace = { out: spell("circle of death"), in: spell("eyebite") };
+      const r = await validateLevel(warlock13(), body({ replace }), ctx());
+      if (!r.ok) throw new Error(JSON.stringify(r.errors));
+      expect(r.entry.choices).toEqual([{
+        type: "arcanum", source: ARCANUM(13), value: null, replace: { out: held("circle of death"), in: held("eyebite") },
+      }]);
+    });
+    it("de otro nivel, de otra lista, uno que no tiene, uno que ya tiene o con un arcano nuevo → error", async () => {
+      expect(await errorOf({ replace: { out: spell("circle of death"), in: spell("finger of death") } }))
+        .toBe("Arcano místico: finger of death no es un conjuro de nivel 6.");
+      expect(await errorOf({ replace: { out: spell("circle of death"), in: spell("chain lightning") } }))
+        .toBe("Arcano místico: chain lightning no está en la lista de la clase.");
+      expect(await errorOf({ replace: { out: spell("eyebite"), in: spell("circle of death") } }))
+        .toBe("Arcano místico: solo puedes sustituir uno que ya tienes.");
+      expect(await errorOf({ replace: { out: spell("circle of death"), in: spell("circle of death") } }))
+        .toBe("Arcano místico: ya tienes circle of death.");
+      expect(await errorOf({ value: spell("eyebite") })).toBe("Arcano místico: en este nivel solo puedes sustituir un arcano.");
+      expect(await errorOf({})).toBe("Arcano místico: elige el arcano que sustituyes.");
+    });
+    it("Brujo 13: el arcano nuevo y, a la vez, la sustitución de uno de nivel 6", async () => {
+      const s = sheetWith([["warlock", 12]], { 11: [{ type: "arcanum", source: ARCANUM(11), value: held("circle of death") }] });
+      const r = await validateLevel(s, {
+        expectedLevel: 13, class: client("class:warlock|xphb"), hp,
+        choices: [
+          { type: "arcanum", source: ARCANUM(13), value: spell("finger of death"), replace: { out: spell("circle of death"), in: spell("eyebite") } },
+          { type: "spells", source: "progression:spells|warlock|xphb", value: { cantrips: [], spells: [spell("hex")] } },
+        ],
+      }, ctx());
+      if (!r.ok) throw new Error(JSON.stringify(r.errors));
+      expect(r.entry.choices[0]).toEqual({
+        type: "arcanum", source: ARCANUM(13), value: held("finger of death"), replace: { out: held("circle of death"), in: held("eyebite") },
+      });
+    });
+  });
+});

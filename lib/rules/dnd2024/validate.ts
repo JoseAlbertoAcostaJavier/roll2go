@@ -13,7 +13,8 @@ import { FEATURE_OPTION_LABELS } from "./featureChoices";
 import { checkFeatSpellChoices, featSpellPending, splitFeatSpells } from "./featSpells";
 import { ABILITY_NAMES, SKILL_NAMES, featFitsCategories } from "./labels";
 import {
-  meetsFeatPrerequisite, pendingChoices, withBonusCantrips, type FeatPrerequisiteCtx, type PendingChoice,
+  meetsFeatPrerequisite, pendingChoices, withBonusCantrips, type BonusSpellsPending, type FeatPrerequisiteCtx,
+  type PendingChoice,
 } from "./levels";
 import { meleeOnlySource, validateMasteries } from "./masteries";
 import { abilityRollValue, verifyRolls } from "./rolls";
@@ -21,8 +22,10 @@ import { bareName, isRef, loadEquipmentEntries, refKey } from "./equipmentRefs";
 import { preparedKey } from "./spellcasting";
 import { applySpellOp } from "./spellOps";
 import {
-  ABILITY_METHODS, type AbilityMethod, type Choice, type Dnd2024Sheet, type Dnd2024SheetV2, type Named, type SpellChoice,
+  ABILITY_METHODS, type AbilityMethod, type BonusSpellsValue, type Choice, type Dnd2024Sheet, type Dnd2024SheetV2,
+  type Named, type SpellChoice, type SpellSwap,
 } from "./sheet";
+import { spellSchoolName } from "./spellText";
 import { SKILLS_SOURCE, upgradeSheet } from "./upgrade";
 
 export type ValidateCtx = {
@@ -392,6 +395,10 @@ export type ChoicesCtx = {
   spellsHeld?: (cls: Ref, mode: SpellChoiceMode) => { cantrips: Named[]; spells: Named[] };
   /** Conjuros que ya tiene por otras vías (siempre preparados, especie, legado, dotes…): tampoco se pueden elegir. */
   spellsGranted?: Ref[];
+  /** Arcanos (Arcano místico) que ya tiene la clase: no se repiten y de ahí sale el que se sustituye. */
+  arcana?: Named[];
+  /** Conjuros que conserva de cada elección `bonusSpells` (por `source`): de ahí sale el que se sustituye. */
+  bonusHeld?: Map<string, Named[]>;
 };
 type SpellChoiceMode = NonNullable<PendingChoice["spells"]>["mode"];
 
@@ -608,15 +615,40 @@ export async function checkChoices(
       if ("error" in r) { bad(r.error); continue; }
       out.push({ type: "spells", source: p.source, value: r.value });
     } else if (p.type === "arcanum" && p.arcanum) {
-      // Arcano místico: un conjuro de la lista de la clase del nivel exacto, que no tenga ya por otra vía
-      const e = await load(value, "spell");
-      const d = e?.data as SpellData | null | undefined;
-      if (!e || !d) { bad("elige un conjuro."); continue; }
-      const name = e.nameEs || e.name;
-      if (!d.classes?.includes(p.arcanum.list)) { bad(`${name} no está en la lista de la clase.`); continue; }
-      if (d.level !== p.arcanum.level) { bad(`${name} no es un conjuro de nivel ${p.arcanum.level}.`); continue; }
-      if (ctx.spellsGranted?.some((r) => refKey(r) === refKey(e.ref))) { bad(`ya tienes ${name}.`); continue; }
-      out.push({ type: "arcanum", source: p.source, value: named(e) });
+      // Arcano místico: un conjuro de la lista de la clase del nivel exacto, que no tenga ya por otra vía, y (si el
+      // nivel lo permite) uno de los que tiene sustituido por otro de la lista del mismo nivel
+      const arcana = ctx.arcana ?? [];
+      const taken = new Set([...arcana.map((a) => a.ref), ...(ctx.spellsGranted ?? [])].map(refKey));
+      const fitsArcanum = (e: CatalogEntry, level: number): string | null => {
+        const d = e.data as SpellData | null;
+        const name = e.nameEs || e.name;
+        if (!d?.classes?.includes(p.arcanum!.list)) return `${name} no está en la lista de la clase.`;
+        if (d.level !== level) return `${name} no es un conjuro de nivel ${level}.`;
+        return taken.has(refKey(e.ref)) ? `ya tienes ${name}.` : null;
+      };
+      let arcanum: Named | null = null;
+      if (p.count > 0) {
+        const e = await load(value, "spell");
+        if (!e?.data) { bad("elige un conjuro."); continue; }
+        const error = fitsArcanum(e, p.arcanum.level ?? 0);
+        if (error) { bad(error); continue; }
+        arcanum = named(e);
+        taken.add(refKey(e.ref));
+      } else if (value !== null && value !== undefined) {
+        bad("en este nivel solo puedes sustituir un arcano.");
+        continue;
+      }
+      const swap = await checkSwap(c.replace, !!p.optionalReplace, arcana, load, async (e, gone) => {
+        const goneData = (await load(gone.ref, "spell"))?.data as SpellData | null | undefined;
+        return goneData ? fitsArcanum(e, goneData.level) : "conjuro no disponible.";
+      });
+      if ("error" in swap) { bad(swap.error); continue; }
+      if (p.count === 0 && !swap.swap) { bad("elige el arcano que sustituyes."); continue; }
+      out.push({ type: "arcanum", source: p.source, value: arcanum, ...(swap.swap ? { replace: swap.swap } : {}) });
+    } else if (p.type === "bonusSpells" && p.bonusSpells) {
+      const r = await checkBonusSpells(p, p.bonusSpells, value, out, ctx, load);
+      if ("error" in r) { bad(r.error); continue; }
+      out.push({ type: "bonusSpells", source: p.source, value: r.value });
     } else {
       bad("esta elección todavía no se puede hacer aquí.");
     }
@@ -624,12 +656,86 @@ export async function checkChoices(
   return { choices: out, errors };
 }
 
+type Load = (v: unknown, kind: string) => Promise<CatalogEntry | null>;
+const toNamed = (e: CatalogEntry): Named => ({ ref: { book: e.ref.book, key: e.ref.key }, name: e.nameEs || e.name });
+
+// Sustitución opcional `raw` (`{ out, in }`) de uno de `held` por otro que cumpla `fits` (que recibe también el que
+// sale). Sin ella, `swap` vacío
+async function checkSwap(
+  raw: unknown, allowed: boolean, held: Named[], load: Load,
+  fits: (e: CatalogEntry, gone: Named) => Promise<string | null> | string | null,
+): Promise<{ error: string } | { swap?: SpellSwap }> {
+  if (raw === undefined) return {};
+  if (!allowed || !isObj(raw)) return { error: "no puedes sustituir conjuros en este nivel." };
+  const outRef = asRef(raw.out);
+  const gone = outRef ? held.find((h) => refKey(h.ref) === refKey(outRef)) : undefined;
+  if (!gone) return { error: "solo puedes sustituir uno que ya tienes." };
+  const inEntry = await load(raw.in, "spell");
+  if (!inEntry?.data) return { error: "conjuro no disponible." };
+  const error = await fits(inEntry, gone);
+  return error ? { error } : { swap: { out: gone, in: toNamed(inEntry) } };
+}
+
+// Conjuros de un rasgo fuera de los límites (Descubrimientos mágicos, Ilusiones mejoradas, Conjuros distintivos):
+// exactamente `count`, de sus listas (o de su libro) y del nivel que piden, sin repetir los que ya tiene (tampoco los
+// elegidos en este nivel, `earlier`) y, si el nivel lo permite, uno de los que ya da el rasgo sustituido por otro
+async function checkBonusSpells(
+  pending: PendingChoice, b: BonusSpellsPending, raw: unknown, earlier: Choice[], ctx: ChoicesCtx, load: Load,
+): Promise<{ error: string } | { value: BonusSpellsValue }> {
+  if (!isObj(raw)) return { error: "elige los conjuros." };
+  const nameOf = (e: CatalogEntry) => e.nameEs || e.name;
+  const held = ctx.bonusHeld?.get(pending.source) ?? [];
+  // Lo elegido para la clase en este mismo nivel (entra en el libro o en los conocidos)
+  const levelSpells = earlier.flatMap((c) => (c.type === "spells" && refKey(c.value.class) === refKey(b.class)
+    ? [c.value.cantrips, c.value.spells, c.value.free ?? [], [c.value.replace?.in, c.value.replaceCantrip?.in]].flat()
+    : [])).filter((n): n is Named => !!n);
+  const classHeld = ctx.spellsHeld?.(b.class, b.fromSpellbook ? "spellbook" : "levelUp") ?? { cantrips: [], spells: [] };
+  const book = new Set([...classHeld.spells, ...levelSpells].map((n) => refKey(n.ref)));
+  // Los del libro pueden ser cualquiera de él; los demás, ninguno que ya tenga
+  const taken = new Set([
+    ...held.map((h) => refKey(h.ref)),
+    ...(b.fromSpellbook ? [] : [
+      ...[...classHeld.cantrips, ...classHeld.spells, ...levelSpells].map((n) => refKey(n.ref)),
+      ...(ctx.spellsGranted ?? []).map(refKey),
+    ]),
+  ]);
+  const fits = (e: CatalogEntry): string | null => {
+    const d = e.data as SpellData | null;
+    if (!d) return "conjuro no disponible.";
+    if (b.fromSpellbook && !book.has(refKey(e.ref))) return `${nameOf(e)} no está en tu libro de conjuros.`;
+    if (!b.fromSpellbook && !d.classes?.some((c) => b.lists.includes(c))) return `${nameOf(e)} no está en una lista permitida.`;
+    if (b.cantripsOnly && d.level !== 0) return `${nameOf(e)} no es un truco.`;
+    if (b.level !== undefined && d.level !== b.level) return `${nameOf(e)} no es un conjuro de nivel ${b.level}.`;
+    if (b.maxLevel !== undefined && d.level > b.maxLevel)
+      return `${nameOf(e)} es de nivel ${d.level}; el máximo es ${b.maxLevel}.`;
+    return taken.has(refKey(e.ref)) ? `ya tienes ${nameOf(e)}.` : null;
+  };
+
+  const items = raw.spells ?? [];
+  if (!Array.isArray(items) || items.length !== pending.count) {
+    return { error: `elige ${pending.count} ${pending.count === 1 ? "conjuro" : "conjuros"}.` };
+  }
+  const found = await Promise.all(items.map((v) => load(v, "spell")));
+  if (found.some((e) => !e)) return { error: "conjuro no disponible." };
+  for (const e of found as CatalogEntry[]) {
+    const error = fits(e);
+    if (error) return { error };
+    taken.add(refKey(e.ref));
+  }
+  const value: BonusSpellsValue = { spells: (found as CatalogEntry[]).map(toNamed) };
+  const swap = await checkSwap(raw.replace, !!pending.optionalReplace, held, load, fits);
+  if ("error" in swap) return swap;
+  if (swap.swap) value.replace = swap.swap;
+  else if (pending.count === 0) return { error: "elige el conjuro que sustituyes." };
+  return { value };
+}
+
 // Elección de conjuros (spec de conjuros §2.4): exactamente los trucos y conjuros nuevos que pide el nivel, de la
-// lista de la clase (los conjuros, también de las de Secretos mágicos: `p.lists`) y de nivel permitido, sin repetir los que ya tiene; y, si el nivel lo permite, sustituir un
-// conjuro aprendido (`replace`) y un truco (`replaceCantrip`) por otro del mismo tipo
+// lista de la clase (los conjuros, también de las de Secretos mágicos: `p.lists`) y de nivel permitido, sin repetir
+// los que ya tiene; las entradas gratis del libro del Sabio de la escuela (`p.free`), de su escuela; y, si el nivel lo
+// permite, sustituir un conjuro aprendido (`replace`) y un truco (`replaceCantrip`) por otro del mismo tipo
 async function checkSpells(
-  pending: PendingChoice, p: NonNullable<PendingChoice["spells"]>, raw: unknown, ctx: ChoicesCtx,
-  load: (v: unknown, kind: string) => Promise<CatalogEntry | null>,
+  pending: PendingChoice, p: NonNullable<PendingChoice["spells"]>, raw: unknown, ctx: ChoicesCtx, load: Load,
 ): Promise<{ error: string } | { value: SpellChoice }> {
   if (!isObj(raw)) return { error: "elige los conjuros." };
   const given = asRef(raw.class);
@@ -638,7 +744,6 @@ async function checkSpells(
   const heldKeys = new Set([...held.cantrips, ...held.spells].map((h) => refKey(h.ref)));
   for (const r of ctx.spellsGranted ?? []) heldKeys.add(refKey(r));
   const nameOf = (e: CatalogEntry) => e.nameEs || e.name;
-  const toNamed = (e: CatalogEntry): Named => ({ ref: { book: e.ref.book, key: e.ref.key }, name: nameOf(e) });
   // Comprueba un conjuro: de la lista, truco o de nivel 1..máximo
   const fits = (e: CatalogEntry, cantrip: boolean): string | null => {
     const d = e.data as SpellData | null;
@@ -666,10 +771,33 @@ async function checkSpells(
   if ("error" in cantrips) return cantrips;
   const spells = await pick(raw.spells, p.spells, false);
   if ("error" in spells) return spells;
-  const chosen = [...cantrips, ...spells];
+  // Sabio de la escuela: de la lista de la clase, de su escuela y de nivel 1..su máximo
+  let free: CatalogEntry[] = [];
+  if (p.free) {
+    const f = p.free;
+    const school = spellSchoolName(f.school);
+    const items = raw.free ?? [];
+    if (!Array.isArray(items) || items.length !== f.count)
+      return { error: `elige ${f.count} ${f.count === 1 ? "conjuro gratis" : "conjuros gratis"} de ${school}.` };
+    const found = await Promise.all(items.map((v) => load(v, "spell")));
+    if (found.some((e) => !e)) return { error: "conjuro no disponible." };
+    for (const e of found as CatalogEntry[]) {
+      const d = e.data as SpellData | null;
+      if (!d?.classes?.includes(p.list)) return { error: `${nameOf(e)} no está en la lista de la clase.` };
+      if (d.school !== f.school) return { error: `${nameOf(e)} no es de ${school}.` };
+      if (d.level < 1 || d.level > f.maxLevel)
+        return { error: `${nameOf(e)} no es un conjuro de nivel 1 a ${f.maxLevel}.` };
+      if (heldKeys.has(refKey(e.ref))) return { error: `ya tienes ${nameOf(e)}.` };
+    }
+    free = found as CatalogEntry[];
+  }
+  const chosen = [...cantrips, ...spells, ...free];
   if (new Set(chosen.map((e) => refKey(e.ref))).size !== chosen.length) return { error: "conjuro repetido." };
 
-  const value: SpellChoice = { class: p.class, cantrips: cantrips.map(toNamed), spells: spells.map(toNamed) };
+  const value: SpellChoice = {
+    class: p.class, cantrips: cantrips.map(toNamed), spells: spells.map(toNamed),
+    ...(p.free ? { free: free.map(toNamed) } : {}),
+  };
   // Sustituciones: un conjuro aprendido (solo `levelUp`: nunca sale uno del libro del Mago) y un truco
   const swaps = [
     { field: "replace", cantrip: false, allowed: !!pending.optionalReplace && p.mode === "levelUp", from: held.spells },

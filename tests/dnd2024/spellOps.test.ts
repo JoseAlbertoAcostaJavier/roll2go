@@ -319,3 +319,142 @@ describe("usos por descanso largo (Arcano místico)", () => {
     expect(after.slotsUsed).toEqual({});
   });
 });
+
+describe("conjuros extra del Bardo del Saber y del Mago", () => {
+  // Conjuros con escuela y tiempo de lanzamiento (para el Sabio y el Dominio de conjuros)
+  for (const [name, level, school, time] of [
+    ["chromatic orb", 1, "V", "1 acción"], ["feather fall", 1, "T", "1 reacción"], ["invisibility", 2, "I", "1 acción"],
+    ["misty step", 2, "C", "1 acción adicional"], ["fireball", 3, "V", "1 acción"], ["lightning bolt", 3, "V", "1 acción"],
+    ["minor illusion", 0, "I", "1 acción"], ["silent image", 1, "I", "1 acción"],
+  ] as [string, number, string, string][]) {
+    const data: SpellData = {
+      level, school, time, range: "", components: "", duration: "", concentration: false, ritual: false, classes: ["wizard"], tags: [],
+    };
+    entries.set(`${B}:spell:${name}|xphb`, { ...entries.get(`${B}:spell:sleep|xphb`)!, ref: ref(`spell:${name}|xphb`), name, data });
+  }
+  const times = (id: string, n: number) => Array<string>(n).fill(id);
+  const spellsOf = (cls: Named, cantrips: string[], spells: string[], free?: string[]): Choice => ({
+    type: "spells", source: "x",
+    value: { class: cls.ref, cantrips: cantrips.map(spell), spells: spells.map(spell), ...(free ? { free: free.map(spell) } : {}) },
+  });
+  const subclass = (key: string, name: string): Choice => ({ type: "subclass", source: "class:subclass", value: { ref: ref(key), name } });
+  const bonus = (source: string, names: string[], replace?: [string, string]): Choice => ({
+    type: "bonusSpells", source,
+    value: { spells: names.map(spell), ...(replace ? { replace: { out: spell(replace[0]), in: spell(replace[1]) } } : {}) },
+  });
+  const blockOf = (s: Dnd2024SheetV2) => derive(s, entries).spells.blocks[0];
+  const alwaysOf = (s: Dnd2024SheetV2) => blockOf(s).always.map((a) => [a.spell.name, a.origin]);
+
+  describe("Descubrimientos mágicos (Saber 6)", () => {
+    const SOURCE = "subclassFeature:magical discoveries|bard|xphb|lore|xphb|6";
+    const lore = (n: number, extra: Record<number, Choice[]> = {}) => sheetOf(times("bard", n), {
+      3: [subclass("subclass:college of lore|bard|xphb", "Colegio del Saber")],
+      6: [bonus(SOURCE, ["light", "cure wounds"])],
+      ...extra,
+    });
+
+    it("quedan siempre preparados en el bloque del Bardo y no cuentan para el límite", () => {
+      const s = lore(6);
+      expect(alwaysOf(s)).toEqual([["light", "Descubrimientos mágicos"], ["cure wounds", "Descubrimientos mágicos"]]);
+      expect(blockOf(s).prepared).toEqual([]);
+    });
+    it("con la sustitución de un nivel posterior, el sustituto ocupa su sitio", () => {
+      const s = lore(7, { 7: [bonus(SOURCE, [], ["cure wounds", "fog cloud"])] });
+      expect(alwaysOf(s)).toEqual([["light", "Descubrimientos mágicos"], ["fog cloud", "Descubrimientos mágicos"]]);
+    });
+  });
+
+  describe("Sabio de la escuela e Ilusiones mejoradas (Ilusionista 3)", () => {
+    const ILLUSIONIST = subclass("subclass:illusionist|wizard|xphb", "Ilusionista");
+    it("los conjuros gratis del Sabio entran en el libro", () => {
+      const s = sheetOf(times("wizard", 3), {
+        1: [spellsOf(CLASSES.wizard, ["light"], ["magic missile"])],
+        3: [ILLUSIONIST, spellsOf(CLASSES.wizard, [], ["sleep"], ["silent image", "invisibility"])],
+      });
+      expect(blockOf(s).spellbook.map((n) => n.name)).toEqual(["magic missile", "sleep", "silent image", "invisibility"]);
+    });
+    it("concede Ilusión menor como siempre preparado de Ilusiones mejoradas (no de la subclase)", () => {
+      const s = sheetOf(times("wizard", 3), { 1: [spellsOf(CLASSES.wizard, ["light"], [])], 3: [ILLUSIONIST] });
+      expect(alwaysOf(s)).toEqual([["minor illusion", "Ilusiones mejoradas"]]);
+    });
+    it("si ya la conocía, no la repite y queda el truco elegido en su lugar", () => {
+      const s = sheetOf(times("wizard", 3), {
+        1: [spellsOf(CLASSES.wizard, ["minor illusion"], [])],
+        3: [ILLUSIONIST, bonus("subclassFeature:improved illusions|wizard|xphb|illusionist|xphb|3", ["light"])],
+      });
+      expect(alwaysOf(s)).toEqual([["light", "Ilusiones mejoradas"]]);
+      expect(blockOf(s).cantrips.map((n) => n.name)).toEqual(["minor illusion"]);
+    });
+  });
+
+  describe("Dominio de conjuros (Mago 18) y Conjuros distintivos (Mago 20)", () => {
+    const BOOK18 = ["chromatic orb", "feather fall", "invisibility", "misty step", "fireball", "lightning bolt", "sleep"];
+    const wizard = (n: number, extra: Record<number, Choice[]> = {}) =>
+      sheetOf(times("wizard", n), { 1: [spellsOf(CLASSES.wizard, ["light"], BOOK18)], ...extra });
+    const setMastery = (level: unknown, name: string | null) => ({ op: "setMastery", level, ref: name ? spell(name).ref : null });
+
+    it("Mago 17: no tiene Dominio de conjuros", () => {
+      expect(blockOf(wizard(17)).mastery).toBeUndefined();
+      expect(errorOf(apply(wizard(17), setMastery(1, "chromatic orb")))).toBe("No tienes Dominio de conjuros.");
+    });
+    it("Mago 18: elige un conjuro de nivel 1 y otro de nivel 2 del libro, que quedan siempre preparados", () => {
+      expect(blockOf(wizard(18)).mastery).toEqual({ 1: null, 2: null });
+      let s = ok(apply(wizard(18), setMastery(1, "chromatic orb")));
+      s = ok(apply(s, setMastery(2, "invisibility")));
+      expect(s.spellMastery).toEqual({ 1: spell("chromatic orb").ref, 2: spell("invisibility").ref });
+      expect(blockOf(s).mastery).toEqual({ 1: spell("chromatic orb").ref, 2: spell("invisibility").ref });
+      expect(alwaysOf(s)).toEqual([["chromatic orb", "Dominio de conjuros"], ["invisibility", "Dominio de conjuros"]]);
+      // `ref: null` lo quita
+      expect(ok(apply(s, setMastery(1, null))).spellMastery).toEqual({ 2: spell("invisibility").ref });
+    });
+    it("fuera del libro, de otro nivel, sin tiempo de una acción o de un nivel que no es 1 ni 2 → error", () => {
+      const s = wizard(18);
+      expect(errorOf(apply(s, setMastery(1, "magic missile")))).toBe("magic missile no está en tu libro de conjuros.");
+      expect(errorOf(apply(s, setMastery(1, "invisibility")))).toBe("invisibility no es un conjuro de nivel 1.");
+      expect(errorOf(apply(s, setMastery(1, "feather fall")))).toBe("feather fall no se lanza con una acción.");
+      expect(errorOf(apply(s, setMastery(2, "misty step")))).toBe("misty step no se lanza con una acción.");
+      expect(errorOf(apply(s, setMastery(3, "fireball")))).toBe("Nivel no válido.");
+    });
+    it("un conjuro de Dominio que deja de estar en el libro (borrar el nivel que lo dio) no aparece ni se elige", () => {
+      const s = { ...wizard(19, { 19: [spellsOf(CLASSES.wizard, [], ["silent image"])] }), spellMastery: { 1: spell("silent image").ref } };
+      expect(blockOf(s).mastery).toEqual({ 1: spell("silent image").ref, 2: null });
+      const r = removeLastLevel(s, 50, Infinity, { ...derive(wizard(18), entries).spells, spellLevel: () => 1 });
+      if (!r.ok) throw new Error(r.error);
+      expect(blockOf(r.sheet).mastery).toEqual({ 1: null, 2: null });
+      expect(alwaysOf(r.sheet)).toEqual([]);
+    });
+    it("Mago 20: los conjuros distintivos quedan siempre preparados con un uso cada uno", () => {
+      const s = wizard(20, { 20: [bonus("classFeature:signature spells|wizard|xphb|20", ["fireball", "lightning bolt"])] });
+      expect(alwaysOf(s)).toEqual([["fireball", "Conjuros distintivos"], ["lightning bolt", "Conjuros distintivos"]]);
+      const key = `signature:${B}:spell:fireball|xphb`;
+      expect(blockOf(s).limited).toEqual([
+        { key, spell: spell("fireball"), origin: "Conjuros distintivos", max: 1, used: 0 },
+        { key: `signature:${B}:spell:lightning bolt|xphb`, spell: spell("lightning bolt"), origin: "Conjuros distintivos", max: 1, used: 0 },
+      ]);
+      expect(ok(apply(s, { op: "limited", key, used: 1 })).limitedUsed).toEqual({ [key]: 1 });
+      expect(errorOf(apply(s, { op: "limited", key, used: 2 }))).toBe("fireball solo tiene 1 uso por descanso largo.");
+    });
+  });
+
+  describe("Arcano místico: sustitución y usos al borrar el nivel", () => {
+    const ARCANUM = (n: number) => `classFeature:mystic arcanum|warlock|xphb|${n}`;
+    const KEY = (name: string) => `arcanum:${B}:spell:${name}|xphb`;
+    const warlock = (n: number, extra: Record<number, Choice[]> = {}) => sheetOf(times("warlock", n), {
+      11: [{ type: "arcanum", source: ARCANUM(11), value: spell("circle of death") }],
+      13: [{ type: "arcanum", source: ARCANUM(13), value: spell("fireball") }],
+      ...extra,
+    });
+
+    it("la sustitución de un nivel posterior cambia el arcano (y su clave de usos)", () => {
+      const swap = { out: spell("circle of death"), in: spell("sleep") };
+      const s = warlock(14, { 14: [{ type: "arcanum", source: ARCANUM(13), value: null, replace: swap }] });
+      expect(blockOf(s).limited.map((l) => l.key)).toEqual([KEY("fireball"), KEY("sleep")]);
+    });
+    it("al borrar el nivel que dio un arcano, su uso gastado se quita de la hoja", () => {
+      const s = { ...warlock(13), limitedUsed: { [KEY("circle of death")]: 1, [KEY("fireball")]: 1 } };
+      const r = removeLastLevel(s, 50, Infinity, { ...derive(warlock(12), entries).spells, spellLevel: () => 1 });
+      if (!r.ok) throw new Error(r.error);
+      expect(r.sheet.limitedUsed).toEqual({ [KEY("circle of death")]: 1 });
+    });
+  });
+});

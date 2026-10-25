@@ -6,10 +6,10 @@ import {
 } from "@/lib/rules/types";
 import { derive } from "./derive";
 import { characterFeats } from "./derive/features";
-import { chosenSpells } from "./derive/spells";
+import { chosenSpells, knownSpellRefs } from "./derive/spells";
 import { checkFeatSpellChoices, featSpellPending, splitFeatSpells, type FeatWithData } from "./featSpells";
 import { refKey } from "./equipmentRefs";
-import { heldPicks, meetsMulticlass, pendingChoices } from "./levels";
+import { heldArcana, heldBonusSpells, heldPicks, meetsMulticlass, pendingChoices } from "./levels";
 import { currentMasteries } from "./masteries";
 import { verifyHitDie } from "./rolls";
 import type { Dnd2024SheetV2, LevelEntry, Named } from "./sheet";
@@ -108,7 +108,9 @@ export async function validateLevel(
   await loadInto(entries, newFeatures.map((f) => f.ref), ctx.resolve);
   const options = newFeatures.flatMap((f) => (entries.get(refKey(f.ref))?.data as FeatureData | undefined)?.options ?? []);
   await loadInto(entries, options, ctx.resolve);
-  const pending = pendingChoices(sheet, classEntry.ref, classLevel, entries, subclass ? { subclass: subclass.ref } : {});
+  const pending = pendingChoices(sheet, classEntry.ref, classLevel, entries, {
+    ...(subclass ? { subclass: subclass.ref } : {}), known: knownSpellRefs(derived.spells),
+  });
 
   // Al entrar en una clase nueva se ganan sus competencias de multiclase (las maestrías y las dotes ya las tienen en cuenta)
   const gained = owned ? null : data.multiclass?.proficiencies;
@@ -146,6 +148,8 @@ export async function validateLevel(
       const held = chosenSpells(sheet, cls);
       return mode === "spellbook" ? { ...held, spells: [...held.spells, ...(sheet.spellbookExtra ?? [])] } : held;
     },
+    arcana: heldArcana(sheet.levels, classEntry.ref),
+    bonusHeld: heldBonusSpells(sheet.levels, classEntry.ref),
   });
   for (const [k, msg] of Object.entries(checked.errors)) err(k, msg);
 

@@ -517,5 +517,241 @@
 			],
 			"subclassTitle": "Wizard Subclass"
 		}
+	],
+	"subclass": [
+		{
+			"name": "Abjurer",
+			"shortName": "Abjurer",
+			"source": "XPHB",
+			"className": "Wizard",
+			"classSource": "XPHB",
+			"page": 172,
+			"edition": "one",
+			"additionalSpells": [
+				{
+					"prepared": {
+						"10": [
+							"counterspell|xphb",
+							"dispel magic|xphb"
+						]
+					},
+					"known": {
+						"3": [
+							{
+								"choose": "level=0;1;2|class=Wizard|school=A"
+							},
+							{
+								"choose": "level=0;1;2|class=Wizard|school=A"
+							}
+						],
+						"5": [
+							{
+								"choose": "level=0;1;2;3|class=Wizard|school=A"
+							}
+						],
+						"7": [
+							{
+								"choose": "level=0;1;2;3;4|class=Wizard|school=A"
+							}
+						],
+						"9": [
+							{
+								"choose": "level=0;1;2;3;4;5|class=Wizard|school=A"
+							}
+						],
+						"11": [
+							{
+								"choose": "level=0;1;2;3;4;5;6|class=Wizard|school=A"
+							}
+						],
+						"13": [
+							{
+								"choose": "level=0;1;2;3;4;5;6;7|class=Wizard|school=A"
+							}
+						],
+						"15": [
+							{
+								"choose": "level=0;1;2;3;4;5;6;7;8|class=Wizard|school=A"
+							}
+						],
+						"17": [
+							{
+								"choose": "level=0;1;2;3;4;5;6;7;8;9|class=Wizard|school=A"
+							}
+						]
+					}
+				}
+			],
+			"subclassFeatures": [
+				"Abjurer|Wizard|XPHB|Abjurer|XPHB|3",
+				"Projected Ward|Wizard|XPHB|Abjurer|XPHB|6",
+				"Spell Breaker|Wizard|XPHB|Abjurer|XPHB|10",
+				"Spell Resistance|Wizard|XPHB|Abjurer|XPHB|14"
+			],
+			"hasFluffImages": true
+		},
+		{
+			"name": "Illusionist",
+			"shortName": "Illusionist",
+			"source": "XPHB",
+			"className": "Wizard",
+			"classSource": "XPHB",
+			"page": 175,
+			"edition": "one",
+			"additionalSpells": [
+				{
+					"known": {
+						"3": [
+							"minor illusion|xphb#c",
+							{
+								"choose": "level=0;1;2|class=Wizard|school=I"
+							},
+							{
+								"choose": "level=0;1;2|class=Wizard|school=I"
+							}
+						],
+						"5": [
+							{
+								"choose": "level=0;1;2;3|class=Wizard|school=I"
+							}
+						],
+						"7": [
+							{
+								"choose": "level=0;1;2;3;4|class=Wizard|school=I"
+							}
+						],
+						"9": [
+							{
+								"choose": "level=0;1;2;3;4;5|class=Wizard|school=I"
+							}
+						],
+						"11": [
+							{
+								"choose": "level=0;1;2;3;4;5;6|class=Wizard|school=I"
+							}
+						],
+						"13": [
+							{
+								"choose": "level=0;1;2;3;4;5;6;7|class=Wizard|school=I"
+							}
+						],
+						"15": [
+							{
+								"choose": "level=0;1;2;3;4;5;6;7;8|class=Wizard|school=I"
+							}
+						],
+						"17": [
+							{
+								"choose": "level=0;1;2;3;4;5;6;7;8;9|class=Wizard|school=I"
+							}
+						]
+					},
+					"prepared": {
+						"6": [
+							"summon beast|xphb",
+							"summon fey|xphb"
+						]
+					}
+				}
+			],
+			"subclassFeatures": [
+				"Illusionist|Wizard|XPHB|Illusionist|XPHB|3",
+				"Phantasmal Creatures|Wizard|XPHB|Illusionist|XPHB|6",
+				"Illusory Self|Wizard|XPHB|Illusionist|XPHB|10",
+				"Illusory Reality|Wizard|XPHB|Illusionist|XPHB|14"
+			],
+			"hasFluffImages": true
+		}
+	],
+	"subclassFeature": [
+		{
+			"name": "Abjurer",
+			"source": "XPHB",
+			"page": 172,
+			"className": "Wizard",
+			"classSource": "XPHB",
+			"subclassShortName": "Abjurer",
+			"subclassSource": "XPHB",
+			"level": 3,
+			"entries": [
+				"{@i Shield Companions and Banish Foes}",
+				"Your study of magic is focused on spells that block, banish, or protect—ending harmful effects, banishing evil influences, and protecting the weak. Abjurers are sought when baleful spirits require exorcism, when locations must be guarded against magical spying, and when portals to other planes of existence must be closed. Adventuring parties value Abjurers for the protection they provide against a variety of hostile magic and other attacks.",
+				{
+					"type": "refSubclassFeature",
+					"subclassFeature": "Abjuration Savant|Wizard|XPHB|Abjurer|XPHB|3"
+				},
+				{
+					"type": "refSubclassFeature",
+					"subclassFeature": "Arcane Ward|Wizard|XPHB|Abjurer|XPHB|3"
+				}
+			]
+		},
+		{
+			"name": "Abjuration Savant",
+			"source": "XPHB",
+			"page": 172,
+			"className": "Wizard",
+			"classSource": "XPHB",
+			"subclassShortName": "Abjurer",
+			"subclassSource": "XPHB",
+			"level": 3,
+			"header": 1,
+			"entries": [
+				"Choose two {@filter Wizard spells from the Abjuration school|spells|level=0;1;2|class=Wizard|school=A}, each of which must be no higher than level 2, and add them to your spellbook for free.",
+				"In addition, whenever you gain access to a new level of spell slots in this class, you can add one Wizard spell from the Abjuration school to your spellbook for free. The chosen spell must be of a level for which you have spell slots."
+			]
+		},
+		{
+			"name": "Illusionist",
+			"source": "XPHB",
+			"page": 175,
+			"className": "Wizard",
+			"classSource": "XPHB",
+			"subclassShortName": "Illusionist",
+			"subclassSource": "XPHB",
+			"level": 3,
+			"entries": [
+				"{@i Weave Subtle Spells of Deception}",
+				"You specialize in magic that dazzles the senses and tricks the mind, and the illusions you craft make the impossible seem real.",
+				{
+					"type": "refSubclassFeature",
+					"subclassFeature": "Illusion Savant|Wizard|XPHB|Illusionist|XPHB|3"
+				},
+				{
+					"type": "refSubclassFeature",
+					"subclassFeature": "Improved Illusions|Wizard|XPHB|Illusionist|XPHB|3"
+				}
+			]
+		},
+		{
+			"name": "Illusion Savant",
+			"source": "XPHB",
+			"page": 175,
+			"className": "Wizard",
+			"classSource": "XPHB",
+			"subclassShortName": "Illusionist",
+			"subclassSource": "XPHB",
+			"level": 3,
+			"header": 1,
+			"entries": [
+				"Choose two {@filter Wizard spells from the Illusion school|spells|level=0;1;2|class=Wizard|school=I}, each of which must be no higher than level 2, and add them to your spellbook for free.",
+				"In addition, whenever you gain access to a new level of spell slots in this class, you can add one Wizard spell from the Illusion school to your spellbook for free. The chosen spell must be of a level for which you have spell slots."
+			]
+		},
+		{
+			"name": "Improved Illusions",
+			"source": "XPHB",
+			"page": 175,
+			"className": "Wizard",
+			"classSource": "XPHB",
+			"subclassShortName": "Illusionist",
+			"subclassSource": "XPHB",
+			"level": 3,
+			"header": 1,
+			"entries": [
+				"You can cast Illusion spells without providing Verbal components, and if an Illusion spell you cast has a range of 10+ feet, the range increases by 60 feet.",
+				"You also know the {@spell Minor Illusion|XPHB} cantrip. If you already know it, you learn a different Wizard cantrip of your choice. The cantrip doesn't count against your number of cantrips known. You can create both a sound and an image with a single casting of {@spell Minor Illusion|XPHB}, and you can cast it as a {@variantrule Bonus Action|XPHB}."
+			]
+		}
 	]
 }

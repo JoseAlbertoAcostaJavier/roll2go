@@ -332,7 +332,86 @@ describe("rasgos de conjuro de nivel alto", () => {
     expect(arcanum(13)[0].arcanum).toEqual({ level: 7, list: "warlock" });
     expect(arcanum(15)[0].arcanum).toEqual({ level: 8, list: "warlock" });
     expect(arcanum(17)[0].arcanum).toEqual({ level: 9, list: "warlock" });
-    expect(arcanum(12)).toEqual([]);
     expect(arcanum(10)).toEqual([]);
+  });
+  it("Arcano místico: desde Brujo 12, en cada nivel puede sustituir uno (con o sin arcano nuevo)", () => {
+    const arcanum = (level: number) => at("warlock", level).filter((p) => p.type === "arcanum");
+    expect(arcanum(11)[0].optionalReplace).toBeUndefined();
+    expect(arcanum(12)).toEqual([{
+      type: "arcanum", source: "classFeature:mystic arcanum|warlock|xphb|11", count: 0, label: "Arcano místico",
+      arcanum: { list: "warlock" }, optionalReplace: true,
+    }]);
+    expect(arcanum(13)).toEqual([{
+      type: "arcanum", source: "classFeature:mystic arcanum|warlock|xphb|13", count: 1, label: "Arcano místico",
+      arcanum: { level: 7, list: "warlock" }, optionalReplace: true,
+    }]);
+    expect(arcanum(20)).toMatchObject([{ source: "classFeature:mystic arcanum|warlock|xphb|17", count: 0, optionalReplace: true }]);
+  });
+});
+
+describe("conjuros extra del Bardo del Saber y del Mago", () => {
+  const spellCatalog = buildCatalog(["class-bard.json", "class-wizard.json"]);
+  const LORE = "subclass:college of lore|bard|xphb";
+  const DISCOVERIES = "subclassFeature:magical discoveries|bard|xphb|lore|xphb|6";
+  // Clase `name` en el nivel `level - 1` con la subclase `sub` (elegida en el 3), que sube a `level`
+  const withSub = (name: string, sub: string, level: number, opts: { known?: Ref[] } = {}) => {
+    const s = sheetWith([[name, level - 1]], level > 3 ? { 3: [subclassChoice(sub)] } : {});
+    return pendingChoices(s, cls(name), level, spellCatalog, { ...(level === 3 ? { subclass: ref(sub) } : {}), ...opts });
+  };
+  const ofType = (list: ReturnType<typeof pendingChoices>, type: string) => list.filter((p) => p.type === type);
+
+  it("los rasgos tratados ya no están en NOT_A_CHOICE", () => {
+    for (const k of [
+      DISCOVERIES, "classFeature:spell mastery|wizard|xphb|18", "classFeature:signature spells|wizard|xphb|20",
+      ...["abjuration savant|wizard|xphb|abjurer", "divination savant|wizard|xphb|diviner", "evocation savant|wizard|xphb|evoker",
+        "illusion savant|wizard|xphb|illusionist", "improved illusions|wizard|xphb|illusionist"].map((k) => `subclassFeature:${k}|xphb|3`),
+    ]) {
+      expect(NOT_A_CHOICE.has(k)).toBe(false);
+      expect(SPELL_RULE_FEATURES.has(k)).toBe(true);
+    }
+  });
+  it("Saber 6: 2 conjuros de Clérigo, Druida o Mago (trucos o hasta el nivel 3) siempre preparados", () => {
+    expect(ofType(withSub("bard", LORE, 6), "bonusSpells")).toEqual([{
+      type: "bonusSpells", source: DISCOVERIES, count: 2, label: "Descubrimientos mágicos",
+      bonusSpells: { class: cls("bard"), lists: ["cleric", "druid", "wizard"], maxLevel: 3, origin: "Descubrimientos mágicos" },
+    }]);
+    expect(ofType(withSub("bard", LORE, 5), "bonusSpells")).toEqual([]);
+  });
+  it("Saber 7 y después: solo sustituir uno (con el nivel máximo del nuevo nivel)", () => {
+    expect(ofType(withSub("bard", LORE, 7), "bonusSpells")).toEqual([{
+      type: "bonusSpells", source: DISCOVERIES, count: 0, label: "Descubrimientos mágicos", optionalReplace: true,
+      bonusSpells: { class: cls("bard"), lists: ["cleric", "druid", "wizard"], maxLevel: 4, origin: "Descubrimientos mágicos" },
+    }]);
+  });
+  it("Abjurador 3: 2 conjuros gratis de Abjuración de nivel 2 como máximo; 5: 1 de nivel 3; 4: ninguno", () => {
+    const spellsAt = (level: number) => ofType(withSub("wizard", "subclass:abjurer|wizard|xphb", level), "spells")[0];
+    expect(spellsAt(3).spells?.free).toEqual({ count: 2, school: "A", maxLevel: 2 });
+    expect(spellsAt(3).count).toBe(4);
+    expect(spellsAt(4).spells?.free).toBeUndefined();
+    expect(spellsAt(5).spells?.free).toEqual({ count: 1, school: "A", maxLevel: 3 });
+    expect(spellsAt(6).spells?.free).toBeUndefined();
+    expect(spellsAt(7).spells?.free).toEqual({ count: 1, school: "A", maxLevel: 4 });
+    // Sin subclase con el rasgo, nada
+    expect(pendingChoices(sheetWith([["wizard", 4]]), cls("wizard"), 5, spellCatalog).find((p) => p.type === "spells")?.spells?.free)
+      .toBeUndefined();
+  });
+  it("Ilusionista 3: Ilusión menor sin elegir; si ya la conoce, 1 truco de Mago", () => {
+    const ILLUSIONIST = "subclass:illusionist|wizard|xphb";
+    expect(ofType(withSub("wizard", ILLUSIONIST, 3), "bonusSpells")).toEqual([]);
+    expect(ofType(withSub("wizard", ILLUSIONIST, 3, { known: [ref("spell:light|xphb")] }), "bonusSpells")).toEqual([]);
+    expect(ofType(withSub("wizard", ILLUSIONIST, 3, { known: [ref("spell:minor illusion|xphb")] }), "bonusSpells")).toEqual([{
+      type: "bonusSpells", source: "subclassFeature:improved illusions|wizard|xphb|illusionist|xphb|3", count: 1,
+      label: "Ilusiones mejoradas",
+      bonusSpells: { class: cls("wizard"), lists: ["wizard"], cantripsOnly: true, origin: "Ilusiones mejoradas" },
+    }]);
+    expect(withSub("wizard", ILLUSIONIST, 3).find((p) => p.type === "spells")?.spells?.free).toEqual({ count: 2, school: "I", maxLevel: 2 });
+  });
+  it("Mago 20: 2 conjuros de nivel 3 de su libro (al final, tras la elección de conjuros del nivel)", () => {
+    const r = pendingChoices(sheetWith([["wizard", 19]]), cls("wizard"), 20, spellCatalog);
+    expect(r.at(-1)).toEqual({
+      type: "bonusSpells", source: "classFeature:signature spells|wizard|xphb|20", count: 2, label: "Conjuros distintivos",
+      bonusSpells: { class: cls("wizard"), lists: ["wizard"], level: 3, fromSpellbook: true, origin: "Conjuros distintivos" },
+    });
+    expect(ofType(pendingChoices(sheetWith([["wizard", 17]]), cls("wizard"), 18, spellCatalog), "bonusSpells")).toEqual([]);
   });
 });

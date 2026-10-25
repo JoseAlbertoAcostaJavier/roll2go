@@ -90,8 +90,40 @@ export const MYSTIC_ARCANUM: Readonly<Record<string, number>> = {
   "classFeature:mystic arcanum|warlock|xphb|17": 9,
 };
 
-/** Rasgos con conjuros que aplican las reglas de conjuros (`pendingChoices`, `casterBlocks`). */
-export const SPELL_RULE_FEATURES: ReadonlySet<string> = new Set([...Object.keys(MAGICAL_SECRETS), ...Object.keys(MYSTIC_ARCANUM)]);
+/** Descubrimientos mágicos: rasgo → listas de las que elige sus dos conjuros (elección `bonusSpells`). */
+export const MAGICAL_DISCOVERIES: Readonly<Record<string, string[]>> = {
+  "subclassFeature:magical discoveries|bard|xphb|lore|xphb|6": ["cleric", "druid", "wizard"],
+};
+
+/** Sabio de la escuela: rasgo → escuela (letra de 5etools) de los conjuros gratis del libro (`SpellsPending.free`). */
+export const SCHOOL_SAVANT: Readonly<Record<string, string>> = {
+  "subclassFeature:abjuration savant|wizard|xphb|abjurer|xphb|3": "A",
+  "subclassFeature:divination savant|wizard|xphb|diviner|xphb|3": "D",
+  "subclassFeature:evocation savant|wizard|xphb|evoker|xphb|3": "V",
+  "subclassFeature:illusion savant|wizard|xphb|illusionist|xphb|3": "I",
+};
+
+/** Ilusiones mejoradas: concede Ilusión menor (o, si ya la conoce, un truco de Mago a elegir: `bonusSpells`). */
+export const IMPROVED_ILLUSIONS = "subclassFeature:improved illusions|wizard|xphb|illusionist|xphb|3";
+/** Truco que concede Ilusiones mejoradas (clave del catálogo, en el libro de la subclase). */
+export const IMPROVED_ILLUSIONS_CANTRIP = "spell:minor illusion|xphb";
+/** Dominio de conjuros: un conjuro de nivel 1 y otro de nivel 2 del libro, elegidos en la ficha (`spellMastery`). */
+export const SPELL_MASTERY = "classFeature:spell mastery|wizard|xphb|18";
+/** Conjuros distintivos: dos conjuros de nivel 3 del libro (`bonusSpells`), con un uso cada uno. */
+export const SIGNATURE_SPELLS = "classFeature:signature spells|wizard|xphb|20";
+
+/** Origen con el que se muestran los conjuros de cada elección `bonusSpells` (por su `source`). */
+export const BONUS_SPELL_ORIGINS: Readonly<Record<string, string>> = {
+  ...Object.fromEntries(Object.keys(MAGICAL_DISCOVERIES).map((k) => [k, "Descubrimientos mágicos"])),
+  [IMPROVED_ILLUSIONS]: "Ilusiones mejoradas",
+  [SIGNATURE_SPELLS]: "Conjuros distintivos",
+};
+
+/** Rasgos con conjuros que aplican las reglas de conjuros (`pendingChoices`, `casterBlocks`, `applySpellOp`). */
+export const SPELL_RULE_FEATURES: ReadonlySet<string> = new Set([
+  ...Object.keys(MAGICAL_SECRETS), ...Object.keys(MYSTIC_ARCANUM), ...Object.keys(MAGICAL_DISCOVERIES),
+  ...Object.keys(SCHOOL_SAVANT), IMPROVED_ILLUSIONS, SPELL_MASTERY, SIGNATURE_SPELLS,
+]);
 
 /** Rasgos XPHB cuyo texto dice «choose» u «of your choice» pero no piden una elección de rasgo al subir de nivel. */
 export const NOT_A_CHOICE: ReadonlySet<string> = new Set([
@@ -114,15 +146,6 @@ export const NOT_A_CHOICE: ReadonlySet<string> = new Set([
   "classFeature:pact magic|warlock|xphb|1",
   "subclassFeature:spellcasting|fighter|xphb|eldritch knight|xphb|3",
   "subclassFeature:spellcasting|rogue|xphb|arcane trickster|xphb|3",
-  // Pendiente: ver docs/superpowers/notes/conjuros-pendientes.md
-  "classFeature:spell mastery|wizard|xphb|18",
-  "classFeature:signature spells|wizard|xphb|20",
-  "subclassFeature:magical discoveries|bard|xphb|lore|xphb|6",
-  "subclassFeature:abjuration savant|wizard|xphb|abjurer|xphb|3",
-  "subclassFeature:divination savant|wizard|xphb|diviner|xphb|3",
-  "subclassFeature:evocation savant|wizard|xphb|evoker|xphb|3",
-  "subclassFeature:illusion savant|wizard|xphb|illusionist|xphb|3",
-  "subclassFeature:improved illusions|wizard|xphb|illusionist|xphb|3",
   // Idioma: se anota en el texto libre de idiomas
   "classFeature:thieves' cant|rogue|xphb|1",
   // Compañero de bestia: los Compañeros están fuera de alcance

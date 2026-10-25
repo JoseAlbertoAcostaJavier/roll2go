@@ -8,7 +8,7 @@ import type { CatalogEntry, EntryOption, SpellOption } from "@/lib/rules/catalog
 import { derive } from "@/lib/rules/dnd2024/derive";
 import { characterFeats } from "@/lib/rules/dnd2024/derive/features";
 import { featSpellPending, type FeatWithData } from "@/lib/rules/dnd2024/featSpells";
-import { chosenSpells } from "@/lib/rules/dnd2024/derive/spells";
+import { chosenSpells, knownSpellRefs } from "@/lib/rules/dnd2024/derive/spells";
 import { refKey } from "@/lib/rules/dnd2024/equipmentRefs";
 import { FEATURE_OPTION_LABELS } from "@/lib/rules/dnd2024/featureChoices";
 import { ABILITY_NAMES, skillName } from "@/lib/rules/dnd2024/labels";
@@ -151,7 +151,9 @@ function Wizard(props: Props & { draftKey: string; draft: string | null }) {
   const subclassEntry = chosenSub ?? (owned?.subclass ? entries.get(refKey(owned.subclass.ref)) ?? null : null);
 
   const basePending = classEntry
-    ? pendingChoices(sheet, classEntry.ref, classLevel, entries, chosenSub ? { subclass: chosenSub.ref } : {})
+    ? pendingChoices(sheet, classEntry.ref, classLevel, entries, {
+      ...(chosenSub ? { subclass: chosenSub.ref } : {}), known: knownSpellRefs(derived.spells),
+    })
     : [];
   // Conjuros de dotes: los de las dotes que elige ahora (hasta este nivel) y los que dan más en este nivel las que tenía
   const featOf = (ref: Ref, name: string | null): FeatWithData => {

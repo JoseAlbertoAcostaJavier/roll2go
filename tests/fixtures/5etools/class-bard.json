@@ -794,5 +794,81 @@
 				"You've learned secrets from various magical traditions. Whenever you reach a Bard level (including this level) and the Prepared Spells number in the Bard Features table increases, you can choose any of your new prepared spells from the {@filter Bard|spells|class=Bard}, {@filter Cleric|spells|class=Cleric}, {@filter Druid|spells|class=Druid}, and {@filter Wizard|spells|class=Wizard} {@filter spell lists|spells|class=Bard;Cleric;Druid;Wizard}, and the chosen spells count as Bard spells for you (see a class's section for its spell list). In addition, whenever you replace a spell prepared for this class, you can replace it with a spell from those lists."
 			]
 		}
+	],
+	"subclass": [
+		{
+			"name": "College of Lore",
+			"shortName": "Lore",
+			"source": "XPHB",
+			"className": "Bard",
+			"classSource": "XPHB",
+			"page": 66,
+			"srd52": true,
+			"basicRules2024": true,
+			"edition": "one",
+			"additionalSpells": [
+				{
+					"prepared": {
+						"6": [
+							{
+								"choose": "level=0;1;2;3|class=Cleric;Druid;Wizard"
+							},
+							{
+								"choose": "level=0;1;2;3|class=Cleric;Druid;Wizard"
+							}
+						]
+					}
+				}
+			],
+			"subclassFeatures": [
+				"College of Lore|Bard|XPHB|Lore|XPHB|3",
+				"Magical Discoveries|Bard|XPHB|Lore|XPHB|6",
+				"Peerless Skill|Bard|XPHB|Lore|XPHB|14"
+			],
+			"hasFluffImages": true
+		}
+	],
+	"subclassFeature": [
+		{
+			"name": "College of Lore",
+			"source": "XPHB",
+			"page": 66,
+			"srd52": true,
+			"basicRules2024": true,
+			"className": "Bard",
+			"classSource": "XPHB",
+			"subclassShortName": "Lore",
+			"subclassSource": "XPHB",
+			"level": 3,
+			"entries": [
+				"{@i Plumb the Depths of Magical Knowledge}",
+				"Bards of the College of Lore collect spells and secrets from diverse sources, such as scholarly tomes, mystical rites, and peasant tales. The college's members gather in libraries and universities to share their lore with one another. They also meet at festivals or affairs of state, where they can expose corruption, unravel lies, and poke fun at self-important figures of authority.",
+				{
+					"type": "refSubclassFeature",
+					"subclassFeature": "Bonus Proficiencies|Bard|XPHB|Lore|XPHB|3"
+				},
+				{
+					"type": "refSubclassFeature",
+					"subclassFeature": "Cutting Words|Bard|XPHB|Lore|XPHB|3"
+				}
+			]
+		},
+		{
+			"name": "Magical Discoveries",
+			"source": "XPHB",
+			"page": 66,
+			"srd52": true,
+			"basicRules2024": true,
+			"className": "Bard",
+			"classSource": "XPHB",
+			"subclassShortName": "Lore",
+			"subclassSource": "XPHB",
+			"level": 6,
+			"header": 2,
+			"entries": [
+				"You learn two spells of your choice. These spells can come from the {@filter Cleric|spells|class=Cleric}, {@filter Druid|spells|class=Druid}, or {@filter Wizard spell list|spells|class=Wizard} or any combination thereof (see a class's section for its spell list). A spell you choose must be a cantrip or a spell for which you have spell slots, as shown in the Bard Features table.",
+				"You always have the chosen spells prepared, and whenever you gain a Bard level, you can replace one of the spells with another spell that meets these requirements."
+			]
+		}
 	]
 }

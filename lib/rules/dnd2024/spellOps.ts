@@ -1,5 +1,6 @@
 // Cambios de conjuros desde la ficha (spec de conjuros §2.5): preparar y dejar de preparar, copiar al libro del Mago,
-// gastar espacios y usos por descanso largo, descanso largo y elegir la alternativa de conjuros de una subclase. Funciones puras: validan la operación del cliente sobre la hoja guardada y
+// gastar espacios y usos por descanso largo, descanso largo, elegir la alternativa de conjuros de una subclase y los
+// conjuros de Dominio de conjuros. Funciones puras: validan la operación del cliente sobre la hoja guardada y
 // devuelven la hoja nueva; la ruta relee el personaje y recalcula los bloques antes de aplicarlas.
 import type { CatalogEntry } from "@/lib/rules/catalog";
 import type { Ref, SpellData } from "@/lib/rules/types";
@@ -14,7 +15,8 @@ export type SpellOp =
   | { op: "slot"; level: string; used: number }
   | { op: "longRest" }
   | { op: "setOption"; subclass: Ref; name: string | null }
-  | { op: "limited"; key: string; used: number };
+  | { op: "limited"; key: string; used: number }
+  | { op: "setMastery"; level: 1 | 2; ref: Ref | null };
 
 export type SpellOpCtx = {
   /** Bloques de lanzador de la hoja guardada (`derive(...).spells.blocks`). */
@@ -28,6 +30,8 @@ export type SpellOpResult = { ok: true; sheet: Dnd2024SheetV2 } | { ok: false; e
 
 export const SLOT_LEVELS = ["1", "2", "3", "4", "5", "6", "7", "8", "9"];
 export const PACT_SLOT = "pact";
+// Tiempo de lanzamiento que exige Dominio de conjuros (como lo guarda el importador: `spellTime`)
+const ACTION_TIME = "1 acción";
 
 type Obj = Record<string, unknown>;
 const isObj = (v: unknown): v is Obj => typeof v === "object" && v !== null && !Array.isArray(v);
@@ -127,7 +131,8 @@ export function applySpellOp(sheet: Dnd2024SheetV2, op: unknown, ctx: SpellOpCtx
 
   if (op.op === "longRest") return { ok: true, sheet: { ...sheet, slotsUsed: {}, limitedUsed: {} } };
 
-  // Usos gastados de un conjuro por descanso largo (Arcano místico): solo de los que tiene y entre 0 y su máximo
+  // Usos gastados de un conjuro por descanso largo (Arcano místico, Conjuros distintivos): solo de los que tiene y
+  // entre 0 y su máximo
   if (op.op === "limited") {
     const limited = ctx.blocks.flatMap((b) => b.limited).find((l) => l.key === op.key);
     if (!limited) return fail("No tienes ese uso.");
@@ -158,20 +163,40 @@ export function applySpellOp(sheet: Dnd2024SheetV2, op: unknown, ctx: SpellOpCtx
       },
     };
   }
+  // Dominio de conjuros (Mago 18): un conjuro del libro del nivel `level` (1 o 2) que se lance con una acción;
+  // `ref: null` lo quita
+  if (op.op === "setMastery") {
+    const block = ctx.blocks.find((b) => b.mastery);
+    if (!block) return fail("No tienes Dominio de conjuros.");
+    const level = op.level;
+    if (level !== 1 && level !== 2) return fail("Nivel no válido.");
+    const rest = Object.fromEntries(Object.entries(sheet.spellMastery ?? {}).filter(([k]) => k !== String(level)));
+    if (op.ref === null) return { ok: true, sheet: { ...sheet, spellMastery: rest } };
+    const ref = asRef(op.ref);
+    const entry = ref && ref.key.startsWith("spell:") ? ctx.resolve(ref) : null;
+    if (!entry) return fail("Conjuro no disponible.");
+    const data = entry.data as SpellData;
+    if (!has(block.spellbook, entry.ref)) return fail(`${nameOf(entry)} no está en tu libro de conjuros.`);
+    if (data.level !== level) return fail(`${nameOf(entry)} no es un conjuro de nivel ${level}.`);
+    if (data.time !== ACTION_TIME) return fail(`${nameOf(entry)} no se lanza con una acción.`);
+    const chosen = { book: entry.ref.book, key: entry.ref.key };
+    return { ok: true, sheet: { ...sheet, spellMastery: { ...rest, [level]: chosen } } };
+  }
   return fail("Operación no válida.");
 }
 
 /**
  * Preparados y espacios gastados que siguen valiendo tras perder un nivel: de cada clase, los que puede preparar (en
  * el libro si es el Mago, de nivel no superior al máximo) hasta su límite, quitando los últimos añadidos; las clases
- * que ya no lanzan pierden los suyos. Los espacios gastados se recortan a los disponibles. `after`: bloques y
+ * que ya no lanzan pierden los suyos. Los espacios gastados se recortan a los disponibles y los usos por descanso
+ * largo de los conjuros que ya no tiene (un arcano del nivel borrado) se quitan. `after`: bloques y
  * espacios de la hoja sin el nivel; `spellLevel`, el nivel de un conjuro (undefined si no está en el catálogo: se
  * conserva).
  */
 export function trimSpells(
   sheet: Dnd2024SheetV2,
   after: { blocks: CasterBlock[]; slots: Slots; spellLevel: (ref: Ref) => number | undefined },
-): Pick<Dnd2024SheetV2, "prepared" | "slotsUsed"> {
+): Pick<Dnd2024SheetV2, "prepared" | "slotsUsed" | "limitedUsed"> {
   const prepared: Record<string, Ref[]> = {};
   for (const [key, refs] of Object.entries(sheet.prepared ?? {})) {
     const block = after.blocks.find((b) => preparedKey(b.class) === key);
@@ -185,5 +210,8 @@ export function trimSpells(
     const available = level === PACT_SLOT ? (after.slots.pact?.count ?? 0) : (after.slots.levels[level] ?? 0);
     if (Math.min(used, available) > 0) slotsUsed[level] = Math.min(used, available);
   }
-  return { prepared, slotsUsed };
+  if (!sheet.limitedUsed) return { prepared, slotsUsed };
+  const keys = new Set(after.blocks.flatMap((b) => b.limited.map((l) => l.key)));
+  const limitedUsed = Object.fromEntries(Object.entries(sheet.limitedUsed).filter(([k]) => keys.has(k)));
+  return { prepared, slotsUsed, limitedUsed };
 }
