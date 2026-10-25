@@ -690,12 +690,19 @@ describe("conjuros extra del Bardo del Saber y del Mago", () => {
       if (!r.ok) throw new Error(JSON.stringify(r.errors));
       expect(r.entry.choices.find((c) => c.type === "spells")?.value).toMatchObject({ free: [held("alarm"), held("arcane lock")] });
     });
-    it("de otra escuela, de nivel 3, repetido o en número distinto de 2 → error", async () => {
+    it("los gratis son opcionales: de 0 a 2", async () => {
+      expect(await errorsOf(wizard2(), body("abjurer", ["alarm"]))).toEqual({});
+      expect(await errorsOf(wizard2(), body("abjurer", []))).toEqual({});
+      const r = await validateLevel(wizard2(), body("abjurer", []), ctx());
+      if (!r.ok) throw new Error(JSON.stringify(r.errors));
+      expect(r.entry.choices.find((c) => c.type === "spells")?.value).toMatchObject({ free: [] });
+    });
+    it("de otra escuela, de nivel 3, repetido o más de 2 → error", async () => {
       const freeError = async (free: string[]) => (await errorsOf(wizard2(), body("abjurer", free)))[`choices.${SPELLS}`];
       expect(await freeError(["alarm", "silent image"])).toBe("Conjuros: silent image no es de Abjuración.");
       expect(await freeError(["alarm", "counterspell"])).toBe("Conjuros: counterspell no es un conjuro de nivel 1 a 2.");
       expect(await freeError(["alarm", "alarm"])).toBe("Conjuros: conjuro repetido.");
-      expect(await freeError(["alarm"])).toBe("Conjuros: elige 2 conjuros gratis de Abjuración.");
+      expect(await freeError(["alarm", "arcane lock", "shield"])).toBe("Conjuros: elige hasta 2 conjuros gratis de Abjuración.");
     });
     it("Abjurador 5 (espacios de nivel 3): 1 gratis de hasta nivel 3", async () => {
       const s = sheetWith([["wizard", 4]], { 1: [spellsChoice("wizard", ["light"], ["magic missile"])], 3: [subclass("subclass:abjurer|wizard|xphb")] });
@@ -704,7 +711,7 @@ describe("conjuros extra del Bardo del Saber y del Mago", () => {
         choices: [{ type: "spells", source: SPELLS, value: { cantrips: [], spells: [spell("shield"), spell("fireball")], free: free.map(spell) } }],
       });
       expect(await errorsOf(s, body5(["counterspell"]))).toEqual({});
-      expect((await errorsOf(s, body5(["alarm", "counterspell"])))[`choices.${SPELLS}`]).toBe("Conjuros: elige 1 conjuro gratis de Abjuración.");
+      expect((await errorsOf(s, body5(["alarm", "counterspell"])))[`choices.${SPELLS}`]).toBe("Conjuros: elige hasta 1 conjuro gratis de Abjuración.");
     });
     it("Ilusionista 3 sin Ilusión menor: la recibe sin elegir (no pide truco)", async () => {
       const r = await validateLevel(wizard2(), body("illusionist", ["silent image", "mirror image"]), ctx());
@@ -803,5 +810,178 @@ describe("conjuros extra del Bardo del Saber y del Mago", () => {
         type: "arcanum", source: ARCANUM(13), value: held("finger of death"), replace: { out: held("circle of death"), in: held("eyebite") },
       });
     });
+  });
+});
+
+describe("dotes y Pacto del tomo", () => {
+  // Conjuros de prueba: nombre, nivel, listas y si es ritual
+  for (const [name, level, classes, ritual] of [
+    ["druidcraft", 0, ["druid"], false], ["produce flame", 0, ["druid"], false], ["entangle", 1, ["druid"], false],
+    ["prayer of healing", 2, ["cleric"], false], ["find familiar", 1, ["wizard"], true],
+    ["speak with animals", 1, ["bard", "druid", "ranger"], true],
+  ] as [string, number, string[], boolean][]) {
+    extra(`spell:${name}|xphb`, {
+      level, school: "V", time: "", range: "", components: "", duration: "", concentration: false, ritual, classes, tags: [],
+    }, name);
+  }
+  extra("optionalFeature:pact of the tome|xphb", {
+    featureType: ["EI"],
+    spellChoices: [{ level: 1, count: 3, filter: { level: 0 } }, { level: 1, count: 2, filter: { level: 1, ritual: true } }],
+  }, "Pact of the Tome");
+  // Trasfondo de prueba con la dote base de Iniciado en la magia (tres listas a elegir)
+  const acolyte = cat.get(`${B}:background:acolyte|xphb`)!;
+  extra("background:initiate|xphb", { ...(acolyte.data as object), feat: ref("feat:magic initiate|xphb") }, "Initiate");
+  const spell = (name: string) => client(`spell:${name}|xphb`);
+  const held = (name: string) => named(ref(`spell:${name}|xphb`));
+  const featSpells = (source: string, value: object) => ({ type: "featSpells", source, value });
+
+  describe("Pacto del tomo (Brujo 2)", () => {
+    const TOME = "featSpells:optionalFeature:pact of the tome|xphb";
+    const PACT = client("optionalFeature:pact of the tome|xphb");
+    const warlock1 = () => sheetWith([["warlock", 1]], {
+      1: [{ type: "optionalFeature", source: INVOCATIONS, value: [named(ref("optionalFeature:armor of shadows|xphb"))] }],
+    });
+    const learn = { type: "spells", source: "progression:spells|warlock|xphb", value: { cantrips: [], spells: [spell("hex")] } };
+    const body = (invocations: unknown[], extraChoices: unknown[] = []) => ({
+      expectedLevel: 2, class: client("class:warlock|xphb"), hp: { method: "average", value: 5 },
+      choices: [{ type: "optionalFeature", source: INVOCATIONS, value: invocations }, learn, ...extraChoices],
+    });
+    const tome = (rituals: string[]) => featSpells(TOME, {
+      cantrips: ["sacred flame", "vicious mockery", "druidcraft"].map(spell), spells: rituals.map(spell),
+    });
+    const withTome = (extraChoices: unknown[]) =>
+      body([PACT, client("optionalFeature:misty visions|xphb")], extraChoices);
+
+    it("3 trucos y 2 rituales de nivel 1 de cualquier lista, con la invocación como dote", async () => {
+      const r = await validateLevel(warlock1(), withTome([tome(["find familiar", "speak with animals"])]), ctx());
+      if (!r.ok) throw new Error(JSON.stringify(r.errors));
+      expect(r.entry.choices.at(-1)).toEqual({
+        type: "featSpells", source: TOME, value: {
+          feat: ref("optionalFeature:pact of the tome|xphb"),
+          cantrips: [held("sacred flame"), held("vicious mockery"), held("druidcraft")],
+          spells: [held("find familiar"), held("speak with animals")],
+        },
+      });
+    });
+    it("un conjuro que no es ritual o sin elegirlos → error", async () => {
+      expect(await errorsOf(warlock1(), withTome([tome(["find familiar", "bless"])])))
+        .toHaveProperty([`choices.${TOME}`], "Conjuros de Pact of the Tome: bless no se puede elegir con esta dote.");
+      expect(await errorsOf(warlock1(), withTome([]))).toHaveProperty("choices", "Falta elegir: Conjuros de Pact of the Tome.");
+    });
+    it("si ya tenía el Pacto del tomo sin sus conjuros (hoja anterior), se piden en la siguiente subida", async () => {
+      const s = sheetWith([["warlock", 1]], {
+        1: [{ type: "optionalFeature", source: INVOCATIONS, value: [named(ref("optionalFeature:pact of the tome|xphb"))] }],
+      });
+      const two = [client("optionalFeature:mask of many faces|xphb"), client("optionalFeature:misty visions|xphb")];
+      expect(await errorsOf(s, body(two))).toHaveProperty("choices", "Falta elegir: Conjuros de Pact of the Tome.");
+      expect(await errorsOf(s, body(two, [tome(["find familiar", "speak with animals"])]))).toEqual({});
+    });
+  });
+
+  describe("Iniciado en la magia", () => {
+    const INITIATE = "featSpells:feat:magic initiate; cleric|xphb";
+    const BASE = "featSpells:feat:magic initiate|xphb";
+    // Bárbaro 3 con el Acólito y los conjuros de su dote ya elegidos
+    const withInitiate = () => {
+      const s = barbarian3();
+      s.levels[0].choices.push({
+        type: "featSpells", source: INITIATE, value: {
+          feat: ref("feat:magic initiate; cleric|xphb"), cantrips: [held("light"), held("sacred flame")], spells: [held("bless")],
+          ability: "wis",
+        },
+      });
+      return s;
+    };
+    const levelUp = (extraChoice: unknown) => input({ choices: [asi({ abilities: { str: 2 } }), mastery(), extraChoice] });
+    const swap = (source: string, out: string, into: string) =>
+      featSpells(source, { cantrips: [], spells: [], replace: { out: spell(out), in: spell(into) } });
+
+    it("al subir puede cambiar uno de sus conjuros por otro de la misma lista y nivel", async () => {
+      const r = await validateLevel(withInitiate(), levelUp(swap(INITIATE, "bless", "command")), ctx());
+      if (!r.ok) throw new Error(JSON.stringify(r.errors));
+      expect(r.entry.choices.at(-1)).toEqual({
+        type: "featSpells", source: INITIATE, value: {
+          feat: ref("feat:magic initiate; cleric|xphb"), cantrips: [], spells: [],
+          replace: { out: held("bless"), in: { ref: ref("spell:command|xphb"), name: "Command" } },
+        },
+      });
+      // Es opcional
+      expect(await errorsOf(withInitiate(), input())).toEqual({});
+    });
+    it("de otro nivel, de otra lista, uno que no tiene o uno que ya tiene → error", async () => {
+      const swapError = async (out: string, into: string) =>
+        (await errorsOf(withInitiate(), levelUp(swap(INITIATE, out, into))))[`choices.${INITIATE}`];
+      const LABEL = "Conjuros de Magic Initiate; Cleric";
+      expect(await swapError("bless", "prayer of healing")).toBe(`${LABEL}: prayer of healing no es un conjuro de nivel 1.`);
+      expect(await swapError("bless", "magic missile")).toBe(`${LABEL}: magic missile no se puede elegir con esta dote.`);
+      expect(await swapError("command", "bless")).toBe(`${LABEL}: solo puedes cambiar uno de los conjuros de la dote.`);
+      expect(await swapError("sacred flame", "light")).toBe(`${LABEL}: ya tienes light.`);
+      // Sin conjuros elegidos con la dote no hay nada que cambiar
+      expect(await errorsOf(barbarian3(), levelUp(swap(INITIATE, "bless", "command"))))
+        .toHaveProperty("choices", "Hay elecciones que este nivel no pide.");
+    });
+
+    describe("dote base (lista a elegir)", () => {
+      // Hoja anterior con la dote base y sin sus conjuros: se piden en la siguiente subida
+      const initiate3 = () => {
+        const s = barbarian3();
+        s.background = { ...named(ref("background:initiate|xphb")), abilities: { wis: 2, int: 1 }, equipment: "A" };
+        return s;
+      };
+      const druid = { cantrips: [spell("druidcraft"), spell("produce flame")], spells: [spell("entangle")], ability: "wis" };
+      const LABEL = "Conjuros de Magic Initiate";
+
+      it("sin lista, con una lista que no ofrece o con un conjuro de otra lista → error", async () => {
+        const pickError = async (value: object) => (await errorsOf(initiate3(), levelUp(featSpells(BASE, value))))[`choices.${BASE}`];
+        expect(await pickError(druid)).toBe(`${LABEL}: elige la lista de conjuros.`);
+        expect(await pickError({ ...druid, list: "bard" })).toBe(`${LABEL}: elige la lista de conjuros.`);
+        expect(await pickError({ ...druid, list: "druid", spells: [spell("magic missile")] }))
+          .toBe(`${LABEL}: magic missile no se puede elegir con esta dote.`);
+        expect(await errorsOf(initiate3(), input())).toHaveProperty("choices", `Falta elegir: ${LABEL}.`);
+      });
+      it("con la lista elegida: la guarda", async () => {
+        const r = await validateLevel(initiate3(), levelUp(featSpells(BASE, { ...druid, list: "druid" })), ctx());
+        if (!r.ok) throw new Error(JSON.stringify(r.errors));
+        expect(r.entry.choices.at(-1)).toEqual({
+          type: "featSpells", source: BASE, value: {
+            feat: ref("feat:magic initiate|xphb"), list: "druid",
+            cantrips: [held("druidcraft"), held("produce flame")], spells: [held("entangle")], ability: "wis",
+          },
+        });
+      });
+      it("después, el cambio de un conjuro es de su lista", async () => {
+        const s = initiate3();
+        s.levels[2].choices.push({
+          type: "featSpells", source: BASE, value: {
+            feat: ref("feat:magic initiate|xphb"), list: "druid", cantrips: [held("druidcraft"), held("produce flame")],
+            spells: [held("entangle")], ability: "wis",
+          },
+        });
+        expect(await errorsOf(s, levelUp(swap(BASE, "entangle", "speak with animals")))).toEqual({});
+        expect((await errorsOf(s, levelUp(swap(BASE, "entangle", "bless"))))[`choices.${BASE}`])
+          .toBe(`${LABEL}: bless no se puede elegir con esta dote.`);
+      });
+    });
+  });
+
+  it("un multiclase puede aprender como Bardo un conjuro que su subclase de Clérigo le da siempre preparado", async () => {
+    const LIFE = named(ref("subclass:life domain|cleric|xphb"));
+    const bardSpells = (spells: Choice["value"]) => ({ type: "spells", source: "progression:spells|bard|xphb", value: spells });
+    const s = sheetWith([["bard", 1], ["cleric", 3]], {
+      1: [
+        { type: "skills", source: "class:skills", value: ["arcana", "history", "performance"] },
+        bardSpells({ class: cls("bard"), cantrips: [held("vicious mockery")], spells: [held("healing word")] }) as Choice,
+      ],
+      4: [{ type: "subclass", source: "class:subclass", value: LIFE }],
+    });
+    const r = await validateLevel(s, {
+      expectedLevel: 5, class: client("class:bard|xphb"), hp: { method: "average", value: 5 },
+      choices: [
+        { type: "expertise", source: "classFeature:expertise|bard|xphb|2", value: ["arcana", "history"] },
+        bardSpells({ cantrips: [], spells: [spell("cure wounds")] } as Choice["value"]),
+      ],
+    }, ctx());
+    if (!r.ok) throw new Error(JSON.stringify(r.errors));
+    expect(r.entry.choices.at(-1)).toMatchObject({ value: { spells: [{ name: "cure wounds" }] } });
   });
 });

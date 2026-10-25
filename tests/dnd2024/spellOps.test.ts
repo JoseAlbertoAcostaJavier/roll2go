@@ -160,6 +160,14 @@ describe("copiar al libro", () => {
     expect(errorOf(apply(s, { op: "copy", ref: spell("grease").ref }))).toBe("grease ya está en tu libro de conjuros.");
     expect(errorOf(apply(s, { op: "copy", ref: spell("shield").ref }))).toBe("shield ya está en tu libro de conjuros.");
   });
+  it("un conjuro de Mago que ya tiene por una dote también se puede copiar", () => {
+    const s = wizard1();
+    s.levels[0].choices.push({
+      type: "featSpells", source: "featSpells:feat:magic initiate; wizard|xphb",
+      value: { feat: ref("feat:magic initiate; wizard|xphb"), cantrips: [], spells: [spell("grease")] },
+    });
+    expect(ok(apply(s, { op: "copy", ref: spell("grease").ref })).spellbookExtra).toEqual([spell("grease")]);
+  });
   it("de otra lista, truco o sin libro → error", () => {
     expect(errorOf(apply(wizard1(), { op: "copy", ref: spell("bless").ref }))).toBe("bless no está en la lista de Mago.");
     expect(errorOf(apply(wizard1(), { op: "copy", ref: spell("light").ref }))).toBe("Los trucos no se copian al libro.");
@@ -317,6 +325,15 @@ describe("usos por descanso largo (Arcano místico)", () => {
     const after = ok(apply(s, { op: "longRest" }));
     expect(after.limitedUsed).toEqual({});
     expect(after.slotsUsed).toEqual({});
+  });
+  it("el descanso corto recupera la Magia de pacto y los Conjuros distintivos, no los arcanos ni otros espacios", () => {
+    const SIGNATURE = `signature:${B}:spell:fireball|xphb`;
+    const s = { ...warlock11(), limitedUsed: { [KEY]: 1, [SIGNATURE]: 1 }, slotsUsed: { pact: 2, 1: 1 } };
+    const after = ok(apply(s, { op: "shortRest" }));
+    expect(after.limitedUsed).toEqual({ [KEY]: 1 });
+    expect(after.slotsUsed).toEqual({ 1: 1 });
+    // Sin usos guardados no los añade
+    expect(ok(apply({ ...warlock11(), slotsUsed: { pact: 1 } }, { op: "shortRest" }))).not.toHaveProperty("limitedUsed");
   });
 });
 

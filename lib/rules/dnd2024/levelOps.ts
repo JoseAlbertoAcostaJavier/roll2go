@@ -6,6 +6,7 @@ import type { CasterBlock, Slots } from "./derive/spells";
 import { refKey } from "./equipmentRefs";
 import { currentMasteries } from "./masteries";
 import type { Dnd2024SheetV2, LevelEntry } from "./sheet";
+import { preparedKey } from "./spellcasting";
 import { trimSpells } from "./spellOps";
 import { summarizeClasses } from "./upgrade";
 
@@ -49,7 +50,8 @@ export function applyLevel(
  * Hoja sin el último nivel: el nivel 1 no se borra; los PG actuales se recortan al nuevo máximo. Quita las maestrías
  * que añadió el nivel; si ya se habían cambiado por otras, recorta las de la hoja a `masteriesAfter` (las que permite
  * la hoja sin el nivel, `masteryCount`). Con `spellsAfter` (bloques y espacios de la hoja sin el nivel), quita los
- * preparados que ya no caben y recorta los espacios gastados (`trimSpells`).
+ * preparados que ya no caben y recorta los espacios gastados (`trimSpells`). Si el nivel daba la subclase, quita la
+ * alternativa de conjuros elegida para ella (`spellOption`).
  */
 export function removeLastLevel(
   sheet: Dnd2024SheetV2, maxHpAfter: number, masteriesAfter = Infinity,
@@ -75,5 +77,11 @@ export function removeLastLevel(
     next.weaponMasteries = left.slice(0, masteriesAfter);
   }
   if (spellsAfter) Object.assign(next, trimSpells(sheet, spellsAfter));
+  // La alternativa de conjuros elegida en la ficha para la subclase que daba el nivel
+  const subclass = removed.choices.find((c) => c.type === "subclass");
+  if (subclass?.type === "subclass" && sheet.spellOption) {
+    const key = preparedKey(subclass.value.ref);
+    next.spellOption = Object.fromEntries(Object.entries(sheet.spellOption).filter(([k]) => k !== key));
+  }
   return { ok: true, sheet: next };
 }

@@ -133,6 +133,8 @@ export type OptionalFeatureData = {
   prerequisite?: { level?: number; spell?: Ref; pact?: string; feature?: string };
   /** Conjuros fijos que da (Armadura de sombras → Armadura de mago), desde que se tiene (nivel 1). */
   spells?: SpellGrant[];
+  /** Conjuros que se eligen (Pacto del tomo), como los de las dotes. */
+  spellChoices?: FeatSpellChoice[];
 };
 
 export type BackgroundData = {
@@ -145,8 +147,12 @@ export type BackgroundData = {
 
 /** Filtro de un conjuro a elegir: su nivel y, si se dan, las listas de clase, las escuelas o que sea ritual. */
 export type FeatSpellFilter = { level: number; classes?: string[]; schools?: string[]; ritual?: true };
-/** Conjuros a elegir de una dote: `count` que cumplan `filter`, desde el nivel de personaje `level`. */
-export type FeatSpellChoice = { level: number; count: number; filter: FeatSpellFilter };
+/**
+ * Conjuros a elegir de una dote: `count` que cumplan `filter`, desde el nivel de personaje `level`. `lists`: listas de
+ * clase alternativas (la dote base de Iniciado en la magia); se elige una (`FeatSpellsValue.list`) y hace de
+ * `filter.classes`.
+ */
+export type FeatSpellChoice = { level: number; count: number; filter: FeatSpellFilter; lists?: string[] };
 
 export type FeatData = {
   category: "origin" | "general" | "fightingStyle" | "epicBoon";

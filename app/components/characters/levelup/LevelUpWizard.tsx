@@ -7,13 +7,14 @@ import { card, primaryButton } from "@/app/components/formStyles";
 import type { CatalogEntry, EntryOption, SpellOption } from "@/lib/rules/catalog";
 import { derive } from "@/lib/rules/dnd2024/derive";
 import { characterFeats } from "@/lib/rules/dnd2024/derive/features";
-import { featSpellPending, type FeatWithData } from "@/lib/rules/dnd2024/featSpells";
+import { levelFeatSpellPending, type FeatWithData } from "@/lib/rules/dnd2024/featSpells";
 import { chosenSpells, knownSpellRefs } from "@/lib/rules/dnd2024/derive/spells";
 import { refKey } from "@/lib/rules/dnd2024/equipmentRefs";
 import { FEATURE_OPTION_LABELS } from "@/lib/rules/dnd2024/featureChoices";
 import { ABILITY_NAMES, skillName } from "@/lib/rules/dnd2024/labels";
 import {
-  heldPicks, meetsFeatPrerequisite, meetsMulticlass, pendingChoices, withBonusCantrips, type PendingChoice,
+  heldOptionalFeatures, heldPicks, meetsFeatPrerequisite, meetsMulticlass, pendingChoices, withBonusCantrips,
+  type PendingChoice,
 } from "@/lib/rules/dnd2024/levels";
 import { currentMasteries, masteryLabel } from "@/lib/rules/dnd2024/masteries";
 import type { Dnd2024SheetV2, LevelEntry } from "@/lib/rules/dnd2024/sheet";
@@ -155,24 +156,29 @@ function Wizard(props: Props & { draftKey: string; draft: string | null }) {
       ...(chosenSub ? { subclass: chosenSub.ref } : {}), known: knownSpellRefs(derived.spells),
     })
     : [];
-  // Conjuros de dotes: los de las dotes que elige ahora (hasta este nivel) y los que dan más en este nivel las que tenía
+  // Conjuros de dotes e invocaciones (Pacto del tomo): los de las que elige ahora (hasta este nivel) y los que dan más
+  // en este nivel las que tenía (el cambio opcional de Iniciado en la magia, `count: 0`, todavía no se ofrece aquí)
   const featOf = (ref: Ref, name: string | null): FeatWithData => {
-    const e = props.feats.find((f) => refKey(f.ref) === refKey(ref)) ?? entries.get(refKey(ref));
+    const e = [...props.feats, ...props.optionalFeatures].find((f) => refKey(f.ref) === refKey(ref))
+      ?? entries.get(refKey(ref));
     return { ref, name: name ?? (e ? nameOf(e) : nameFromKey(ref.key)), data: e?.data as FeatData | undefined };
   };
   const gainedFeats = [
     ...basePending.filter((p) => p.type === "asi").map((p) => state.asi[p.source])
       .flatMap((a) => (a?.mode === "feat" && a.feat ? [a.feat] : [])),
-    ...basePending.filter((p) => p.type === "feat")
+    ...basePending.filter((p) => p.type === "feat" || p.type === "optionalFeature")
       .flatMap((p) => (state.values[p.source] ?? []).slice(0, slotsFor(p, state)).filter(Boolean)),
   ].map((k) => featOf(refFromKey(k), null));
   const bgData = entries.get(refKey(sheet.background.ref))?.data as BackgroundData | undefined;
-  const ownedFeats = characterFeats(sheet, bgData).map((f) => featOf(f.ref, f.name));
+  const replacedNow = new Set(basePending
+    .flatMap((p) => (p.optionalReplace && state.replaced[p.source] ? [state.replaced[p.source]] : [])));
+  const ownedFeats = [...characterFeats(sheet, bgData), ...heldOptionalFeatures(sheet.levels)]
+    .filter((f) => !replacedNow.has(refKey(f.ref))).map((f) => featOf(f.ref, f.name));
   // Las opciones de rasgo elegidas ahora pueden dar un truco más (Taumaturgo, Mago del Druida)
   const pending = [
     ...withBonusCantrips(basePending, basePending.filter((p) => p.type === "featureOption")
       .flatMap((p) => (state.values[p.source] ?? []).filter(Boolean).map((k) => refFromKey(k).key))),
-    ...(classEntry ? [...featSpellPending(gainedFeats, (l) => l <= n), ...featSpellPending(ownedFeats, (l) => l === n)] : []),
+    ...(classEntry ? levelFeatSpellPending(gainedFeats, ownedFeats, sheet.levels, n).filter((p) => p.count > 0) : []),
   ];
 
   // Estado efectivo: la subclase solo si es de la clase elegida; los PG solo si son del dado de esta clase

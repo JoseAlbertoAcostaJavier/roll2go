@@ -43,10 +43,11 @@ export type PendingChoice = {
   optionalReplaceCantrip?: boolean;
   spells?: SpellsPending;
   /**
-   * En la elección de conjuros de una dote (`featSpells`): la dote, el filtro de los trucos y el de los conjuros, y las
-   * características de lanzamiento entre las que se elige. Los números van en `spells` (con la dote como `class`).
+   * En la elección de conjuros de una dote (`featSpells`): la dote, el filtro de los trucos y el de los conjuros, las
+   * características de lanzamiento entre las que se elige y las listas entre las que se elige la de los filtros
+   * (Iniciado en la magia base). Los números van en `spells` (con la dote como `class`).
    */
-  featSpells?: { feat: Ref; cantrip?: FeatSpellFilter; spell?: FeatSpellFilter; abilities?: Ability[] };
+  featSpells?: { feat: Ref; cantrip?: FeatSpellFilter; spell?: FeatSpellFilter; abilities?: Ability[]; lists?: string[] };
   arcanum?: { level?: number; list: string };
   bonusSpells?: BonusSpellsPending;
 };

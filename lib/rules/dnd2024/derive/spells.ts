@@ -237,7 +237,8 @@ export function spellSlots(sheet: Dnd2024SheetV2, entries: Map<string, CatalogEn
 
 /**
  * Conjuros que no son de una clase lanzadora: especie y legado (hasta el nivel total), dotes (los fijos, desde el
- * nivel total que piden), clases y subclases que no lanzan (Guerrero psiónico…) e invocaciones, con su origen.
+ * nivel total que piden, y los elegidos), clases y subclases que no lanzan (Guerrero psiónico…) e invocaciones (los
+ * fijos y los elegidos), con su origen.
  */
 export function otherSpells(sheet: Dnd2024SheetV2, entries: Map<string, CatalogEntry>): OtherSpell[] {
   const level = sheet.levels.length;
@@ -265,12 +266,13 @@ export function otherSpells(sheet: Dnd2024SheetV2, entries: Map<string, CatalogE
     add(upTo(featData(f.ref, entries)?.spells, level), origin);
     out.push(...(chosen.get(refKey(f.ref)) ?? []).map((spell) => ({ spell, origin })));
   }
-  // Invocaciones (y demás rasgos opcionales) con conjuros fijos
+  // Invocaciones (y demás rasgos opcionales) con conjuros fijos o elegidos (Pacto del tomo, con su nombre de origen)
   for (const o of heldOptionalFeatures(sheet.levels)) {
     const data = entries.get(refKey(o.ref))?.data as OptionalFeatureData | undefined;
-    if (!data?.spells?.length) continue;
-    const kind = data.featureType?.includes("EI") ? "Invocación" : "Rasgo";
-    add(upTo(data.spells, level), `${kind}: ${o.name || named(o.ref, entries).name}`);
+    const name = o.name || named(o.ref, entries).name;
+    const kind = data?.featureType?.includes("EI") ? "Invocación" : "Rasgo";
+    if (data?.spells?.length) add(upTo(data.spells, level), `${kind}: ${name}`);
+    out.push(...(chosen.get(refKey(o.ref)) ?? []).map((spell) => ({ spell, origin: name })));
   }
   return out;
 }

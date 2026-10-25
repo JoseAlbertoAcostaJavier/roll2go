@@ -7,9 +7,13 @@ import {
 import { derive } from "./derive";
 import { characterFeats } from "./derive/features";
 import { chosenSpells, knownSpellRefs } from "./derive/spells";
-import { checkFeatSpellChoices, featSpellPending, splitFeatSpells, type FeatWithData } from "./featSpells";
+import {
+  checkFeatSpellChoices, chosenFeatSpells, featSpellClash, levelFeatSpellPending, splitFeatSpells, type FeatWithData,
+} from "./featSpells";
 import { refKey } from "./equipmentRefs";
-import { heldArcana, heldBonusSpells, heldPicks, meetsMulticlass, pendingChoices } from "./levels";
+import {
+  heldArcana, heldBonusSpells, heldOptionalFeatures, heldPicks, meetsMulticlass, pendingChoices,
+} from "./levels";
 import { currentMasteries } from "./masteries";
 import { verifyHitDie } from "./rolls";
 import type { Dnd2024SheetV2, LevelEntry, Named } from "./sheet";
@@ -137,9 +141,11 @@ export async function validateLevel(
     },
     held: heldPicks(sheet.levels),
     masteries: currentMasteries(sheet),
-    // Los siempre preparados (también los que da este nivel) y los de especie, legado y dotes
+    // Los siempre preparados de esta clase (también los que da este nivel) y los de especie, legado y dotes (los de
+    // otra clase sí se pueden aprender: el Hechicero, uno que su subclase de Clérigo le da siempre preparado)
     spellsGranted: [
-      ...derived.spells.blocks.flatMap((b) => b.always.map((a) => a.spell.ref)),
+      ...derived.spells.blocks.filter((b) => [classEntry.ref, subRef].some((r) => r && refKey(r) === refKey(b.class)))
+        .flatMap((b) => b.always.map((a) => a.spell.ref)),
       ...derived.spells.other.map((o) => o.spell.ref),
       ...[...(data.spells ?? []), ...(subData?.spells ?? [])].filter((g) => g.level <= classLevel).map((g) => g.ref),
     ],
@@ -153,20 +159,30 @@ export async function validateLevel(
   });
   for (const [k, msg] of Object.entries(checked.errors)) err(k, msg);
 
-  // Conjuros de dotes: los de las dotes que gana ahora (hasta este nivel) y los que dan más en este nivel las que tenía
+  // Conjuros de dotes e invocaciones (Pacto del tomo): los de las que gana ahora, los que dan más en este nivel las que
+  // tenía y el cambio de Iniciado en la magia (las que sustituye ahora ya no cuentan)
   const featOf = (ref: Ref, name: string | null): FeatWithData => {
     const e = entries.get(refKey(ref));
     return { ref, name: name || (e ? e.nameEs || e.name : ref.key), data: e?.data as FeatData | undefined };
   };
-  const gainedFeats = checked.choices.flatMap((c) => (c.type === "feat" ? c.value.map((f) => featOf(f.ref, f.name))
+  const gainedFeats = checked.choices.flatMap((c) => (c.type === "feat" || c.type === "optionalFeature"
+    ? c.value.map((f) => featOf(f.ref, f.name))
     : c.type === "asi" && "feat" in c.value ? [featOf(c.value.feat.ref, c.value.feat.name)] : []));
+  const replacedNow = new Set(checked.choices.flatMap((c) =>
+    (c.type === "feat" || c.type === "optionalFeature" ? (c.replaced ?? []).map((r) => refKey(r.ref)) : [])));
   const background = entries.get(refKey(sheet.background.ref))?.data as BackgroundData | undefined;
-  const heldFeats = characterFeats(sheet, background).map((f) => featOf(f.ref, f.name));
+  const heldFeats = [...characterFeats(sheet, background), ...heldOptionalFeatures(sheet.levels)]
+    .filter((f) => !replacedNow.has(refKey(f.ref))).map((f) => featOf(f.ref, f.name));
+  const featPending = levelFeatSpellPending(gainedFeats, heldFeats, sheet.levels, n);
   const featSpells = await checkFeatSpellChoices(
-    [...featSpellPending(gainedFeats, (l) => l <= n), ...featSpellPending(heldFeats, (l) => l === n)],
-    split.featSpells, { path: CHOICES_PATH, books: ctx.books, resolve: ctx.resolve },
+    featPending, split.featSpells,
+    { path: CHOICES_PATH, books: ctx.books, resolve: ctx.resolve, held: chosenFeatSpells(sheet.levels) },
   );
   for (const [k, msg] of Object.entries(featSpells.errors)) err(k, msg);
+  // El mismo conjuro no se elige a la vez con una dote y para la clase
+  const clash = featSpellClash([...checked.choices, ...featSpells.choices]);
+  const clashLabel = clash ? featPending.find((p) => p.source === clash.source)?.label : "";
+  if (clash) err(`${CHOICES_PATH}.${clash.source}`, `${clashLabel}: ${clash.name} ya lo eliges con la clase.`);
 
   // Puntos de golpe: media exacta o tirada firmada; el máximo solo en el nivel 1 de la primera clase (la creación)
   const hp = checkHp(input.hp, data.hitDie, ctx.userId, ctx.characterId, n);

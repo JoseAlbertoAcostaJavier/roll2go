@@ -256,11 +256,30 @@ function blockGrants(additional: unknown[], unleveled?: number): SpellGrant[] {
 
 /**
  * `additionalSpells` → conjuros a elegir (`{ choose: "level=1|class=Cleric", count }`) por nivel de personaje (los
- * que no tienen nivel, desde el 1). Con varios bloques alternativos con nombre no se elige nada (se usa una versión de
- * la dote), y los filtros que no se entienden se omiten.
+ * que no tienen nivel, desde el 1); los filtros que no se entienden se omiten. Con varios bloques alternativos con
+ * nombre (la dote base de Iniciado en la magia), solo si piden lo mismo salvo la lista de clase: entonces la lista se
+ * elige (`lists`); si no, no se elige nada.
  */
 function spellChoices(additional: unknown[]): FeatSpellChoice[] {
-  if (alternativeBlocks(additional)) return [];
+  if (!alternativeBlocks(additional)) return blockChoices(additional);
+  const alternatives = additional.filter(isObj).map((b) => blockChoices([b]));
+  const [first] = alternatives;
+  const listOf = (c: FeatSpellChoice) => (c.filter.classes?.length === 1 ? c.filter.classes[0] : null);
+  const same = (a: FeatSpellChoice, b: FeatSpellChoice) => a.level === b.level && a.count === b.count
+    && JSON.stringify({ ...a.filter, classes: undefined }) === JSON.stringify({ ...b.filter, classes: undefined });
+  // Cada alternativa, con una sola lista para todos sus conjuros
+  const lists = alternatives.map((alt) => (new Set(alt.map(listOf)).size === 1 ? listOf(alt[0]) : null));
+  const merged = first.length > 0 && lists.every(Boolean) && new Set(lists).size === lists.length
+    && alternatives.every((alt) => alt.length === first.length && alt.every((c, i) => same(c, first[i])));
+  if (!merged) return [];
+  return first.map((c) => {
+    const filter = { ...c.filter };
+    delete filter.classes;
+    return { level: c.level, count: c.count, filter, lists: lists as string[] };
+  });
+}
+
+function blockChoices(additional: unknown[]): FeatSpellChoice[] {
   const out: FeatSpellChoice[] = [];
   const walk = (v: unknown, level: number): void => {
     if (Array.isArray(v)) v.forEach((x) => walk(x, level));
@@ -467,8 +486,11 @@ export function normalizeFeat(raw: Rec): NormalizedEntry {
   if (additional.length) data.grantsSpells = true;
   const choices = spellChoices(additional);
   if (choices.length) data.spellChoices = choices;
-  const choose = additional.length === 1 && isObj(additional[0]) && isObj(additional[0].ability) ? additional[0].ability.choose : null;
-  if (choices.length && Array.isArray(choose) && choose.every(isAbility)) data.spellAbility = choose;
+  // Característica elegible: la misma en todos los bloques (alternativos o no)
+  const chooses = additional.map((b) => (isObj(b) && isObj(b.ability) ? b.ability.choose : null));
+  const choose = chooses[0];
+  if (choices.length && Array.isArray(choose) && choose.every(isAbility)
+    && chooses.every((c) => JSON.stringify(c) === JSON.stringify(choose))) data.spellAbility = choose;
   return entry<"feat">(header("feat", raw, keyOf("feat", str(raw.name), str(raw.source))), data);
 }
 
@@ -922,9 +944,12 @@ export function normalizeOptionalFeature(raw: Rec): NormalizedEntry {
     }
     if (Object.keys(p).length) data.prerequisite = p;
   }
-  // Conjuros fijos (Armadura de sombras, Paso ascendente…); los elegidos (Pacto del tomo) se omiten
-  const spells = spellGrants(asArr(raw.additionalSpells), 1);
+  // Conjuros fijos (Armadura de sombras, Paso ascendente…) y elegidos (Pacto del tomo)
+  const additional = asArr(raw.additionalSpells);
+  const spells = spellGrants(additional, 1);
   if (spells.length) data.spells = spells;
+  const choices = spellChoices(additional);
+  if (choices.length) data.spellChoices = choices;
   return entry<"optionalFeature">(
     header("optionalFeature", raw, keyOf("optionalFeature", str(raw.name), str(raw.source))), data);
 }

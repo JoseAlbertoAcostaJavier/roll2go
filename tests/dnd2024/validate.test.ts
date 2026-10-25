@@ -255,7 +255,8 @@ describe("validateSheet: elecciones de clase de nivel 1", () => {
   const WIZARD_SPELLS = ["magic missile", "shield", "sleep", "mage armor", "detect magic", "burning hands", "grease"];
   for (const [name, level, classes] of [
     ["light", 0, ["cleric", "wizard"]], ["sacred flame", 0, ["cleric"]], ["guidance", 0, ["cleric", "druid"]],
-    ["thaumaturgy", 0, ["cleric"]], ["druidcraft", 0, ["druid"]], ["produce flame", 0, ["druid"]],
+    ["thaumaturgy", 0, ["cleric"]], ["spare the dying", 0, ["cleric"]], ["toll the dead", 0, ["cleric"]],
+    ["druidcraft", 0, ["druid"]], ["produce flame", 0, ["druid"]],
     ["dancing lights", 0, ["wizard"]], ["sanctuary", 1, ["cleric"]],
     ["mage hand", 0, ["wizard"]], ["fire bolt", 0, ["wizard"]], ["fireball", 3, ["wizard"]],
     ...WIZARD_SPELLS.map((n) => [n, 1, ["wizard"]]),
@@ -294,7 +295,7 @@ describe("validateSheet: elecciones de clase de nivel 1", () => {
     classes: [{
       ...fnamed(`class:${cls}|xphb`), level: 1, subclass: null, equipment: "A",
       choices: choices.some((c) => (c as { type?: string }).type === "featSpells")
-        ? choices : [...choices, initiateSpells(["light", "sacred flame"], ["sanctuary"], "wis")],
+        ? choices : [...choices, initiateSpells(["spare the dying", "toll the dead"], ["sanctuary"], "wis")],
     }],
     abilityMethod: "standard",
     baseAbilities: { str: 15, dex: 14, con: 13, int: 12, wis: 10, cha: 8 },
@@ -346,12 +347,14 @@ describe("validateSheet: elecciones de clase de nivel 1", () => {
     const CLERIC = () => [skills(["history", "medicine"]), order("classFeature:protector|cleric|xphb|1"), spellChoice("cleric", CLERIC_CANTRIPS)];
     const fighter = (spells: unknown) => validateSheet(sheetFor("cleric", [...CLERIC(), spells]), fctx);
     it("exige 2 trucos y 1 conjuro de nivel 1 de la lista del Clérigo y la característica", async () => {
-      const r = await fighter(initiateSpells(["light", "guidance"], ["sanctuary"], "wis"));
+      const r = await fighter(initiateSpells(["spare the dying", "toll the dead"], ["sanctuary"], "wis"));
       if (!r.ok) throw new Error(JSON.stringify(r.errors));
       expect(r.sheet.levels[0].choices.at(-1)).toEqual({
         type: "featSpells", source: INITIATE, value: {
           feat: fref("feat:magic initiate; cleric|xphb"),
-          cantrips: [{ ref: fref("spell:light|xphb"), name: "light" }, { ref: fref("spell:guidance|xphb"), name: "guidance" }],
+          cantrips: [
+            { ref: fref("spell:spare the dying|xphb"), name: "spare the dying" }, { ref: fref("spell:toll the dead|xphb"), name: "toll the dead" },
+          ],
           spells: [{ ref: fref("spell:sanctuary|xphb"), name: "sanctuary" }], ability: "wis",
         },
       });
@@ -365,6 +368,10 @@ describe("validateSheet: elecciones de clase de nivel 1", () => {
         .toHaveProperty([PATH], "Conjuros de Magic Initiate; Cleric: elige 2 trucos.");
       expect(errs(await fighter(initiateSpells(["light", "guidance"], ["sanctuary"]))))
         .toHaveProperty([PATH], "Conjuros de Magic Initiate; Cleric: elige la característica de lanzamiento.");
+    });
+    it("el mismo truco elegido por la clase y por la dote → error en la elección de la dote", async () => {
+      expect(errs(await fighter(initiateSpells(["light", "toll the dead"], ["sanctuary"], "wis"))))
+        .toHaveProperty([`levels.0.choices.${INITIATE}`], "Conjuros de Magic Initiate; Cleric: light ya lo eliges con la clase.");
     });
     it("sin elegirlos → falta", async () => {
       const r = await validateSheet(sheetFor("cleric", [...CLERIC(), { type: "featSpells", source: "x" }]), fctx);

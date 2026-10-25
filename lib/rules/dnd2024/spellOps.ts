@@ -1,6 +1,6 @@
 // Cambios de conjuros desde la ficha (spec de conjuros §2.5): preparar y dejar de preparar, copiar al libro del Mago,
-// gastar espacios y usos por descanso largo, descanso largo, elegir la alternativa de conjuros de una subclase y los
-// conjuros de Dominio de conjuros. Funciones puras: validan la operación del cliente sobre la hoja guardada y
+// gastar espacios y usos por descanso largo, descanso corto y largo, elegir la alternativa de conjuros de una
+// subclase y los conjuros de Dominio de conjuros. Funciones puras: validan la operación del cliente sobre la hoja guardada y
 // devuelven la hoja nueva; la ruta relee el personaje y recalcula los bloques antes de aplicarlas.
 import type { CatalogEntry } from "@/lib/rules/catalog";
 import type { Ref, SpellData } from "@/lib/rules/types";
@@ -14,6 +14,7 @@ export type SpellOp =
   | { op: "copy"; ref: Ref }
   | { op: "slot"; level: string; used: number }
   | { op: "longRest" }
+  | { op: "shortRest" }
   | { op: "setOption"; subclass: Ref; name: string | null }
   | { op: "limited"; key: string; used: number }
   | { op: "setMastery"; level: 1 | 2; ref: Ref | null };
@@ -32,6 +33,8 @@ export const SLOT_LEVELS = ["1", "2", "3", "4", "5", "6", "7", "8", "9"];
 export const PACT_SLOT = "pact";
 // Tiempo de lanzamiento que exige Dominio de conjuros (como lo guarda el importador: `spellTime`)
 const ACTION_TIME = "1 acción";
+// Usos que también se recuperan con un descanso corto (Conjuros distintivos: `signatureKey`)
+const SIGNATURE_PREFIX = "signature:";
 
 type Obj = Record<string, unknown>;
 const isObj = (v: unknown): v is Obj => typeof v === "object" && v !== null && !Array.isArray(v);
@@ -130,6 +133,15 @@ export function applySpellOp(sheet: Dnd2024SheetV2, op: unknown, ctx: SpellOpCtx
   }
 
   if (op.op === "longRest") return { ok: true, sheet: { ...sheet, slotsUsed: {}, limitedUsed: {} } };
+
+  // Descanso corto: recupera los espacios de Magia de pacto y los usos de los Conjuros distintivos
+  if (op.op === "shortRest") {
+    const slotsUsed = Object.fromEntries(Object.entries(sheet.slotsUsed ?? {}).filter(([k]) => k !== PACT_SLOT));
+    if (!sheet.limitedUsed) return { ok: true, sheet: { ...sheet, slotsUsed } };
+    const limitedUsed = Object.fromEntries(
+      Object.entries(sheet.limitedUsed).filter(([k]) => !k.startsWith(SIGNATURE_PREFIX)));
+    return { ok: true, sheet: { ...sheet, slotsUsed, limitedUsed } };
+  }
 
   // Usos gastados de un conjuro por descanso largo (Arcano místico, Conjuros distintivos): solo de los que tiene y
   // entre 0 y su máximo

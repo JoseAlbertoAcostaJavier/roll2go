@@ -47,10 +47,13 @@ export type SpellChoice = {
 };
 
 /**
- * Conjuros elegidos con una dote (Iniciado en la magia…): trucos, conjuros y, si la dote la deja elegir, la
- * característica de lanzamiento.
+ * Conjuros elegidos con una dote (Iniciado en la magia…) o una invocación (Pacto del tomo): trucos, conjuros y, si la
+ * dote la deja elegir, la característica de lanzamiento y la lista (Iniciado en la magia base). En las subidas
+ * posteriores, Iniciado en la magia puede cambiar uno de los que tiene por otro (`replace`, con las listas vacías).
  */
-export type FeatSpellsValue = { feat: Ref; cantrips: Named[]; spells: Named[]; ability?: Ability };
+export type FeatSpellsValue = {
+  feat: Ref; list?: string; cantrips: Named[]; spells: Named[]; ability?: Ability; replace?: { out: Named; in: Named };
+};
 
 /** Sustitución de un conjuro por otro al subir de nivel. */
 export type SpellSwap = { out: Named; in: Named };

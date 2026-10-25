@@ -52,6 +52,13 @@ const equipment: Check = (v, p, e) => {
 };
 // `level` es el nivel de personaje o de clase en que se obtiene el conjuro, no el nivel del conjuro
 const spellGrant = shape({ level: int(1, 20), ref, "ability?": ability });
+// Conjuros a elegir de una dote o de una invocación (Pacto del tomo)
+const featSpellChoices = arrayOf(shape({
+  level: int(1, 20),
+  count: int(1, 20),
+  filter: shape({ level: int(0, 9), "classes?": strings, "schools?": strings, "ritual?": oneOf(true) }),
+  "lists?": strings,
+}));
 const levelFeature = shape({ ref, level: int(1, 20) });
 const exactly = (n: number, c: Check): Check => (v, p, e) => {
   if (Array.isArray(v) && v.length !== n) { e.push(`${p}: deben ser ${n}`); return; }
@@ -158,11 +165,7 @@ const checks: { [K in EntryKind]: Check } = {
     "abilityIncrease?": abilities,
     "spells?": arrayOf(spellGrant),
     "grantsSpells?": oneOf(true),
-    "spellChoices?": arrayOf(shape({
-      level: int(1, 20),
-      count: int(1, 20),
-      filter: shape({ level: int(0, 9), "classes?": strings, "schools?": strings, "ritual?": oneOf(true) }),
-    })),
+    "spellChoices?": featSpellChoices,
     "spellAbility?": abilities,
   }),
   spell: shape({
@@ -193,6 +196,7 @@ const checks: { [K in EntryKind]: Check } = {
     featureType: strings,
     "prerequisite?": shape({ "level?": int(1, 20), "spell?": ref, "pact?": str, "feature?": str }),
     "spells?": arrayOf(spellGrant),
+    "spellChoices?": featSpellChoices,
   }),
   nameTable: shape({
     species: str,

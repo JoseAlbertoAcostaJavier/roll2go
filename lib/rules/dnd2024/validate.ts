@@ -10,7 +10,9 @@ import { abilityScores } from "./derive/abilities";
 import { weaponProficient } from "./derive/attacks";
 import { casterBlocks, spellSlots } from "./derive/spells";
 import { FEATURE_OPTION_LABELS } from "./featureChoices";
-import { checkFeatSpellChoices, featSpellPending, splitFeatSpells } from "./featSpells";
+import {
+  checkFeatSpellChoices, featSpellClash, featSpellPending, featSpellsSource, splitFeatSpells, type FeatWithData,
+} from "./featSpells";
 import { ABILITY_NAMES, SKILL_NAMES, featFitsCategories } from "./labels";
 import {
   meetsFeatPrerequisite, pendingChoices, withBonusCantrips, type BonusSpellsPending, type FeatPrerequisiteCtx,
@@ -207,11 +209,24 @@ export async function validateSheet(input: unknown, ctx: ValidateCtx): Promise<V
         path: "levels.0.choices", entries: classEntries, resolve: ctx.resolve, skills: takenSkills,
         weapons: cls.weapons, level: 1, subclass, spellsGranted,
       });
+      // (y los de las invocaciones elegidas en el nivel 1: Pacto del tomo)
       const featEntry = bgFeat && bg ? await ctx.resolve(bg.feat) : null;
+      const withSpells: FeatWithData[] = [
+        ...(featEntry ? [{ ref: featEntry.ref, name: featEntry.nameEs || featEntry.name, data: bgFeat }] : []),
+        ...checked.choices.flatMap((c) => (c.type === "optionalFeature" ? c.value : [])).map((o) => ({
+          ref: o.ref, name: o.name, data: classEntries.get(refKey(o.ref))?.data as OptionalFeatureData | undefined,
+        })),
+      ];
       const featSpells = await checkFeatSpellChoices(
-        featEntry ? featSpellPending([{ ref: featEntry.ref, name: featEntry.nameEs || featEntry.name, data: bgFeat }], (l) => l <= 1) : [],
+        featSpellPending(withSpells, (l) => l <= 1),
         split.featSpells, { path: "levels.0.choices", books: ctx.books, resolve: ctx.resolve },
       );
+      // El mismo conjuro no se elige a la vez con la dote y para la clase
+      const clash = featSpellClash([...checked.choices, ...featSpells.choices]);
+      if (clash) {
+        const label = withSpells.find((f) => featSpellsSource(f.ref) === clash.source)?.name ?? "";
+        featSpells.errors[`levels.0.choices.${clash.source}`] = `Conjuros de ${label}: ${clash.name} ya lo eliges con la clase.`;
+      }
       for (const [k, msg] of Object.entries({ ...featSpells.errors, ...checked.errors })) err(k, msg);
       if (Object.keys(checked.errors).length || Object.keys(featSpells.errors).length) ok = false;
       choices = [...checked.choices, ...featSpells.choices];
@@ -732,8 +747,9 @@ async function checkBonusSpells(
 
 // Elección de conjuros (spec de conjuros §2.4): exactamente los trucos y conjuros nuevos que pide el nivel, de la
 // lista de la clase (los conjuros, también de las de Secretos mágicos: `p.lists`) y de nivel permitido, sin repetir
-// los que ya tiene; las entradas gratis del libro del Sabio de la escuela (`p.free`), de su escuela; y, si el nivel lo
-// permite, sustituir un conjuro aprendido (`replace`) y un truco (`replaceCantrip`) por otro del mismo tipo
+// los que ya tiene; las entradas gratis del libro del Sabio de la escuela (`p.free`, hasta su número), de su escuela;
+// y, si el nivel lo permite, sustituir un conjuro aprendido (`replace`) y un truco (`replaceCantrip`) por otro del
+// mismo tipo
 async function checkSpells(
   pending: PendingChoice, p: NonNullable<PendingChoice["spells"]>, raw: unknown, ctx: ChoicesCtx, load: Load,
 ): Promise<{ error: string } | { value: SpellChoice }> {
@@ -777,8 +793,9 @@ async function checkSpells(
     const f = p.free;
     const school = spellSchoolName(f.school);
     const items = raw.free ?? [];
-    if (!Array.isArray(items) || items.length !== f.count)
-      return { error: `elige ${f.count} ${f.count === 1 ? "conjuro gratis" : "conjuros gratis"} de ${school}.` };
+    // («puedes añadir»: de 0 a `count`)
+    if (!Array.isArray(items) || items.length > f.count)
+      return { error: `elige hasta ${f.count} ${f.count === 1 ? "conjuro gratis" : "conjuros gratis"} de ${school}.` };
     const found = await Promise.all(items.map((v) => load(v, "spell")));
     if (found.some((e) => !e)) return { error: "conjuro no disponible." };
     for (const e of found as CatalogEntry[]) {

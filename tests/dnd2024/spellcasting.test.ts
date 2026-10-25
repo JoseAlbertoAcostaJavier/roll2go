@@ -269,6 +269,34 @@ describe("otros conjuros", () => {
     s.background = { ref: ref("background:none|xphb"), name: "Ninguno", abilities: {}, equipment: "A" };
     expect(otherSpells(s, entries)).toEqual([]);
   });
+  it("Iniciado en la magia: con los cambios hechos al subir", () => {
+    const initiate = ref("feat:magic initiate; cleric|xphb");
+    const SOURCE = "featSpells:feat:magic initiate; cleric|xphb";
+    const s = sheetOf(times("barbarian", 3), {
+      1: [{ type: "featSpells", source: SOURCE, value: { feat: initiate, cantrips: [spell("light"), spell("guidance")], spells: [spell("bless")] } }],
+      3: [{ type: "featSpells", source: SOURCE, value: { feat: initiate, cantrips: [], spells: [], replace: { out: spell("bless"), in: spell("command") } } }],
+    });
+    s.background = { ref: ref("background:acolyte|xphb"), name: "Acólito", abilities: {}, equipment: "A" };
+    expect(otherSpells(s, entries).map((o) => o.spell.name)).toEqual(["light", "guidance", "command"]);
+  });
+  it("Pacto del tomo: los conjuros elegidos con la invocación, con su nombre como origen, mientras la conserva", () => {
+    const tome: Named = { ref: ref("optionalFeature:pact of the tome|xphb"), name: "Pacto del tomo" };
+    const INVOCATIONS = "progression:eldritch invocations|warlock|xphb";
+    const s = sheetOf(times("warlock", 2), {
+      1: [
+        { type: "optionalFeature", source: INVOCATIONS, value: [tome] },
+        { type: "featSpells", source: "featSpells:optionalFeature:pact of the tome|xphb", value: {
+          feat: tome.ref, cantrips: [spell("light"), spell("guidance"), spell("thaumaturgy")], spells: [spell("find familiar"), spell("alarm")],
+        } },
+      ],
+    });
+    expect(otherSpells(s, entries)).toEqual(["light", "guidance", "thaumaturgy", "find familiar", "alarm"]
+      .map((n) => ({ spell: spell(n), origin: "Pacto del tomo" })));
+    // Sustituida por otra invocación, los pierde
+    const step: Named = { ref: ref("optionalFeature:ascendant step|xphb"), name: "Paso ascendente" };
+    s.levels[1].choices.push({ type: "optionalFeature", source: INVOCATIONS, value: [step], replaced: [tome] });
+    expect(otherSpells(s, entries).map((o) => o.origin)).toEqual(["Invocación: Paso ascendente"]);
+  });
   it("dote con conjuros fijos: Tocado por los feéricos → Paso brumoso", () => {
     const fey: Named = { ref: ref("feat:fey-touched|xphb"), name: "Tocado por los feéricos" };
     const s = sheetOf(times("barbarian", 4), { 4: [{ type: "asi", source: "x", value: { feat: fey } }] });

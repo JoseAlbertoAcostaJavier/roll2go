@@ -18,19 +18,19 @@ const MAX_ATTEMPTS = 3;
 const CHANGED_ERROR = "Los conjuros del personaje han cambiado; recarga la página.";
 
 // Campos de la hoja que cambia cada operación (la tierra también quita de los preparados los que pasa a dar; el
-// descanso largo recupera espacios y usos)
+// descanso largo recupera espacios y usos; el corto, los de pacto y los de los Conjuros distintivos)
 type Field = keyof Pick<
   Dnd2024SheetV2, "prepared" | "spellbookExtra" | "slotsUsed" | "spellOption" | "limitedUsed" | "spellMastery"
 >;
 const FIELDS: Record<string, Field[]> = {
   prepare: ["prepared"], unprepare: ["prepared"], copy: ["spellbookExtra"], slot: ["slotsUsed"],
-  longRest: ["slotsUsed", "limitedUsed"], setOption: ["spellOption", "prepared"], limited: ["limitedUsed"],
-  setMastery: ["spellMastery"],
+  longRest: ["slotsUsed", "limitedUsed"], shortRest: ["slotsUsed", "limitedUsed"], setOption: ["spellOption", "prepared"],
+  limited: ["limitedUsed"], setMastery: ["spellMastery"],
 };
 
 // Una operación de conjuros (spec de conjuros §2.5): { op: "prepare" | "unprepare", class, ref }, { op: "copy", ref },
-// { op: "slot", level, used }, { op: "longRest" }, { op: "setOption", subclass, name } (la tierra del Círculo de la
-// Tierra; `name: null` la quita), { op: "limited", key, used } (usos de un conjuro por descanso largo) o
+// { op: "slot", level, used }, { op: "longRest" }, { op: "shortRest" }, { op: "setOption", subclass, name } (la tierra
+// del Círculo de la Tierra; `name: null` la quita), { op: "limited", key, used } (usos de un conjuro por descanso largo) o
 // { op: "setMastery", level, ref } (Dominio de conjuros; `ref: null` lo quita). Solo el dueño. Se comprueba sobre lo
 // guardado y solo se escribe si ese campo sigue igual, así nunca se supera el límite con peticiones a la vez.
 // Responde { spells } recalculado.

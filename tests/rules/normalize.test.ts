@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { inlineTags } from "@/lib/rules/import/toBbcode";
 import {
-  normalizeAll, normalizeBackground, normalizeFeat, expandVersions, resolveCopy, textChoiceFeatures, toIdentifier, unreachableFeatures,
+  normalizeAll, normalizeBackground, normalizeFeat, normalizeOptionalFeature, expandVersions, resolveCopy, textChoiceFeatures, toIdentifier, unreachableFeatures,
   type NormalizedEntry, type RawFiles,
 } from "@/lib/rules/import/normalize";
 import type {
@@ -110,8 +110,23 @@ test("dotes con conjuros: los fijos en `spells` y `grantsSpells` también si sol
   expect(ritual.spellChoices).toEqual([
     { level: 1, count: 2, filter: { level: 1, ritual: true } }, { level: 5, count: 1, filter: { level: 1, ritual: true } },
   ]);
-  // Con varias listas alternativas (la dote base de Iniciado en la magia) no hay elección: se usa una de sus versiones
-  expect((find("feat", "feat:magic initiate|xphb")!.data as FeatData).spellChoices).toBeUndefined();
+  // Con varias listas alternativas que piden lo mismo (la dote base de Iniciado en la magia), la lista se elige
+  const base = find("feat", "feat:magic initiate|xphb")!.data as FeatData;
+  const LISTS = ["cleric", "druid", "wizard"];
+  expect(base.spellChoices).toEqual([
+    { level: 1, count: 2, filter: { level: 0 }, lists: LISTS }, { level: 1, count: 1, filter: { level: 1 }, lists: LISTS },
+  ]);
+  expect(base.spellChoices!.map((c) => c.lists)).toEqual([LISTS, LISTS]);
+  expect(base.spellAbility).toEqual(["int", "wis", "cha"]);
+  // Alternativas que piden cosas distintas: sin elección
+  const mixed = normalizeFeat({
+    name: "Mixed", source: "XPHB", category: "G",
+    additionalSpells: [
+      { name: "A", known: { _: [{ choose: "level=0|class=Cleric", count: 2 }] } },
+      { name: "B", known: { _: [{ choose: "level=0|class=Druid", count: 1 }] } },
+    ],
+  }).data as FeatData;
+  expect(mixed.spellChoices).toBeUndefined();
   const alert = normalizeFeat({ name: "Alert", source: "XPHB", category: "O" }).data;
   expect(alert).not.toHaveProperty("grantsSpells");
   expect(alert).not.toHaveProperty("spells");
@@ -533,6 +548,20 @@ describe("progresiones, tabla, multiclase y rasgos opcionales", () => {
     });
     expect(get("optionalFeature:careful spell|xphb").data).toEqual({ featureType: ["MM"] });
     expect(r.entries.filter((e) => e.kind === "optionalFeature")).toHaveLength(4);
+  });
+  test("Pacto del tomo: 3 trucos de cualquier lista y 2 rituales de nivel 1 a elegir", () => {
+    const tome = normalizeOptionalFeature({
+      name: "Pact of the Tome", source: "XPHB", featureType: ["EI"],
+      additionalSpells: [{
+        ability: "cha",
+        known: { _: [{ choose: "level=0", count: 3 }] },
+        prepared: { _: [{ choose: "level=1|components & miscellaneous=ritual", count: 2 }] },
+      }],
+    }).data as OptionalFeatureData;
+    expect(tome).toEqual({
+      featureType: ["EI"],
+      spellChoices: [{ level: 1, count: 3, filter: { level: 0 } }, { level: 1, count: 2, filter: { level: 1, ritual: true } }],
+    });
   });
   test("progresiones de subclase: maniobras del Maestro de batalla y estilo del Campeón", () => {
     const battleMaster = get("subclass:battle master|fighter|xphb").data as SubclassData;
