@@ -18,3 +18,8 @@ Tras desplegar los conjuros:
 
 - Vuelve a ejecutar `npm run import:5etools -- --data <carpeta data de 5etools>` y **reinicia el servidor**: los conjuros ganan clases, etiquetas, mejora y nombre en español, y las clases su modo de lanzamiento. Hasta reimportar, el catálogo descarta las clases y los conjuros guardados con el formato anterior. La reimportación también trae las tierras del Círculo de la Tierra (se eligen en la ficha), los conjuros de las invocaciones y los conjuros a elegir de las dotes (Iniciado en la magia…).
 - Los personajes creados antes con una dote de conjuros elegidos (p. ej. el Acólito) no los tienen guardados: hay que rehacer su creación (si son de nivel 1) o anotarlos. Los Clérigos Taumaturgos y Druidas Magos eligen el truco que les falta en su siguiente subida.
+
+Tras desplegar la ampliación de conjuros:
+
+- Vuelve a ejecutar `npm run import:5etools -- --data <carpeta data de 5etools>` (listas de la dote base de Iniciado en la magia y conjuros del Pacto del tomo) y **reinicia el servidor**.
+- Los personajes ya creados de nivel alto reciben en su siguiente subida los rasgos nuevos que les falten (Arcano místico, Descubrimientos mágicos, conjuros gratis del Sabio de la escuela). Un Mago 20 sin Conjuros distintivos debe borrar el nivel 20 y volver a subirlo.
