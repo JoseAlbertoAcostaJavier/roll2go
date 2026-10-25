@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
 import { sessionOf } from "@/lib/campaignApi";
-import { rateLimit, tooManyRequests } from "@/lib/rateLimit";
-import { Character } from "@/lib/Character";
+import { rateLimit, tooManyRequests } from "@/lib/utils/rateLimit";
+import { Character } from "@/lib/models/Character";
 import { OUTDATED_SHEET_ERROR, loadCharacterFor } from "@/lib/characterAccess";
 import { resolveRef, type CatalogEntry } from "@/lib/rules/catalog";
 import { applyInventoryOp } from "@/lib/rules/dnd2024/edits";

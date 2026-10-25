@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
-import { connectDB } from "@/lib/mongodb";
+import { connectDB } from "@/lib/models/mongodb";
 import { sessionOf } from "@/lib/campaignApi";
-import { rateLimit, tooManyRequests } from "@/lib/rateLimit";
-import { CampaignInvite } from "@/lib/CampaignInvite";
-import { Notification } from "@/lib/Notification";
+import { rateLimit, tooManyRequests } from "@/lib/utils/rateLimit";
+import { CampaignInvite } from "@/lib/models/CampaignInvite";
+import { Notification } from "@/lib/models/Notification";
 import { joinCampaign } from "@/lib/joinCampaign";
 
 export async function PATCH(

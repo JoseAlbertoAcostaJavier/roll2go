@@ -12,9 +12,9 @@ try {
   process.loadEnvFile(".env.local");
 } catch {}
 
-import { connectDB } from "../lib/mongodb";
-import { Book } from "../lib/Book";
-import { BookEntry, ENTRY_KINDS } from "../lib/BookEntry";
+import { connectDB } from "../lib/models/mongodb";
+import { Book } from "../lib/models/Book";
+import { BookEntry, ENTRY_KINDS } from "../lib/models/BookEntry";
 import {
   BOOK_PLACEHOLDER, normalizeAll, textChoiceFeatures, unreachableFeatures, type RawFiles,
 } from "../lib/rules/import/normalize";

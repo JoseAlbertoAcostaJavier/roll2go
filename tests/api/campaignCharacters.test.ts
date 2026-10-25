@@ -21,18 +21,18 @@ vi.mock("@/lib/campaignApi", () => ({
       ? { session: { id: DM }, campaign: { _id: CAMPAIGN, owner: DM, members: [DM, PLAYER] }, isDm: true }
       : { error: NextResponse.json({ error: "Solo el DM puede hacer esto." }, { status: 403 }) },
 }));
-vi.mock("@/lib/rateLimit", () => ({
+vi.mock("@/lib/utils/rateLimit", () => ({
   rateLimit: async () => ({ ok: true }),
   tooManyRequests: () => new Response(null, { status: 429 }),
 }));
-vi.mock("@/lib/Character", () => ({
+vi.mock("@/lib/models/Character", () => ({
   Character: {
     findOne: () => ({ select: () => ({ lean: async () => db.character }) }),
     updateOne: async (...args: unknown[]) => (db.updates.push(args), { matchedCount: db.matched }),
   },
 }));
 vi.mock("@/lib/notify", () => ({ notify: async (n: Record<string, unknown>) => void db.notified.push(n) }));
-vi.mock("@/lib/Notification", () => ({
+vi.mock("@/lib/models/Notification", () => ({
   Notification: { deleteMany: async (filter: unknown) => (db.cleared.push(filter), { deletedCount: 1 }) },
 }));
 

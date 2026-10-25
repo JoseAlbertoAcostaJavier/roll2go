@@ -1,4 +1,4 @@
-import { cleanText } from "@/lib/utils";
+import { cleanText } from "@/lib/utils/utils";
 
 export const REACTIONS = [
   { emoji: "👍", label: "Me gusta" },

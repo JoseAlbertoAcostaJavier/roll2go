@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
 import { sessionOf } from "@/lib/campaignApi";
-import { rateLimit, tooManyRequests } from "@/lib/rateLimit";
-import { Book } from "@/lib/Book";
-import { BookEntry } from "@/lib/BookEntry";
+import { rateLimit, tooManyRequests } from "@/lib/utils/rateLimit";
+import { Book } from "@/lib/models/Book";
+import { BookEntry } from "@/lib/models/BookEntry";
 import { MAX_BOOK_DESCRIPTION, MAX_BOOK_NAME, loadBook } from "@/lib/bookAccess";
-import { cleanText } from "@/lib/utils";
+import { cleanText } from "@/lib/utils/utils";
 
 type Ctx = { params: Promise<{ id: string }> };
 

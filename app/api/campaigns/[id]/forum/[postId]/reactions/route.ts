@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
-import { rateLimit, tooManyRequests } from "@/lib/rateLimit";
-import { ForumPost } from "@/lib/ForumPost";
-import { ForumReaction } from "@/lib/ForumReaction";
+import { rateLimit, tooManyRequests } from "@/lib/utils/rateLimit";
+import { ForumPost } from "@/lib/models/ForumPost";
+import { ForumReaction } from "@/lib/models/ForumReaction";
 import { requireMember } from "@/lib/campaignApi";
 import { REACTION_EMOJIS } from "@/lib/forum";
 

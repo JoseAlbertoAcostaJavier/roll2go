@@ -3,8 +3,8 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import CampaignForm from "@/app/components/CampaignForm";
 import { COOKIE_NAME, verifySession } from "@/lib/auth";
-import { connectDB } from "@/lib/mongodb";
-import { system as rpgSystems } from "@/lib/systems";
+import { connectDB } from "@/lib/models/mongodb";
+import { system as rpgSystems } from "@/lib/utils/systems";
 import { visibleBooksOf } from "@/lib/rules/books";
 
 export const metadata: Metadata = { title: "Crear campaña" };

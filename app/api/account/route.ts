@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
-import { connectDB } from "@/lib/mongodb";
+import { connectDB } from "@/lib/models/mongodb";
 import { COOKIE_NAME } from "@/lib/auth";
 import { sessionOf } from "@/lib/campaignApi";
-import { rateLimit, tooManyRequests } from "@/lib/rateLimit";
-import { User } from "@/lib/User";
+import { rateLimit, tooManyRequests } from "@/lib/utils/rateLimit";
+import { User } from "@/lib/models/User";
 import { createVerificationToken } from "@/lib/verification";
 import { sendVerificationEmail } from "@/lib/mail";
 import { deleteUserData } from "@/lib/accountCleanup";

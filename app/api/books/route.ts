@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { connectDB } from "@/lib/mongodb";
+import { connectDB } from "@/lib/models/mongodb";
 import { sessionOf } from "@/lib/campaignApi";
-import { rateLimit, tooManyRequests } from "@/lib/rateLimit";
-import { Book } from "@/lib/Book";
-import { system } from "@/lib/systems";
+import { rateLimit, tooManyRequests } from "@/lib/utils/rateLimit";
+import { Book } from "@/lib/models/Book";
+import { system } from "@/lib/utils/systems";
 import { MAX_BOOKS_PER_USER, MAX_BOOK_DESCRIPTION, MAX_BOOK_NAME } from "@/lib/bookAccess";
-import { cleanText } from "@/lib/utils";
+import { cleanText } from "@/lib/utils/utils";
 
 // Mis libros (opcional ?systemId=dnd-5)
 export async function GET(req: NextRequest) {

@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
-import { connectDB } from "@/lib/mongodb";
-import { User } from "@/lib/User";
-import { BannedEmail } from "@/lib/BannedEmail";
-import { getClientIp, rateLimit, tooManyRequests } from "@/lib/rateLimit";
+import { connectDB } from "@/lib/models/mongodb";
+import { User } from "@/lib/models/User";
+import { BannedEmail } from "@/lib/models/BannedEmail";
+import { getClientIp, rateLimit, tooManyRequests } from "@/lib/utils/rateLimit";
 import { createVerificationToken } from "@/lib/verification";
 import { sendVerificationEmail } from "@/lib/mail";
 

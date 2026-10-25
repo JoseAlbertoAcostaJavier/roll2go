@@ -4,10 +4,10 @@ import Avatar from "@/app/components/Avatar";
 import LocalDate from "@/app/components/LocalDate";
 import Pagination from "@/app/components/Pagination";
 import { getCampaignAccess } from "@/lib/campaignAccess";
-import { ForumPost } from "@/lib/ForumPost";
+import { ForumPost } from "@/lib/models/ForumPost";
 import { THREADS_PER_PAGE } from "@/lib/forum";
 import { loadUserCards } from "@/lib/userCards";
-import { pageFrom } from "@/lib/utils";
+import { pageFrom } from "@/lib/utils/utils";
 
 const newButton =
   "flex items-center gap-2 rounded-md bg-brand px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-brand-hover";

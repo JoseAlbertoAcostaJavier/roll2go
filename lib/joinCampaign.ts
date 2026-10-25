@@ -1,4 +1,4 @@
-import { Campaign } from "@/lib/Campaign";
+import { Campaign } from "@/lib/models/Campaign";
 import { MAX_MEMBERS } from "@/lib/members";
 import { notify } from "@/lib/notify";
 

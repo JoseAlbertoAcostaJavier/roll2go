@@ -6,11 +6,11 @@ import ForumMessage, { type ForumMessageData } from "@/app/components/ForumMessa
 import ForumPostForm from "@/app/components/ForumPostForm";
 import Pagination from "@/app/components/Pagination";
 import { getCampaignAccess } from "@/lib/campaignAccess";
-import { ForumPost } from "@/lib/ForumPost";
+import { ForumPost } from "@/lib/models/ForumPost";
 import { REPLIES_PER_PAGE } from "@/lib/forum";
 import { loadReactions } from "@/lib/forumData";
 import { loadUserCards } from "@/lib/userCards";
-import { pageFrom } from "@/lib/utils";
+import { pageFrom } from "@/lib/utils/utils";
 
 export default async function ForumThreadPage({
   params,

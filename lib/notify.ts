@@ -1,8 +1,8 @@
 import { after } from "next/server";
-import { connectDB } from "@/lib/mongodb";
-import { Notification } from "@/lib/Notification";
-import { User } from "@/lib/User";
-import { Campaign } from "@/lib/Campaign";
+import { connectDB } from "@/lib/models/mongodb";
+import { Notification } from "@/lib/models/Notification";
+import { User } from "@/lib/models/User";
+import { Campaign } from "@/lib/models/Campaign";
 import {
   describeNotification,
   emailPrefFor,

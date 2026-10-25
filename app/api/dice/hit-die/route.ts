@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sessionOf } from "@/lib/campaignApi";
 import { loadCharacterFor } from "@/lib/characterAccess";
-import { rateLimit, tooManyRequests } from "@/lib/rateLimit";
+import { rateLimit, tooManyRequests } from "@/lib/utils/rateLimit";
 import { HIT_DICE, hitDieValue, signHitDie } from "@/lib/rules/dnd2024/rolls";
 import { MAX_LEVEL } from "@/lib/rules/dnd2024/validateLevel";
 

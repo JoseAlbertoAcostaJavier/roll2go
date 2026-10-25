@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
-import { connectDB } from "@/lib/mongodb";
+import { connectDB } from "@/lib/models/mongodb";
 import { sessionOf } from "@/lib/campaignApi";
-import { rateLimit, tooManyRequests } from "@/lib/rateLimit";
-import { Campaign } from "@/lib/Campaign";
-import { CampaignImage } from "@/lib/CampaignImage";
+import { rateLimit, tooManyRequests } from "@/lib/utils/rateLimit";
+import { Campaign } from "@/lib/models/Campaign";
+import { CampaignImage } from "@/lib/models/CampaignImage";
 import { booksByIds, visibleBooksOf } from "@/lib/rules/books";
 import { parseCampaignForm, storeImage } from "@/lib/campaignInput";
 import { deleteCampaignData } from "@/lib/accountCleanup";

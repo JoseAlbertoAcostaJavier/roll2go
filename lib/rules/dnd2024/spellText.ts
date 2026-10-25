@@ -1,6 +1,6 @@
 // Textos en español de los conjuros a partir de los campos de 5etools (etiquetas, resumen, nombres de clase), solo
 // para el servidor y el importador: carga `es.json`. Lo que usa el navegador está en `spellTextClient.ts`.
-import { bbcodeToText } from "@/lib/bbcode";
+import { bbcodeToText } from "@/lib/utils/bbcode";
 import { ABILITY_NAMES } from "./labels";
 import es from "../i18n/es.json";
 

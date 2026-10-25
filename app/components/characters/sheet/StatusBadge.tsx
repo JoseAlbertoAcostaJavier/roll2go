@@ -1,4 +1,4 @@
-import { iconSrc } from "@/lib/icons";
+import { iconSrc } from "@/lib/utils/icons";
 
 export type CharacterStatus = "active" | "retired" | "dead" | "npc";
 

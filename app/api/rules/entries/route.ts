@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sessionOf } from "@/lib/campaignApi";
-import { ENTRY_KINDS } from "@/lib/BookEntry";
+import { ENTRY_KINDS } from "@/lib/models/BookEntry";
 import { NotFoundError, listEntries, usableBooks } from "@/lib/rules/catalog";
 import type { EntryKind } from "@/lib/rules/types";
 

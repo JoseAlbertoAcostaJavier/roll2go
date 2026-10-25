@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
-import { connectDB } from "@/lib/mongodb";
-import { Book } from "@/lib/Book";
+import { connectDB } from "@/lib/models/mongodb";
+import { Book } from "@/lib/models/Book";
 
 export type BookOption = {
   id: string;

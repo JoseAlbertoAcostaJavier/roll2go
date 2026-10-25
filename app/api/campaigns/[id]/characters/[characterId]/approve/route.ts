@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
 import { requireDm } from "@/lib/campaignApi";
-import { rateLimit, tooManyRequests } from "@/lib/rateLimit";
-import { Character } from "@/lib/Character";
+import { rateLimit, tooManyRequests } from "@/lib/utils/rateLimit";
+import { Character } from "@/lib/models/Character";
 import { notify } from "@/lib/notify";
-import { Notification } from "@/lib/Notification";
+import { Notification } from "@/lib/models/Notification";
 
 type Ctx = { params: Promise<{ id: string; characterId: string }> };
 

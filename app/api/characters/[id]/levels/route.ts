@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sessionOf } from "@/lib/campaignApi";
-import { rateLimit, tooManyRequests } from "@/lib/rateLimit";
-import { Campaign } from "@/lib/Campaign";
-import { Character } from "@/lib/Character";
+import { rateLimit, tooManyRequests } from "@/lib/utils/rateLimit";
+import { Campaign } from "@/lib/models/Campaign";
+import { Character } from "@/lib/models/Character";
 import { OUTDATED_SHEET_ERROR, loadCharacterFor } from "@/lib/characterAccess";
 import { notify } from "@/lib/notify";
 import { getEntries, getEntry } from "@/lib/rules/catalog";

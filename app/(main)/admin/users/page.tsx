@@ -6,9 +6,9 @@ import LocalDate from "@/app/components/LocalDate";
 import Pagination from "@/app/components/Pagination";
 import UserLink from "@/app/components/UserLink";
 import { requireAdmin } from "@/lib/currentUser";
-import { connectDB } from "@/lib/mongodb";
-import { User } from "@/lib/User";
-import { escapeRegex, first, pageFrom } from "@/lib/utils";
+import { connectDB } from "@/lib/models/mongodb";
+import { User } from "@/lib/models/User";
+import { escapeRegex, first, pageFrom } from "@/lib/utils/utils";
 
 export const metadata: Metadata = { title: "Usuarios de Roll2Go" };
 

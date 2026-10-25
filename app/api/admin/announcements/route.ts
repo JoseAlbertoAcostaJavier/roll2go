@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { connectDB } from "@/lib/mongodb";
+import { connectDB } from "@/lib/models/mongodb";
 import { sessionOf } from "@/lib/campaignApi";
-import { rateLimit, tooManyRequests } from "@/lib/rateLimit";
-import { User } from "@/lib/User";
-import { Notification } from "@/lib/Notification";
+import { rateLimit, tooManyRequests } from "@/lib/utils/rateLimit";
+import { User } from "@/lib/models/User";
+import { Notification } from "@/lib/models/Notification";
 
 export async function POST(req: NextRequest) {
   const session = await sessionOf(req);

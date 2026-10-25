@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
-import { connectDB } from "@/lib/mongodb";
+import { connectDB } from "@/lib/models/mongodb";
 import { sessionOf } from "@/lib/campaignApi";
-import { Notification } from "@/lib/Notification";
-import { User } from "@/lib/User";
-import { Campaign } from "@/lib/Campaign";
+import { Notification } from "@/lib/models/Notification";
+import { User } from "@/lib/models/User";
+import { Campaign } from "@/lib/models/Campaign";
 import {
   describeNotification,
   type NotificationType,

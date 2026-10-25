@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
-import { connectDB } from "@/lib/mongodb";
-import { Book } from "@/lib/Book";
+import { connectDB } from "@/lib/models/mongodb";
+import { Book } from "@/lib/models/Book";
 
 export const MAX_BOOKS_PER_USER = 50;
 export const MAX_ENTRIES_PER_BOOK = 3000;

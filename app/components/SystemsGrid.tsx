@@ -1,4 +1,4 @@
-import { system } from "@/lib/systems";
+import { system } from "@/lib/utils/systems";
 
 export default function SystemsGrid() {
   return (

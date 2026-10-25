@@ -3,11 +3,11 @@ import { Globe, Lock, Pencil, Plus } from "lucide-react";
 import Bbcode from "@/app/components/Bbcode";
 import ConfirmAction from "@/app/components/ConfirmAction";
 import { getCampaignAccess } from "@/lib/campaignAccess";
-import { CampaignLogEntry } from "@/lib/CampaignLogEntry";
+import { CampaignLogEntry } from "@/lib/models/CampaignLogEntry";
 import LocalDate from "@/app/components/LocalDate";
 import UserLink from "@/app/components/UserLink";
 import { loadUserCards } from "@/lib/userCards";
-import { first, pageFrom } from "@/lib/utils";
+import { first, pageFrom } from "@/lib/utils/utils";
 import Pagination from "@/app/components/Pagination";
 
 const PAGE_SIZE = 10;

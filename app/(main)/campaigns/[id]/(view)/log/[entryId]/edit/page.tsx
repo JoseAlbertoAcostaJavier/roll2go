@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import mongoose from "mongoose";
 import LogEntryForm from "@/app/components/LogEntryForm";
 import { getCampaignAccess } from "@/lib/campaignAccess";
-import { CampaignLogEntry } from "@/lib/CampaignLogEntry";
+import { CampaignLogEntry } from "@/lib/models/CampaignLogEntry";
 
 export default async function EditLogEntryPage({ params }: { params: Promise<{ id: string; entryId: string }> }) {
   const { id, entryId } = await params;

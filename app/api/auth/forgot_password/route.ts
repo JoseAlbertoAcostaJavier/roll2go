@@ -1,7 +1,7 @@
 import { after, NextRequest, NextResponse } from "next/server";
-import { connectDB } from "@/lib/mongodb";
-import { User } from "@/lib/User";
-import { getClientIp, rateLimit, tooManyRequests } from "@/lib/rateLimit";
+import { connectDB } from "@/lib/models/mongodb";
+import { User } from "@/lib/models/User";
+import { getClientIp, rateLimit, tooManyRequests } from "@/lib/utils/rateLimit";
 import { createResetToken } from "@/lib/verification";
 import { sendPasswordResetEmail } from "@/lib/mail";
 

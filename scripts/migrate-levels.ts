@@ -9,8 +9,8 @@ try {
   process.loadEnvFile(".env.local");
 } catch {}
 
-import { connectDB } from "../lib/mongodb";
-import { Character } from "../lib/Character";
+import { connectDB } from "../lib/models/mongodb";
+import { Character } from "../lib/models/Character";
 import { getEntry } from "../lib/rules/catalog";
 import type { Dnd2024Sheet } from "../lib/rules/dnd2024/sheet";
 import { loadUpgradeEntries, missingForUpgrade, upgradeSheet } from "../lib/rules/dnd2024/upgrade";

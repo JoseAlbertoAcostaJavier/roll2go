@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { iconSrc, type IconKind } from "@/lib/icons";
+import { iconSrc, type IconKind } from "@/lib/utils/icons";
 
 // Las insignias de clase y escuela son un disco de color con el borde de trazo de pincel: se amplían para que el disco
 // llene el círculo (el borde irregular queda fuera) con el símbolo en el centro

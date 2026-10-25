@@ -1,18 +1,18 @@
-import { Campaign } from "@/lib/Campaign";
-import { CampaignImage } from "@/lib/CampaignImage";
-import { CampaignLogEntry } from "@/lib/CampaignLogEntry";
-import { HomebrewEntry } from "@/lib/HomebrewEntry";
-import { Character } from "@/lib/Character";
-import { Friendship } from "@/lib/Friendship";
-import { User } from "@/lib/User";
-import { Message } from "@/lib/Message";
-import { Notification } from "@/lib/Notification";
-import { Block } from "@/lib/Block";
-import { CampaignInvite } from "@/lib/CampaignInvite";
-import { ForumPost } from "@/lib/ForumPost";
-import { ForumReaction } from "@/lib/ForumReaction";
-import { Book } from "@/lib/Book";
-import { BookEntry } from "@/lib/BookEntry";
+import { Campaign } from "@/lib/models/Campaign";
+import { CampaignImage } from "@/lib/models/CampaignImage";
+import { CampaignLogEntry } from "@/lib/models/CampaignLogEntry";
+import { HomebrewEntry } from "@/lib/models/HomebrewEntry";
+import { Character } from "@/lib/models/Character";
+import { Friendship } from "@/lib/models/Friendship";
+import { User } from "@/lib/models/User";
+import { Message } from "@/lib/models/Message";
+import { Notification } from "@/lib/models/Notification";
+import { Block } from "@/lib/models/Block";
+import { CampaignInvite } from "@/lib/models/CampaignInvite";
+import { ForumPost } from "@/lib/models/ForumPost";
+import { ForumReaction } from "@/lib/models/ForumReaction";
+import { Book } from "@/lib/models/Book";
+import { BookEntry } from "@/lib/models/BookEntry";
 
 /* Borra una campaña y todo lo que depende de ella. Los personajes NO se borran: se quedan sin campaña.
    La campaña se borra antes que las imágenes: si algo falla a medias, volver a intentarlo es seguro. */

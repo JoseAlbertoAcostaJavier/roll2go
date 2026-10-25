@@ -1,4 +1,4 @@
-import { Block } from "@/lib/Block";
+import { Block } from "@/lib/models/Block";
 
 // Estado del bloqueo entre dos usuarios: ¿he bloqueado yo?, ¿me ha bloqueado él?
 export async function blockStatus(meId: string, otherId: string) {

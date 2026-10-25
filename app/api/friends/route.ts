@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { connectDB } from "@/lib/mongodb";
+import { connectDB } from "@/lib/models/mongodb";
 import { sessionOf } from "@/lib/campaignApi";
-import { rateLimit, tooManyRequests } from "@/lib/rateLimit";
-import { Friendship, pairKey } from "@/lib/Friendship";
-import { Notification } from "@/lib/Notification";
+import { rateLimit, tooManyRequests } from "@/lib/utils/rateLimit";
+import { Friendship, pairKey } from "@/lib/models/Friendship";
+import { Notification } from "@/lib/models/Notification";
 import { findUserByUsername } from "@/lib/friends";
 import { notify } from "@/lib/notify";
 import { blockStatus } from "@/lib/blocks";

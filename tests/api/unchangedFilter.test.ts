@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { Character } from "@/lib/Character";
-import { unchangedFilter } from "@/lib/unchangedFilter";
+import { Character } from "@/lib/models/Character";
+import { unchangedFilter } from "@/lib/utils/unchangedFilter";
 
 // Filtro tal como lo envía Mongoose a la base de datos (sin conexión)
 const cast = (value: unknown) =>

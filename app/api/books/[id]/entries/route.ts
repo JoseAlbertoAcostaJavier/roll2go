@@ -2,10 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
 import mongoose from "mongoose";
 import { sessionOf } from "@/lib/campaignApi";
-import { rateLimit, tooManyRequests } from "@/lib/rateLimit";
-import { BookEntry, ENTRY_KINDS } from "@/lib/BookEntry";
+import { rateLimit, tooManyRequests } from "@/lib/utils/rateLimit";
+import { BookEntry, ENTRY_KINDS } from "@/lib/models/BookEntry";
 import { MAX_BOOK_NAME, MAX_ENTRIES_PER_BOOK, MAX_ENTRY_DESCRIPTION, loadBook } from "@/lib/bookAccess";
-import { cleanText, escapeRegex } from "@/lib/utils";
+import { cleanText, escapeRegex } from "@/lib/utils/utils";
 import { normalizeName } from "@/lib/rules/schemas";
 
 type Ctx = { params: Promise<{ id: string }> };

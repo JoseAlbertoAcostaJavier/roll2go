@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
-import { connectDB } from "@/lib/mongodb";
-import { User } from "@/lib/User";
+import { connectDB } from "@/lib/models/mongodb";
+import { User } from "@/lib/models/User";
 import { COOKIE_NAME, signSession, sessionCookieOptions } from "@/lib/auth";
-import { getClientIp, rateLimit, tooManyRequests } from "@/lib/rateLimit";
+import { getClientIp, rateLimit, tooManyRequests } from "@/lib/utils/rateLimit";
 
 // Hash falso: se compara igualmente cuando el usuario no existe, para que la
 // respuesta tarde lo mismo y no se pueda averiguar qué cuentas existen.

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { connectDB } from "@/lib/mongodb";
+import { connectDB } from "@/lib/models/mongodb";
 import { sessionOf, type Session } from "@/lib/campaignApi";
-import { User } from "@/lib/User";
+import { User } from "@/lib/models/User";
 
 // Cabe en la notificación (500 caracteres) junto con el texto que la acompaña
 export const REASON_MAX = 400;

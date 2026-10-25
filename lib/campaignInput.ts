@@ -1,7 +1,7 @@
-import { system as rpgSystems } from "@/lib/systems";
+import { system as rpgSystems } from "@/lib/utils/systems";
 import type { BookOption } from "@/lib/rules/books";
 import { detectImageType } from "@/lib/images";
-import { CampaignImage } from "@/lib/CampaignImage";
+import { CampaignImage } from "@/lib/models/CampaignImage";
 
 export const MAX_IMAGE = 2 * 1024 * 1024; // 2 MB
 const MAX_LOGO = 1 * 1024 * 1024; // 1 MB

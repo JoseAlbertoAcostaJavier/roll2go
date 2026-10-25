@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { connectDB } from "@/lib/mongodb";
+import { connectDB } from "@/lib/models/mongodb";
 import { sessionOf } from "@/lib/campaignApi";
-import { User } from "@/lib/User";
+import { User } from "@/lib/models/User";
 import { officialBookIds } from "@/lib/rules/books";
 
 export async function GET(req: NextRequest) {

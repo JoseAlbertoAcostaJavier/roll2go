@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
-import { rateLimit, tooManyRequests } from "@/lib/rateLimit";
-import { Campaign } from "@/lib/Campaign";
-import { CampaignLogEntry } from "@/lib/CampaignLogEntry";
-import { Character } from "@/lib/Character";
+import { rateLimit, tooManyRequests } from "@/lib/utils/rateLimit";
+import { Campaign } from "@/lib/models/Campaign";
+import { CampaignLogEntry } from "@/lib/models/CampaignLogEntry";
+import { Character } from "@/lib/models/Character";
 import { requireMember } from "@/lib/campaignApi";
 import { notify } from "@/lib/notify";
 

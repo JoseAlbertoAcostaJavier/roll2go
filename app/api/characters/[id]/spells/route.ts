@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sessionOf } from "@/lib/campaignApi";
-import { rateLimit, tooManyRequests } from "@/lib/rateLimit";
-import { Character } from "@/lib/Character";
+import { rateLimit, tooManyRequests } from "@/lib/utils/rateLimit";
+import { Character } from "@/lib/models/Character";
 import { OUTDATED_SHEET_ERROR, loadCharacterFor } from "@/lib/characterAccess";
 import { getEntries } from "@/lib/rules/catalog";
 import { derive } from "@/lib/rules/dnd2024/derive";
 import { isRef, refKey } from "@/lib/rules/dnd2024/equipmentRefs";
 import type { Dnd2024SheetV2 } from "@/lib/rules/dnd2024/sheet";
 import { applySpellOp } from "@/lib/rules/dnd2024/spellOps";
-import { unchangedFilter } from "@/lib/unchangedFilter";
+import { unchangedFilter } from "@/lib/utils/unchangedFilter";
 import type { Ref } from "@/lib/rules/types";
 
 type Ctx = { params: Promise<{ id: string }> };

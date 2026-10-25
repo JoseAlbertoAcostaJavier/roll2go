@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sessionOf } from "@/lib/campaignApi";
-import { rateLimit, tooManyRequests } from "@/lib/rateLimit";
+import { rateLimit, tooManyRequests } from "@/lib/utils/rateLimit";
 import { loadCharacterFor } from "@/lib/characterAccess";
 import { listSpellRows } from "@/lib/rules/catalog";
 import { SPELL_LIST_CACHE, validList } from "@/lib/rules/spellRows";

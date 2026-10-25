@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { parseBbcode, plainText, safeUrl, videoEmbedUrl, type BbNode } from "@/lib/bbcode";
+import { parseBbcode, plainText, safeUrl, videoEmbedUrl, type BbNode } from "@/lib/utils/bbcode";
 
 // Quita los saltos de línea del principio y del final de un elemento de lista
 function trimItem(nodes: BbNode[]): BbNode[] {

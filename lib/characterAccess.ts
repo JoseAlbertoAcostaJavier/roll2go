@@ -2,9 +2,9 @@
 // pendiente de aprobación, solo el DM); escribir: solo el dueño. Cualquier otro caso devuelve null (las rutas
 // responden 404 sin revelar que existe).
 import mongoose from "mongoose";
-import { connectDB } from "@/lib/mongodb";
-import { Campaign } from "@/lib/Campaign";
-import { Character } from "@/lib/Character";
+import { connectDB } from "@/lib/models/mongodb";
+import { Campaign } from "@/lib/models/Campaign";
+import { Character } from "@/lib/models/Character";
 import { NotFoundError, getEntries, getEntry, usableBooks } from "@/lib/rules/catalog";
 import type { AnySheet, Dnd2024SheetV2 } from "@/lib/rules/dnd2024/sheet";
 import { loadSheetEntries } from "@/lib/rules/dnd2024/sheetEntries";

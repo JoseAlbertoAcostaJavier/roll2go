@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sessionOf } from "@/lib/campaignApi";
-import { rateLimit, tooManyRequests } from "@/lib/rateLimit";
+import { rateLimit, tooManyRequests } from "@/lib/utils/rateLimit";
 import { rollAbilityScoresDetailed, signRolls } from "@/lib/rules/dnd2024/rolls";
 
 // Genera seis tiradas de característica (4d6 sin el menor) y un token firmado para validarlas al crear el personaje.

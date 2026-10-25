@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import { getCampaignAccess } from "@/lib/campaignAccess";
-import { Character } from "@/lib/Character";
+import { Character } from "@/lib/models/Character";
 import { joinReasons } from "@/lib/campaignEligibility";
 import { loadUserCards } from "@/lib/userCards";
-import { system as rpgSystems } from "@/lib/systems";
+import { system as rpgSystems } from "@/lib/utils/systems";
 import { classesOf } from "@/lib/rules/dnd2024/upgrade";
 import CampaignCharacterCard, { type CampaignCharacterData } from "@/app/components/campaigns/CampaignCharacterCard";
 import AddCharacterDialog, { type AddableCharacter } from "@/app/components/campaigns/AddCharacterDialog";

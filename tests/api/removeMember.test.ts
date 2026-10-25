@@ -12,15 +12,15 @@ vi.mock("@/lib/campaignApi", () => ({
     isDm: true,
   }),
 }));
-vi.mock("@/lib/rateLimit", () => ({
+vi.mock("@/lib/utils/rateLimit", () => ({
   rateLimit: async () => ({ ok: true }),
   tooManyRequests: () => new Response(null, { status: 429 }),
 }));
-vi.mock("@/lib/Campaign", () => ({ Campaign: { updateOne: async () => ({ modifiedCount: 1 }) } }));
-vi.mock("@/lib/Character", () => ({
+vi.mock("@/lib/models/Campaign", () => ({ Campaign: { updateOne: async () => ({ modifiedCount: 1 }) } }));
+vi.mock("@/lib/models/Character", () => ({
   Character: { updateMany: async (...args: unknown[]) => (calls.updateMany.push(args), { modifiedCount: 1 }) },
 }));
-vi.mock("@/lib/CampaignLogEntry", () => ({ CampaignLogEntry: { countDocuments: async () => 0 } }));
+vi.mock("@/lib/models/CampaignLogEntry", () => ({ CampaignLogEntry: { countDocuments: async () => 0 } }));
 vi.mock("@/lib/notify", () => ({ notify: async () => {} }));
 
 const { DELETE } = await import("@/app/api/campaigns/[id]/members/[userId]/route");

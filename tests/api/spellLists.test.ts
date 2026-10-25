@@ -22,26 +22,26 @@ const SPELLS: Record<string, ReturnType<typeof spell>[]> = {
 const db = vi.hoisted(() => ({ reader: true, limited: false }));
 
 vi.mock("next/cache", () => ({ unstable_cache: (fn: () => unknown) => fn }));
-vi.mock("@/lib/mongodb", () => ({ connectDB: async () => {} }));
+vi.mock("@/lib/models/mongodb", () => ({ connectDB: async () => {} }));
 vi.mock("@/lib/campaignApi", () => ({ sessionOf: async () => ({ id: "u1" }) }));
-vi.mock("@/lib/rateLimit", () => ({
+vi.mock("@/lib/utils/rateLimit", () => ({
   rateLimit: async () => (db.limited ? { ok: false, retryAfter: 60 } : { ok: true }),
   tooManyRequests: () => new Response(null, { status: 429 }),
 }));
 vi.mock("@/lib/rules/books", () => ({
   visibleBooksOf: async () => [{ id: A }, { id: B }],
 }));
-vi.mock("@/lib/Book", () => ({
+vi.mock("@/lib/models/Book", () => ({
   Book: { findById: (id: string) => ({ select: () => ({ lean: async () => ({ _id: id, name: `Libro ${id.slice(-1)}` }) }) }) },
 }));
-vi.mock("@/lib/BookEntry", () => ({
+vi.mock("@/lib/models/BookEntry", () => ({
   BookEntry: {
     find: (f: { book: string }) => ({
       select: () => ({ sort: () => ({ lean: async () => (SPELLS[f.book] ?? []).map((s) => ({ ...s, book: f.book })) }) }),
     }),
   },
 }));
-vi.mock("@/lib/Campaign", () => ({
+vi.mock("@/lib/models/Campaign", () => ({
   Campaign: {
     findOne: (f: { _id: string; members: string }) => ({
       select: () => ({

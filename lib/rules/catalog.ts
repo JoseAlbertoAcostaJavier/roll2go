@@ -1,10 +1,10 @@
 import mongoose from "mongoose";
 import { unstable_cache } from "next/cache";
-import { connectDB } from "@/lib/mongodb";
-import { Book } from "@/lib/Book";
-import { BookEntry } from "@/lib/BookEntry";
-import { Campaign } from "@/lib/Campaign";
-import { escapeRegex } from "@/lib/utils";
+import { connectDB } from "@/lib/models/mongodb";
+import { Book } from "@/lib/models/Book";
+import { BookEntry } from "@/lib/models/BookEntry";
+import { Campaign } from "@/lib/models/Campaign";
+import { escapeRegex } from "@/lib/utils/utils";
 import { visibleBooksOf } from "@/lib/rules/books";
 import { isMasteryWeapon } from "@/lib/rules/dnd2024/masteries";
 import { pickBooks } from "@/lib/rules/pickBooks";

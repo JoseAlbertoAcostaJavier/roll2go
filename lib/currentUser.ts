@@ -2,8 +2,8 @@ import { cache } from "react";
 import { cookies } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { COOKIE_NAME, verifySession } from "@/lib/auth";
-import { connectDB } from "@/lib/mongodb";
-import { User } from "@/lib/User";
+import { connectDB } from "@/lib/models/mongodb";
+import { User } from "@/lib/models/User";
 
 export type CurrentUser = {
   id: string;

@@ -15,7 +15,7 @@ vi.mock("@/lib/rules/catalog", () => ({
     db.missing.has(r.key) ? null : (catalog.get(refKey(r)) ?? null),
 }));
 vi.mock("@/lib/characterAccess", () => ({ OUTDATED_SHEET_ERROR: "antigua" }));
-vi.mock("@/lib/Book", () => ({
+vi.mock("@/lib/models/Book", () => ({
   Book: {
     find: () => {
       db.bookQueries++;

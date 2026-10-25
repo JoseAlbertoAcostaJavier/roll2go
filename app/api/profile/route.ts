@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { connectDB } from "@/lib/mongodb";
+import { connectDB } from "@/lib/models/mongodb";
 import { sessionOf } from "@/lib/campaignApi";
-import { rateLimit, tooManyRequests } from "@/lib/rateLimit";
-import { User } from "@/lib/User";
-import { CampaignImage } from "@/lib/CampaignImage";
+import { rateLimit, tooManyRequests } from "@/lib/utils/rateLimit";
+import { User } from "@/lib/models/User";
+import { CampaignImage } from "@/lib/models/CampaignImage";
 import { storeImage } from "@/lib/campaignInput";
 import { detectImageType } from "@/lib/images";
 

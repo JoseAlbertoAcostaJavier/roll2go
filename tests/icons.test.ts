@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { existsSync } from "node:fs";
 import path from "node:path";
-import { iconSrc } from "@/lib/icons";
+import { iconSrc } from "@/lib/utils/icons";
 
 const onDisk = (src: string | null) => !!src && existsSync(path.join(process.cwd(), "public", src));
 

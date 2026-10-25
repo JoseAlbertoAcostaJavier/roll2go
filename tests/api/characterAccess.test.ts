@@ -9,11 +9,11 @@ const ID = "b00000000000000000000001";
 const db = vi.hoisted(() => ({ character: null as Record<string, unknown> | null }));
 const sheet = { version: 2 };
 
-vi.mock("@/lib/mongodb", () => ({ connectDB: async () => {} }));
-vi.mock("@/lib/Character", () => ({
+vi.mock("@/lib/models/mongodb", () => ({ connectDB: async () => {} }));
+vi.mock("@/lib/models/Character", () => ({
   Character: { findById: () => ({ lean: async () => db.character }) },
 }));
-vi.mock("@/lib/Campaign", () => ({
+vi.mock("@/lib/models/Campaign", () => ({
   Campaign: {
     exists: async (f: { _id: string; owner?: string; members?: string }) => {
       if (f._id !== CAMPAIGN) return null;

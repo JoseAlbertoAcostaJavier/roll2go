@@ -5,12 +5,12 @@ const CAMPAIGN = "c00000000000000000000001";
 const created = vi.hoisted(() => [] as Record<string, unknown>[]);
 
 vi.mock("@/lib/campaignApi", () => ({ sessionOf: async () => ({ id: "a00000000000000000000003" }) }));
-vi.mock("@/lib/rateLimit", () => ({
+vi.mock("@/lib/utils/rateLimit", () => ({
   rateLimit: async () => ({ ok: true }),
   tooManyRequests: () => new Response(null, { status: 429 }),
 }));
-vi.mock("@/lib/mongodb", () => ({ connectDB: async () => {} }));
-vi.mock("@/lib/Campaign", () => ({
+vi.mock("@/lib/models/mongodb", () => ({ connectDB: async () => {} }));
+vi.mock("@/lib/models/Campaign", () => ({
   Campaign: {
     findOne: () => ({
       select: () => ({
@@ -25,8 +25,8 @@ vi.mock("@/lib/Campaign", () => ({
     }),
   },
 }));
-vi.mock("@/lib/CampaignImage", () => ({ CampaignImage: { deleteMany: async () => {} } }));
-vi.mock("@/lib/Character", () => ({
+vi.mock("@/lib/models/CampaignImage", () => ({ CampaignImage: { deleteMany: async () => {} } }));
+vi.mock("@/lib/models/Character", () => ({
   Character: { create: async (doc: Record<string, unknown>) => (created.push(doc), { _id: "b00000000000000000000001" }) },
 }));
 vi.mock("@/lib/notify", () => ({ notify: async () => {} }));

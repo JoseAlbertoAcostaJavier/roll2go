@@ -4,12 +4,12 @@ import Avatar from "@/app/components/Avatar";
 import FriendActions from "@/app/components/FriendActions";
 import UserSearch from "@/app/components/UserSearch";
 import { requireUser } from "@/lib/currentUser";
-import { connectDB } from "@/lib/mongodb";
-import { Friendship } from "@/lib/Friendship";
-import { User } from "@/lib/User";
+import { connectDB } from "@/lib/models/mongodb";
+import { Friendship } from "@/lib/models/Friendship";
+import { User } from "@/lib/models/User";
 import { relationOf, type Relation } from "@/lib/friends";
 import ConfirmAction from "@/app/components/ConfirmAction";
-import { Block } from "@/lib/Block";
+import { Block } from "@/lib/models/Block";
 import { loadUserCards } from "@/lib/userCards";
 export const metadata: Metadata = { title: "Social" };
 

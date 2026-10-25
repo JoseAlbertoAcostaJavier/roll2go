@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
 import { sessionOf } from "@/lib/campaignApi";
-import { rateLimit, tooManyRequests } from "@/lib/rateLimit";
-import { cleanText } from "@/lib/utils";
-import { Character } from "@/lib/Character";
+import { rateLimit, tooManyRequests } from "@/lib/utils/rateLimit";
+import { cleanText } from "@/lib/utils/utils";
+import { Character } from "@/lib/models/Character";
 import { OUTDATED_SHEET_ERROR, loadCharacterFor } from "@/lib/characterAccess";
 import { listEntries, resolveRef } from "@/lib/rules/catalog";
 import { ALIGNMENTS } from "@/lib/rules/dnd2024/alignments";

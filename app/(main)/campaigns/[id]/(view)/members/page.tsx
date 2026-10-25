@@ -4,8 +4,8 @@ import InviteFriends, { type FriendOption } from "@/app/components/InviteFriends
 import InviteLink from "@/app/components/InviteLink";
 import UserLink from "@/app/components/UserLink";
 import { getCampaignAccess } from "@/lib/campaignAccess";
-import { Campaign } from "@/lib/Campaign";
-import { CampaignInvite } from "@/lib/CampaignInvite";
+import { Campaign } from "@/lib/models/Campaign";
+import { CampaignInvite } from "@/lib/models/CampaignInvite";
 import { blockedIdsOf } from "@/lib/blocks";
 import { friendIdsOf } from "@/lib/friends";
 import { MAX_MEMBERS } from "@/lib/members";

@@ -1,6 +1,6 @@
 // Ediciones rápidas de la ficha (PG e inventario). Funciones puras: validan la entrada del cliente y devuelven la hoja
 // nueva; las rutas las aplican tras comprobar el acceso. Sin Next ni mongoose.
-import { cleanText } from "@/lib/utils";
+import { cleanText } from "@/lib/utils/utils";
 import type { CatalogEntry } from "@/lib/rules/catalog";
 import type { ItemData, Ref } from "@/lib/rules/types";
 import type { Coins, Dnd2024SheetV2, Inventory, InventoryItem } from "./sheet";

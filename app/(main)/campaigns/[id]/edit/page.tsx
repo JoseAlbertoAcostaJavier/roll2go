@@ -5,8 +5,8 @@ import { ChevronLeft } from "lucide-react";
 import CampaignForm from "@/app/components/CampaignForm";
 import DeleteCampaign from "@/app/components/DeleteCampaign";
 import { getCampaignAccess } from "@/lib/campaignAccess";
-import { Campaign } from "@/lib/Campaign";
-import { system as rpgSystems } from "@/lib/systems";
+import { Campaign } from "@/lib/models/Campaign";
+import { system as rpgSystems } from "@/lib/utils/systems";
 import { booksByIds, visibleBooksOf } from "@/lib/rules/books";
 
 export const metadata: Metadata = { title: "Editar campaña" };

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Check, Megaphone, X } from "lucide-react";
 import Avatar from "@/app/components/Avatar";
-import { timeAgo } from "@/lib/timeAgo";
+import { timeAgo } from "@/lib/utils/timeAgo";
 
 export type NotificationData = {
   id: string;

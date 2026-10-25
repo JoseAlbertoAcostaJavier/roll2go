@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
-import { connectDB } from "@/lib/mongodb";
-import { CampaignImage } from "@/lib/CampaignImage";
+import { connectDB } from "@/lib/models/mongodb";
+import { CampaignImage } from "@/lib/models/CampaignImage";
 
 export async function GET(
   _req: Request,

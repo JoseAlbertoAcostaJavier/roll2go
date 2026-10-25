@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
-import { connectDB } from "@/lib/mongodb";
-import { User } from "@/lib/User";
-import { getClientIp, rateLimit, tooManyRequests } from "@/lib/rateLimit";
+import { connectDB } from "@/lib/models/mongodb";
+import { User } from "@/lib/models/User";
+import { getClientIp, rateLimit, tooManyRequests } from "@/lib/utils/rateLimit";
 import { hashToken } from "@/lib/verification";
 
 export async function POST(req: NextRequest) {

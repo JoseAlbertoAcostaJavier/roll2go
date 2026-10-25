@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
-import { connectDB } from "@/lib/mongodb";
+import { connectDB } from "@/lib/models/mongodb";
 import { sessionOf } from "@/lib/campaignApi";
-import { Notification } from "@/lib/Notification";
+import { Notification } from "@/lib/models/Notification";
 
 // POST { id } marca una como leída; POST { all: true } marca todas
 export async function POST(req: NextRequest) {

@@ -4,15 +4,15 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { Plus } from "lucide-react";
 import { COOKIE_NAME, verifySession } from "@/lib/auth";
-import { connectDB } from "@/lib/mongodb";
-import { Campaign } from "@/lib/Campaign";
-import { system as rpgSystems } from "@/lib/systems";
+import { connectDB } from "@/lib/models/mongodb";
+import { Campaign } from "@/lib/models/Campaign";
+import { system as rpgSystems } from "@/lib/utils/systems";
 import Avatar from "@/app/components/Avatar";
 import CampaignInvites, { type InviteData } from "@/app/components/CampaignInvites";
 import ConfirmAction from "@/app/components/ConfirmAction";
-import { CampaignInvite } from "@/lib/CampaignInvite";
+import { CampaignInvite } from "@/lib/models/CampaignInvite";
 import { loadUserCards } from "@/lib/userCards";
-import { escapeRegex, first } from "@/lib/utils";
+import { escapeRegex, first } from "@/lib/utils/utils";
 
 export const metadata: Metadata = { title: "Mis campañas" };
 

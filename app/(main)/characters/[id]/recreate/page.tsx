@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
-import { Campaign } from "@/lib/Campaign";
+import { Campaign } from "@/lib/models/Campaign";
 import { requireUser } from "@/lib/currentUser";
 import { loadCharacterFor } from "@/lib/characterAccess";
 import { listEntries, listMasteryWeapons, type EntryOption } from "@/lib/rules/catalog";

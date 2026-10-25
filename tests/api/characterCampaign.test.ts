@@ -38,19 +38,19 @@ const db = vi.hoisted(() => ({
 }));
 const lean = (v: unknown) => ({ select: () => ({ lean: async () => v }) });
 vi.mock("@/lib/campaignApi", () => ({ sessionOf: async () => db.session }));
-vi.mock("@/lib/rateLimit", () => ({
+vi.mock("@/lib/utils/rateLimit", () => ({
   rateLimit: async () => ({ ok: true }),
   tooManyRequests: () => new Response(null, { status: 429 }),
 }));
-vi.mock("@/lib/mongodb", () => ({ connectDB: async () => {} }));
+vi.mock("@/lib/models/mongodb", () => ({ connectDB: async () => {} }));
 vi.mock("@/lib/characterAccess", () => ({
   OUTDATED_SHEET_ERROR: "antigua",
   loadCharacterFor: async () => db.found,
 }));
-vi.mock("@/lib/Campaign", () => ({
+vi.mock("@/lib/models/Campaign", () => ({
   Campaign: { findById: (id: string) => lean(db.campaign && String(db.campaign._id) === String(id) ? db.campaign : null) },
 }));
-vi.mock("@/lib/Book", () => ({
+vi.mock("@/lib/models/Book", () => ({
   Book: {
     find: () =>
       lean([
@@ -59,14 +59,14 @@ vi.mock("@/lib/Book", () => ({
       ]),
   },
 }));
-vi.mock("@/lib/Character", () => ({
+vi.mock("@/lib/models/Character", () => ({
   Character: {
     findOne: () => lean(db.owned),
     updateOne: async (...args: unknown[]) => (db.updates.push(args), { matchedCount: db.matched }),
   },
 }));
 vi.mock("@/lib/notify", () => ({ notify: async (n: Record<string, unknown>) => void db.notified.push(n) }));
-vi.mock("@/lib/Notification", () => ({
+vi.mock("@/lib/models/Notification", () => ({
   Notification: { deleteMany: async (filter: unknown) => (db.cleared.push(filter), { deletedCount: 1 }) },
 }));
 

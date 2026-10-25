@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { accentInsensitive } from "@/lib/utils";
+import { accentInsensitive } from "@/lib/utils/utils";
 
 describe("accentInsensitive", () => {
   const matches = (q: string, text: string) => new RegExp(accentInsensitive(q), "i").test(text);

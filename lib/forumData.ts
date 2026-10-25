@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import { ForumReaction } from "@/lib/ForumReaction";
+import { ForumReaction } from "@/lib/models/ForumReaction";
 import { MAX_REACTION_NAMES, type ReactionState } from "@/lib/forum";
 import { loadUserCards } from "@/lib/userCards";
 

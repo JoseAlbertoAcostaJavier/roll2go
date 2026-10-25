@@ -1,5 +1,5 @@
-import { Friendship, pairKey } from "@/lib/Friendship";
-import { User } from "@/lib/User";
+import { Friendship, pairKey } from "@/lib/models/Friendship";
+import { User } from "@/lib/models/User";
 
 export type Relation = "none" | "friend" | "outgoing" | "incoming";
 const USERNAME_REGEX = /^[A-Za-z0-9_]{3,20}$/;

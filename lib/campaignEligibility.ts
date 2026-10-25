@@ -1,7 +1,7 @@
 // Si un personaje puede solicitar unirse a una campaña (canRequestJoin con los libros que usa de verdad su hoja y los
 // nombres de los libros no permitidos). La usan la ruta de la solicitud y las páginas que ofrecen unir personajes.
 import mongoose from "mongoose";
-import { Book } from "@/lib/Book";
+import { Book } from "@/lib/models/Book";
 import { canRequestJoin } from "@/lib/CampaignRules";
 import { OUTDATED_SHEET_ERROR } from "@/lib/characterAccess";
 import { getEntry } from "@/lib/rules/catalog";

@@ -3,7 +3,7 @@ import mongoose, { Schema } from "mongoose";
 const CampaignSchema = new Schema(
   {
     name: { type: String, required: true, trim: true, maxlength: 80 },
-    systemId: { type: String, required: true }, // id de lib/systems.ts
+    systemId: { type: String, required: true }, // id de lib/utils/systems.ts
     // Activa: sale en el listado principal. Inactiva: solo con el filtro "Inactivas" o "Todas"
     status: { type: String, enum: ["active", "inactive"], default: "active" },
     owner: { type: Schema.Types.ObjectId, ref: "User", required: true }, // el DM

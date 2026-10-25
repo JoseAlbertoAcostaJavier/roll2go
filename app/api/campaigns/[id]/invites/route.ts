@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { rateLimit, tooManyRequests } from "@/lib/rateLimit";
-import { Campaign } from "@/lib/Campaign";
-import { CampaignInvite } from "@/lib/CampaignInvite";
+import { rateLimit, tooManyRequests } from "@/lib/utils/rateLimit";
+import { Campaign } from "@/lib/models/Campaign";
+import { CampaignInvite } from "@/lib/models/CampaignInvite";
 import { requireDm } from "@/lib/campaignApi";
 import { blockStatus } from "@/lib/blocks";
 import { findUserByUsername, relationBetween } from "@/lib/friends";

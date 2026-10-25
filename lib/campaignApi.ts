@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
 import { COOKIE_NAME, verifySession } from "@/lib/auth";
-import { connectDB } from "@/lib/mongodb";
-import { Campaign } from "@/lib/Campaign";
+import { connectDB } from "@/lib/models/mongodb";
+import { Campaign } from "@/lib/models/Campaign";
 
 export type Session = { id: string; username: string };
 type CampaignLite = {

@@ -1,7 +1,7 @@
-import { connectDB } from "@/lib/mongodb";
-import { User } from "@/lib/User";
-import { Friendship } from "@/lib/Friendship";
-import { Character } from "@/lib/Character";
+import { connectDB } from "@/lib/models/mongodb";
+import { User } from "@/lib/models/User";
+import { Friendship } from "@/lib/models/Friendship";
+import { Character } from "@/lib/models/Character";
 
 export type PublicProfile = {
   id: string;

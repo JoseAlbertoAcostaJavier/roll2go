@@ -1,14 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowUp, Files } from "lucide-react";
-import { connectDB } from "@/lib/mongodb";
-import { Campaign } from "@/lib/Campaign";
-import { Character } from "@/lib/Character";
+import { connectDB } from "@/lib/models/mongodb";
+import { Campaign } from "@/lib/models/Campaign";
+import { Character } from "@/lib/models/Character";
 import { requireUser } from "@/lib/currentUser";
 import { visibleBooksOf } from "@/lib/rules/books";
 import { classesOf } from "@/lib/rules/dnd2024/upgrade";
-import { system as rpgSystems } from "@/lib/systems";
-import { accentInsensitive, first } from "@/lib/utils";
+import { system as rpgSystems } from "@/lib/utils/systems";
+import { accentInsensitive, first } from "@/lib/utils/utils";
 import CharacterCard, { type CharacterCardData } from "@/app/components/characters/CharacterCard";
 import NewCharacterDialog from "@/app/components/characters/NewCharacterDialog";
 

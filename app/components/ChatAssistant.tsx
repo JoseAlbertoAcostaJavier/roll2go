@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { LoaderCircle, MessageCircle, Send, X } from "lucide-react";
-import { system as rpgSystems } from "@/lib/systems";
+import { system as rpgSystems } from "@/lib/utils/systems";
 /* Componente de asistente de rol
   Este componente es un asistente de rol que permite a los usuarios hacer preguntas sobre reglas, clases 
   y builds de rol de mesa. Antes de preguntar hay que elegir el sistema de rol (D&D 5e, Pathfinder 2...),

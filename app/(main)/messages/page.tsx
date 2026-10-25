@@ -3,9 +3,9 @@ import Link from "next/link";
 import mongoose from "mongoose";
 import Avatar from "@/app/components/Avatar";
 import { requireUser } from "@/lib/currentUser";
-import { connectDB } from "@/lib/mongodb";
-import { Message } from "@/lib/Message";
-import { User } from "@/lib/User";
+import { connectDB } from "@/lib/models/mongodb";
+import { Message } from "@/lib/models/Message";
+import { User } from "@/lib/models/User";
 
 export const metadata: Metadata = { title: "Mensajes" };
 

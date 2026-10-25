@@ -30,7 +30,7 @@ const sheet = {
 // personaje sigue en el mismo nivel
 const db = vi.hoisted(() => ({ sameLevel: true, sheet: null as unknown, updates: [] as unknown[] }));
 vi.mock("@/lib/campaignApi", () => ({ sessionOf: async () => ({ id: "u1" }) }));
-vi.mock("@/lib/rateLimit", () => ({
+vi.mock("@/lib/utils/rateLimit", () => ({
   rateLimit: async () => ({ ok: true }),
   tooManyRequests: () => new Response(null, { status: 429 }),
 }));
@@ -43,7 +43,7 @@ vi.mock("@/lib/characterAccess", () => ({
 }));
 vi.mock("@/lib/rules/catalog", () => ({ getEntries: async () => [] }));
 vi.mock("@/lib/rules/dnd2024/sheetEntries", () => ({ loadSheetEntries: async () => catalog }));
-vi.mock("@/lib/Character", () => ({
+vi.mock("@/lib/models/Character", () => ({
   Character: {
     updateOne: async (...args: unknown[]) => {
       db.updates.push(args);

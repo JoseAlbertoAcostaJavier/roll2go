@@ -1,8 +1,8 @@
 import mongoose from "mongoose";
-import { connectDB } from "@/lib/mongodb";
-import { Campaign } from "@/lib/Campaign";
-import { HomebrewEntry } from "@/lib/HomebrewEntry";
-import { bbcodeToText } from "@/lib/bbcode";
+import { connectDB } from "@/lib/models/mongodb";
+import { Campaign } from "@/lib/models/Campaign";
+import { HomebrewEntry } from "@/lib/models/HomebrewEntry";
+import { bbcodeToText } from "@/lib/utils/bbcode";
 import { booksByIds } from "@/lib/rules/books";
 const MAX_CONTEXT_CHARS = 12000; // ~3.000-4.000 tokens: de sobra para una campaña normal
 

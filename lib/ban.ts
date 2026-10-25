@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
-import { connectDB } from "@/lib/mongodb";
-import { User } from "@/lib/User";
+import { connectDB } from "@/lib/models/mongodb";
+import { User } from "@/lib/models/User";
 
 /* Comprobar el baneo en cada petición costaría una consulta, así que el resultado se recuerda unos
    segundos por servidor. Al banear se borra al momento en este servidor; en los demás, como mucho

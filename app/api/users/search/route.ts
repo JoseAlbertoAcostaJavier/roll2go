@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { connectDB } from "@/lib/mongodb";
+import { connectDB } from "@/lib/models/mongodb";
 import { sessionOf } from "@/lib/campaignApi";
-import { rateLimit, tooManyRequests } from "@/lib/rateLimit";
-import { User } from "@/lib/User";
+import { rateLimit, tooManyRequests } from "@/lib/utils/rateLimit";
+import { User } from "@/lib/models/User";
 import { relationsWith } from "@/lib/friends";
 import { blockedIdsOf } from "@/lib/blocks";
-import { escapeRegex } from "@/lib/utils";
+import { escapeRegex } from "@/lib/utils/utils";
 export async function GET(req: NextRequest) {
   const session = await sessionOf(req);
   if (!session)

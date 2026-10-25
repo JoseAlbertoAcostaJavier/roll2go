@@ -3,7 +3,7 @@ import Bbcode from "@/app/components/Bbcode";
 import ConfirmAction from "@/app/components/ConfirmAction";
 import UserLink from "@/app/components/UserLink";
 import { getCampaignAccess } from "@/lib/campaignAccess";
-import { Campaign } from "@/lib/Campaign";
+import { Campaign } from "@/lib/models/Campaign";
 import { booksByIds } from "@/lib/rules/books";
 import { loadUserCards } from "@/lib/userCards";
 

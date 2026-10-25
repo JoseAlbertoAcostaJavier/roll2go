@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import AccountForms from "@/app/components/AccountForms";
 import { requireUser } from "@/lib/currentUser";
-import { User } from "@/lib/User";
+import { User } from "@/lib/models/User";
 
 export const metadata: Metadata = { title: "Mi cuenta" };
 

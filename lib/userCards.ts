@@ -1,5 +1,5 @@
-import { connectDB } from "@/lib/mongodb";
-import { User } from "@/lib/User";
+import { connectDB } from "@/lib/models/mongodb";
+import { User } from "@/lib/models/User";
 
 export type UserCard = {
   id: string;

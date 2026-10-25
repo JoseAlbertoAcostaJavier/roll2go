@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
 import { readReason, requireAdminApi } from "@/lib/adminApi";
-import { rateLimit, tooManyRequests } from "@/lib/rateLimit";
+import { rateLimit, tooManyRequests } from "@/lib/utils/rateLimit";
 import { forgetBan } from "@/lib/ban";
 import { notify } from "@/lib/notify";
-import { BannedEmail } from "@/lib/BannedEmail";
-import { User } from "@/lib/User";
+import { BannedEmail } from "@/lib/models/BannedEmail";
+import { User } from "@/lib/models/User";
 
 type Ctx = { params: Promise<{ id: string }> };
 

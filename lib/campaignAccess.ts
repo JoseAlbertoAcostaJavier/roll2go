@@ -3,8 +3,8 @@ import { cookies } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import mongoose from "mongoose";
 import { COOKIE_NAME, verifySession } from "@/lib/auth";
-import { connectDB } from "@/lib/mongodb";
-import { Campaign } from "@/lib/Campaign";
+import { connectDB } from "@/lib/models/mongodb";
+import { Campaign } from "@/lib/models/Campaign";
 
 /* Sesión + campaña de la dirección actual. Se llama desde el layout y desde cada página, y gracias a
    cache() la consulta se hace una sola vez por visita. Sin sesión redirige al login; si la campaña no

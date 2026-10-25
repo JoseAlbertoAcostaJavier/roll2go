@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { rateLimit, tooManyRequests } from "@/lib/rateLimit";
-import { Campaign } from "@/lib/Campaign";
+import { rateLimit, tooManyRequests } from "@/lib/utils/rateLimit";
+import { Campaign } from "@/lib/models/Campaign";
 import { requireDm } from "@/lib/campaignApi";
 import { INVITE_EXPIRY_DAYS, newInviteCode } from "@/lib/members";
 
@@ -38,7 +38,7 @@ export async function POST(req: NextRequest, { params }: Ctx) {
   try {
     await Campaign.updateOne(
       { _id: ctx.campaign._id },
-      // Sin caducidad no se guarda null: se borra el campo (ver lib/Campaign.ts)
+      // Sin caducidad no se guarda null: se borra el campo (ver lib/models/Campaign.ts)
       expires
         ? { $set: { inviteCode: code, inviteExpires: expires } }
         : { $set: { inviteCode: code }, $unset: { inviteExpires: "" } },

@@ -3,8 +3,8 @@ import { loadCampaignContext } from "@/lib/campaignContext";
 import { GoogleGenAI } from "@google/genai";
 import { NextRequest, NextResponse } from "next/server";
 import { systemPromptFor } from "@/lib/rolAssistant";
-import { system as rpgSystems } from "@/lib/systems";
-import { getClientIp, rateLimit, tooManyRequests } from "@/lib/rateLimit";
+import { system as rpgSystems } from "@/lib/utils/systems";
+import { getClientIp, rateLimit, tooManyRequests } from "@/lib/utils/rateLimit";
 
 export const maxDuration = 30;
 

@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { unstable_cache } from "next/cache";
 import { sessionOf } from "@/lib/campaignApi";
-import { connectDB } from "@/lib/mongodb";
-import { Book } from "@/lib/Book";
-import { BookEntry } from "@/lib/BookEntry";
-import { rateLimit, tooManyRequests } from "@/lib/rateLimit";
+import { connectDB } from "@/lib/models/mongodb";
+import { Book } from "@/lib/models/Book";
+import { BookEntry } from "@/lib/models/BookEntry";
+import { rateLimit, tooManyRequests } from "@/lib/utils/rateLimit";
 import { generateName, nameTableFor, PRONOUNS, type Pronoun } from "@/lib/rules/dnd2024/names";
 import { validateEntryData } from "@/lib/rules/schemas";
 import type { NameTableData } from "@/lib/rules/types";
