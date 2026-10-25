@@ -2,7 +2,9 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import type { Derived } from "@/lib/rules/dnd2024/derive";
-import { FEATURE_CHOICES, FEATURE_OPTION_LABELS, NOT_A_CHOICE, SPECIFIED_CHOICES } from "@/lib/rules/dnd2024/featureChoices";
+import {
+  FEATURE_CHOICES, FEATURE_OPTION_LABELS, NOT_A_CHOICE, SPECIFIED_CHOICES, SPELL_RULE_FEATURES,
+} from "@/lib/rules/dnd2024/featureChoices";
 import { meetsMulticlass, pendingChoices } from "@/lib/rules/dnd2024/levels";
 import type { Choice, Dnd2024SheetV2, LevelEntry } from "@/lib/rules/dnd2024/sheet";
 import { normalizeAll, textChoiceFeatures } from "@/lib/rules/import/normalize";
@@ -297,6 +299,40 @@ describe("rasgos con elección en el texto", () => {
     const { entries } = normalizeAll({ classes, optionalFeatures: read("optionalfeatures.json") }, "XPHB");
     expect(textChoiceFeatures(entries, SPECIFIED_CHOICES)).toEqual([]);
     const keys = new Set(entries.map((e) => e.key));
-    expect([...Object.keys(FEATURE_CHOICES), ...NOT_A_CHOICE].filter((k) => !keys.has(k))).toEqual([]);
+    expect([...Object.keys(FEATURE_CHOICES), ...NOT_A_CHOICE, ...SPELL_RULE_FEATURES].filter((k) => !keys.has(k))).toEqual([]);
+  });
+});
+
+describe("rasgos de conjuro de nivel alto", () => {
+  const spellCatalog = buildCatalog(["class-bard.json", "class-warlock.json"]);
+  const at = (name: string, level: number) => pendingChoices(sheetWith([[name, level - 1]]), cls(name), level, spellCatalog);
+
+  it("Secretos mágicos y Arcano místico ya no están en NOT_A_CHOICE (los piden las reglas de conjuros)", () => {
+    const keys = ["classFeature:magical secrets|bard|xphb|10",
+      ...[11, 13, 15, 17].map((n) => `classFeature:mystic arcanum|warlock|xphb|${n}`)];
+    for (const k of keys) {
+      expect(NOT_A_CHOICE.has(k)).toBe(false);
+      expect(SPELL_RULE_FEATURES.has(k)).toBe(true);
+      expect(SPECIFIED_CHOICES.has(k)).toBe(true);
+    }
+  });
+  it("Bardo 10 (y después): la elección de conjuros acepta las listas de Bardo, Clérigo, Druida y Mago", () => {
+    const spellsAt = (level: number) => at("bard", level).find((p) => p.type === "spells")?.spells;
+    expect(spellsAt(9)).toMatchObject({ list: "bard" });
+    expect(spellsAt(9)?.lists).toBeUndefined();
+    expect(spellsAt(10)).toMatchObject({ list: "bard", lists: ["bard", "cleric", "druid", "wizard"] });
+    expect(spellsAt(11)?.lists).toEqual(["bard", "cleric", "druid", "wizard"]);
+  });
+  it("Brujo 11, 13, 15 y 17: un arcano de nivel 6, 7, 8 y 9 de la lista del Brujo; en los demás niveles, ninguno", () => {
+    const arcanum = (level: number) => at("warlock", level).filter((p) => p.type === "arcanum");
+    expect(arcanum(11)).toEqual([{
+      type: "arcanum", source: "classFeature:mystic arcanum|warlock|xphb|11", count: 1, label: "Arcano místico",
+      arcanum: { level: 6, list: "warlock" },
+    }]);
+    expect(arcanum(13)[0].arcanum).toEqual({ level: 7, list: "warlock" });
+    expect(arcanum(15)[0].arcanum).toEqual({ level: 8, list: "warlock" });
+    expect(arcanum(17)[0].arcanum).toEqual({ level: 9, list: "warlock" });
+    expect(arcanum(12)).toEqual([]);
+    expect(arcanum(10)).toEqual([]);
   });
 });

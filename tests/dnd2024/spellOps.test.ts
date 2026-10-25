@@ -2,11 +2,12 @@ import { describe, expect, it } from "vitest";
 import { derive } from "@/lib/rules/dnd2024/derive";
 import { refKey } from "@/lib/rules/dnd2024/equipmentRefs";
 import type { Choice, Dnd2024SheetV2, LevelEntry, Named } from "@/lib/rules/dnd2024/sheet";
+import { removeLastLevel } from "@/lib/rules/dnd2024/levelOps";
 import { applySpellOp, trimSpells } from "@/lib/rules/dnd2024/spellOps";
 import type { Ref, SpellData } from "@/lib/rules/types";
 import { B, buildCatalog, ref } from "./fixtureCatalog";
 
-const entries = buildCatalog(["class-cleric.json", "class-wizard.json", "class-sorcerer.json", "class-warlock.json", "class-druid.json"]);
+const entries = buildCatalog(["class-cleric.json", "class-wizard.json", "class-sorcerer.json", "class-warlock.json", "class-druid.json", "class-bard.json"]);
 
 // Conjuros de prueba: nombre, nivel y listas
 const SPELLS: [string, number, string[]][] = [
@@ -32,6 +33,8 @@ const SPELLS: [string, number, string[]][] = [
   ["thunderwave", 1, ["druid", "wizard"]],
   ["faerie fire", 1, ["druid"]],
   ["jump", 1, ["druid"]],
+  ["vicious mockery", 0, ["bard"]],
+  ["circle of death", 6, ["sorcerer", "warlock", "wizard"]],
 ];
 for (const [name, level, classes] of SPELLS) {
   const data: SpellData = {
@@ -50,6 +53,7 @@ const CLASSES: Record<string, Named> = {
   sorcerer: { ref: ref("class:sorcerer|xphb"), name: "Hechicero" },
   warlock: { ref: ref("class:warlock|xphb"), name: "Brujo" },
   druid: { ref: ref("class:druid|xphb"), name: "Druida" },
+  bard: { ref: ref("class:bard|xphb"), name: "Bardo" },
 };
 const BOOK = ["magic missile", "shield", "sleep", "mage armor", "detect magic", "burning hands"].map(spell);
 
@@ -251,5 +255,67 @@ describe("trimSpells (al perder un nivel)", () => {
     s.prepared = { "class:cleric|xphb": [spell("bless").ref], "class:wizard|xphb": [] };
     const t = trimSpells(s, { ...derive(sheetOf(["wizard"]), entries).spells, spellLevel: level });
     expect(t.prepared).toEqual({ "class:wizard|xphb": [] });
+  });
+});
+
+describe("Secretos mágicos (Bardo 10)", () => {
+  const times = (id: string, n: number) => Array<string>(n).fill(id);
+  // Bardo de nivel `n` que eligió en el nivel 10 un conjuro de la lista del Mago (Dormir)
+  const bard = (n: number) => sheetOf(times("bard", n), {
+    10: [{ type: "spells", source: "progression:spells|bard|xphb", value: { class: CLASSES.bard.ref, cantrips: [], spells: [spell("sleep")] } }],
+  });
+  const blockOf = (s: Dnd2024SheetV2) => derive(s, entries).spells.blocks[0];
+
+  it("desde el nivel 10, el bloque del Bardo lleva las cuatro listas; antes, ninguna", () => {
+    expect(blockOf(bard(9)).lists).toBeUndefined();
+    expect(blockOf(bard(10)).lists).toEqual(["bard", "cleric", "druid", "wizard"]);
+  });
+  it("el Bardo no prepara en la ficha (los cambia al subir), con o sin Secretos mágicos", () => {
+    for (const n of [9, 10]) {
+      expect(errorOf(apply(bard(n), prepare(CLASSES.bard, "sleep")))).toBe("Los conjuros de Bardo se cambian al subir de nivel.");
+    }
+  });
+  it("al borrar el nivel 10, el conjuro de Mago que eligió en él deja de estar preparado", () => {
+    const s = bard(10);
+    expect(blockOf(s).prepared).toEqual([spell("sleep").ref]);
+    const after = derive(bard(9), entries).spells;
+    const r = removeLastLevel(s, 50, Infinity, { ...after, spellLevel: () => 1 });
+    if (!r.ok) throw new Error(r.error);
+    expect(blockOf(r.sheet).prepared).toEqual([]);
+    expect(blockOf(r.sheet).lists).toBeUndefined();
+  });
+});
+
+describe("usos por descanso largo (Arcano místico)", () => {
+  const ARCANUM = "classFeature:mystic arcanum|warlock|xphb|11";
+  const KEY = `arcanum:${B}:spell:circle of death|xphb`;
+  const warlock11 = () => sheetOf(Array<string>(11).fill("warlock"), {
+    11: [{ type: "arcanum", source: ARCANUM, value: spell("circle of death") }],
+  });
+
+  it("el bloque del Brujo lista su arcano con una casilla (gastada según la hoja)", () => {
+    const s = warlock11();
+    expect(derive(s, entries).spells.blocks[0].limited).toEqual([
+      { key: KEY, spell: spell("circle of death"), origin: "Arcano místico", max: 1, used: 0 },
+    ]);
+    s.limitedUsed = { [KEY]: 1 };
+    expect(derive(s, entries).spells.blocks[0].limited[0].used).toBe(1);
+    expect(derive(sheetOf(["warlock"]), entries).spells.blocks[0].limited).toEqual([]);
+  });
+  it("op limited: clave que no tiene o fuera de 0..máximo → error; dentro → se guarda", () => {
+    const s = warlock11();
+    expect(errorOf(apply(s, { op: "limited", key: "arcanum:otra", used: 1 }))).toBe("No tienes ese uso.");
+    expect(errorOf(apply(s, { op: "limited", key: KEY, used: 2 }))).toBe("circle of death solo tiene 1 uso por descanso largo.");
+    expect(errorOf(apply(s, { op: "limited", key: KEY, used: -1 }))).toBe("circle of death solo tiene 1 uso por descanso largo.");
+    expect(errorOf(apply(s, { op: "limited", key: KEY, used: 0.5 }))).toBe("circle of death solo tiene 1 uso por descanso largo.");
+    const used = ok(apply(s, { op: "limited", key: KEY, used: 1 }));
+    expect(used.limitedUsed).toEqual({ [KEY]: 1 });
+    expect(ok(apply(used, { op: "limited", key: KEY, used: 0 })).limitedUsed).toEqual({ [KEY]: 0 });
+  });
+  it("el descanso largo también recupera los usos", () => {
+    const s = { ...warlock11(), limitedUsed: { [KEY]: 1 }, slotsUsed: { pact: 2 } };
+    const after = ok(apply(s, { op: "longRest" }));
+    expect(after.limitedUsed).toEqual({});
+    expect(after.slotsUsed).toEqual({});
   });
 });

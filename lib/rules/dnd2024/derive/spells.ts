@@ -3,9 +3,9 @@
 import type { CatalogEntry } from "@/lib/rules/catalog";
 import { refKey } from "@/lib/rules/dnd2024/equipmentRefs";
 import { chosenFeatSpells } from "@/lib/rules/dnd2024/featSpells";
-import { chosenSpells, heldBonusCantrips, heldOptionalFeatures } from "@/lib/rules/dnd2024/levels";
+import { chosenSpells, heldBonusCantrips, heldOptionalFeatures, secretSpellLists } from "@/lib/rules/dnd2024/levels";
 import type { Dnd2024SheetV2, Named } from "@/lib/rules/dnd2024/sheet";
-import { maxSpellLevel, PACT_SLOTS, preparedKey, slotLevels } from "@/lib/rules/dnd2024/spellcasting";
+import { maxSpellLevel, PACT_SLOTS, preparedKey, slotLevels, spellListOf } from "@/lib/rules/dnd2024/spellcasting";
 import { summarizeClasses } from "@/lib/rules/dnd2024/upgrade";
 import type {
   Ability, BackgroundData, ClassData, FeatData, LineageData, OptionalFeatureData, Ref, SpeciesData, Spellcasting,
@@ -17,6 +17,12 @@ import { characterFeats } from "./features";
 export { chosenSpells };
 
 export type OtherSpell = { spell: Named; origin: string };
+
+/** Conjuro que se lanza sin espacio un número de veces por descanso largo (Arcano místico), con sus usos gastados. */
+export type LimitedSpell = { key: string; spell: Named; origin: string; max: number; used: number };
+
+/** Clave de los usos de un arcano en `sheet.limitedUsed`. */
+export const arcanumKey = (ref: Ref) => `arcanum:${refKey(ref)}`;
 
 export type CasterBlock = {
   /** Clase o, en las subclases lanzadoras (Caballero arcano…), la subclase. */
@@ -43,6 +49,10 @@ export type CasterBlock = {
    * conjuros de cada uno hasta el nivel de clase.
    */
   spellOptions?: { subclass: Ref; names: string[]; current: string | null; spells: Record<string, Ref[]> };
+  /** Con Secretos mágicos: las listas de las que elige los conjuros (no los trucos), incluida la suya. */
+  lists?: string[];
+  /** Conjuros con usos por descanso largo (Arcano místico). */
+  limited: LimitedSpell[];
 };
 
 export type Slots = { levels: Record<string, number>; pact: { count: number; level: number } | null };
@@ -109,6 +119,16 @@ export function casterBlocks(
     const options = c.subclass?.data?.spellOptions ?? [];
     const current = c.subclass && options.length ? (sheet.spellOption?.[preparedKey(c.subclass.named.ref)] ?? null) : null;
     const option = options.find((o) => o.name === current);
+    // Arcanos elegidos en los niveles de la clase: un uso cada uno
+    const limited = sheet.levels.filter((l) => refKey(l.class.ref) === refKey(c.klass.named.ref))
+      .flatMap((l) => l.choices.flatMap((ch) => (ch.type === "arcanum" ? [ch.value] : [])))
+      .map((spell) => {
+        const key = arcanumKey(spell.ref);
+        return { key, spell, origin: "Arcano místico", max: 1, used: Math.min(sheet.limitedUsed?.[key] ?? 0, 1) };
+      });
+    const lists = refKey(c.ref) === refKey(c.klass.named.ref)
+      ? secretSpellLists(c.klass.data, c.level, spellListOf(c.ref, entries.get(refKey(c.ref))?.identifier))
+      : [];
     const always = [
       ...upTo(c.klass.data?.spells, c.level).map((r) => ({ spell: named(r, entries), origin: c.klass.named.name })),
       ...(c.subclass
@@ -142,6 +162,8 @@ export function casterBlocks(
           },
         }
         : {}),
+      ...(lists.length ? { lists } : {}),
+      limited,
     };
   });
 }

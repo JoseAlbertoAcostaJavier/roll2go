@@ -7,7 +7,9 @@ import type {
 } from "@/lib/rules/types";
 import type { Derived } from "./derive";
 import { refKey } from "./equipmentRefs";
-import { FEATURE_CHOICES, REPLACEABLE_FIGHTING_STYLE, type ChoiceSpec } from "./featureChoices";
+import {
+  FEATURE_CHOICES, MAGICAL_SECRETS, MYSTIC_ARCANUM, REPLACEABLE_FIGHTING_STYLE, type ChoiceSpec,
+} from "./featureChoices";
 import { ABILITY_NAMES, optionalFeatureLabel } from "./labels";
 import type { Choice, Dnd2024SheetV2, FeatPickValue, LevelEntry, Named, SpellChoice } from "./sheet";
 import { maxSpellLevel, spellListOf } from "./spellcasting";
@@ -22,7 +24,8 @@ import { SKILLS_SOURCE, SUBCLASS_SOURCE, summarizeClasses } from "./upgrade";
  * elección de conjuros, un conjuro aprendido); `optionalReplaceCantrip`: en la elección de conjuros, un truco; con
  * `count: 0`, el nivel solo permite esas sustituciones. `spells`: en la elección de conjuros, la clase (o subclase
  * lanzadora), su modo, su lista (`SpellData.classes`), cuántos trucos y conjuros nuevos (aprendidos o entradas del
- * libro) y su nivel máximo; `count` es la suma.
+ * libro) y su nivel máximo; `count` es la suma. `arcanum`: en la elección del Arcano místico, el nivel del conjuro y
+ * la lista de la que se elige.
  */
 export type PendingChoice = {
   type: Choice["type"];
@@ -41,12 +44,18 @@ export type PendingChoice = {
    * características de lanzamiento entre las que se elige. Los números van en `spells` (con la dote como `class`).
    */
   featSpells?: { feat: Ref; cantrip?: FeatSpellFilter; spell?: FeatSpellFilter; abilities?: Ability[] };
+  arcanum?: { level: number; list: string };
 };
 
 export type SpellsPending = {
   class: Ref;
   mode: SpellcastingMode;
   list: string;
+  /**
+   * Con Secretos mágicos: las listas de las que puede elegir los conjuros nuevos y los sustitutos (incluida `list`);
+   * los trucos, solo de `list`.
+   */
+  lists?: string[];
   cantrips: number;
   spells: number;
   maxLevel: number;
@@ -113,6 +122,15 @@ export function chosenSpells(sheet: Pick<Dnd2024SheetV2, "levels">, cls: Ref): {
     }
   }
   return { cantrips, spells };
+}
+
+/**
+ * Listas de las que una clase elige sus conjuros (no los trucos) en un nivel de clase por Secretos mágicos (con la
+ * suya, `list`); vacío si no tiene el rasgo.
+ */
+export function secretSpellLists(data: Pick<ClassData, "features"> | undefined, classLevel: number, list: string): string[] {
+  const extra = (data?.features ?? []).filter((f) => f.level <= classLevel).flatMap((f) => MAGICAL_SECRETS[f.ref.key] ?? []);
+  return extra.length ? [...new Set([list, ...extra])] : [];
 }
 
 /** Número acumulado en un nivel: el del mayor nivel de la progresión que no lo supera. */
@@ -236,6 +254,14 @@ export function pendingChoices(
       if (options.length > 0 && !options.every(covered)) {
         out.push({ type: "featureOption", source: f.ref.key, count: 1, options, label: nameOf(f.ref) });
       }
+      // Arcano místico: un conjuro de la lista de la clase del nivel que toca
+      const arcanum = MYSTIC_ARCANUM[f.ref.key];
+      if (arcanum) {
+        out.push({
+          type: "arcanum", source: f.ref.key, count: 1, label: "Arcano místico",
+          arcanum: { level: arcanum, list: spellListOf(classRef, entryOf(classRef)?.identifier) },
+        });
+      }
       for (const spec of FEATURE_CHOICES[f.ref.key] ?? fData?.choices ?? []) {
         out.push({
           type: spec.type, source: f.ref.key, count: spec.count, ...(spec.from ? { from: spec.from } : {}),
@@ -271,10 +297,13 @@ export function pendingChoices(
     const replaceCantrip = at(caster.progressions.cantrips, newClassLevel - 1) > 0;
     const replace = mode === "levelUp" && at(caster.progressions.prepared, newClassLevel - 1) > 0;
     if (cantrips + spells > 0 || replace || replaceCantrip) {
+      const list = spellListOf(caster.ref, entryOf(caster.ref)?.identifier);
+      // Secretos mágicos (solo de la clase, no de una subclase lanzadora)
+      const lists = caster.ref === classRef ? secretSpellLists(data, newClassLevel, list) : [];
       out.push({
         type: "spells", source: spellsSource(caster.ref), count: cantrips + spells, label: "Conjuros",
         spells: {
-          class: caster.ref, mode, list: spellListOf(caster.ref, entryOf(caster.ref)?.identifier),
+          class: caster.ref, mode, list, ...(lists.length ? { lists } : {}),
           cantrips, spells, maxLevel: maxSpellLevel(progression, newClassLevel),
         },
         ...(replace ? { optionalReplace: true } : {}),

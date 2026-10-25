@@ -607,6 +607,16 @@ export async function checkChoices(
       const r = await checkSpells(withBonus, withBonus.spells!, value, ctx, load);
       if ("error" in r) { bad(r.error); continue; }
       out.push({ type: "spells", source: p.source, value: r.value });
+    } else if (p.type === "arcanum" && p.arcanum) {
+      // Arcano místico: un conjuro de la lista de la clase del nivel exacto, que no tenga ya por otra vía
+      const e = await load(value, "spell");
+      const d = e?.data as SpellData | null | undefined;
+      if (!e || !d) { bad("elige un conjuro."); continue; }
+      const name = e.nameEs || e.name;
+      if (!d.classes?.includes(p.arcanum.list)) { bad(`${name} no está en la lista de la clase.`); continue; }
+      if (d.level !== p.arcanum.level) { bad(`${name} no es un conjuro de nivel ${p.arcanum.level}.`); continue; }
+      if (ctx.spellsGranted?.some((r) => refKey(r) === refKey(e.ref))) { bad(`ya tienes ${name}.`); continue; }
+      out.push({ type: "arcanum", source: p.source, value: named(e) });
     } else {
       bad("esta elección todavía no se puede hacer aquí.");
     }
@@ -615,7 +625,7 @@ export async function checkChoices(
 }
 
 // Elección de conjuros (spec de conjuros §2.4): exactamente los trucos y conjuros nuevos que pide el nivel, de la
-// lista de la clase y de nivel permitido, sin repetir los que ya tiene; y, si el nivel lo permite, sustituir un
+// lista de la clase (los conjuros, también de las de Secretos mágicos: `p.lists`) y de nivel permitido, sin repetir los que ya tiene; y, si el nivel lo permite, sustituir un
 // conjuro aprendido (`replace`) y un truco (`replaceCantrip`) por otro del mismo tipo
 async function checkSpells(
   pending: PendingChoice, p: NonNullable<PendingChoice["spells"]>, raw: unknown, ctx: ChoicesCtx,
@@ -632,7 +642,8 @@ async function checkSpells(
   // Comprueba un conjuro: de la lista, truco o de nivel 1..máximo
   const fits = (e: CatalogEntry, cantrip: boolean): string | null => {
     const d = e.data as SpellData | null;
-    if (!d?.classes?.includes(p.list)) return `${nameOf(e)} no está en la lista de la clase.`;
+    const lists = cantrip ? [p.list] : (p.lists ?? [p.list]);
+    if (!d?.classes?.some((c) => lists.includes(c))) return `${nameOf(e)} no está en la lista de la clase.`;
     if (cantrip ? d.level !== 0 : d.level < 1) return `${nameOf(e)} no es ${cantrip ? "un truco" : "un conjuro de nivel 1 o más"}.`;
     if (!cantrip && d.level > p.maxLevel) return `${nameOf(e)} es de nivel ${d.level}; el máximo es ${p.maxLevel}.`;
     return null;

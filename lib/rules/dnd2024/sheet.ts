@@ -64,7 +64,9 @@ export type Choice =
   | { type: "skills"; source: string; value: string[] }
   | { type: "expertise"; source: string; value: string[] }
   | { type: "spells"; source: string; value: SpellChoice }
-  | { type: "featSpells"; source: string; value: FeatSpellsValue };
+  | { type: "featSpells"; source: string; value: FeatSpellsValue }
+  // Arcano místico: un conjuro de la lista de la clase del nivel que pide el rasgo (`source`)
+  | { type: "arcanum"; source: string; value: Named };
 
 /** Una entrada por nivel de personaje, en orden. */
 export type LevelEntry = {
@@ -112,6 +114,11 @@ export type Dnd2024SheetV2 = Omit<Dnd2024Sheet, "version" | "classes"> & {
    * Tierra): `{ [clave de la subclase]: nombre }`. Las hojas sin ninguna no lo tienen.
    */
   spellOption?: Record<string, string>;
+  /**
+   * Usos gastados de los conjuros que se lanzan una vez por descanso largo (`CasterBlock.limited`), por clave
+   * (`arcanum:<refKey>`). Las claves que el personaje ya no tiene se ignoran. Las hojas sin ninguno no lo tienen.
+   */
+  limitedUsed?: Record<string, number>;
   /**
    * Armas con maestría actuales: empiezan con las elecciones `weaponMastery` del historial y se pueden cambiar en la
    * ficha. Las hojas guardadas antes no lo tienen: ver `currentMasteries`.

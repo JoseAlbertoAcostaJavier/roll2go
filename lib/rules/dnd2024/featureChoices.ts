@@ -74,6 +74,25 @@ const CLASSES = [
   "barbarian", "bard", "cleric", "druid", "fighter", "monk", "paladin", "ranger", "rogue", "sorcerer", "warlock", "wizard",
 ];
 
+/**
+ * Secretos mágicos: rasgo → listas de las que elige los conjuros nuevos (y los sustitutos) desde ese nivel de clase;
+ * cuentan como conjuros de la clase. Los trucos siguen siendo de su lista.
+ */
+export const MAGICAL_SECRETS: Readonly<Record<string, string[]>> = {
+  "classFeature:magical secrets|bard|xphb|10": ["bard", "cleric", "druid", "wizard"],
+};
+
+/** Arcano místico: rasgo → nivel del conjuro de la lista de la clase que pide (elección `arcanum`). */
+export const MYSTIC_ARCANUM: Readonly<Record<string, number>> = {
+  "classFeature:mystic arcanum|warlock|xphb|11": 6,
+  "classFeature:mystic arcanum|warlock|xphb|13": 7,
+  "classFeature:mystic arcanum|warlock|xphb|15": 8,
+  "classFeature:mystic arcanum|warlock|xphb|17": 9,
+};
+
+/** Rasgos con conjuros que aplican las reglas de conjuros (`pendingChoices`, `casterBlocks`). */
+export const SPELL_RULE_FEATURES: ReadonlySet<string> = new Set([...Object.keys(MAGICAL_SECRETS), ...Object.keys(MYSTIC_ARCANUM)]);
+
 /** Rasgos XPHB cuyo texto dice «choose» u «of your choice» pero no piden una elección de rasgo al subir de nivel. */
 export const NOT_A_CHOICE: ReadonlySet<string> = new Set([
   // La elección la pide la subclase (regla 1)
@@ -96,8 +115,6 @@ export const NOT_A_CHOICE: ReadonlySet<string> = new Set([
   "subclassFeature:spellcasting|fighter|xphb|eldritch knight|xphb|3",
   "subclassFeature:spellcasting|rogue|xphb|arcane trickster|xphb|3",
   // Pendiente: ver docs/superpowers/notes/conjuros-pendientes.md
-  "classFeature:magical secrets|bard|xphb|10",
-  ...[11, 13, 15, 17].map((n) => `classFeature:mystic arcanum|warlock|xphb|${n}`),
   "classFeature:spell mastery|wizard|xphb|18",
   "classFeature:signature spells|wizard|xphb|20",
   "subclassFeature:magical discoveries|bard|xphb|lore|xphb|6",
@@ -173,4 +190,6 @@ export const NOT_A_CHOICE: ReadonlySet<string> = new Set([
 ]);
 
 /** Rasgos con la elección en texto ya resuelta: los que el informe del importador no debe listar. */
-export const SPECIFIED_CHOICES: ReadonlySet<string> = new Set([...Object.keys(FEATURE_CHOICES), ...NOT_A_CHOICE]);
+export const SPECIFIED_CHOICES: ReadonlySet<string> = new Set([
+  ...Object.keys(FEATURE_CHOICES), ...NOT_A_CHOICE, ...SPELL_RULE_FEATURES,
+]);

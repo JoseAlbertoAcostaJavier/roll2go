@@ -1,5 +1,5 @@
 // Cambios de conjuros desde la ficha (spec de conjuros §2.5): preparar y dejar de preparar, copiar al libro del Mago,
-// gastar espacios, descanso largo y elegir la alternativa de conjuros de una subclase. Funciones puras: validan la operación del cliente sobre la hoja guardada y
+// gastar espacios y usos por descanso largo, descanso largo y elegir la alternativa de conjuros de una subclase. Funciones puras: validan la operación del cliente sobre la hoja guardada y
 // devuelven la hoja nueva; la ruta relee el personaje y recalcula los bloques antes de aplicarlas.
 import type { CatalogEntry } from "@/lib/rules/catalog";
 import type { Ref, SpellData } from "@/lib/rules/types";
@@ -13,7 +13,8 @@ export type SpellOp =
   | { op: "copy"; ref: Ref }
   | { op: "slot"; level: string; used: number }
   | { op: "longRest" }
-  | { op: "setOption"; subclass: Ref; name: string | null };
+  | { op: "setOption"; subclass: Ref; name: string | null }
+  | { op: "limited"; key: string; used: number };
 
 export type SpellOpCtx = {
   /** Bloques de lanzador de la hoja guardada (`derive(...).spells.blocks`). */
@@ -55,10 +56,10 @@ function spellFor(
   return { ok: true, entry, data };
 }
 
-// Si el conjuro está en la lista de la clase del bloque
+// Si el conjuro está en la lista de la clase del bloque (o, con Secretos mágicos, en una de sus listas)
 function inClassList(block: CasterBlock, data: SpellData, ctx: SpellOpCtx): boolean {
-  const list = spellListOf(block.class, ctx.resolve(block.class)?.identifier);
-  return data.classes.includes(list);
+  const lists = block.lists ?? [spellListOf(block.class, ctx.resolve(block.class)?.identifier)];
+  return data.classes.some((c) => lists.includes(c));
 }
 
 /** Valida `op` (spec §2.5) sobre la hoja guardada y devuelve la hoja con el cambio. */
@@ -124,7 +125,16 @@ export function applySpellOp(sheet: Dnd2024SheetV2, op: unknown, ctx: SpellOpCtx
     return { ok: true, sheet: { ...sheet, slotsUsed: { ...(sheet.slotsUsed ?? {}), [level]: op.used } } };
   }
 
-  if (op.op === "longRest") return { ok: true, sheet: { ...sheet, slotsUsed: {} } };
+  if (op.op === "longRest") return { ok: true, sheet: { ...sheet, slotsUsed: {}, limitedUsed: {} } };
+
+  // Usos gastados de un conjuro por descanso largo (Arcano místico): solo de los que tiene y entre 0 y su máximo
+  if (op.op === "limited") {
+    const limited = ctx.blocks.flatMap((b) => b.limited).find((l) => l.key === op.key);
+    if (!limited) return fail("No tienes ese uso.");
+    if (!isInt(op.used) || op.used < 0 || op.used > limited.max)
+      return fail(`${limited.spell.name} solo tiene ${limited.max} ${limited.max === 1 ? "uso" : "usos"} por descanso largo.`);
+    return { ok: true, sheet: { ...sheet, limitedUsed: { ...(sheet.limitedUsed ?? {}), [limited.key]: op.used } } };
+  }
 
   // Alternativa de conjuros de una subclase (la tierra del Círculo de la Tierra); `name: null` la quita
   if (op.op === "setOption") {

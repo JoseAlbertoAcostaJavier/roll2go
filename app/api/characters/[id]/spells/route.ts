@@ -17,16 +17,17 @@ type Ctx = { params: Promise<{ id: string }> };
 const MAX_ATTEMPTS = 3;
 const CHANGED_ERROR = "Los conjuros del personaje han cambiado; recarga la página.";
 
-// Campos de la hoja que cambia cada operación (la tierra también quita de los preparados los que pasa a dar)
-type Field = keyof Pick<Dnd2024SheetV2, "prepared" | "spellbookExtra" | "slotsUsed" | "spellOption">;
+// Campos de la hoja que cambia cada operación (la tierra también quita de los preparados los que pasa a dar; el
+// descanso largo recupera espacios y usos)
+type Field = keyof Pick<Dnd2024SheetV2, "prepared" | "spellbookExtra" | "slotsUsed" | "spellOption" | "limitedUsed">;
 const FIELDS: Record<string, Field[]> = {
-  prepare: ["prepared"], unprepare: ["prepared"], copy: ["spellbookExtra"], slot: ["slotsUsed"], longRest: ["slotsUsed"],
-  setOption: ["spellOption", "prepared"],
+  prepare: ["prepared"], unprepare: ["prepared"], copy: ["spellbookExtra"], slot: ["slotsUsed"],
+  longRest: ["slotsUsed", "limitedUsed"], setOption: ["spellOption", "prepared"], limited: ["limitedUsed"],
 };
 
 // Una operación de conjuros (spec de conjuros §2.5): { op: "prepare" | "unprepare", class, ref }, { op: "copy", ref },
-// { op: "slot", level, used }, { op: "longRest" } o { op: "setOption", subclass, name } (la tierra del Círculo de la
-// Tierra; `name: null` la quita). Solo el dueño. Se comprueba sobre lo guardado y solo se escribe si
+// { op: "slot", level, used }, { op: "longRest" }, { op: "setOption", subclass, name } (la tierra del Círculo de la
+// Tierra; `name: null` la quita) o { op: "limited", key, used } (usos de un conjuro por descanso largo). Solo el dueño. Se comprueba sobre lo guardado y solo se escribe si
 // ese campo sigue igual, así nunca se supera el límite con peticiones a la vez. Responde { spells } recalculado.
 export async function PATCH(req: NextRequest, { params }: Ctx) {
   const { id } = await params;

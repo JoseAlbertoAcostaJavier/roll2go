@@ -10,7 +10,9 @@ beforeAll(() => {
   process.env.AUTH_SECRET = "secreto-de-prueba";
 });
 
-const cat = buildCatalog(["class-barbarian.json", "class-cleric.json", "class-fighter.json", "class-warlock.json", "class-wizard.json"]);
+const cat = buildCatalog([
+  "class-barbarian.json", "class-cleric.json", "class-fighter.json", "class-warlock.json", "class-wizard.json", "class-bard.json",
+]);
 // Dotes, invocaciones y armas que no están en los fixtures
 const extra = (key: string, data: unknown, name: string) =>
   cat.set(`${B}:${key}`, { ...cat.get(`${B}:item:greataxe|xphb`)!, ref: ref(key), name, nameEs: null, data });
@@ -43,6 +45,9 @@ for (const [name, level, classes] of [
   ["magic missile", 1, ["wizard"]], ["shield", 1, ["wizard"]],
   ["light", 0, ["cleric", "wizard"]], ["sacred flame", 0, ["cleric"]], ["guidance", 0, ["cleric"]],
   ["thaumaturgy", 0, ["cleric"]], ["bless", 1, ["cleric"]], ["dancing lights", 0, ["warlock"]],
+  ["vicious mockery", 0, ["bard"]], ["healing word", 1, ["bard", "cleric"]],
+  ["circle of death", 6, ["sorcerer", "warlock", "wizard"]], ["chain lightning", 6, ["sorcerer", "wizard"]],
+  ["finger of death", 7, ["sorcerer", "warlock", "wizard"]],
 ] as [string, number, string[]][]) {
   extra(`spell:${name}|xphb`, {
     level, school: "V", time: "", range: "", components: "", duration: "", concentration: false, ritual: false, classes, tags: [],
@@ -515,5 +520,80 @@ describe("validateLevel", () => {
       .toHaveProperty([`choices.${MASTERY}`]);
     const feat = asi({ feat: other("feat:great weapon master|xphb"), ability: "str" });
     expect(await errorsOf(barbarian3(), input({ choices: [feat, mastery()] }))).toHaveProperty([`choices.${ASI}`]);
+  });
+});
+
+describe("rasgos de conjuro de nivel alto", () => {
+  describe("Secretos mágicos (Bardo 10)", () => {
+    const SPELLS = "progression:spells|bard|xphb";
+    // Bardo 9 → 10: un truco y un conjuro nuevos
+    const body = (cantrip: string, spell: string, extraValue: object = {}) => ({
+      expectedLevel: 10, class: client("class:bard|xphb"), hp: { method: "average", value: 5 },
+      choices: [{
+        type: "spells", source: SPELLS,
+        value: { cantrips: [client(`spell:${cantrip}|xphb`)], spells: [client(`spell:${spell}|xphb`)], ...extraValue },
+      }],
+    });
+
+    it("Bardo 10: acepta un conjuro de la lista del Mago (cuenta como de Bardo)", async () => {
+      const r = await validateLevel(sheetWith([["bard", 9]]), body("vicious mockery", "magic missile"), ctx());
+      if (!r.ok) throw new Error(JSON.stringify(r.errors));
+      expect(r.entry.choices[0].value).toMatchObject({ spells: [{ name: "magic missile" }] });
+    });
+    it("Bardo 10: también al sustituir un conjuro; los trucos siguen siendo solo de Bardo", async () => {
+      const s = sheetWith([["bard", 9]], {
+        1: [{ type: "spells", source: SPELLS, value: { class: cls("bard"), cantrips: [], spells: [named(ref("spell:healing word|xphb"))] } }],
+      });
+      const replace = { out: client("spell:healing word|xphb"), in: client("spell:shield|xphb") };
+      const r = await validateLevel(s, body("vicious mockery", "magic missile", { replace }), ctx());
+      if (!r.ok) throw new Error(JSON.stringify(r.errors));
+      expect(await errorsOf(sheetWith([["bard", 9]]), body("light", "magic missile")))
+        .toEqual({ [`choices.${SPELLS}`]: "Conjuros: light no está en la lista de la clase." });
+    });
+    it("Bardo 9: un conjuro de la lista del Mago → error", async () => {
+      const errors = await errorsOf(sheetWith([["bard", 8]]), {
+        expectedLevel: 9, class: client("class:bard|xphb"), hp: { method: "average", value: 5 },
+        choices: [{ type: "spells", source: SPELLS, value: { cantrips: [], spells: [client("spell:magic missile|xphb"), client("spell:healing word|xphb")] } }],
+      });
+      expect(errors[`choices.${SPELLS}`]).toBe("Conjuros: magic missile no está en la lista de la clase.");
+    });
+  });
+
+  describe("Arcano místico (Brujo 11, 13…)", () => {
+    const ARCANUM = (n: number) => `classFeature:mystic arcanum|warlock|xphb|${n}`;
+    const SPELLS = "progression:spells|warlock|xphb";
+    // Brujo n-1 → n: un conjuro aprendido nuevo y el arcano
+    const body = (n: number, arcanum: string, spell = "hex") => ({
+      expectedLevel: n, class: client("class:warlock|xphb"), hp: { method: "average", value: 5 },
+      choices: [
+        { type: "arcanum", source: ARCANUM(n), value: client(`spell:${arcanum}|xphb`) },
+        { type: "spells", source: SPELLS, value: { cantrips: [], spells: [client(`spell:${spell}|xphb`)] } },
+      ],
+    });
+
+    it("Brujo 11: un conjuro de Brujo de nivel 6, con el nombre del catálogo", async () => {
+      const r = await validateLevel(sheetWith([["warlock", 10]]), body(11, "circle of death"), ctx());
+      if (!r.ok) throw new Error(JSON.stringify(r.errors));
+      expect(r.entry.choices.find((c) => c.type === "arcanum")).toEqual({
+        type: "arcanum", source: ARCANUM(11), value: { ref: ref("spell:circle of death|xphb"), name: "circle of death" },
+      });
+    });
+    it("de otro nivel, de otra lista, que falta o que no es un conjuro → error", async () => {
+      const arcanumError = async (spell: string) =>
+        (await errorsOf(sheetWith([["warlock", 10]]), body(11, spell)))[`choices.${ARCANUM(11)}`];
+      expect(await arcanumError("finger of death")).toBe("Arcano místico: finger of death no es un conjuro de nivel 6.");
+      expect(await arcanumError("chain lightning")).toBe("Arcano místico: chain lightning no está en la lista de la clase.");
+      expect(await arcanumError("nada")).toBe("Arcano místico: elige un conjuro.");
+      const missing = { ...body(11, "circle of death"), choices: [body(11, "circle of death").choices[1]] };
+      expect(await errorsOf(sheetWith([["warlock", 10]]), missing)).toHaveProperty("choices", "Falta elegir: Arcano místico.");
+    });
+    it("Brujo 13: pide uno de nivel 7", async () => {
+      const s = sheetWith([["warlock", 12]], { 11: [{ type: "arcanum", source: ARCANUM(11), value: named(ref("spell:circle of death|xphb")) }] });
+      const r = await validateLevel(s, body(13, "finger of death"), ctx());
+      if (!r.ok) throw new Error(JSON.stringify(r.errors));
+      expect(await errorsOf(s, body(13, "circle of death"))).toHaveProperty(
+        [`choices.${ARCANUM(13)}`], "Arcano místico: circle of death no es un conjuro de nivel 7.",
+      );
+    });
   });
 });
