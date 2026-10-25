@@ -1,75 +1,23 @@
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import { getCampaignAccess } from "@/lib/server/campaigns/campaignAccess";
-import { Character } from "@/lib/models/Character";
-import { joinReasons } from "@/lib/server/campaigns/campaignEligibility";
-import { loadUserCards } from "@/lib/server/account/userCards";
+import { listCampaignCharacters } from "@/lib/server/campaigns/queries";
 import { system as rpgSystems } from "@/lib/utils/systems";
-import { classesOf } from "@/lib/rules/dnd2024/sheet/upgrade";
 import CampaignCharacterCard, { type CampaignCharacterData } from "@/app/components/campaigns/CampaignCharacterCard";
 import AddCharacterDialog, { type AddableCharacter } from "@/app/components/campaigns/AddCharacterDialog";
 import { CharacterNoticeArea, CharacterNotices } from "@/app/components/campaigns/CharacterActions";
 
-// «Especie Clase N»; con multiclase, «Especie Clase N / Clase M»
-function summaryOf(sheet: Parameters<typeof classesOf>[0] & { species?: { name?: string } }) {
-  const classes = classesOf(sheet)
-    .filter((c) => c.class?.name)
-    .map((c) => `${c.class.name}${c.level ? ` ${c.level}` : ""}`)
-    .join(" / ");
-  return [sheet.species?.name, classes].filter(Boolean).join(" ");
-}
-
 export default async function CampaignCharactersPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const { session, campaign, isDm } = await getCampaignAccess(id);
-  // Mismo criterio que el creador y la ruta de solicitud
-  const rules = {
-    allowed: campaign.characters?.allowed === true,
-    internal: campaign.characters?.internal === true,
-    external: campaign.characters?.external === true,
-  };
   const system = rpgSystems.find((s) => s.id === campaign.systemId);
   const systemName = system?.name ?? campaign.systemId;
 
-  // El DM ve también las solicitudes pendientes; el resto, los aprobados y sus propias solicitudes
-  const visible = isDm ? {} : { $or: [{ campaignStatus: { $ne: "pending" } }, { owner: session.id }] };
-  const found = await Character.find({ campaign: campaign._id, ...visible })
-    .select("name owner status portraitId campaignStatus sheet.species.name sheet.classes.name sheet.classes.level sheet.classesSummary")
-    .sort({ createdAt: 1 })
-    .lean();
-  // Pendientes primero (sort es estable: dentro de cada grupo se mantiene el orden de creación)
-  found.sort((a, b) => Number(b.campaignStatus === "pending") - Number(a.campaignStatus === "pending"));
-
-  const ownerCards = await loadUserCards(found.map((c) => c.owner));
-  const characters: CampaignCharacterData[] = found.map((c) => {
-    const owner = ownerCards.get(String(c.owner));
-    return {
-      id: String(c._id),
-      name: c.name,
-      portraitUrl: c.portraitId ? `/api/images/${c.portraitId}` : null,
-      summary: summaryOf(c.sheet ?? {}),
-      status: c.status ?? "active",
-      pending: c.campaignStatus === "pending",
-      owner: owner ? { username: owner.username, displayName: owner.displayName } : null,
-      isOwn: String(c.owner) === session.id,
-    };
-  });
-
-  // Personajes propios que se pueden añadir: del mismo sistema y sin campaña, cada uno con su elegibilidad
-  let addable: AddableCharacter[] = [];
-  const canAdd = rules.allowed && rules.external;
-  if (canAdd) {
-    const mine = await Character.find({ owner: session.id, systemId: campaign.systemId, campaign: { $exists: false } })
-      .select("name systemId sheet")
-      .sort({ name: 1 })
-      .collation({ locale: "es", strength: 2 })
-      .lean();
-    const reasons = await joinReasons(
-      session.id,
-      mine.map((c) => ({ campaign, character: { systemId: c.systemId, sheet: c.sheet } })),
-    );
-    addable = mine.map((c, i) => ({ id: String(c._id), name: c.name, summary: summaryOf(c.sheet ?? {}), reason: reasons[i] }));
-  }
+  // Personajes de la campaña (las solicitudes pendientes, solo el DM y su dueño) y los propios que se pueden añadir
+  const data = await listCampaignCharacters(campaign, session.id, isDm);
+  const { rules, canAdd } = data;
+  const characters: CampaignCharacterData[] = data.characters;
+  const addable: AddableCharacter[] = data.addable;
 
   const help = !rules.allowed
     ? "Esta campaña no admite personajes."

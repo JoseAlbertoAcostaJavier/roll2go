@@ -4,15 +4,12 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { Plus } from "lucide-react";
 import { COOKIE_NAME, verifySession } from "@/lib/server/auth/auth";
-import { connectDB } from "@/lib/models/mongodb";
-import { Campaign } from "@/lib/models/Campaign";
+import { listMyCampaigns } from "@/lib/server/campaigns/queries";
 import { system as rpgSystems } from "@/lib/utils/systems";
 import Avatar from "@/app/components/ui/Avatar";
 import CampaignInvites, { type InviteData } from "@/app/components/campaigns/CampaignInvites";
 import ConfirmAction from "@/app/components/ui/ConfirmAction";
-import { CampaignInvite } from "@/lib/models/CampaignInvite";
-import { loadUserCards } from "@/lib/server/account/userCards";
-import { escapeRegex, first } from "@/lib/utils/utils";
+import { first } from "@/lib/utils/utils";
 
 export const metadata: Metadata = { title: "Mis campañas" };
 
@@ -45,47 +42,8 @@ export default async function CampaignsPage({
   const session = token ? await verifySession(token) : null;
   if (!session) redirect("/sign_in?next=/campaigns");
 
-  await connectDB();
-
-  // Siempre solo las campañas de las que el usuario es miembro
-  const filter: Record<string, unknown> = { members: session.id };
-  if (owner === "mine") filter.owner = session.id;
-  if (owner === "others") filter.owner = { $ne: session.id };
-  if (status !== "all") filter.status = status;
-  if (q) filter.name = { $regex: escapeRegex(q), $options: "i" };
-
-  const sortBy: Record<string, 1 | -1> =
-    sort === "name" ? { name: 1 } : sort === "new" ? { createdAt: -1 } : { updatedAt: -1 };
-
-  // Campañas e invitaciones pendientes que te han enviado, a la vez
-  const [campaigns, invites] = await Promise.all([
-    Campaign.find(filter)
-      .select("name systemId status owner members imageId logoId shortDescription")
-      .sort(sortBy)
-      .collation({ locale: "es", strength: 2 }) // ordena por nombre sin distinguir mayúsculas ni tildes
-      .limit(100)
-      .lean(),
-    CampaignInvite.find({ user: session.id }).sort({ createdAt: -1 }).limit(20).lean(),
-  ]);
-
-  // DM de cada campaña, campañas de las invitaciones y quién invita
-  const [ownerCards, inviteCampaigns, inviterCards] = await Promise.all([
-    loadUserCards(campaigns.map((c) => c.owner)),
-    Campaign.find({ _id: { $in: invites.map((i) => i.campaign) } }).select("name systemId").lean(),
-    loadUserCards(invites.map((i) => i.invitedBy)),
-  ]);
-  const inviteCampaignById = new Map(inviteCampaigns.map((c) => [String(c._id), c] as const));
-  const inviteData: InviteData[] = invites.flatMap((i) => {
-    const c = inviteCampaignById.get(String(i.campaign));
-    if (!c) return [];
-    const inviter = inviterCards.get(String(i.invitedBy));
-    return [{
-      id: String(i._id),
-      campaignName: c.name,
-      systemName: rpgSystems.find((s) => s.id === c.systemId)?.name ?? c.systemId,
-      inviter: inviter ? { displayName: inviter.displayName, avatarUrl: inviter.avatarUrl } : null,
-    }];
-  });
+  const { campaigns, ownerCards, invites } = await listMyCampaigns(session.id, { q, owner, status, sort });
+  const inviteData: InviteData[] = invites;
 
   return (
     <div className="mx-auto max-w-280 px-5 py-10">

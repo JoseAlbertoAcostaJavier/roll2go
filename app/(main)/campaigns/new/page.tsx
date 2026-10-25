@@ -3,7 +3,6 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import CampaignForm from "@/app/components/campaigns/CampaignForm";
 import { COOKIE_NAME, verifySession } from "@/lib/server/auth/auth";
-import { connectDB } from "@/lib/models/mongodb";
 import { system as rpgSystems } from "@/lib/utils/systems";
 import { visibleBooksOf } from "@/lib/server/catalog/books";
 
@@ -14,7 +13,6 @@ export default async function NewCampaignPage() {
   const session = token ? await verifySession(token) : null;
   if (!session) redirect("/sign_in?next=/campaigns/new");
 
-  await connectDB();
   const books = await visibleBooksOf(session.id);
 
   return (

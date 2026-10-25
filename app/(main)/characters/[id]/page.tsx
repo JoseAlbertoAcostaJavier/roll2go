@@ -2,11 +2,9 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { cache } from "react";
 import { TriangleAlert } from "lucide-react";
-import { connectDB } from "@/lib/models/mongodb";
-import { Campaign } from "@/lib/models/Campaign";
 import { requireUser } from "@/lib/server/auth/currentUser";
 import { loadCharacterFor } from "@/lib/server/characters/characterAccess";
-import { joinReasons } from "@/lib/server/campaigns/campaignEligibility";
+import { loadSheetCampaign } from "@/lib/server/characters/queries";
 import { system as rpgSystems } from "@/lib/utils/systems";
 import { booksByIds } from "@/lib/server/catalog/books";
 import { listMasteryWeapons, listSpells } from "@/lib/server/catalog/catalog";
@@ -68,32 +66,10 @@ export default async function CharacterPage({ params, searchParams }: Props) {
   const tabs: SheetTab[] = d.hasSpells ? [...BASE_TABS, "conjuros"] : BASE_TABS;
   const tab: SheetTab = isSheetTab(query.tab) && tabs.includes(query.tab) ? query.tab : "info";
 
-  let campaign: { id: string; name: string; pending: boolean; isDm: boolean } | null = null;
-  let joinable: JoinableCampaign[] = [];
-  await connectDB();
-  if (c.campaign) {
-    const doc = await Campaign.findById(c.campaign).select("name owner").lean();
-    if (doc) {
-      campaign = {
-        id: String(doc._id),
-        name: doc.name,
-        pending: c.campaignStatus === "pending",
-        isDm: String(doc.owner) === user.id,
-      };
-    }
-  } else if (isOwner) {
-    // «Unir a una campaña»: las campañas activas del dueño de este sistema, cada una con su elegibilidad
-    const mine = await Campaign.find({ members: user.id, status: "active", systemId: c.systemId })
-      .select("name owner members systemId status characters restrictBooks allowedBooks")
-      .sort({ name: 1 })
-      .collation({ locale: "es", strength: 2 })
-      .lean();
-    const reasons = await joinReasons(
-      user.id,
-      mine.map((m) => ({ campaign: m, character: { systemId: c.systemId, sheet: c.sheet } })),
-    );
-    joinable = mine.map((m, i) => ({ id: String(m._id), name: m.name, isDm: String(m.owner) === user.id, reason: reasons[i] }));
-  }
+  // Su campaña o, si no tiene y eres su dueño, las campañas a las que puedes unirlo («Unir a una campaña»)
+  const sheetCampaign = await loadSheetCampaign(user.id, c, isOwner);
+  const { campaign } = sheetCampaign;
+  const joinable: JoinableCampaign[] = sheetCampaign.joinable;
 
   const species = `${sheet.species.name}${sheet.lineage ? ` (${sheet.lineage.name})` : ""}`;
   const classes = d.classes.map((k) => `${k.name} ${k.level}`).join(" / ");

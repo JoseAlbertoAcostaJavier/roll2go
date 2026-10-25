@@ -1,14 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowUp, Files } from "lucide-react";
-import { connectDB } from "@/lib/models/mongodb";
-import { Campaign } from "@/lib/models/Campaign";
-import { Character } from "@/lib/models/Character";
 import { requireUser } from "@/lib/server/auth/currentUser";
-import { visibleBooksOf } from "@/lib/server/catalog/books";
-import { classesOf } from "@/lib/rules/dnd2024/sheet/upgrade";
+import { listMyCharacters } from "@/lib/server/characters/queries";
 import { system as rpgSystems } from "@/lib/utils/systems";
-import { accentInsensitive, first } from "@/lib/utils/utils";
+import { first } from "@/lib/utils/utils";
 import CharacterCard, { type CharacterCardData } from "@/app/components/characters/CharacterCard";
 import NewCharacterDialog from "@/app/components/characters/creator/NewCharacterDialog";
 
@@ -37,79 +33,12 @@ export default async function CharactersPage({
   const hasFilters = q !== "" || status !== "active" || sort !== "recent";
 
   const user = await requireUser("/characters");
-  await connectDB();
-
-  // Campañas del usuario: alimentan el diálogo y los enlaces de las tarjetas
-  const myCampaigns = await Campaign.find({ members: user.id, status: "active" })
-    .select("name systemId restrictBooks characters")
-    .sort({ name: 1 })
-    .collation({ locale: "es", strength: 2 })
-    .lean();
-
-  const filter: Record<string, unknown> = { owner: user.id };
-  if (status !== "all") filter.status = status;
-  if (q) {
-    const rx = { $regex: accentInsensitive(q), $options: "i" }; // sin distinguir tildes ni mayúsculas
-    // Para buscar por campaña se averiguan antes los ids por nombre (también las que ya no están activas)
-    const named = await Campaign.find({ members: user.id, name: rx }).select("_id").lean();
-    filter.$or = [
-      { name: rx },
-      { "sheet.species.name": rx },
-      { "sheet.lineage.name": rx },
-      { "sheet.classesSummary.class.name": rx },
-      { "sheet.classes.name": rx }, // hojas v1 aún sin migrar
-      { campaign: { $in: named.map((c) => c._id) } },
-    ];
-  }
-
-  const [characters, books] = await Promise.all([
-    Character.find(filter)
-      .select("name systemId status campaign campaignStatus portraitId sheet.species sheet.lineage sheet.classes sheet.classesSummary")
-      .sort(sort === "name" ? { name: 1 } : { updatedAt: -1 })
-      .collation({ locale: "es", strength: 2 })
-      .limit(100)
-      .lean(),
-    visibleBooksOf(user.id),
-  ]);
-
-  // Nombres de las campañas de las tarjetas (alguna puede que ya no esté activa)
-  const campaignNames = new Map<string, string>(myCampaigns.map((c) => [String(c._id), c.name as string]));
-  const missing = [...new Set(characters.flatMap((c) => (c.campaign ? [String(c.campaign)] : [])))].filter(
-    (id) => !campaignNames.has(id),
-  );
-  if (missing.length > 0) {
-    const extra = await Campaign.find({ _id: { $in: missing } }).select("name").lean();
-    for (const c of extra) campaignNames.set(String(c._id), c.name);
-  }
-
-  const cards: CharacterCardData[] = characters.map((c) => {
-    const s = c.sheet ?? {};
-    const cls = classesOf(s)[0];
-    const species = s.species?.name ? `${s.species.name}${s.lineage?.name ? ` (${s.lineage.name})` : ""}` : "";
-    const klass = cls?.class?.name ? `${cls.class.name}${cls.level ? ` ${cls.level}` : ""}` : "";
-    const campaignId = c.campaign ? String(c.campaign) : "";
-    const campaignName = campaignNames.get(campaignId);
-    return {
-      id: String(c._id),
-      name: c.name,
-      portraitUrl: c.portraitId ? `/api/images/${c.portraitId}` : null,
-      summary: [species, klass].filter(Boolean).join(" · "),
-      systemName: rpgSystems.find((r) => r.id === c.systemId)?.name ?? c.systemId,
-      status: c.status,
-      campaign: campaignName ? { id: campaignId, name: campaignName } : null,
-      pending: c.campaignStatus === "pending",
-    };
-  });
+  // Tarjetas con los filtros, campañas en las que se puede crear un personaje y libros del usuario
+  const data = await listMyCharacters(user.id, { q, status, sort });
+  const cards: CharacterCardData[] = data.cards;
+  const { dialogCampaigns, books } = data;
 
   const systems = rpgSystems.map((s) => ({ id: s.id, name: s.name, creator: s.creator }));
-  const dialogCampaigns = myCampaigns
-    .filter((c) => c.characters?.allowed === true && c.characters?.internal === true)
-    .map((c) => ({
-      id: String(c._id),
-      name: c.name as string,
-      systemId: c.systemId as string,
-      restrictBooks: !!c.restrictBooks,
-    }));
 
   return (
     <div className="mx-auto max-w-280 px-5 py-10">

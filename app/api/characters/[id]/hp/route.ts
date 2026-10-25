@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sessionOf } from "@/lib/server/campaigns/campaignApi";
 import { rateLimit, tooManyRequests } from "@/lib/utils/rateLimit";
-import { Character } from "@/lib/models/Character";
-import { OUTDATED_SHEET_ERROR, loadCharacterFor } from "@/lib/server/characters/characterAccess";
-import { derive } from "@/lib/rules/dnd2024/derive";
-import { applyHp } from "@/lib/rules/dnd2024/sheet/edits";
+import { saveHp } from "@/lib/server/characters/sheetEdits";
+import { failureResponse } from "@/lib/server/result";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -24,16 +22,7 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     return NextResponse.json({ error: "Petición no válida." }, { status: 400 });
   }
 
-  const found = await loadCharacterFor(session.id, id, "write");
-  if (!found) return NextResponse.json({ error: "Personaje no encontrado." }, { status: 404 });
-  if (found.outdated) return NextResponse.json({ error: OUTDATED_SHEET_ERROR }, { status: 409 });
-
-  const max = derive(found.sheet, found.entries).hp.max;
-  const result = applyHp(found.sheet, body, max);
-  if (!result.ok) return NextResponse.json({ error: result.error }, { status: 400 });
-
-  // Solo los PG: así no pisa otros cambios de la hoja hechos a la vez
-  const res = await Character.updateOne({ _id: id, "sheet.version": 2 }, { $set: { "sheet.hp": result.sheet.hp } });
-  if (res.matchedCount === 0) return NextResponse.json({ error: OUTDATED_SHEET_ERROR }, { status: 409 });
-  return NextResponse.json({ hp: derive(result.sheet, found.entries).hp });
+  const result = await saveHp(session.id, id, body);
+  if (!result.ok) return failureResponse(result);
+  return NextResponse.json({ hp: result.hp });
 }

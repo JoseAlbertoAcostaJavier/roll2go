@@ -1,7 +1,10 @@
 import "server-only";
+import { connectDB } from "@/lib/models/mongodb";
 import { Campaign } from "@/lib/models/Campaign";
-import { MAX_MEMBERS } from "@/lib/server/campaigns/members";
+import { Block } from "@/lib/models/Block";
+import { INVITE_REGEX, MAX_MEMBERS } from "@/lib/server/campaigns/members";
 import { notify } from "@/lib/server/notifications/notify";
+import { fail, type Result } from "@/lib/server/result";
 
 export type JoinResult = "ok" | "already" | "banned" | "full" | "missing";
 
@@ -41,4 +44,38 @@ export async function joinCampaign(
     console.error("No se pudo avisar al DM:", err);
   }
   return "ok";
+}
+
+// Unirse con el código de un enlace de invitación. `already`: ya eras miembro.
+export async function joinByInviteCode(
+  userId: string,
+  code: string,
+): Promise<Result<{ id: string; already: boolean }>> {
+  const invalid = () => fail(404, "El enlace no es válido o ha caducado.");
+  if (!INVITE_REGEX.test(code)) return invalid();
+
+  try {
+    await connectDB();
+    const campaign = await Campaign.findOne({
+      inviteCode: code,
+      $or: [
+        { inviteExpires: { $exists: false } },
+        { inviteExpires: { $gt: new Date() } },
+      ],
+    }).select("owner");
+    if (!campaign) return invalid();
+
+    // Quien ha sido bloqueado por el DM recibe el mismo mensaje que con un enlace caducado
+    if (await Block.exists({ blocker: campaign.owner, blocked: userId }))
+      return invalid();
+
+    const result = await joinCampaign(campaign._id, userId);
+    if (result === "banned" || result === "missing") return invalid();
+    if (result === "full")
+      return fail(409, "La campaña ha alcanzado el máximo de participantes.");
+    return { ok: true, id: String(campaign._id), already: result === "already" };
+  } catch (err) {
+    console.error("Error al unirse a la campaña:", err);
+    return fail(500, "No se pudo completar la unión. Inténtalo de nuevo.");
+  }
 }

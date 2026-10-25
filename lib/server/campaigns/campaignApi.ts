@@ -18,6 +18,8 @@ type Success = {
   campaign: CampaignLite;
   isDm: boolean;
 };
+/** Sesión y campaña de requireMember / requireDm, para los servicios que actúan sobre la campaña. */
+export type MemberContext = Omit<Success, "error">;
 
 export async function sessionOf(req: NextRequest) {
   const token = req.cookies.get(COOKIE_NAME)?.value;
