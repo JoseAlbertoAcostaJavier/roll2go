@@ -449,7 +449,7 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
   const featPendings = [...(bgFeatPending ? [bgFeatPending] : []), ...invocationPending];
   // Listas de conjuros, bajo demanda: la de la clase elegida y las de las dotes e invocaciones (al rehacer, de los libros
   // del personaje)
-  const { spells, status: spellStatus } = useSpellLists(
+  const { spells, status: spellStatus, retry: retrySpells } = useSpellLists(
     recreate ? { characterId: recreate.characterId } : { systemId: props.systemId, books: props.chosenBooks, campaignId: campaign?.id ?? null },
     [...(casting ? [casting.listId] : []), ...featPendings.flatMap(pendingSpellLists)],
   );
@@ -680,7 +680,7 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
     return (
       <div key={p.source} className="mt-5 animate-fade-in">
         <h3 className="mb-3 font-heading text-lg font-bold">{p.label}</h3>
-        {ready !== "ready" ? <SpellListsStatus error={ready === "error"} /> : <FeatSpellsStep
+        {ready !== "ready" ? <SpellListsStatus error={ready === "error"} onRetry={retrySpells} /> : <FeatSpellsStep
           id={id}
           p={p}
           spells={spells}
@@ -906,7 +906,7 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
           <section id="conjuros" {...section(4)}>
             <h2 className={cardTitle}>Conjuros</h2>
             {spellStatus([casting.listId]) !== "ready" ? (
-              <SpellListsStatus error={spellStatus([casting.listId]) === "error"} />
+              <SpellListsStatus error={spellStatus([casting.listId]) === "error"} onRetry={retrySpells} />
             ) : <SpellsStep
               id="creator-spells"
               casterName={casting.name}

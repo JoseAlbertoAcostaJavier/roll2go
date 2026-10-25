@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { BookPlus, LoaderCircle } from "lucide-react";
+import { BookPlus, LoaderCircle, TriangleAlert } from "lucide-react";
 import type { SpellOption } from "@/lib/rules/catalog";
 import type { CasterBlock } from "@/lib/rules/dnd2024/derive";
 import { bareName, refKey } from "@/lib/rules/dnd2024/equipmentRefs";
@@ -200,6 +200,14 @@ export default function CasterBlockView({ block, listId, iconId, spells, isOwner
           busy={busy}
           onChange={(name) => void onOp({ op: "setOption", subclass: block.spellOptions!.subclass, name })}
         />
+      )}
+
+      {/* Mago 20 de antes de Conjuros distintivos: no puede subir más, así que los elige rehaciendo el nivel */}
+      {isOwner && block.signatureMissing && (
+        <p role="status" className="mb-4 flex items-start gap-2 rounded-md border border-line bg-surface p-3 text-sm text-muted print:hidden">
+          <TriangleAlert size={16} className="mt-0.5 shrink-0 text-brand-soft" aria-hidden="true" />
+          <span>Para elegir tus Conjuros distintivos, borra el nivel 20 y vuelve a subirlo.</span>
+        </p>
       )}
 
       <MasterySelector

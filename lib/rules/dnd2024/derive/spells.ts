@@ -71,6 +71,11 @@ export type CasterBlock = {
    * está en el libro).
    */
   mastery?: { 1: Ref | null; 2: Ref | null };
+  /**
+   * Con Conjuros distintivos sin elegir (hojas de antes del rasgo, en el último nivel): se eligen borrando el nivel 20 y
+   * subiéndolo de nuevo.
+   */
+  signatureMissing?: true;
 };
 
 export type Slots = { levels: Record<string, number>; pact: { count: number; level: number } | null };
@@ -209,6 +214,8 @@ export function casterBlocks(
       ...(lists.length ? { lists } : {}),
       limited,
       ...(mastery ? { mastery } : {}),
+      ...(hasFeature(c.klass.data, SIGNATURE_SPELLS, c.level) && !bonus.has(SIGNATURE_SPELLS)
+        ? { signatureMissing: true as const } : {}),
     };
   });
 }

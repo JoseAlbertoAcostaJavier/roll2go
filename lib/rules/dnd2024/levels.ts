@@ -354,16 +354,29 @@ export function pendingChoices(
   };
 
   // Arcano místico: un conjuro de la lista de la clase del nivel que toca y, en cada nivel de la clase después del
-  // primer arcano, sustituir uno de los que tiene por otro del mismo nivel
+  // primer arcano, sustituir uno de los que tiene por otro del mismo nivel. Las hojas de antes del rasgo (sin el arcano
+  // de un nivel ya pasado) lo eligen en la siguiente subida, uno por nivel que les falta
   const arcana = data.features.filter((f) => MYSTIC_ARCANUM[f.ref.key] && f.level <= newClassLevel);
   if (arcana.length) {
+    const chosen = new Set(classChoices(sheet.levels, classRef, "arcanum").filter((c) => c.value).map((c) => c.source));
     const gained = arcana.find((f) => f.level === newClassLevel);
     const last = arcana.reduce((a, f) => (f.level > a.level ? f : a));
-    out.push({
-      type: "arcanum", source: (gained ?? last).ref.key, count: gained ? 1 : 0, label: "Arcano místico",
-      arcanum: { ...(gained ? { level: MYSTIC_ARCANUM[gained.ref.key] } : {}), list: classList },
-      ...(arcana.some((f) => f.level < newClassLevel) ? { optionalReplace: true } : {}),
-    });
+    const missing = arcana.filter((f) => f.level < newClassLevel && !chosen.has(f.ref.key));
+    // La sustitución va en la elección del último arcano, si tiene alguno que sustituir
+    const replace = chosen.size > 0 ? { optionalReplace: true } : {};
+    for (const f of [...missing, ...(gained ? [gained] : [])]) {
+      out.push({
+        // (los que faltan llevan el nivel del conjuro, para distinguir los pasos)
+        type: "arcanum", source: f.ref.key, count: 1,
+        label: f === gained ? "Arcano místico" : `Arcano místico (nivel ${MYSTIC_ARCANUM[f.ref.key]})`,
+        arcanum: { level: MYSTIC_ARCANUM[f.ref.key], list: classList }, ...(f === last ? replace : {}),
+      });
+    }
+    if (!gained && !missing.includes(last) && chosen.size > 0) {
+      out.push({
+        type: "arcanum", source: last.ref.key, count: 0, label: "Arcano místico", arcanum: { list: classList }, ...replace,
+      });
+    }
   }
   featureChoices(newFeatures);
 
@@ -399,10 +412,15 @@ export function pendingChoices(
       : undefined;
     const school = savant ? SCHOOL_SAVANT[savant.ref.key] : "";
     const maxLevel = maxSpellLevel(progression, newClassLevel);
-    const free = !savant ? undefined
+    // (las hojas de antes del rasgo, sin las que les tocaban, eligen las que les faltan con el nivel máximo actual)
+    const freeTotal = (level: number) => (!savant || level < savant.level ? 0
+      : 2 + Array.from({ length: level - savant.level }, (_, i) => savant.level + 1 + i)
+        .filter((l) => maxSpellLevel(progression, l) > maxSpellLevel(progression, l - 1)).length);
+    const freeChosen = classChoices(sheet.levels, caster.ref, "spells").reduce((n, c) => n + (c.value.free?.length ?? 0), 0);
+    const freeMissing = freeTotal(newClassLevel) - freeChosen;
+    const free = !savant || freeMissing <= 0 ? undefined
       : savant.level === newClassLevel ? { count: 2, school, maxLevel: 2 }
-      : maxLevel > maxSpellLevel(progression, newClassLevel - 1) ? { count: 1, school, maxLevel }
-      : undefined;
+      : { count: freeMissing, school, maxLevel };
     const freeCount = free?.count ?? 0;
     if (cantrips + spells + freeCount > 0 || replace || replaceCantrip) {
       const list = spellListOf(caster.ref, entryOf(caster.ref)?.identifier);
@@ -423,13 +441,16 @@ export function pendingChoices(
   // 9. Rasgos nuevos de la subclase
   if (subData) featureChoices(subData.features.filter((f) => f.level === newClassLevel));
 
-  // Descubrimientos mágicos ganados antes: en cada nivel de la clase puede sustituir uno
+  // Descubrimientos mágicos ganados antes: en cada nivel de la clase puede sustituir uno; las hojas de antes del rasgo
+  // (sin ninguno elegido) los eligen todos
+  const bonusHeld = heldBonusSpells(sheet.levels, classRef);
   for (const f of [...data.features, ...(subData?.features ?? [])]) {
     const bonus = f.level < newClassLevel && MAGICAL_DISCOVERIES[f.ref.key] ? bonusSpellsOf(f.ref.key) : null;
     if (!bonus) continue;
+    const none = !bonusHeld.get(f.ref.key)?.length;
     bonusPending.push({
-      type: "bonusSpells", source: f.ref.key, count: 0, label: bonus.spec.origin, bonusSpells: bonus.spec,
-      optionalReplace: true,
+      type: "bonusSpells", source: f.ref.key, count: none ? bonus.count : 0, label: bonus.spec.origin, bonusSpells: bonus.spec,
+      ...(none ? {} : { optionalReplace: true }),
     });
   }
 

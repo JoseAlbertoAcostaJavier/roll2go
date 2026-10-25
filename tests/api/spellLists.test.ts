@@ -19,13 +19,13 @@ const SPELLS: Record<string, ReturnType<typeof spell>[]> = {
   [B]: [spell("spell:magic missile|xphb", ["wizard"])],
   [C]: [spell("spell:shield|xphb", ["wizard"])],
 };
-const db = vi.hoisted(() => ({ reader: true }));
+const db = vi.hoisted(() => ({ reader: true, limited: false }));
 
 vi.mock("next/cache", () => ({ unstable_cache: (fn: () => unknown) => fn }));
 vi.mock("@/lib/mongodb", () => ({ connectDB: async () => {} }));
 vi.mock("@/lib/campaignApi", () => ({ sessionOf: async () => ({ id: "u1" }) }));
 vi.mock("@/lib/rateLimit", () => ({
-  rateLimit: async () => ({ ok: true }),
+  rateLimit: async () => (db.limited ? { ok: false, retryAfter: 60 } : { ok: true }),
   tooManyRequests: () => new Response(null, { status: 429 }),
 }));
 vi.mock("@/lib/rules/books", () => ({
@@ -62,25 +62,28 @@ const keys = (json: { spells: { ref: { key: string } }[] }) => json.spells.map((
 
 async function getRules(qs: string) {
   const res = await rules.GET(new NextRequest(`http://localhost/api/rules/spells?${qs}`));
-  return { status: res.status, json: await res.json() };
+  return { status: res.status, json: await res.json().catch(() => null), cache: res.headers.get("cache-control") };
 }
 async function getCharacter(qs: string) {
   const res = await character.GET(new NextRequest(`http://localhost/api/characters/x/spells/list?${qs}`), {
     params: Promise.resolve({ id: "x" }),
   });
-  return { status: res.status, json: await res.json() };
+  return { status: res.status, json: await res.json().catch(() => null), cache: res.headers.get("cache-control") };
 }
 
 describe("GET /api/rules/spells", () => {
   it("filas ligeras de la lista pedida, de los libros que puede usar el usuario", async () => {
-    const { status, json } = await getRules(`system=dnd-2024&list=wizard&books=${A},${B},${C}`);
+    const { status, json, cache } = await getRules(`system=dnd-2024&list=wizard&books=${A},${B},${C}`);
     expect(status).toBe(200);
+    expect(cache).toBe("private, max-age=300");
     expect(keys(json)).toEqual(["spell:fire bolt|xphb", "spell:magic missile|xphb"]);
     expect(json.spells[0]).toEqual({
       ref: { book: A, key: "spell:fire bolt|xphb" }, name: "spell:fire bolt|xphb", nameEs: null, level: 0, school: "V",
-      ritual: false, concentration: false, time: "1 acción", range: "18 metros (60 pies)", classes: ["wizard"],
-      tags: ["Daño de fuego"],
+      ritual: false, concentration: false, time: "1 acción", range: "18 metros (60 pies)", duration: "Instantáneo",
+      classes: ["wizard"], tags: ["Daño de fuego"], summary: "Una descripción larga.",
     });
+    // Sin el texto de los componentes (el del material es largo)
+    expect(json.spells[0]).not.toHaveProperty("components");
   });
 
   it("con una campaña que limita los libros, un libro no permitido no aparece", async () => {
@@ -92,6 +95,15 @@ describe("GET /api/rules/spells", () => {
     expect(keys((await getRules(`system=dnd-2024&list=wizard&books=${B}`)).json)).toEqual(["spell:magic missile|xphb"]);
     expect(keys((await getRules(`system=dnd-2024&list=*&books=${A}`)).json))
       .toEqual(["spell:bless|xphb", "spell:fire bolt|xphb"]);
+  });
+
+  it("con el límite de peticiones agotado → 429", async () => {
+    db.limited = true;
+    try {
+      expect((await getRules("system=dnd-2024&list=wizard")).status).toBe(429);
+    } finally {
+      db.limited = false;
+    }
   });
 
   it("campaña de la que no es miembro o sin lista → 404 / 400", async () => {
@@ -106,8 +118,9 @@ describe("GET /api/characters/[id]/spells/list", () => {
   });
 
   it("solo los libros del personaje (no los que pida la dirección)", async () => {
-    const { status, json } = await getCharacter(`list=wizard&books=${A}`);
+    const { status, json, cache } = await getCharacter(`list=wizard&books=${A}`);
     expect(status).toBe(200);
+    expect(cache).toBe("private, max-age=300");
     expect(keys(json)).toEqual(["spell:magic missile|xphb"]);
   });
 

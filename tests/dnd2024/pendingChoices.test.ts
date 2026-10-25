@@ -5,6 +5,7 @@ import type { Derived } from "@/lib/rules/dnd2024/derive";
 import {
   FEATURE_CHOICES, FEATURE_OPTION_LABELS, NOT_A_CHOICE, SPECIFIED_CHOICES, SPELL_RULE_FEATURES,
 } from "@/lib/rules/dnd2024/featureChoices";
+import { refKey } from "@/lib/rules/dnd2024/equipmentRefs";
 import { meetsMulticlass, pendingChoices } from "@/lib/rules/dnd2024/levels";
 import type { Choice, Dnd2024SheetV2, LevelEntry } from "@/lib/rules/dnd2024/sheet";
 import { normalizeAll, textChoiceFeatures } from "@/lib/rules/import/normalize";
@@ -324,7 +325,7 @@ describe("rasgos de conjuro de nivel alto", () => {
     expect(spellsAt(11)?.lists).toEqual(["bard", "cleric", "druid", "wizard"]);
   });
   it("Brujo 11, 13, 15 y 17: un arcano de nivel 6, 7, 8 y 9 de la lista del Brujo; en los demás niveles, ninguno", () => {
-    const arcanum = (level: number) => at("warlock", level).filter((p) => p.type === "arcanum");
+    const arcanum = (level: number) => withArcana(level);
     expect(arcanum(11)).toEqual([{
       type: "arcanum", source: "classFeature:mystic arcanum|warlock|xphb|11", count: 1, label: "Arcano místico",
       arcanum: { level: 6, list: "warlock" },
@@ -334,8 +335,16 @@ describe("rasgos de conjuro de nivel alto", () => {
     expect(arcanum(17)[0].arcanum).toEqual({ level: 9, list: "warlock" });
     expect(arcanum(10)).toEqual([]);
   });
+  // Arcanos elegidos en sus niveles (11, 13, 15 y 17) hasta `before`
+  const ARCANUM = (n: number) => `classFeature:mystic arcanum|warlock|xphb|${n}`;
+  const heldArcana = (before: number): Record<number, Choice[]> => Object.fromEntries([11, 13, 15, 17].filter((n) => n < before)
+    .map((n) => [n, [{ type: "arcanum", source: ARCANUM(n), value: named(ref(`spell:arcanum ${n}|xphb`)) }]]));
+  const withArcana = (level: number) =>
+    pendingChoices(sheetWith([["warlock", level - 1]], heldArcana(level)), cls("warlock"), level, spellCatalog)
+      .filter((p) => p.type === "arcanum");
+
   it("Arcano místico: desde Brujo 12, en cada nivel puede sustituir uno (con o sin arcano nuevo)", () => {
-    const arcanum = (level: number) => at("warlock", level).filter((p) => p.type === "arcanum");
+    const arcanum = withArcana;
     expect(arcanum(11)[0].optionalReplace).toBeUndefined();
     expect(arcanum(12)).toEqual([{
       type: "arcanum", source: "classFeature:mystic arcanum|warlock|xphb|11", count: 0, label: "Arcano místico",
@@ -346,6 +355,25 @@ describe("rasgos de conjuro de nivel alto", () => {
       arcanum: { level: 7, list: "warlock" }, optionalReplace: true,
     }]);
     expect(arcanum(20)).toMatchObject([{ source: "classFeature:mystic arcanum|warlock|xphb|17", count: 0, optionalReplace: true }]);
+  });
+  it("hojas de antes del Arcano místico: pide en la siguiente subida cada arcano de un nivel que no tiene", () => {
+    // Brujo 12 sin arcanos que sube a 13: el de nivel 6 (del 11) y el de nivel 7 (del 13)
+    expect(at("warlock", 13)).toEqual(expect.arrayContaining([
+      { type: "arcanum", source: ARCANUM(11), count: 1, label: "Arcano místico (nivel 6)", arcanum: { level: 6, list: "warlock" } },
+      { type: "arcanum", source: ARCANUM(13), count: 1, label: "Arcano místico", arcanum: { level: 7, list: "warlock" } },
+    ]));
+    expect(at("warlock", 13).filter((p) => p.type === "arcanum")).toHaveLength(2);
+    // Brujo 11 sin arcano que sube a 12: el de nivel 6, sin sustitución (no tiene ninguno)
+    expect(at("warlock", 12).filter((p) => p.type === "arcanum")).toEqual([
+      { type: "arcanum", source: ARCANUM(11), count: 1, label: "Arcano místico (nivel 6)", arcanum: { level: 6, list: "warlock" } },
+    ]);
+    // Brujo 13 con el arcano de nivel 6 pero sin el de nivel 7 que sube a 14: el de nivel 7, y puede sustituir el que tiene
+    const partial = pendingChoices(sheetWith([["warlock", 13]], { 11: heldArcana(12)[11] }), cls("warlock"), 14, spellCatalog)
+      .filter((p) => p.type === "arcanum");
+    expect(partial).toEqual([{
+      type: "arcanum", source: ARCANUM(13), count: 1, label: "Arcano místico (nivel 7)", arcanum: { level: 7, list: "warlock" },
+      optionalReplace: true,
+    }]);
   });
 });
 
@@ -378,19 +406,49 @@ describe("conjuros extra del Bardo del Saber y del Mago", () => {
     expect(ofType(withSub("bard", LORE, 5), "bonusSpells")).toEqual([]);
   });
   it("Saber 7 y después: solo sustituir uno (con el nivel máximo del nuevo nivel)", () => {
-    expect(ofType(withSub("bard", LORE, 7), "bonusSpells")).toEqual([{
+    const held: Choice = {
+      type: "bonusSpells", source: DISCOVERIES,
+      value: { spells: [named(ref("spell:bless|xphb")), named(ref("spell:guidance|xphb"))] },
+    };
+    const s = sheetWith([["bard", 6]], { 3: [subclassChoice(LORE)], 6: [held] });
+    expect(ofType(pendingChoices(s, cls("bard"), 7, spellCatalog), "bonusSpells")).toEqual([{
       type: "bonusSpells", source: DISCOVERIES, count: 0, label: "Descubrimientos mágicos", optionalReplace: true,
       bonusSpells: { class: cls("bard"), lists: ["cleric", "druid", "wizard"], maxLevel: 4, origin: "Descubrimientos mágicos" },
     }]);
   });
+  it("hojas de antes de Descubrimientos mágicos: Saber 7 sin ninguno elegido pide los 2", () => {
+    expect(ofType(withSub("bard", LORE, 7), "bonusSpells")).toEqual([{
+      type: "bonusSpells", source: DISCOVERIES, count: 2, label: "Descubrimientos mágicos",
+      bonusSpells: { class: cls("bard"), lists: ["cleric", "druid", "wizard"], maxLevel: 4, origin: "Descubrimientos mágicos" },
+    }]);
+  });
+  // Mago con la subclase `sub` hasta `level - 1` y las entradas gratis del Sabio que tocan hasta entonces
+  const SAVANT_FREE: Record<number, number> = { 3: 2, 5: 1, 7: 1, 9: 1 };
+  const withFree = (level: number) => {
+    const extra: Record<number, Choice[]> = { 3: [subclassChoice("subclass:abjurer|wizard|xphb")] };
+    for (const [n, count] of Object.entries(SAVANT_FREE)) {
+      if (Number(n) >= level) continue;
+      const free = Array.from({ length: count }, (_, i) => named(ref(`spell:free ${n} ${i}|xphb`)));
+      const choice: Choice = { type: "spells", source: "progression:spells|wizard|xphb", value: { class: cls("wizard"), cantrips: [], spells: [], free } };
+      extra[Number(n)] = [...(extra[Number(n)] ?? []), choice];
+    }
+    const sub = level === 3 ? { subclass: ref("subclass:abjurer|wizard|xphb") } : {};
+    return pendingChoices(sheetWith([["wizard", level - 1]], extra), cls("wizard"), level, spellCatalog, sub);
+  };
+
   it("Abjurador 3: 2 conjuros gratis de Abjuración de nivel 2 como máximo; 5: 1 de nivel 3; 4: ninguno", () => {
-    const spellsAt = (level: number) => ofType(withSub("wizard", "subclass:abjurer|wizard|xphb", level), "spells")[0];
+    const spellsAt = (level: number) => ofType(withFree(level), "spells")[0];
     expect(spellsAt(3).spells?.free).toEqual({ count: 2, school: "A", maxLevel: 2 });
     expect(spellsAt(3).count).toBe(4);
     expect(spellsAt(4).spells?.free).toBeUndefined();
     expect(spellsAt(5).spells?.free).toEqual({ count: 1, school: "A", maxLevel: 3 });
     expect(spellsAt(6).spells?.free).toBeUndefined();
     expect(spellsAt(7).spells?.free).toEqual({ count: 1, school: "A", maxLevel: 4 });
+    // Hojas de antes del Sabio (ninguna gratis elegida): las que le faltan, con el nivel máximo actual
+    const old = (level: number) => ofType(withSub("wizard", "subclass:abjurer|wizard|xphb", level), "spells")[0];
+    expect(old(4).spells?.free).toEqual({ count: 2, school: "A", maxLevel: 2 });
+    expect(old(5).spells?.free).toEqual({ count: 3, school: "A", maxLevel: 3 });
+    expect(old(6).spells?.free).toEqual({ count: 3, school: "A", maxLevel: 3 });
     // Sin subclase con el rasgo, nada
     expect(pendingChoices(sheetWith([["wizard", 4]]), cls("wizard"), 5, spellCatalog).find((p) => p.type === "spells")?.spells?.free)
       .toBeUndefined();
@@ -413,5 +471,27 @@ describe("conjuros extra del Bardo del Saber y del Mago", () => {
       bonusSpells: { class: cls("wizard"), lists: ["wizard"], level: 3, fromSpellbook: true, origin: "Conjuros distintivos" },
     });
     expect(ofType(pendingChoices(sheetWith([["wizard", 17]]), cls("wizard"), 18, spellCatalog), "bonusSpells")).toEqual([]);
+  });
+});
+
+describe("chosenFeatSpells: Pacto del tomo sustituido y vuelto a elegir", () => {
+  it("al sustituir la invocación se olvidan sus conjuros; al volver a elegirla, solo cuentan los nuevos", async () => {
+    const { chosenFeatSpells } = await import("@/lib/rules/dnd2024/featSpells");
+    const TOME = named(ref("optionalFeature:pact of the tome|xphb"));
+    const BLADE = named(ref("optionalFeature:pact of the blade|xphb"));
+    const SOURCE = "progression:eldritch invocations|warlock|xphb";
+    const fs = (names: string[]): Choice => ({
+      type: "featSpells", source: `featSpells:${TOME.ref.key}`,
+      value: { feat: TOME.ref, cantrips: names.map((n) => named(ref(`spell:${n}|xphb`))), spells: [] },
+    });
+    const s = sheetWith([["warlock", 3]], {
+      1: [{ type: "optionalFeature", source: SOURCE, value: [TOME] }, fs(["guidance", "light", "thaumaturgy"])],
+      2: [{ type: "optionalFeature", source: SOURCE, value: [BLADE], replaced: [TOME] }],
+      3: [{ type: "optionalFeature", source: SOURCE, value: [TOME], replaced: [BLADE] }, fs(["druidcraft", "mending", "message"])],
+    });
+    expect(chosenFeatSpells(s.levels).get(refKey(TOME.ref))?.map((n) => n.ref.key))
+      .toEqual(["spell:druidcraft|xphb", "spell:mending|xphb", "spell:message|xphb"]);
+    // Sustituida y no vuelta a elegir: nada
+    expect(chosenFeatSpells(s.levels.slice(0, 2)).get(refKey(TOME.ref))).toBeUndefined();
   });
 });

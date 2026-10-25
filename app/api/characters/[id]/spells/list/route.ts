@@ -3,7 +3,7 @@ import { sessionOf } from "@/lib/campaignApi";
 import { rateLimit, tooManyRequests } from "@/lib/rateLimit";
 import { loadCharacterFor } from "@/lib/characterAccess";
 import { listSpellRows } from "@/lib/rules/catalog";
-import { validList } from "@/lib/rules/spellRows";
+import { SPELL_LIST_CACHE, validList } from "@/lib/rules/spellRows";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -23,5 +23,5 @@ export async function GET(req: NextRequest, { params }: Ctx) {
   const found = await loadCharacterFor(session.id, id, "read");
   if (!found) return NextResponse.json({ error: "Personaje no encontrado." }, { status: 404 });
 
-  return NextResponse.json({ spells: await listSpellRows(found.books, list) });
+  return NextResponse.json({ spells: await listSpellRows(found.books, list) }, { headers: SPELL_LIST_CACHE });
 }

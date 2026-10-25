@@ -705,7 +705,9 @@ describe("conjuros extra del Bardo del Saber y del Mago", () => {
       expect(await freeError(["alarm", "arcane lock", "shield"])).toBe("Conjuros: elige hasta 2 conjuros gratis de Abjuración.");
     });
     it("Abjurador 5 (espacios de nivel 3): 1 gratis de hasta nivel 3", async () => {
-      const s = sheetWith([["wizard", 4]], { 1: [spellsChoice("wizard", ["light"], ["magic missile"])], 3: [subclass("subclass:abjurer|wizard|xphb")] });
+      // (con las 2 gratis del nivel 3 ya elegidas)
+      const free3: Choice = { type: "spells", source: SPELLS, value: { class: ref("class:wizard|xphb"), cantrips: [], spells: [], free: [held("alarm"), held("protection from evil and good")] } };
+      const s = sheetWith([["wizard", 4]], { 1: [spellsChoice("wizard", ["light"], ["magic missile"])], 3: [subclass("subclass:abjurer|wizard|xphb"), free3] });
       const body5 = (free: string[]) => ({
         expectedLevel: 5, class: client("class:wizard|xphb"), hp: hpWizard,
         choices: [{ type: "spells", source: SPELLS, value: { cantrips: [], spells: [spell("shield"), spell("fireball")], free: free.map(spell) } }],
@@ -809,6 +811,25 @@ describe("conjuros extra del Bardo del Saber y del Mago", () => {
       expect(r.entry.choices[0]).toEqual({
         type: "arcanum", source: ARCANUM(13), value: held("finger of death"), replace: { out: held("circle of death"), in: held("eyebite") },
       });
+    });
+    it("hoja de antes del rasgo (Brujo 12 sin arcanos) que sube a 13: pide el de nivel 6 y el de nivel 7", async () => {
+      const s = sheetWith([["warlock", 12]]);
+      const choices = (arcana: [number, string][]) => ({
+        expectedLevel: 13, class: client("class:warlock|xphb"), hp,
+        choices: [
+          ...arcana.map(([n, name]) => ({ type: "arcanum", source: ARCANUM(n), value: spell(name) })),
+          { type: "spells", source: "progression:spells|warlock|xphb", value: { cantrips: [], spells: [spell("hex")] } },
+        ],
+      });
+      const r = await validateLevel(s, choices([[11, "circle of death"], [13, "finger of death"]]), ctx());
+      if (!r.ok) throw new Error(JSON.stringify(r.errors));
+      expect(r.entry.choices.filter((c) => c.type === "arcanum")).toEqual([
+        { type: "arcanum", source: ARCANUM(11), value: held("circle of death") },
+        { type: "arcanum", source: ARCANUM(13), value: held("finger of death") },
+      ]);
+      expect(await errorsOf(s, choices([[13, "finger of death"]]))).toHaveProperty("choices", "Falta elegir: Arcano místico (nivel 6).");
+      expect((await errorsOf(s, choices([[11, "finger of death"], [13, "circle of death"]])))[`choices.${ARCANUM(11)}`])
+        .toBe("Arcano místico (nivel 6): finger of death no es un conjuro de nivel 6.");
     });
   });
 });

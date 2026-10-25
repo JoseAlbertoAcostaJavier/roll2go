@@ -51,7 +51,7 @@ export function applyLevel(
  * que añadió el nivel; si ya se habían cambiado por otras, recorta las de la hoja a `masteriesAfter` (las que permite
  * la hoja sin el nivel, `masteryCount`). Con `spellsAfter` (bloques y espacios de la hoja sin el nivel), quita los
  * preparados que ya no caben y recorta los espacios gastados (`trimSpells`). Si el nivel daba la subclase, quita la
- * alternativa de conjuros elegida para ella (`spellOption`).
+ * alternativa de conjuros elegida para ella (`spellOption`); sin Dominio de conjuros, los elegidos (`spellMastery`).
  */
 export function removeLastLevel(
   sheet: Dnd2024SheetV2, maxHpAfter: number, masteriesAfter = Infinity,
@@ -77,6 +77,8 @@ export function removeLastLevel(
     next.weaponMasteries = left.slice(0, masteriesAfter);
   }
   if (spellsAfter) Object.assign(next, trimSpells(sheet, spellsAfter));
+  // Sin Dominio de conjuros (el Mago baja de 18) se olvidan los elegidos
+  if (spellsAfter && next.spellMastery && !spellsAfter.blocks.some((b) => b.mastery)) delete next.spellMastery;
   // La alternativa de conjuros elegida en la ficha para la subclase que daba el nivel
   const subclass = removed.choices.find((c) => c.type === "subclass");
   if (subclass?.type === "subclass" && sheet.spellOption) {

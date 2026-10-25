@@ -223,9 +223,11 @@ export async function validateSheet(input: unknown, ctx: ValidateCtx): Promise<V
       );
       // El mismo conjuro no se elige a la vez con la dote y para la clase
       const clash = featSpellClash([...checked.choices, ...featSpells.choices]);
-      if (clash) {
+      // (sin pisar un error anterior de esa elección: gana el primero, como en `err`)
+      const clashKey = clash ? `levels.0.choices.${clash.source}` : "";
+      if (clash && !(clashKey in featSpells.errors)) {
         const label = withSpells.find((f) => featSpellsSource(f.ref) === clash.source)?.name ?? "";
-        featSpells.errors[`levels.0.choices.${clash.source}`] = `Conjuros de ${label}: ${clash.name} ya lo eliges con la clase.`;
+        featSpells.errors[clashKey] = `Conjuros de ${label}: ${clash.name} ya lo eliges con la clase.`;
       }
       for (const [k, msg] of Object.entries({ ...featSpells.errors, ...checked.errors })) err(k, msg);
       if (Object.keys(checked.errors).length || Object.keys(featSpells.errors).length) ok = false;

@@ -11,8 +11,14 @@ Si aparece otro rasgo con conjuros sin tratar, se añade aquí con su clave, qu�
 ## Listas de conjuros bajo demanda
 
 El creador (`/api/rules/spells`; al rehacer la creación, `/api/characters/[id]/spells/list`) y el asistente de subir de
-nivel (`/api/characters/[id]/spells/list`) piden las listas al servidor cuando las necesitan, en filas ligeras sin
-resumen, componentes, duración ni libro.
-Por eso, en el creador y el asistente los conjuros se muestran sin la línea de resumen ni la duración y los componentes
-(la ficha del conjuro, al abrirla, sí los trae). La ficha del personaje con `?tab=conjuros` sigue recibiendo las listas
-completas desde la página (cada pestaña es una navegación); en las demás, solo los conjuros que tiene (para imprimir).
+nivel (`/api/characters/[id]/spells/list`) piden las listas al servidor cuando las necesitan, en filas ligeras con
+resumen y duración pero sin los componentes (el texto del material es largo) ni el libro; la ficha del conjuro, al
+abrirla, los trae. La ficha del personaje con `?tab=conjuros` sigue recibiendo las listas completas desde la página
+(cada pestaña es una navegación); en las demás, solo los conjuros que tiene (para imprimir).
+
+## Hojas creadas antes de estos rasgos
+
+Al subir de nivel se piden tarde: cada Arcano místico de un nivel ya pasado que no tienen, los Descubrimientos mágicos
+si no eligieron ninguno y las entradas gratis del Sabio de la escuela que les faltan (con el nivel máximo actual). Un
+Mago 20 sin Conjuros distintivos no puede subir más: la pestaña Conjuros le avisa de que borre el nivel 20 y lo suba de
+nuevo.

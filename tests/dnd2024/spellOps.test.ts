@@ -440,6 +440,23 @@ describe("conjuros extra del Bardo del Saber y del Mago", () => {
       expect(blockOf(r.sheet).mastery).toEqual({ 1: null, 2: null });
       expect(alwaysOf(r.sheet)).toEqual([]);
     });
+    it("Mago 18 que borra su nivel 18: se olvida el Dominio de conjuros elegido", () => {
+      const s = ok(apply(wizard(18), setMastery(1, "chromatic orb")));
+      const r = removeLastLevel(s, 50, Infinity, { ...derive(wizard(17), entries).spells, spellLevel: () => 1 });
+      if (!r.ok) throw new Error(r.error);
+      expect(r.sheet.spellMastery).toBeUndefined();
+      // Mago 19 que baja a 18: lo conserva
+      const s19 = ok(apply(wizard(19), setMastery(1, "chromatic orb")));
+      const r19 = removeLastLevel(s19, 50, Infinity, { ...derive(wizard(18), entries).spells, spellLevel: () => 1 });
+      if (!r19.ok) throw new Error(r19.error);
+      expect(r19.sheet.spellMastery).toEqual({ 1: spell("chromatic orb").ref });
+    });
+    it("Mago 20 de antes de Conjuros distintivos (sin elegirlos): el bloque lo avisa", () => {
+      expect(blockOf(wizard(20)).signatureMissing).toBe(true);
+      expect(blockOf(wizard(19)).signatureMissing).toBeUndefined();
+      const s = wizard(20, { 20: [bonus("classFeature:signature spells|wizard|xphb|20", ["fireball", "lightning bolt"])] });
+      expect(blockOf(s).signatureMissing).toBeUndefined();
+    });
     it("Mago 20: los conjuros distintivos quedan siempre preparados con un uso cada uno", () => {
       const s = wizard(20, { 20: [bonus("classFeature:signature spells|wizard|xphb|20", ["fireball", "lightning bolt"])] });
       expect(alwaysOf(s)).toEqual([["fireball", "Conjuros distintivos"], ["lightning bolt", "Conjuros distintivos"]]);

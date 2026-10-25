@@ -275,7 +275,7 @@ function Wizard(props: Props & { draftKey: string; draft: string | null }) {
   // Listas de conjuros, bajo demanda: las del paso de conjuros al llegar a él (y en el resumen, las de todos, para los
   // nombres); las ya cargadas se conservan
   const stepLists = (s: Step) => (s.p ? pendingSpellLists(s.p) : []);
-  const { spells, status: spellStatus } = useSpellLists(
+  const { spells, status: spellStatus, retry: retrySpells } = useSpellLists(
     { characterId },
     step.id === "confirm" ? steps.flatMap(stepLists) : stepLists(step),
   );
@@ -297,9 +297,12 @@ function Wizard(props: Props & { draftKey: string; draft: string | null }) {
     const held = chosenSpells(sheet, p.spells.class);
     return p.spells.mode === "spellbook" ? { ...held, spells: [...held.spells, ...sheet.spellbookExtra] } : held;
   };
-  // Los que ya tiene por otras vías: siempre preparados (también los que da este nivel), especie, legado y dotes
+  // Los que ya tiene por otras vías (como en el servidor, `validateLevel`): siempre preparados de esta clase o su
+  // subclase (también los que da este nivel), especie, legado y dotes; los de otra clase sí se pueden aprender
   const grantedSpells = [
-    ...derived.spells.blocks.flatMap((b) => b.always.map((a) => a.spell.ref)),
+    ...derived.spells.blocks
+      .filter((b) => [classEntry?.ref, subclassEntry?.ref].some((r) => r && refKey(r) === refKey(b.class)))
+      .flatMap((b) => b.always.map((a) => a.spell.ref)),
     ...derived.spells.other.map((o) => o.spell.ref),
     ...[...(classData?.spells ?? []), ...((subclassEntry?.data as SubclassData | undefined)?.spells ?? [])]
       .filter((g) => g.level <= classLevel).map((g) => g.ref),
@@ -481,7 +484,7 @@ function Wizard(props: Props & { draftKey: string; draft: string | null }) {
     const p = step.p;
     if (!p) return null;
     const lists = spellStatus(stepLists(step));
-    if (lists !== "ready") return <SpellListsStatus error={lists === "error"} />;
+    if (lists !== "ready") return <SpellListsStatus error={lists === "error"} onRetry={retrySpells} />;
     const setValues = (v: string[]) => update({ values: { ...state.values, [p.source]: v } });
     if (p.type === "asi") {
       return (

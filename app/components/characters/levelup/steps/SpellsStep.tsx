@@ -171,6 +171,7 @@ export default function SpellsStep(props: Props) {
     const checked = freeSet.has(key);
     const reason = heldKeys.has(key) ? heldLabel(s)
       : picked.spells.includes(key) ? "Ya lo eliges para tu libro"
+      : swapIns.includes(key) ? "Ya lo eliges como sustituto"
       : !checked && free && freePicked.length >= free.count ? `Ya has elegido ${free.count}. Desmarca uno para elegir otro`
       : undefined;
     return {

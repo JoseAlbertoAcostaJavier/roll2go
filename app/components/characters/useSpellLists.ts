@@ -23,10 +23,12 @@ const baseOf = (source: SpellListSource) => {
 
 /* Listas de conjuros pedidas al servidor bajo demanda (spec ampliación de conjuros §5), cada una una sola vez:
    `spells` son todas las cargadas hasta ahora (los componentes filtran por su lista) y `status(listas)` dice si unas
-   listas de las pedidas ya están, aún cargan o no se pudieron cargar. Si se pide `ALL_LISTS`, solo se pide esa. */
+   listas de las pedidas ya están, aún cargan o no se pudieron cargar; `retry` vuelve a pedir las que fallaron. Si se
+   pide `ALL_LISTS`, solo se pide esa. */
 export default function useSpellLists(source: SpellListSource, lists: string[]) {
   const [loaded, setLoaded] = useState<Record<string, SpellOption[] | null>>({});
   const requested = useRef(new Set<string>());
+  const [attempt, setAttempt] = useState(0);
   const base = baseOf(source);
   const key = [...new Set(lists)].sort().join("\n");
 
@@ -42,7 +44,7 @@ export default function useSpellLists(source: SpellListSource, lists: string[]) 
         })))
         .catch(() => setLoaded((l) => ({ ...l, [list]: null })));
     }
-  }, [base, key]);
+  }, [base, key, attempt]);
 
   const spells = useMemo(() => {
     const byKey = new Map<string, SpellOption>();
@@ -57,5 +59,11 @@ export default function useSpellLists(source: SpellListSource, lists: string[]) 
     const viaAll = key.split("\n").includes(ALL_LISTS);
     return missing.some((l) => loaded[viaAll ? ALL_LISTS : l] === null) ? "error" : "loading";
   };
-  return { spells, status };
+  const retry = () => {
+    const failed = Object.keys(loaded).filter((l) => loaded[l] === null);
+    for (const l of failed) requested.current.delete(l);
+    setLoaded((l) => Object.fromEntries(Object.entries(l).filter(([k]) => !failed.includes(k))));
+    setAttempt((a) => a + 1);
+  };
+  return { spells, status, retry };
 }

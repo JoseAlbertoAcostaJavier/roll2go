@@ -132,7 +132,9 @@ export default function BonusSpellsStep({ id, p, spells, held, spellbook, taken,
           </li>
         </ul>
       ) : (
-        <p className="text-sm text-muted">Este nivel no da conjuros nuevos de {p.label}, pero puedes sustituir uno de los que tienes.</p>
+        <p className="text-sm text-muted">
+          Este nivel no da conjuros nuevos de {p.label}{held.length > 0 ? ", pero puedes sustituir uno de los que tienes" : ""}.
+        </p>
       )}
       <p className="text-xs text-muted">
         {p.arcanum ? "Lo lanzas una vez sin gastar espacio y lo recuperas con un descanso largo."

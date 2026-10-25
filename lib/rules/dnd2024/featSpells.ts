@@ -219,12 +219,17 @@ const toNamed = (e: CatalogEntry): Named => ({ ref: { book: e.ref.book, key: e.r
 
 /**
  * Lo que conserva cada dote en el historial (por `refKey` de la dote): sus conjuros elegidos, con los cambios
- * aplicados en orden, y la lista elegida (Iniciado en la magia base).
+ * aplicados en orden, y la lista elegida (Iniciado en la magia base); nada de las que se sustituyeron después.
  */
 function heldFeatSpells(levels: LevelEntry[]): Map<string, { spells: Named[]; list?: string }> {
   const out = new Map<string, { spells: Named[]; list?: string }>();
   for (const l of levels) {
     for (const c of l.choices) {
+      // Una dote o invocación sustituida (Pacto del tomo cambiado por otro pacto) se lleva sus conjuros: si se vuelve a
+      // elegir, sus conjuros son los que se elijan entonces
+      if ((c.type === "optionalFeature" || c.type === "feat") && c.replaced) {
+        for (const r of c.replaced) out.delete(refKey(r.ref));
+      }
       if (c.type !== "featSpells") continue;
       const k = refKey(c.value.feat);
       const prev = out.get(k);
