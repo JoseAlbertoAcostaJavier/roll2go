@@ -19,7 +19,7 @@ type Props = {
   initial: SpellsSummary;
   /** Por bloque (`libro:clave` de su clase): identificador de su lista de conjuros y de su icono. */
   lists: Record<string, { listId: string; iconId: string }>;
-  /** Conjuros de las listas de las clases y los que tiene el personaje, sin descripción. */
+  /** Conjuros que tiene el personaje y, con la pestaña abierta, los de las listas de sus clases, sin descripción. */
   spells: SpellOption[];
 };
 

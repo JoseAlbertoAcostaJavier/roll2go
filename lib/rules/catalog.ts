@@ -10,6 +10,7 @@ import { isMasteryWeapon } from "@/lib/rules/dnd2024/masteries";
 import { pickBooks } from "@/lib/rules/pickBooks";
 import { normalizeName, validateEntryData } from "@/lib/rules/schemas";
 import { spellSummary } from "@/lib/rules/dnd2024/spellText";
+import { inSpellList, spellRowOf, type SpellRow } from "@/lib/rules/spellRows";
 import type { EntryKind, ItemData, Ref, SpellData } from "@/lib/rules/types";
 
 export { pickBooks };
@@ -210,6 +211,11 @@ export async function listSpells(books: string[]): Promise<SpellOption[]> {
     .flatMap((l) => l.entries)
     .sort((a, b) => (a.sort < b.sort ? -1 : a.sort > b.sort ? 1 : 0))
     .map((e) => e.option);
+}
+
+/** Filas ligeras de una lista de clase (`ALL_LISTS`: de todas) en los libros dados, ordenadas por nombre. */
+export async function listSpellRows(books: string[], list: string): Promise<SpellRow[]> {
+  return (await listSpells(books)).filter((s) => inSpellList(s.data.classes, list)).map(spellRowOf);
 }
 
 type FullEntryDoc = EntryDoc & {

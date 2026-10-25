@@ -27,7 +27,7 @@ import {
   ABILITY_METHODS, type AbilityMethod, type BonusSpellsValue, type Choice, type Dnd2024Sheet, type Dnd2024SheetV2,
   type Named, type SpellChoice, type SpellSwap,
 } from "./sheet";
-import { spellSchoolName } from "./spellText";
+import { spellSchoolName } from "./spellTextClient";
 import { SKILLS_SOURCE, upgradeSheet } from "./upgrade";
 
 export type ValidateCtx = {

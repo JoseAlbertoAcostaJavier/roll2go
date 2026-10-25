@@ -4,7 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
 import { requireUser } from "@/lib/currentUser";
 import { OUTDATED_SHEET_ERROR, loadCharacterFor } from "@/lib/characterAccess";
-import { getEntries, listEntries, listMasteryWeapons, listSpells, type CatalogEntry } from "@/lib/rules/catalog";
+import { getEntries, listEntries, listMasteryWeapons, type CatalogEntry } from "@/lib/rules/catalog";
 import { refKey } from "@/lib/rules/dnd2024/equipmentRefs";
 import { summarizeClasses } from "@/lib/rules/dnd2024/upgrade";
 import { MAX_LEVEL } from "@/lib/rules/dnd2024/validateLevel";
@@ -91,11 +91,7 @@ export default async function LevelUpPage({ params }: { params: Promise<{ id: st
   for (const e of entries.values()) all.set(refKey(e.ref), light(e));
   for (const e of features) all.set(refKey(e.ref), newKeys.has(refKey(e.ref)) ? full(e) : light(e));
   for (const e of [...classes, ...subclasses, ...options]) all.set(refKey(e.ref), full(e));
-
-  // Conjuros (sin descripción) de todas las listas: además de la de cada clase, los de Secretos mágicos y
-  // Descubrimientos mágicos (otras listas), las dotes (Iniciado en la magia, Tocado por los feéricos…) y el Pacto del
-  // tomo (trucos y rituales de cualquier clase)
-  const spells = await listSpells(books);
+  // (las listas de conjuros las pide el asistente al llegar a cada paso de conjuros)
 
   return (
     <div className="mx-auto max-w-280 px-4 py-8 sm:px-5">
@@ -111,7 +107,6 @@ export default async function LevelUpPage({ params }: { params: Promise<{ id: st
         feats={plain(feats)}
         optionalFeatures={plain(optionalFeatures)}
         weapons={plain(weapons)}
-        spells={plain(spells)}
       />
     </div>
   );

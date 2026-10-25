@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "reac
 import { useRouter } from "next/navigation";
 import { Check, ChevronLeft, ChevronRight, LoaderCircle } from "lucide-react";
 import { card, primaryButton } from "@/app/components/formStyles";
-import type { CatalogEntry, EntryOption, SpellOption } from "@/lib/rules/catalog";
+import type { CatalogEntry, EntryOption } from "@/lib/rules/catalog";
 import { derive } from "@/lib/rules/dnd2024/derive";
 import { characterFeats } from "@/lib/rules/dnd2024/derive/features";
 import { chosenFeatSpells, levelFeatSpellPending, type FeatWithData } from "@/lib/rules/dnd2024/featSpells";
@@ -19,6 +19,7 @@ import {
 import { currentMasteries, masteryLabel } from "@/lib/rules/dnd2024/masteries";
 import type { Dnd2024SheetV2, LevelEntry } from "@/lib/rules/dnd2024/sheet";
 import { emptySpellPick } from "@/lib/rules/dnd2024/spellPicks";
+import { pendingSpellLists } from "@/lib/rules/spellRows";
 import { summarizeClasses } from "@/lib/rules/dnd2024/upgrade";
 import {
   ABILITIES, type Ability, type BackgroundData, type ClassData, type FeatData, type ItemData, type Ref, type SubclassData,
@@ -42,6 +43,8 @@ import PickStep from "./steps/PickStep";
 import FeatSpellsStep from "./steps/FeatSpellsStep";
 import SpellsStep from "./steps/SpellsStep";
 import SubclassStep from "./steps/SubclassStep";
+import SpellListsStatus from "../SpellListsStatus";
+import useSpellLists from "../useSpellLists";
 
 type Props = {
   characterId: string;
@@ -56,8 +59,6 @@ type Props = {
   feats: EntryOption[];
   optionalFeatures: EntryOption[];
   weapons: EntryOption[];
-  /** Conjuros de los libros del personaje (sin descripción). */
-  spells: SpellOption[];
 };
 
 type Step = { id: string; title: string; p?: PendingChoice };
@@ -271,6 +272,14 @@ function Wizard(props: Props & { draftKey: string; draft: string | null }) {
   const missing = missingOf(step);
   const isLast = index === steps.length - 1;
 
+  // Listas de conjuros, bajo demanda: las del paso de conjuros al llegar a él (y en el resumen, las de todos, para los
+  // nombres); las ya cargadas se conservan
+  const stepLists = (s: Step) => (s.p ? pendingSpellLists(s.p) : []);
+  const { spells, status: spellStatus } = useSpellLists(
+    { characterId },
+    step.id === "confirm" ? steps.flatMap(stepLists) : stepLists(step),
+  );
+
   const update = (patch: Partial<LevelUpState>) => {
     setState((s) => ({ ...s, ...patch }));
     setErrors([]);
@@ -295,7 +304,7 @@ function Wizard(props: Props & { draftKey: string; draft: string | null }) {
     ...[...(classData?.spells ?? []), ...((subclassEntry?.data as SubclassData | undefined)?.spells ?? [])]
       .filter((g) => g.level <= classLevel).map((g) => g.ref),
   ].map(refKey);
-  const spellNames = useMemo(() => new Map(props.spells.map((s) => [refKey(s.ref), nameOf(s)])), [props.spells]);
+  const spellNames = useMemo(() => new Map(spells.map((s) => [refKey(s.ref), nameOf(s)])), [spells]);
   const featSpellsHeld = useMemo(() => chosenFeatSpells(sheet.levels), [sheet]);
   // Arcano místico y conjuros de rasgos: los que ya da la elección, el libro de la clase con lo elegido en este nivel
   // (Conjuros distintivos) y los que ya tiene (no se repiten)
@@ -471,6 +480,8 @@ function Wizard(props: Props & { draftKey: string; draft: string | null }) {
     }
     const p = step.p;
     if (!p) return null;
+    const lists = spellStatus(stepLists(step));
+    if (lists !== "ready") return <SpellListsStatus error={lists === "error"} />;
     const setValues = (v: string[]) => update({ values: { ...state.values, [p.source]: v } });
     if (p.type === "asi") {
       return (
@@ -488,7 +499,7 @@ function Wizard(props: Props & { draftKey: string; draft: string | null }) {
         <FeatSpellsStep
           id={`feat-spells-${n}`}
           p={p}
-          spells={props.spells}
+          spells={spells}
           granted={grantedSpells}
           held={p.featSpells ? (featSpellsHeld.get(refKey(p.featSpells.feat)) ?? []) : []}
           value={state.spells[p.source] ?? emptySpellPick()}
@@ -505,7 +516,7 @@ function Wizard(props: Props & { draftKey: string; draft: string | null }) {
         <BonusSpellsStep
           id={`bonus-spells-${n}`}
           p={p}
-          spells={props.spells}
+          spells={spells}
           {...bonusContext(p)}
           value={state.spells[p.source] ?? emptySpellPick()}
           onChange={(v) => update({ spells: { ...state.spells, [p.source]: v } })}
@@ -524,7 +535,7 @@ function Wizard(props: Props & { draftKey: string; draft: string | null }) {
           listId={p.spells.list}
           maxLevel={p.spells.maxLevel}
           pending={p}
-          spells={props.spells}
+          spells={spells}
           held={heldSpells(p)}
           granted={grantedSpells}
           value={state.spells[p.source] ?? emptySpellPick()}

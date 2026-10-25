@@ -4,7 +4,7 @@ import { useEffect, useId, useRef, useState, type RefObject } from "react";
 import { useSearchParams } from "next/navigation";
 import { LoaderCircle, X } from "lucide-react";
 import type { CatalogEntry, SpellOption } from "@/lib/rules/catalog";
-import { spellClassNames, spellLevelLabel, spellSchoolName } from "@/lib/rules/dnd2024/spellText";
+import { spellLevelLabel, spellSchoolName } from "@/lib/rules/dnd2024/spellTextClient";
 import type { SpellData } from "@/lib/rules/types";
 import Bbcode from "@/app/components/Bbcode";
 import RoundIcon from "@/app/components/RoundIcon";
@@ -12,7 +12,8 @@ import RoundIcon from "@/app/components/RoundIcon";
 // "libro:spell:clave" → referencia (la clave también lleva ":")
 const refFromKey = (k: string) => ({ book: k.slice(0, k.indexOf(":")), key: k.slice(k.indexOf(":") + 1) });
 
-type Loaded = { key: string; entry: CatalogEntry | null; error: string };
+// `classNames`: las clases del conjuro en español (las traduce el servidor, que tiene `es.json`)
+type Loaded = { key: string; entry: CatalogEntry | null; classNames: string[]; error: string };
 
 /** Quita `?spell=` de la dirección (cierra la ficha) sin recargar la página. */
 export function closeSpell() {
@@ -61,10 +62,11 @@ export default function SpellDialog({ characterId, campaignId = null, spells, op
       .then(async (res) => {
         const data = await res.json().catch(() => null);
         if (stale) return;
-        if (res.ok && data?.entry) setLoaded({ key, entry: data.entry as CatalogEntry, error: "" });
-        else setLoaded({ key, entry: null, error: res.status === 404 ? "Conjuro no disponible." : (data?.error ?? "No se pudo cargar el conjuro.") });
+        if (res.ok && data?.entry) {
+          setLoaded({ key, entry: data.entry as CatalogEntry, classNames: (data.classNames as string[] | undefined) ?? [], error: "" });
+        } else setLoaded({ key, entry: null, classNames: [], error: res.status === 404 ? "Conjuro no disponible." : (data?.error ?? "No se pudo cargar el conjuro.") });
       })
-      .catch(() => !stale && setLoaded({ key, entry: null, error: "No se pudo conectar con el servidor." }));
+      .catch(() => !stale && setLoaded({ key, entry: null, classNames: [], error: "No se pudo conectar con el servidor." }));
     return () => {
       stale = true;
     };
@@ -158,7 +160,7 @@ export default function SpellDialog({ characterId, campaignId = null, spells, op
             <Field label="Componentes" value={data.components} />
             <Field label="Duración" value={data.duration} />
             <Field label="Ataque o salvación" value={attack} />
-            <Field label="Clases" value={spellClassNames(data.classes).join(", ")} />
+            <Field label="Clases" value={current?.classNames.join(", ") ?? ""} />
           </dl>
         )}
 

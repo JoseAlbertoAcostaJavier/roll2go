@@ -3,7 +3,7 @@
 import { useCallback, useRef, useState } from "react";
 import { Check, ChevronDown, Search, X } from "lucide-react";
 import { EMPTY_SPELL_FILTER, type SpellFilter } from "@/lib/rules/dnd2024/spellFilters";
-import { spellSchoolName } from "@/lib/rules/dnd2024/spellText";
+import { spellSchoolName } from "@/lib/rules/dnd2024/spellTextClient";
 import { field } from "@/app/components/formStyles";
 import useDismiss from "@/app/components/useDismiss";
 

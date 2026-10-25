@@ -128,8 +128,9 @@ export default async function CharacterPage({ params, searchParams }: Props) {
     return { id: refKey(r), label: w ? weaponLabel(w) : bareName(r.key) };
   });
 
-  // Conjuros: la lista de cada clase lanzadora (y los que ya tiene el personaje), sin descripción; se filtra en el
-  // navegador
+  // Conjuros: los que ya tiene el personaje (en todas las pestañas: se imprimen) y, solo con la pestaña Conjuros abierta,
+  // la lista de cada clase lanzadora, sin descripción; se filtra en el navegador. Cada pestaña es una navegación
+  // (`?tab=`), así que al abrir la de Conjuros la página vuelve con las listas
   const spellLists = Object.fromEntries(d.spells.blocks.map((b) => {
     const identifier = entries.get(refKey(b.class))?.identifier || undefined;
     return [refKey(b.class), { listId: spellListOf(b.class, identifier), iconId: identifier ?? bareName(b.class.key) }];
@@ -145,8 +146,10 @@ export default async function CharacterPage({ params, searchParams }: Props) {
     ]),
     ...d.spells.other.map((o) => refKey(o.spell.ref)),
   ]);
+  const withLists = tab === "conjuros";
   const spellOptions = d.hasSpells
-    ? (await listSpells(found.books)).filter((s) => s.data.classes.some((c) => listIds.has(c)) || ownSpells.has(refKey(s.ref)))
+    ? (await listSpells(found.books))
+      .filter((s) => ownSpells.has(refKey(s.ref)) || (withLists && s.data.classes.some((c) => listIds.has(c))))
     : [];
 
   // Pestaña Información: solo los valores que muestra (es un componente de cliente)

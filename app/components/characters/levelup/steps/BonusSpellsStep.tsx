@@ -37,20 +37,25 @@ const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one :
 const nameOf = (s: SpellOption) => s.nameEs ?? s.name;
 const byLevelAndName = (a: SpellOption, b: SpellOption) => a.data.level - b.data.level || nameOf(a).localeCompare(nameOf(b), "es");
 
-// De dónde se eligen: el texto del contador y la prueba de cada conjuro (sin contar los que ya tiene)
+// De dónde se eligen: el texto del contador («Elige 1 truco de la lista de Mago», «Elige 2 conjuros de nivel 3 de tu
+// libro»), con el nombre en singular y plural, y la prueba de cada conjuro (sin contar los que ya tiene)
 function rules(p: PendingChoice, spellbook: Set<string>) {
   if (p.arcanum) {
     const { list, level } = p.arcanum;
     return {
+      noun: ["conjuro", "conjuros"],
       what: level ? `de nivel ${level} de la lista de ${spellListName(list)}` : "",
       fits: (s: SpellOption, at = level) => s.data.classes.includes(list) && s.data.level === at,
     };
   }
   const b = p.bonusSpells!;
-  const from = b.fromSpellbook ? "de tu libro" : `de las listas de ${b.lists.map(spellListName).join(", ")}`;
-  const levels = b.cantripsOnly ? "trucos" : b.level !== undefined ? `de nivel ${b.level}`
-    : b.maxLevel !== undefined ? `trucos o de nivel 1–${b.maxLevel}` : "";
+  const from = b.fromSpellbook ? "de tu libro"
+    : b.lists.length === 1 ? `de la lista de ${spellListName(b.lists[0])}`
+    : `de las listas de ${new Intl.ListFormat("es", { type: "disjunction" }).format(b.lists.map(spellListName))}`;
+  const levels = b.cantripsOnly ? "" : b.level !== undefined ? `de nivel ${b.level}`
+    : b.maxLevel !== undefined ? `(trucos o de nivel 1–${b.maxLevel})` : "";
   return {
+    noun: b.cantripsOnly ? ["truco", "trucos"] : ["conjuro", "conjuros"],
     what: `${levels} ${from}`.trim(),
     fits: (s: SpellOption, at?: number) => (b.fromSpellbook ? spellbook.has(refKey(s.ref)) : s.data.classes.some((c) => b.lists.includes(c)))
       && (!b.cantripsOnly || s.data.level === 0)
@@ -68,7 +73,7 @@ export default function BonusSpellsStep({ id, p, spells, held, spellbook, taken,
   const opener = useRef<HTMLElement | null>(null);
   const byKey = useMemo(() => new Map(spells.map((s) => [refKey(s.ref), s])), [spells]);
   const book = useMemo(() => new Set(spellbook), [spellbook]);
-  const { what, fits } = rules(p, book);
+  const { noun, what, fits } = rules(p, book);
   // Los del libro se pueden elegir aunque ya los tenga; los demás, no
   const fromBook = !!p.bonusSpells?.fromSpellbook;
   const heldKeys = new Set(held.map((h) => refKey(h.ref)));
@@ -122,7 +127,7 @@ export default function BonusSpellsStep({ id, p, spells, held, spellbook, taken,
         <ul className="flex flex-wrap gap-2" aria-label="Lo que eliges">
           <li className={`flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm ${picked.length === p.count ? "border-brand bg-brand/10" : "border-line"}`}>
             {picked.length === p.count && <Check size={14} aria-hidden="true" className="text-brand-soft" />}
-            <span className="font-semibold">Elige {plural(p.count, "conjuro", "conjuros")} {what}</span>
+            <span className="font-semibold">Elige {plural(p.count, noun[0], noun[1])} {what}</span>
             <span className="text-muted">{picked.length}/{p.count}</span>
           </li>
         </ul>

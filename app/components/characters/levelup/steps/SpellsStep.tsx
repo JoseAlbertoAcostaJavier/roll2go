@@ -9,7 +9,7 @@ import type { PendingChoice } from "@/lib/rules/dnd2024/levels";
 import type { Named } from "@/lib/rules/dnd2024/sheet";
 import { EMPTY_SPELL_FILTER, matchesSpellFilter, type SpellFilter } from "@/lib/rules/dnd2024/spellFilters";
 import type { SpellPick, SwapPick } from "@/lib/rules/dnd2024/spellPicks";
-import { spellSchoolName } from "@/lib/rules/dnd2024/spellText";
+import { spellSchoolName } from "@/lib/rules/dnd2024/spellTextClient";
 import type { Ref, SpellcastingMode } from "@/lib/rules/types";
 import { field, labelClass } from "@/app/components/formStyles";
 import RuleSelect from "../../RuleSelect";

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { LoaderCircle, TriangleAlert } from "lucide-react";
 import Bbcode from "@/app/components/Bbcode";
 import { card, cardTitle, errorClass, field, labelClass, primaryButton } from "@/app/components/formStyles";
-import type { CatalogEntry, EntryOption, SpellOption } from "@/lib/rules/catalog";
+import type { CatalogEntry, EntryOption } from "@/lib/rules/catalog";
 import {
   ABILITIES, type Ability, type BackgroundData, type ClassData, type Equipment, type FeatData, type FeatureData,
   type OptionalFeatureData, type Pack, type Ref, type SpeciesData,
@@ -22,6 +22,7 @@ import {
   emptySpellPick, featSpellsChoiceOf, featSpellsMissing, parseSpellPick, spellChoiceOf, spellPickMissing, type SpellPick,
 } from "@/lib/rules/dnd2024/spellPicks";
 import { PRONOUNS, type Pronoun } from "@/lib/rules/dnd2024/names";
+import { pendingSpellLists } from "@/lib/rules/spellRows";
 import type { CreationDraft } from "@/lib/rules/dnd2024/recreate";
 import { SKILLS_SOURCE } from "@/lib/rules/dnd2024/upgrade";
 import AbilityScores from "./AbilityScores";
@@ -37,7 +38,9 @@ import PronounsField from "./fields/PronounsField";
 import SkillPicker from "./fields/SkillPicker";
 import FeatSpellsStep from "./levelup/steps/FeatSpellsStep";
 import SpellsStep from "./levelup/steps/SpellsStep";
+import SpellListsStatus from "./SpellListsStatus";
 import useCatalogEntries from "./useCatalogEntries";
+import useSpellLists from "./useSpellLists";
 import StatusField from "./fields/StatusField";
 import { LIMITS, STATUSES, type Status } from "./fields/constants";
 
@@ -97,8 +100,6 @@ type Props = {
   optionalFeatures: EntryOption[];
   /** Armas con propiedad de maestría (con `data`). */
   weapons: EntryOption[];
-  /** Conjuros de los libros (sin descripción), para la sección Conjuros. */
-  spells: SpellOption[];
   /**
    * Rehacer la creación de un personaje de nivel 1: se precarga con su creación actual (si no hay borrador propio) y
    * se guarda con `PUT /api/characters/[id]/creation`. Sin campaña, imágenes, estado ni información (no cambian).
@@ -446,6 +447,12 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
     (l) => l <= 1,
   ), [pending, form.classChoices, props.optionalFeatures]);
   const featPendings = [...(bgFeatPending ? [bgFeatPending] : []), ...invocationPending];
+  // Listas de conjuros, bajo demanda: la de la clase elegida y las de las dotes e invocaciones (al rehacer, de los libros
+  // del personaje)
+  const { spells, status: spellStatus } = useSpellLists(
+    recreate ? { characterId: recreate.characterId } : { systemId: props.systemId, books: props.chosenBooks, campaignId: campaign?.id ?? null },
+    [...(casting ? [casting.listId] : []), ...featPendings.flatMap(pendingSpellLists)],
+  );
   const featSpellsLeft = (p: PendingChoice) =>
     featSpellsMissing(p, form.featSpells[p.source], form.featAbility[p.source] ?? "");
   // Conjuros de nivel 1 que ya da otra cosa (especie, legado, dote del trasfondo, clase): no se eligen
@@ -669,13 +676,14 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
   // Conjuros de una dote o invocación (en la sección de la que sale: trasfondo o clase)
   const featSpellsSection = (p: PendingChoice, id: string) => {
     const errorKey = `levels.0.choices.${p.source}`;
+    const ready = spellStatus(pendingSpellLists(p));
     return (
       <div key={p.source} className="mt-5 animate-fade-in">
         <h3 className="mb-3 font-heading text-lg font-bold">{p.label}</h3>
-        <FeatSpellsStep
+        {ready !== "ready" ? <SpellListsStatus error={ready === "error"} /> : <FeatSpellsStep
           id={id}
           p={p}
-          spells={props.spells}
+          spells={spells}
           granted={grantedSpells}
           value={form.featSpells[p.source] ?? emptySpellPick()}
           onChange={(v) => update({ featSpells: { ...form.featSpells, [p.source]: v } }, errorKey)}
@@ -683,7 +691,7 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
           onAbility={(a) => update({ featAbility: { ...form.featAbility, [p.source]: a } }, errorKey)}
           characterId={recreate?.characterId ?? null}
           campaignId={campaign?.id ?? null}
-        />
+        />}
         <FieldError errors={errors} keys={[errorKey]} />
       </div>
     );
@@ -897,14 +905,16 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
         {casting && form.klass && (
           <section id="conjuros" {...section(4)}>
             <h2 className={cardTitle}>Conjuros</h2>
-            <SpellsStep
+            {spellStatus([casting.listId]) !== "ready" ? (
+              <SpellListsStatus error={spellStatus([casting.listId]) === "error"} />
+            ) : <SpellsStep
               id="creator-spells"
               casterName={casting.name}
               mode={casting.mode}
               listId={casting.listId}
               maxLevel={casting.maxLevel}
               pending={spellPending}
-              spells={props.spells}
+              spells={spells}
               held={NO_SPELLS}
               granted={grantedSpells}
               value={form.spells}
@@ -919,7 +929,7 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
                 : undefined}
               characterId={recreate?.characterId ?? null}
               campaignId={campaign?.id ?? null}
-            />
+            />}
             <FieldError errors={errors} keys={[...(spellPending ? [`levels.0.choices.${spellPending.source}`] : []), "prepared"]} />
           </section>
         )}

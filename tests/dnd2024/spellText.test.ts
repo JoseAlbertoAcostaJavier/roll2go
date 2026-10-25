@@ -1,8 +1,11 @@
+import { readFileSync, readdirSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, test } from "vitest";
 import {
   spellClassNames, spellComponents, spellDuration, spellLevelLabel, spellRange, spellSchoolName, spellSummary, spellTags,
   spellTime,
 } from "@/lib/rules/dnd2024/spellText";
+import * as client from "@/lib/rules/dnd2024/spellTextClient";
 
 describe("spellSchoolName", () => {
   test("letra de 5etools → escuela en español", () => {
@@ -98,5 +101,22 @@ describe("spellClassNames", () => {
 
   test("clases de otros libros que no están en es.json (Artífice)", () => {
     expect(spellClassNames(["artificer", "wizard"])).toEqual(["Artífice", "Mago"]);
+  });
+});
+
+describe("spellTextClient: sin es.json en el navegador", () => {
+  test("no importa es.json y da lo mismo que la parte de servidor", () => {
+    expect(readFileSync(join(process.cwd(), "lib/rules/dnd2024/spellTextClient.ts"), "utf8")).not.toContain("i18n/es.json");
+    expect(client.spellSchoolName("V")).toBe(spellSchoolName("V"));
+    expect(client.spellLevelLabel(0)).toBe("Truco");
+    expect(client.spellTime([{ number: 1, unit: "bonus" }])).toBe("1 acción adicional");
+  });
+
+  test("ningún componente cliente importa spellText (que carga es.json)", () => {
+    const files = (dir: string): string[] => readdirSync(dir, { withFileTypes: true })
+      .flatMap((e) => (e.isDirectory() ? files(join(dir, e.name)) : e.name.endsWith(".tsx") || e.name.endsWith(".ts") ? [join(dir, e.name)] : []));
+    const offenders = files(join(process.cwd(), "app/components"))
+      .filter((f) => /dnd2024\/spellText"/.test(readFileSync(f, "utf8")));
+    expect(offenders).toEqual([]);
   });
 });

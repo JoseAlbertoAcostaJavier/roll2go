@@ -3,6 +3,8 @@ import { sessionOf } from "@/lib/campaignApi";
 import { rateLimit, tooManyRequests } from "@/lib/rateLimit";
 import { loadCharacterFor } from "@/lib/characterAccess";
 import { resolveRef } from "@/lib/rules/catalog";
+import { spellClassNames } from "@/lib/rules/dnd2024/spellText";
+import type { SpellData } from "@/lib/rules/types";
 
 type Ctx = { params: Promise<{ id: string; bookId: string; key: string }> };
 
@@ -19,7 +21,7 @@ function decodeKey(raw: string): string | null {
 const notFound = () => NextResponse.json({ error: "Conjuro no disponible." }, { status: 404 });
 
 // Ficha completa de un conjuro para la pestaña Conjuros: quien puede ver el personaje (dueño o miembro de su campaña)
-// la recibe solo si el conjuro es de los libros del personaje (no de los de quien mira).
+// la recibe solo si el conjuro es de los libros del personaje (no de los de quien mira), con sus clases en español.
 export async function GET(req: NextRequest, { params }: Ctx) {
   const session = await sessionOf(req);
   if (!session) return NextResponse.json({ error: "Inicia sesión." }, { status: 401 });
@@ -34,5 +36,7 @@ export async function GET(req: NextRequest, { params }: Ctx) {
   if (!found) return NextResponse.json({ error: "Personaje no encontrado." }, { status: 404 });
 
   const entry = await resolveRef({ book: bookId, key }, found.books);
-  return entry ? NextResponse.json({ entry }) : notFound();
+  if (!entry) return notFound();
+  // Las clases en español van aparte: la ficha del conjuro (cliente) no carga `es.json`
+  return NextResponse.json({ entry, classNames: spellClassNames((entry.data as SpellData | null)?.classes ?? []) });
 }
