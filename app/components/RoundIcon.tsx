@@ -5,7 +5,7 @@ import { iconSrc, type IconKind } from "@/lib/icons";
 
 // Las insignias de clase y escuela son un disco de color con el borde de trazo de pincel: se amplían para que el disco
 // llene el círculo (el borde irregular queda fuera) con el símbolo en el centro
-const BADGE_ZOOM = 1.4;
+const BADGE_ZOOM = 1.1;
 
 /* Icono de clase, escuela o especie en un círculo con borde blanco. Sin icono (homebrew, especie sin imagen) o si la
    imagen no carga, el círculo muestra la inicial de `label`. Es decorativo: el nombre ya está en el texto de al lado. */
