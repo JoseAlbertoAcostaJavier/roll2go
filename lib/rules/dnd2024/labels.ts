@@ -165,3 +165,10 @@ const SPELL_OPTION_NAMES: Record<string, string> = {
 };
 export const spellOptionTitle = (subclassKey: string) => SPELL_OPTION_TITLES[subclassKey] ?? "Conjuros de la subclase";
 export const spellOptionName = (name: string) => SPELL_OPTION_NAMES[name] ?? name;
+
+// Listas de conjuros (`SpellData.classes`): nombre de la clase
+const SPELL_LIST_NAMES: Record<string, string> = {
+  artificer: "Artífice", bard: "Bardo", cleric: "Clérigo", druid: "Druida", paladin: "Paladín", ranger: "Explorador",
+  sorcerer: "Hechicero", warlock: "Brujo", wizard: "Mago",
+};
+export const spellListName = (id: string) => SPELL_LIST_NAMES[id] ?? capitalize(id);

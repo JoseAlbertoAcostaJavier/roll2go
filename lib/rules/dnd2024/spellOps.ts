@@ -31,10 +31,12 @@ export type SpellOpResult = { ok: true; sheet: Dnd2024SheetV2 } | { ok: false; e
 
 export const SLOT_LEVELS = ["1", "2", "3", "4", "5", "6", "7", "8", "9"];
 export const PACT_SLOT = "pact";
-// Tiempo de lanzamiento que exige Dominio de conjuros (como lo guarda el importador: `spellTime`)
-const ACTION_TIME = "1 acción";
+/** Tiempo de lanzamiento que exige Dominio de conjuros (como lo guarda el importador: `spellTime`). */
+export const ACTION_TIME = "1 acción";
 // Usos que también se recuperan con un descanso corto (Conjuros distintivos: `signatureKey`)
 const SIGNATURE_PREFIX = "signature:";
+/** Si los usos de esta clave de `limitedUsed` se recuperan también con un descanso corto (Conjuros distintivos). */
+export const recoversOnShortRest = (key: string) => key.startsWith(SIGNATURE_PREFIX);
 
 type Obj = Record<string, unknown>;
 const isObj = (v: unknown): v is Obj => typeof v === "object" && v !== null && !Array.isArray(v);
@@ -139,7 +141,7 @@ export function applySpellOp(sheet: Dnd2024SheetV2, op: unknown, ctx: SpellOpCtx
     const slotsUsed = Object.fromEntries(Object.entries(sheet.slotsUsed ?? {}).filter(([k]) => k !== PACT_SLOT));
     if (!sheet.limitedUsed) return { ok: true, sheet: { ...sheet, slotsUsed } };
     const limitedUsed = Object.fromEntries(
-      Object.entries(sheet.limitedUsed).filter(([k]) => !k.startsWith(SIGNATURE_PREFIX)));
+      Object.entries(sheet.limitedUsed).filter(([k]) => !recoversOnShortRest(k)));
     return { ok: true, sheet: { ...sheet, slotsUsed, limitedUsed } };
   }
 

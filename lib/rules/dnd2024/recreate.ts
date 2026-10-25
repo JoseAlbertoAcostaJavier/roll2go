@@ -25,9 +25,12 @@ export type CreationDraft = {
   /** Trucos y conjuros iniciales (o libro) y preparados iniciales (claves `libro:clave`). */
   spells: SpellPick;
   prepared: string[];
-  /** Conjuros de la dote del trasfondo (Iniciado en la magia…) y su característica de lanzamiento. */
-  featSpells: SpellPick;
-  featAbility: Ability | "";
+  /**
+   * Conjuros de la dote del trasfondo (Iniciado en la magia…) y de las invocaciones de nivel 1 (Pacto del tomo), con la
+   * lista elegida, y su característica de lanzamiento, por `source` de la elección.
+   */
+  featSpells: Record<string, SpellPick>;
+  featAbility: Record<string, Ability>;
   method: Dnd2024SheetV2["abilityMethod"];
   base: Dnd2024SheetV2["baseAbilities"];
   rolls: Dnd2024SheetV2["rolls"];
@@ -76,11 +79,17 @@ export function creationDraft(
     spells.spells = spellChoice.value.spells.map((c) => refKey(c.ref));
   }
   const prepared = first ? (sheet.prepared[preparedKey(first.class.ref)] ?? []).map(refKey) : [];
-  const featChoice = first?.choices.find((c) => c.type === "featSpells");
-  const featSpells = emptySpellPick();
-  if (featChoice?.type === "featSpells") {
-    featSpells.cantrips = featChoice.value.cantrips.map((c) => refKey(c.ref));
-    featSpells.spells = featChoice.value.spells.map((c) => refKey(c.ref));
+  const featSpells: Record<string, SpellPick> = {};
+  const featAbility: Record<string, Ability> = {};
+  for (const c of first?.choices ?? []) {
+    if (c.type !== "featSpells") continue;
+    featSpells[c.source] = {
+      ...emptySpellPick(),
+      cantrips: c.value.cantrips.map((x) => refKey(x.ref)),
+      spells: c.value.spells.map((x) => refKey(x.ref)),
+      ...(c.value.list ? { list: c.value.list } : {}),
+    };
+    if (c.value.ability) featAbility[c.source] = c.value.ability;
   }
   return {
     name: character.name,
@@ -99,7 +108,7 @@ export function creationDraft(
     spells,
     prepared,
     featSpells,
-    featAbility: featChoice?.type === "featSpells" ? (featChoice.value.ability ?? "") : "",
+    featAbility,
     method: sheet.abilityMethod,
     base: sheet.baseAbilities,
     rolls: sheet.rolls,

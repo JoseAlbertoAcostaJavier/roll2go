@@ -134,12 +134,14 @@ export default async function CharacterPage({ params, searchParams }: Props) {
     const identifier = entries.get(refKey(b.class))?.identifier || undefined;
     return [refKey(b.class), { listId: spellListOf(b.class, identifier), iconId: identifier ?? bareName(b.class.key) }];
   }));
-  const listIds = new Set(Object.values(spellLists).map((l) => l.listId));
+  // (con Secretos mágicos, también sus otras listas)
+  const listIds = new Set([...Object.values(spellLists).map((l) => l.listId), ...d.spells.blocks.flatMap((b) => b.lists ?? [])]);
   const ownSpells = new Set([
     ...d.spells.blocks.flatMap((b) => [
       ...[...b.cantrips, ...b.known, ...b.spellbook].map((s) => refKey(s.ref)),
       ...b.prepared.map(refKey),
       ...b.always.map((a) => refKey(a.spell.ref)),
+      ...b.limited.map((l) => refKey(l.spell.ref)),
     ]),
     ...d.spells.other.map((o) => refKey(o.spell.ref)),
   ]);

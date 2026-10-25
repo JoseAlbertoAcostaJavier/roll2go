@@ -4,10 +4,12 @@ import { useMemo, useRef, useState } from "react";
 import { Check } from "lucide-react";
 import type { SpellOption } from "@/lib/rules/catalog";
 import { bareName, refKey } from "@/lib/rules/dnd2024/equipmentRefs";
+import { spellListName } from "@/lib/rules/dnd2024/labels";
 import type { PendingChoice } from "@/lib/rules/dnd2024/levels";
 import type { Named } from "@/lib/rules/dnd2024/sheet";
 import { EMPTY_SPELL_FILTER, matchesSpellFilter, type SpellFilter } from "@/lib/rules/dnd2024/spellFilters";
 import type { SpellPick, SwapPick } from "@/lib/rules/dnd2024/spellPicks";
+import { spellSchoolName } from "@/lib/rules/dnd2024/spellText";
 import type { Ref, SpellcastingMode } from "@/lib/rules/types";
 import { field, labelClass } from "@/app/components/formStyles";
 import RuleSelect from "../../RuleSelect";
@@ -69,27 +71,39 @@ function Counter({ label, done, value }: { label: string; done: boolean; value: 
 
 /* Elección de conjuros al subir de nivel y al crear el personaje (spec de conjuros §4.2 y §4.3): la lista de la clase
    con filtros en modo selección («Elige 1 truco», «Elige 2 conjuros de nivel 1–2»), las sustituciones opcionales de un
-   truco y de un conjuro aprendido y, al crear, los preparados iniciales hasta el límite. */
+   truco y de un conjuro aprendido y, al crear, los preparados iniciales hasta el límite. Con Secretos mágicos, los
+   conjuros (no los trucos) también de otras listas, con un filtro por lista; con el Sabio de la escuela, las entradas
+   gratis de su escuela aparte. */
 export default function SpellsStep(props: Props) {
   const { id, mode, maxLevel, pending, held, value, onChange, prepared } = props;
   const [filter, setFilter] = useState<SpellFilter>(EMPTY_SPELL_FILTER);
+  const [listFilter, setListFilter] = useState("");
   const opener = useRef<HTMLElement | null>(null);
 
   const byKey = useMemo(() => new Map(props.spells.map((s) => [refKey(s.ref), s])), [props.spells]);
   const accepts = props.accepts?.test;
+  // Secretos mágicos: los conjuros de nivel 1 o más, de cualquiera de sus listas
+  const extraLists = pending?.spells?.lists;
   const list = useMemo(
-    () => props.spells.filter((s) => (accepts ? accepts(s) : s.data.classes.includes(props.listId))).sort(byLevelAndName),
-    [props.spells, props.listId, accepts],
+    () => props.spells.filter((s) => (accepts ? accepts(s)
+      : s.data.classes.includes(props.listId)
+        || (!!extraLists && s.data.level >= 1 && s.data.classes.some((c) => extraLists.includes(c)))))
+      .sort(byLevelAndName),
+    [props.spells, props.listId, accepts, extraLists],
   );
   const tags = useMemo(() => [...new Set(list.flatMap((s) => s.data.tags))].sort((a, b) => a.localeCompare(b, "es")), [list]);
 
   const counts = pending?.spells ?? { cantrips: 0, spells: 0 };
   const picked = { cantrips: value.cantrips.slice(0, counts.cantrips), spells: value.spells.slice(0, counts.spells) };
+  // Sabio de la escuela: entradas gratis de su escuela (de 0 a `count`)
+  const free = pending?.spells?.free;
+  const freePicked = free ? (value.free ?? []).slice(0, free.count) : [];
   const granted = new Set(props.granted ?? []);
   const heldKeys = new Set([...held.cantrips, ...held.spells].map((h) => refKey(h.ref)).concat([...granted]));
   const heldLabel = (s: SpellOption) => (granted.has(refKey(s.ref)) ? "Ya lo tienes"
     : mode === "spellbook" && s.data.level > 0 ? "Ya está en tu libro" : "Ya lo conoces");
   const swapIns = [value.replace.in, value.replaceCantrip.in].filter(Boolean);
+  const freeSet = new Set(freePicked);
   const prepSet = new Set(prepared?.value ?? []);
   const always = new Set(prepared?.always ?? []);
   const prepFull = !!prepared && prepared.value.length >= prepared.limit;
@@ -123,6 +137,7 @@ export default function SpellsStep(props: Props) {
     const reason = isHeld ? heldLabel(s)
       : !cantrip && s.data.level > maxLevel ? `Nivel demasiado alto (hasta el ${maxLevel})`
       : swapIns.includes(key) ? "Ya lo eliges como sustituto"
+      : freeSet.has(key) ? "Ya lo eliges gratis"
       : !checked && picked[kind].length >= count ? `Ya has elegido ${count}. Desmarca uno para elegir otro`
       : undefined;
     return {
@@ -150,11 +165,32 @@ export default function SpellsStep(props: Props) {
     return item(s, check);
   };
 
+  // Casilla de las entradas gratis del Sabio de la escuela
+  function freeCheck(s: SpellOption): SpellRowItem["check"] {
+    const key = refKey(s.ref);
+    const checked = freeSet.has(key);
+    const reason = heldKeys.has(key) ? heldLabel(s)
+      : picked.spells.includes(key) ? "Ya lo eliges para tu libro"
+      : !checked && free && freePicked.length >= free.count ? `Ya has elegido ${free.count}. Desmarca uno para elegir otro`
+      : undefined;
+    return {
+      checked: checked || heldKeys.has(key), disabled: !!reason, reason,
+      label: `${checked ? "Quitar" : "Añadir gratis"} ${nameOf(s)}`,
+      onChange: () => onChange({ ...value, free: checked ? freePicked.filter((k) => k !== key) : [...freePicked, key] }),
+    };
+  }
+  const freeOptions = free
+    ? list.filter((s) => s.data.school === free.school && s.data.level >= 1 && s.data.level <= free.maxLevel)
+      .map((s) => item(s, freeCheck(s)))
+    : [];
+
   const spellsOf = (keys: string[]) => keys.map((k) => byKey.get(k)).filter((s): s is SpellOption => !!s);
   const chosen = spellsOf([...picked.cantrips, ...picked.spells, ...(mode === "list" ? (prepared?.value ?? []) : [])])
-    .sort(byLevelAndName).map(rowOf);
+    .sort(byLevelAndName).map(rowOf)
+    .concat(spellsOf(freePicked).sort(byLevelAndName).map((s) => ({ ...item(s, freeCheck(s)), origin: "Gratis" })));
   const book = mode === "spellbook" && prepared ? spellsOf(picked.spells).sort(byLevelAndName).map((s) => item(s, prepareCheck(s))) : [];
-  const filtered = list.filter((s) => matchesSpellFilter(s, filter)).map(rowOf);
+  const filtered = list.filter((s) => matchesSpellFilter(s, filter)
+    && (!listFilter || s.data.classes.includes(listFilter))).map(rowOf);
 
   // Sustituciones: un truco y (en `levelUp`) un conjuro aprendido
   const swaps = [
@@ -182,6 +218,10 @@ export default function SpellsStep(props: Props) {
     ...(counts.spells > 0 ? [{
       label: `Elige ${plural(counts.spells, "conjuro", "conjuros")} ${levels(maxLevel)}${mode === "spellbook" ? " para tu libro" : ""}`,
       done: picked.spells.length === counts.spells, value: `${picked.spells.length}/${counts.spells}`,
+    }] : []),
+    ...(free ? [{
+      label: `Gratis de ${spellSchoolName(free.school)} (hasta ${free.count})`, done: freePicked.length === free.count,
+      value: `${freePicked.length}/${free.count}`,
     }] : []),
     ...(prepared && prepared.limit > 0 ? [{
       label: `Prepara hasta ${plural(prepared.limit, "conjuro", "conjuros")}`, done: prepFull,
@@ -218,6 +258,19 @@ export default function SpellsStep(props: Props) {
           <h3 className="text-sm font-semibold uppercase tracking-wide text-muted">Preparados de tu libro</h3>
           {prepFull && <p role="status" className="mt-1 text-xs text-muted">{fullNotice}</p>}
           <SpellList items={book} empty="" onOpen={open} href={spellUrl} />
+        </div>
+      )}
+
+      {free && (
+        <div>
+          <h3 className="text-sm font-semibold uppercase tracking-wide text-muted">
+            Gratis en tu libro ({spellSchoolName(free.school)})
+          </h3>
+          <p className="mt-1 text-xs text-muted">
+            Puedes añadir hasta {plural(free.count, "conjuro", "conjuros")} de {spellSchoolName(free.school)}{" "}
+            {levels(free.maxLevel)} a tu libro, además de los de este nivel.
+          </p>
+          <SpellList items={freeOptions} empty="No hay conjuros de esta escuela en los libros del personaje." onOpen={open} href={spellUrl} />
         </div>
       )}
 
@@ -267,8 +320,17 @@ export default function SpellsStep(props: Props) {
 
       <div>
         <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">
-          {props.accepts?.title ?? `Lista de ${props.casterName}`}
+          {props.accepts?.title ?? (extraLists ? "Listas de conjuros" : `Lista de ${props.casterName}`)}
         </h3>
+        {extraLists && (
+          <div className="mb-3 max-w-xs">
+            <label htmlFor={`${id}-list`} className={labelClass}>Lista</label>
+            <select id={`${id}-list`} className={field} value={listFilter} onChange={(e) => setListFilter(e.target.value)}>
+              <option value="">Todas (trucos solo de {props.casterName})</option>
+              {extraLists.map((l) => <option key={l} value={l}>{spellListName(l)}</option>)}
+            </select>
+          </div>
+        )}
         <SpellFilters id={`${id}-filters`} value={filter} onChange={setFilter} tags={tags} />
         <p className="mb-1 text-xs text-muted" aria-live="polite">{filtered.length} conjuros</p>
         <SpellList

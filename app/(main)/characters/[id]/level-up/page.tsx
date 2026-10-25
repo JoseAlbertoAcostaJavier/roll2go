@@ -6,7 +6,6 @@ import { requireUser } from "@/lib/currentUser";
 import { OUTDATED_SHEET_ERROR, loadCharacterFor } from "@/lib/characterAccess";
 import { getEntries, listEntries, listMasteryWeapons, listSpells, type CatalogEntry } from "@/lib/rules/catalog";
 import { refKey } from "@/lib/rules/dnd2024/equipmentRefs";
-import { spellListOf } from "@/lib/rules/dnd2024/spellcasting";
 import { summarizeClasses } from "@/lib/rules/dnd2024/upgrade";
 import { MAX_LEVEL } from "@/lib/rules/dnd2024/validateLevel";
 import type { ClassData, FeatureData, Ref, SubclassData } from "@/lib/rules/types";
@@ -93,11 +92,10 @@ export default async function LevelUpPage({ params }: { params: Promise<{ id: st
   for (const e of features) all.set(refKey(e.ref), newKeys.has(refKey(e.ref)) ? full(e) : light(e));
   for (const e of [...classes, ...subclasses, ...options]) all.set(refKey(e.ref), full(e));
 
-  // Conjuros (sin descripción) de las listas de las clases y subclases lanzadoras que puede subir
-  const casters = [...classes, ...subclasses, ...owned.map((r) => entries.get(refKey(r))).filter((e) => !!e)]
-    .filter((e) => !!(e.data as ClassData | SubclassData | null)?.spellcasting);
-  const lists = new Set(casters.map((e) => spellListOf(e.ref, e.identifier)));
-  const spells = lists.size ? (await listSpells(books)).filter((s) => s.data.classes.some((c) => lists.has(c))) : [];
+  // Conjuros (sin descripción) de todas las listas: además de la de cada clase, los de Secretos mágicos y
+  // Descubrimientos mágicos (otras listas), las dotes (Iniciado en la magia, Tocado por los feéricos…) y el Pacto del
+  // tomo (trucos y rituales de cualquier clase)
+  const spells = await listSpells(books);
 
   return (
     <div className="mx-auto max-w-280 px-4 py-8 sm:px-5">
