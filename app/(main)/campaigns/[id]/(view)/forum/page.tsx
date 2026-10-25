@@ -3,10 +3,10 @@ import { MessageSquare, MessagesSquare, Pin, Plus } from "lucide-react";
 import Avatar from "@/app/components/Avatar";
 import LocalDate from "@/app/components/LocalDate";
 import Pagination from "@/app/components/Pagination";
-import { getCampaignAccess } from "@/lib/campaignAccess";
+import { getCampaignAccess } from "@/lib/server/campaigns/campaignAccess";
 import { ForumPost } from "@/lib/models/ForumPost";
-import { THREADS_PER_PAGE } from "@/lib/forum";
-import { loadUserCards } from "@/lib/userCards";
+import { THREADS_PER_PAGE } from "@/lib/rules/forum";
+import { loadUserCards } from "@/lib/server/account/userCards";
 import { pageFrom } from "@/lib/utils/utils";
 
 const newButton =

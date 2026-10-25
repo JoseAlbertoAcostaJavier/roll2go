@@ -3,7 +3,7 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus } from "lucide-react";
-import type { BookOption } from "@/lib/rules/books";
+import type { BookOption } from "@/lib/rules/catalog/types";
 import { field, labelClass, primaryButton } from "@/app/components/formStyles";
 
 type Props = {

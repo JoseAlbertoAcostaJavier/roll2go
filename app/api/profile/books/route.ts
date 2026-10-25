@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/models/mongodb";
-import { sessionOf } from "@/lib/campaignApi";
+import { sessionOf } from "@/lib/server/campaigns/campaignApi";
 import { User } from "@/lib/models/User";
-import { officialBookIds } from "@/lib/rules/books";
+import { officialBookIds } from "@/lib/server/catalog/books";
 
 export async function GET(req: NextRequest) {
   const session = await sessionOf(req);

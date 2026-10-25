@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
-import { sessionOf } from "@/lib/campaignApi";
+import { sessionOf } from "@/lib/server/campaigns/campaignApi";
 import { rateLimit, tooManyRequests } from "@/lib/utils/rateLimit";
 import { Character } from "@/lib/models/Character";
-import { OUTDATED_SHEET_ERROR, loadCharacterFor } from "@/lib/characterAccess";
-import { resolveRef, type CatalogEntry } from "@/lib/rules/catalog";
+import { OUTDATED_SHEET_ERROR, loadCharacterFor } from "@/lib/server/characters/characterAccess";
+import { resolveRef, type CatalogEntry } from "@/lib/server/catalog/catalog";
 import { applyInventoryOp } from "@/lib/rules/dnd2024/edits";
 import { refKey } from "@/lib/rules/dnd2024/equipmentRefs";
 import type { Ref } from "@/lib/rules/types";

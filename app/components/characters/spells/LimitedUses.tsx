@@ -1,6 +1,6 @@
 "use client";
 
-import type { SpellOption } from "@/lib/rules/catalog";
+import type { SpellOption } from "@/lib/rules/catalog/types";
 import type { CasterBlock } from "@/lib/rules/dnd2024/derive";
 import { bareName, refKey } from "@/lib/rules/dnd2024/equipmentRefs";
 import SpellList, { type SpellOpener, type SpellRowItem } from "./SpellList";

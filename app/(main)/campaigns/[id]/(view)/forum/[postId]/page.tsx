@@ -5,11 +5,11 @@ import { ChevronLeft } from "lucide-react";
 import ForumMessage, { type ForumMessageData } from "@/app/components/ForumMessage";
 import ForumPostForm from "@/app/components/ForumPostForm";
 import Pagination from "@/app/components/Pagination";
-import { getCampaignAccess } from "@/lib/campaignAccess";
+import { getCampaignAccess } from "@/lib/server/campaigns/campaignAccess";
 import { ForumPost } from "@/lib/models/ForumPost";
-import { REPLIES_PER_PAGE } from "@/lib/forum";
-import { loadReactions } from "@/lib/forumData";
-import { loadUserCards } from "@/lib/userCards";
+import { REPLIES_PER_PAGE } from "@/lib/rules/forum";
+import { loadReactions } from "@/lib/server/forum/forumData";
+import { loadUserCards } from "@/lib/server/account/userCards";
 import { pageFrom } from "@/lib/utils/utils";
 
 export default async function ForumThreadPage({

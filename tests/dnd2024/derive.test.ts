@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { CatalogEntry } from "@/lib/rules/catalog";
+import type { CatalogEntry } from "@/lib/rules/catalog/types";
 import { derive } from "@/lib/rules/dnd2024/derive";
 import { FEATURE_COLUMNS } from "@/lib/rules/dnd2024/derive/features";
 import type { Choice, Dnd2024Sheet, Dnd2024SheetV2, InventoryItem, LevelEntry } from "@/lib/rules/dnd2024/sheet";

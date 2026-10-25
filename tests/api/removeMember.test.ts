@@ -5,7 +5,7 @@ const CAMPAIGN = "c00000000000000000000001";
 const PLAYER = "a00000000000000000000003";
 const calls = vi.hoisted(() => ({ updateMany: [] as unknown[][] }));
 
-vi.mock("@/lib/campaignApi", () => ({
+vi.mock("@/lib/server/campaigns/campaignApi", () => ({
   requireMember: async () => ({
     session: { id: "a00000000000000000000002" },
     campaign: { _id: "c00000000000000000000001", owner: "a00000000000000000000002" },
@@ -21,7 +21,7 @@ vi.mock("@/lib/models/Character", () => ({
   Character: { updateMany: async (...args: unknown[]) => (calls.updateMany.push(args), { modifiedCount: 1 }) },
 }));
 vi.mock("@/lib/models/CampaignLogEntry", () => ({ CampaignLogEntry: { countDocuments: async () => 0 } }));
-vi.mock("@/lib/notify", () => ({ notify: async () => {} }));
+vi.mock("@/lib/server/notifications/notify", () => ({ notify: async () => {} }));
 
 const { DELETE } = await import("@/app/api/campaigns/[id]/members/[userId]/route");
 

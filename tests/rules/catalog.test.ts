@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { pickBooks } from "@/lib/rules/pickBooks";
+import { pickBooks } from "@/lib/rules/catalog/pickBooks";
 
 describe("pickBooks", () => {
   const visible = ["a", "b", "c"];

@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
-import { readReason, requireAdminApi } from "@/lib/adminApi";
+import { readReason, requireAdminApi } from "@/lib/server/admin/adminApi";
 import { rateLimit, tooManyRequests } from "@/lib/utils/rateLimit";
-import { forgetBan } from "@/lib/ban";
-import { notify } from "@/lib/notify";
+import { forgetBan } from "@/lib/server/auth/ban";
+import { notify } from "@/lib/server/notifications/notify";
 import { BannedEmail } from "@/lib/models/BannedEmail";
 import { User } from "@/lib/models/User";
 

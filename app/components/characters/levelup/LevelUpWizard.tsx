@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "reac
 import { useRouter } from "next/navigation";
 import { Check, ChevronLeft, ChevronRight, LoaderCircle } from "lucide-react";
 import { card, primaryButton } from "@/app/components/formStyles";
-import type { CatalogEntry, EntryOption } from "@/lib/rules/catalog";
+import type { CatalogEntry, EntryOption } from "@/lib/rules/catalog/types";
 import { derive } from "@/lib/rules/dnd2024/derive";
 import { characterFeats } from "@/lib/rules/dnd2024/derive/features";
 import { chosenFeatSpells, levelFeatSpellPending, type FeatWithData } from "@/lib/rules/dnd2024/featSpells";
@@ -19,7 +19,7 @@ import {
 import { currentMasteries, masteryLabel } from "@/lib/rules/dnd2024/masteries";
 import type { Dnd2024SheetV2, LevelEntry } from "@/lib/rules/dnd2024/sheet";
 import { emptySpellPick } from "@/lib/rules/dnd2024/spellPicks";
-import { pendingSpellLists } from "@/lib/rules/spellRows";
+import { pendingSpellLists } from "@/lib/rules/catalog/spellRows";
 import { summarizeClasses } from "@/lib/rules/dnd2024/upgrade";
 import {
   ABILITIES, type Ability, type BackgroundData, type ClassData, type FeatData, type ItemData, type Ref, type SubclassData,

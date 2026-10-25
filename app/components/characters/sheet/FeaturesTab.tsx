@@ -1,5 +1,5 @@
 import { ChevronDown } from "lucide-react";
-import type { CatalogEntry } from "@/lib/rules/catalog";
+import type { CatalogEntry } from "@/lib/rules/catalog/types";
 import type { FeatureGroup } from "@/lib/rules/dnd2024/derive";
 import { bareName, refKey } from "@/lib/rules/dnd2024/equipmentRefs";
 import type { Ref } from "@/lib/rules/types";

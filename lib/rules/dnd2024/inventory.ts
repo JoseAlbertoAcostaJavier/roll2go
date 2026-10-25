@@ -1,6 +1,6 @@
 // Inventario inicial: vuelca el equipo elegido de clase y trasfondo en líneas de inventario. Función pura; el id de
 // cada línea lo da quien llama (`makeId`, un ObjectId en texto en el servidor).
-import type { CatalogEntry } from "@/lib/rules/catalog";
+import type { CatalogEntry } from "@/lib/rules/catalog/types";
 import type { ItemData, Pack } from "@/lib/rules/types";
 import { bareName, refKey } from "./equipmentRefs";
 import type { Inventory, InventoryItem } from "./sheet";

@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { sessionOf } from "@/lib/campaignApi";
+import { sessionOf } from "@/lib/server/campaigns/campaignApi";
 import { rateLimit, tooManyRequests } from "@/lib/utils/rateLimit";
 import { Campaign } from "@/lib/models/Campaign";
 import { Character } from "@/lib/models/Character";
-import { OUTDATED_SHEET_ERROR, loadCharacterFor } from "@/lib/characterAccess";
-import { notify } from "@/lib/notify";
-import { getEntries, getEntry } from "@/lib/rules/catalog";
+import { OUTDATED_SHEET_ERROR, loadCharacterFor } from "@/lib/server/characters/characterAccess";
+import { notify } from "@/lib/server/notifications/notify";
+import { getEntries, getEntry } from "@/lib/server/catalog/catalog";
 import { derive } from "@/lib/rules/dnd2024/derive";
 import { applyLevel, checkExpectedLevel } from "@/lib/rules/dnd2024/levelOps";
 import { loadSheetEntries } from "@/lib/rules/dnd2024/sheetEntries";

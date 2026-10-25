@@ -4,8 +4,8 @@ import { connectDB } from "@/lib/models/mongodb";
 import { User } from "@/lib/models/User";
 import { BannedEmail } from "@/lib/models/BannedEmail";
 import { getClientIp, rateLimit, tooManyRequests } from "@/lib/utils/rateLimit";
-import { createVerificationToken } from "@/lib/verification";
-import { sendVerificationEmail } from "@/lib/mail";
+import { createVerificationToken } from "@/lib/server/auth/verification";
+import { sendVerificationEmail } from "@/lib/server/notifications/mail";
 
 export async function POST(req: NextRequest) {
   // Máximo 10 registros por hora y por IP

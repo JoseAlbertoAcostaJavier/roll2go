@@ -37,13 +37,13 @@ const db = vi.hoisted(() => ({
   cleared: [] as unknown[],
 }));
 const lean = (v: unknown) => ({ select: () => ({ lean: async () => v }) });
-vi.mock("@/lib/campaignApi", () => ({ sessionOf: async () => db.session }));
+vi.mock("@/lib/server/campaigns/campaignApi", () => ({ sessionOf: async () => db.session }));
 vi.mock("@/lib/utils/rateLimit", () => ({
   rateLimit: async () => ({ ok: true }),
   tooManyRequests: () => new Response(null, { status: 429 }),
 }));
 vi.mock("@/lib/models/mongodb", () => ({ connectDB: async () => {} }));
-vi.mock("@/lib/characterAccess", () => ({
+vi.mock("@/lib/server/characters/characterAccess", () => ({
   OUTDATED_SHEET_ERROR: "antigua",
   loadCharacterFor: async () => db.found,
 }));
@@ -65,7 +65,7 @@ vi.mock("@/lib/models/Character", () => ({
     updateOne: async (...args: unknown[]) => (db.updates.push(args), { matchedCount: db.matched }),
   },
 }));
-vi.mock("@/lib/notify", () => ({ notify: async (n: Record<string, unknown>) => void db.notified.push(n) }));
+vi.mock("@/lib/server/notifications/notify", () => ({ notify: async (n: Record<string, unknown>) => void db.notified.push(n) }));
 vi.mock("@/lib/models/Notification", () => ({
   Notification: { deleteMany: async (filter: unknown) => (db.cleared.push(filter), { deletedCount: 1 }) },
 }));

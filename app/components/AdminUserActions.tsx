@@ -6,7 +6,7 @@ import { Ban, LoaderCircle, TriangleAlert } from "lucide-react";
 import ConfirmAction from "@/app/components/ConfirmAction";
 import { field } from "@/app/components/formStyles";
 
-const REASON_MAX = 400; // el mismo límite que en lib/adminApi.ts
+const REASON_MAX = 400; // el mismo límite que en lib/server/admin/adminApi.ts
 
 const action =
   "flex items-center gap-1.5 rounded-md border border-line px-3 py-1.5 text-sm text-gray-200 transition-colors hover:bg-line hover:text-white";

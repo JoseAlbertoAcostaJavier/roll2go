@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { sessionOf } from "@/lib/campaignApi";
+import { sessionOf } from "@/lib/server/campaigns/campaignApi";
 import { rateLimit, tooManyRequests } from "@/lib/utils/rateLimit";
 import { Character } from "@/lib/models/Character";
-import { OUTDATED_SHEET_ERROR, loadCharacterFor } from "@/lib/characterAccess";
-import { getEntries } from "@/lib/rules/catalog";
+import { OUTDATED_SHEET_ERROR, loadCharacterFor } from "@/lib/server/characters/characterAccess";
+import { getEntries } from "@/lib/server/catalog/catalog";
 import { derive } from "@/lib/rules/dnd2024/derive";
 import { weaponProficient } from "@/lib/rules/dnd2024/derive/attacks";
 import { bareName, isRef, refKey } from "@/lib/rules/dnd2024/equipmentRefs";

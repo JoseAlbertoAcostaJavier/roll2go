@@ -22,7 +22,7 @@ vi.mock("@/lib/models/Campaign", () => ({
     },
   },
 }));
-vi.mock("@/lib/rules/catalog", () => ({
+vi.mock("@/lib/server/catalog/catalog", () => ({
   NotFoundError: class extends Error {},
   getEntries: async () => [],
   getEntry: async () => null,
@@ -35,7 +35,7 @@ vi.mock("@/lib/rules/dnd2024/upgrade", () => ({
   upgradeSheet: (s: unknown) => s,
 }));
 
-const { loadCharacterFor } = await import("@/lib/characterAccess");
+const { loadCharacterFor } = await import("@/lib/server/characters/characterAccess");
 
 const readable = async (userId: string) => (await loadCharacterFor(userId, ID, "read")) !== null;
 

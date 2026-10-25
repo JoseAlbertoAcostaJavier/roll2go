@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
 import { connectDB } from "@/lib/models/mongodb";
-import { COOKIE_NAME, verifySession } from "@/lib/auth";
+import { COOKIE_NAME, verifySession } from "@/lib/server/auth/auth";
 import { rateLimit, tooManyRequests } from "@/lib/utils/rateLimit";
 import { Campaign } from "@/lib/models/Campaign";
 import { CampaignImage } from "@/lib/models/CampaignImage";
 import { User } from "@/lib/models/User";
-import { visibleBooksOf } from "@/lib/rules/books";
-import { parseCampaignForm, storeImage } from "@/lib/campaignInput";
+import { visibleBooksOf } from "@/lib/server/catalog/books";
+import { parseCampaignForm, storeImage } from "@/lib/server/campaigns/campaignInput";
 
 export async function POST(req: NextRequest) {
   // La sesión se comprueba aquí: no basta con que la página esté protegida

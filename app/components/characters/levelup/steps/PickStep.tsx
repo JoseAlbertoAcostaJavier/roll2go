@@ -1,6 +1,6 @@
 "use client";
 
-import type { EntryOption } from "@/lib/rules/catalog";
+import type { EntryOption } from "@/lib/rules/catalog/types";
 import { refKey } from "@/lib/rules/dnd2024/equipmentRefs";
 import type { PendingChoice } from "@/lib/rules/dnd2024/levels";
 import type { Named } from "@/lib/rules/dnd2024/sheet";

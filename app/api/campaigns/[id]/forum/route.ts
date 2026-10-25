@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
 import { rateLimit, tooManyRequests } from "@/lib/utils/rateLimit";
 import { ForumPost } from "@/lib/models/ForumPost";
-import { requireMember } from "@/lib/campaignApi";
-import { REPLIES_PER_PAGE, parseForumBody } from "@/lib/forum";
-import { notify } from "@/lib/notify";
+import { requireMember } from "@/lib/server/campaigns/campaignApi";
+import { REPLIES_PER_PAGE, parseForumBody } from "@/lib/rules/forum";
+import { notify } from "@/lib/server/notifications/notify";
 
 const logError = (err: unknown) => console.error("No se pudo enviar el aviso del foro:", err);
 

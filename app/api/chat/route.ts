@@ -1,8 +1,8 @@
-import { COOKIE_NAME, verifySession } from "@/lib/auth";
-import { loadCampaignContext } from "@/lib/campaignContext";
+import { COOKIE_NAME, verifySession } from "@/lib/server/auth/auth";
+import { loadCampaignContext } from "@/lib/server/campaigns/campaignContext";
 import { GoogleGenAI } from "@google/genai";
 import { NextRequest, NextResponse } from "next/server";
-import { systemPromptFor } from "@/lib/rolAssistant";
+import { systemPromptFor } from "@/lib/server/chat/rolAssistant";
 import { system as rpgSystems } from "@/lib/utils/systems";
 import { getClientIp, rateLimit, tooManyRequests } from "@/lib/utils/rateLimit";
 

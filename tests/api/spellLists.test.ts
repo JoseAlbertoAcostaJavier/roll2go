@@ -23,12 +23,12 @@ const db = vi.hoisted(() => ({ reader: true, limited: false }));
 
 vi.mock("next/cache", () => ({ unstable_cache: (fn: () => unknown) => fn }));
 vi.mock("@/lib/models/mongodb", () => ({ connectDB: async () => {} }));
-vi.mock("@/lib/campaignApi", () => ({ sessionOf: async () => ({ id: "u1" }) }));
+vi.mock("@/lib/server/campaigns/campaignApi", () => ({ sessionOf: async () => ({ id: "u1" }) }));
 vi.mock("@/lib/utils/rateLimit", () => ({
   rateLimit: async () => (db.limited ? { ok: false, retryAfter: 60 } : { ok: true }),
   tooManyRequests: () => new Response(null, { status: 429 }),
 }));
-vi.mock("@/lib/rules/books", () => ({
+vi.mock("@/lib/server/catalog/books", () => ({
   visibleBooksOf: async () => [{ id: A }, { id: B }],
 }));
 vi.mock("@/lib/models/Book", () => ({
@@ -50,7 +50,7 @@ vi.mock("@/lib/models/Campaign", () => ({
     }),
   },
 }));
-vi.mock("@/lib/characterAccess", () => ({
+vi.mock("@/lib/server/characters/characterAccess", () => ({
   loadCharacterFor: async (_user: string, _id: string, mode: string) =>
     (db.reader && mode === "read" ? { books: [B] } : null),
 }));
@@ -131,7 +131,7 @@ describe("GET /api/characters/[id]/spells/list", () => {
 });
 
 describe("pendingSpellLists: listas que pide cada paso", async () => {
-  const { pendingSpellLists } = await import("@/lib/rules/spellRows");
+  const { pendingSpellLists } = await import("@/lib/rules/catalog/spellRows");
   const r = { book: A, key: "x" };
   const base = { source: "s", count: 1, label: "" };
 

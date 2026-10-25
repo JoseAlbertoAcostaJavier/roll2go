@@ -1,5 +1,5 @@
 import mongoose, { Schema } from "mongoose";
-import { NOTIFICATION_TYPES } from "@/lib/notificationText";
+import { NOTIFICATION_TYPES } from "@/lib/rules/notificationText";
 
 const NotificationSchema = new Schema({
   user: { type: Schema.Types.ObjectId, ref: "User", required: true }, // quien la recibe

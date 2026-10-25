@@ -1,5 +1,5 @@
 import SettingsNav from "@/app/components/SettingsNav";
-import { requireUser } from "@/lib/currentUser";
+import { requireUser } from "@/lib/server/auth/currentUser";
 
 export default async function SettingsLayout({ children }: { children: React.ReactNode }) {
   await requireUser("/settings/profile");

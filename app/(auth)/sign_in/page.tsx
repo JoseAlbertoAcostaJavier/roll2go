@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import AuthShell from "@/app/components/AuthShell";
 import LoginForm from "@/app/components/LoginForm";
-import { safeRedirect } from "@/lib/auth";
-import { getCurrentUser } from "@/lib/currentUser";
+import { safeRedirect } from "@/lib/server/auth/auth";
+import { getCurrentUser } from "@/lib/server/auth/currentUser";
 
 export const metadata: Metadata = { title: "Iniciar sesión" };
 

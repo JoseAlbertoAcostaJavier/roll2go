@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import AnnouncementForm from "@/app/components/AnnouncementForm";
-import { requireAdmin } from "@/lib/currentUser";
+import { requireAdmin } from "@/lib/server/auth/currentUser";
 
 export const metadata: Metadata = { title: "Avisos de Roll2Go" };
 

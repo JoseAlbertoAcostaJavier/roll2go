@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
 import { connectDB } from "@/lib/models/mongodb";
-import { sessionOf } from "@/lib/campaignApi";
+import { sessionOf } from "@/lib/server/campaigns/campaignApi";
 import { Notification } from "@/lib/models/Notification";
 
 // POST { id } marca una como leída; POST { all: true } marca todas

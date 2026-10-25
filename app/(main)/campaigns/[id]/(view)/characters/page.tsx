@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { Plus } from "lucide-react";
-import { getCampaignAccess } from "@/lib/campaignAccess";
+import { getCampaignAccess } from "@/lib/server/campaigns/campaignAccess";
 import { Character } from "@/lib/models/Character";
-import { joinReasons } from "@/lib/campaignEligibility";
-import { loadUserCards } from "@/lib/userCards";
+import { joinReasons } from "@/lib/server/campaigns/campaignEligibility";
+import { loadUserCards } from "@/lib/server/account/userCards";
 import { system as rpgSystems } from "@/lib/utils/systems";
 import { classesOf } from "@/lib/rules/dnd2024/upgrade";
 import CampaignCharacterCard, { type CampaignCharacterData } from "@/app/components/campaigns/CampaignCharacterCard";

@@ -1,6 +1,6 @@
 // Qué toca elegir al ganar un nivel de clase (spec de subir de nivel §3) y requisitos de multiclase (§4.2). Funciones
 // puras: las usan el asistente de subir de nivel, el creador (nivel 1) y la validación del servidor.
-import type { CatalogEntry } from "@/lib/rules/catalog";
+import type { CatalogEntry } from "@/lib/rules/catalog/types";
 import type {
   Ability, ClassData, FeatSpellFilter, FeatureData, LevelCounts, LevelFeature, OptionalFeatureData, Ref, SpellcastingMode,
   SubclassData,

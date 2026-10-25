@@ -1,6 +1,6 @@
 "use client";
 
-import type { CatalogEntry } from "@/lib/rules/catalog";
+import type { CatalogEntry } from "@/lib/rules/catalog/types";
 import type { Ref } from "@/lib/rules/types";
 import { FeatureList } from "../../ClassFeaturesSection";
 

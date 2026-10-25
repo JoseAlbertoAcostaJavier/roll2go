@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { rateLimit, tooManyRequests } from "@/lib/utils/rateLimit";
 import { Campaign } from "@/lib/models/Campaign";
-import { requireDm } from "@/lib/campaignApi";
-import { INVITE_EXPIRY_DAYS, newInviteCode } from "@/lib/members";
+import { requireDm } from "@/lib/server/campaigns/campaignApi";
+import { INVITE_EXPIRY_DAYS, newInviteCode } from "@/lib/server/campaigns/members";
 
 type Ctx = { params: Promise<{ id: string }> };
 

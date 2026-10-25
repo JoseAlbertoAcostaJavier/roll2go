@@ -2,7 +2,7 @@
 
 import { ChevronDown } from "lucide-react";
 import Bbcode from "@/app/components/Bbcode";
-import type { CatalogEntry } from "@/lib/rules/catalog";
+import type { CatalogEntry } from "@/lib/rules/catalog/types";
 import { refKey } from "@/lib/rules/dnd2024/equipmentRefs";
 import type { ClassData, Ref } from "@/lib/rules/types";
 import { nameFromKey } from "../ClassFeaturesSection";

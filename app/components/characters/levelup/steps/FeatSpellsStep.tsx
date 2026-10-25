@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import type { SpellOption } from "@/lib/rules/catalog";
+import type { SpellOption } from "@/lib/rules/catalog/types";
 import { bareName, refKey } from "@/lib/rules/dnd2024/equipmentRefs";
 import { fitsFeatSpell } from "@/lib/rules/dnd2024/featSpells";
 import { ABILITY_NAMES, spellListName } from "@/lib/rules/dnd2024/labels";

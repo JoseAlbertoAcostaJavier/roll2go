@@ -1,4 +1,4 @@
-import type { CatalogEntry } from "@/lib/rules/catalog";
+import type { CatalogEntry } from "@/lib/rules/catalog/types";
 import { ALIGNMENTS, alignmentName } from "@/lib/rules/dnd2024/alignments";
 import { ABILITY_NAMES, skillName, toolName } from "@/lib/rules/dnd2024/labels";
 import type { Dnd2024SheetV2 } from "@/lib/rules/dnd2024/sheet";

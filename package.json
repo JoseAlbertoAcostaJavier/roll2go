@@ -9,8 +9,8 @@
     "lint": "eslint",
     "test": "vitest run",
     "import:5etools": "tsx scripts/import-5etools.ts",
-    "migrate:books": "tsx scripts/migrate-book-ids.ts",
-    "migrate:levels": "tsx scripts/migrate-levels.ts"
+    "migrate:books": "tsx --conditions=react-server scripts/migrate-book-ids.ts",
+    "migrate:levels": "tsx --conditions=react-server scripts/migrate-levels.ts"
   },
   "dependencies": {
     "@google/genai": "^2.24.0",
@@ -22,7 +22,8 @@
     "next": "16.3.7",
     "nodemailer": "^10.0.15",
     "react": "19.2.8",
-    "react-dom": "19.2.8"
+    "react-dom": "19.2.8",
+    "server-only": "^0.0.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

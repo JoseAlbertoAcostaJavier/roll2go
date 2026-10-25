@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { sessionOf } from "@/lib/campaignApi";
+import { sessionOf } from "@/lib/server/campaigns/campaignApi";
 import { ENTRY_KINDS } from "@/lib/models/BookEntry";
-import { NotFoundError, listEntries, usableBooks } from "@/lib/rules/catalog";
+import { NotFoundError, listEntries, usableBooks } from "@/lib/server/catalog/catalog";
 import type { EntryKind } from "@/lib/rules/types";
 
 const MAX_Q = 80;

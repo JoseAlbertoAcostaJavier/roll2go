@@ -4,8 +4,8 @@ import { rateLimit, tooManyRequests } from "@/lib/utils/rateLimit";
 import { Campaign } from "@/lib/models/Campaign";
 import { CampaignLogEntry } from "@/lib/models/CampaignLogEntry";
 import { Character } from "@/lib/models/Character";
-import { requireMember } from "@/lib/campaignApi";
-import { notify } from "@/lib/notify";
+import { requireMember } from "@/lib/server/campaigns/campaignApi";
+import { notify } from "@/lib/server/notifications/notify";
 
 /* DELETE: el DM expulsa a un jugador, o un jugador se va él mismo.
    ?ban=1 (solo el DM) añade además a la persona a la lista de bloqueados de la campaña.

@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
-import { sessionOf } from "@/lib/campaignApi";
+import { sessionOf } from "@/lib/server/campaigns/campaignApi";
 import { rateLimit, tooManyRequests } from "@/lib/utils/rateLimit";
 import { cleanText } from "@/lib/utils/utils";
 import { Character } from "@/lib/models/Character";
-import { OUTDATED_SHEET_ERROR, loadCharacterFor } from "@/lib/characterAccess";
-import { listEntries, resolveRef } from "@/lib/rules/catalog";
+import { OUTDATED_SHEET_ERROR, loadCharacterFor } from "@/lib/server/characters/characterAccess";
+import { listEntries, resolveRef } from "@/lib/server/catalog/catalog";
 import { ALIGNMENTS } from "@/lib/rules/dnd2024/alignments";
 import { parsePronouns } from "@/lib/rules/dnd2024/names";
 import { creationUpdate } from "@/lib/rules/dnd2024/recreate";

@@ -1,6 +1,6 @@
 // Rasgos de la ficha agrupados por origen: especie, legado, cada clase con su subclase, los rasgos opcionales elegidos
 // (maniobras, invocaciones, metamagia) y las dotes.
-import type { CatalogEntry } from "@/lib/rules/catalog";
+import type { CatalogEntry } from "@/lib/rules/catalog/types";
 import { refKey } from "@/lib/rules/dnd2024/equipmentRefs";
 import { FEATURE_OPTION_LABELS } from "@/lib/rules/dnd2024/featureChoices";
 import { optionalFeatureLabel } from "@/lib/rules/dnd2024/labels";

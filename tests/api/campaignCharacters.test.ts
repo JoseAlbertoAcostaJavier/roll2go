@@ -15,7 +15,7 @@ const db = vi.hoisted(() => ({
   notified: [] as Record<string, unknown>[],
   cleared: [] as unknown[],
 }));
-vi.mock("@/lib/campaignApi", () => ({
+vi.mock("@/lib/server/campaigns/campaignApi", () => ({
   requireDm: async () =>
     db.isDm
       ? { session: { id: DM }, campaign: { _id: CAMPAIGN, owner: DM, members: [DM, PLAYER] }, isDm: true }
@@ -31,7 +31,7 @@ vi.mock("@/lib/models/Character", () => ({
     updateOne: async (...args: unknown[]) => (db.updates.push(args), { matchedCount: db.matched }),
   },
 }));
-vi.mock("@/lib/notify", () => ({ notify: async (n: Record<string, unknown>) => void db.notified.push(n) }));
+vi.mock("@/lib/server/notifications/notify", () => ({ notify: async (n: Record<string, unknown>) => void db.notified.push(n) }));
 vi.mock("@/lib/models/Notification", () => ({
   Notification: { deleteMany: async (filter: unknown) => (db.cleared.push(filter), { deletedCount: 1 }) },
 }));

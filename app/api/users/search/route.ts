@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/models/mongodb";
-import { sessionOf } from "@/lib/campaignApi";
+import { sessionOf } from "@/lib/server/campaigns/campaignApi";
 import { rateLimit, tooManyRequests } from "@/lib/utils/rateLimit";
 import { User } from "@/lib/models/User";
-import { relationsWith } from "@/lib/friends";
-import { blockedIdsOf } from "@/lib/blocks";
+import { relationsWith } from "@/lib/server/social/friends";
+import { blockedIdsOf } from "@/lib/server/social/blocks";
 import { escapeRegex } from "@/lib/utils/utils";
 export async function GET(req: NextRequest) {
   const session = await sessionOf(req);

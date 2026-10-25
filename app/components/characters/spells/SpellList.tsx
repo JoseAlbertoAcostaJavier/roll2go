@@ -2,7 +2,7 @@
 
 import { useId, type ReactNode } from "react";
 import { Clock, Crosshair, Hourglass, Lock, Shapes, type LucideIcon } from "lucide-react";
-import type { SpellOption } from "@/lib/rules/catalog";
+import type { SpellOption } from "@/lib/rules/catalog/types";
 import { refKey } from "@/lib/rules/dnd2024/equipmentRefs";
 import { spellLevelLabel, spellSchoolName } from "@/lib/rules/dnd2024/spellTextClient";
 import type { Ref } from "@/lib/rules/types";

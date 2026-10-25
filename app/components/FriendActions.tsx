@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { LoaderCircle, MessageSquare, UserCheck, UserMinus, UserPlus, X } from "lucide-react";
-import type { Relation } from "@/lib/friends";
+import type { Relation } from "@/lib/server/social/friends";
 
 const btn = "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-semibold transition-colors disabled:opacity-50";
 const solid = `${btn} bg-brand text-white enabled:hover:bg-brand-hover`;

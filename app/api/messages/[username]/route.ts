@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/models/mongodb";
-import { sessionOf } from "@/lib/campaignApi";
+import { sessionOf } from "@/lib/server/campaigns/campaignApi";
 import { rateLimit, tooManyRequests } from "@/lib/utils/rateLimit";
 import { Message } from "@/lib/models/Message";
 import { Notification } from "@/lib/models/Notification";
 import { pairKey } from "@/lib/models/Friendship";
-import { blockStatus } from "@/lib/blocks";
-import { findUserByUsername, relationBetween } from "@/lib/friends";
-import { notify } from "@/lib/notify";
+import { blockStatus } from "@/lib/server/social/blocks";
+import { findUserByUsername, relationBetween } from "@/lib/server/social/friends";
+import { notify } from "@/lib/server/notifications/notify";
 import { cleanText } from "@/lib/utils/utils";
 
 type Ctx = { params: Promise<{ username: string }> };

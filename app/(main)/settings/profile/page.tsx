@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import ProfileForm from "@/app/components/ProfileForm";
-import { requireUser } from "@/lib/currentUser";
+import { requireUser } from "@/lib/server/auth/currentUser";
 import { User } from "@/lib/models/User";
 
 export const metadata: Metadata = { title: "Editar perfil" };

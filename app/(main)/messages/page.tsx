@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import mongoose from "mongoose";
 import Avatar from "@/app/components/Avatar";
-import { requireUser } from "@/lib/currentUser";
+import { requireUser } from "@/lib/server/auth/currentUser";
 import { connectDB } from "@/lib/models/mongodb";
 import { Message } from "@/lib/models/Message";
 import { User } from "@/lib/models/User";

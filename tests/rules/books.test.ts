@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { visibleBooksFilter } from "@/lib/rules/books";
+import { visibleBooksFilter } from "@/lib/server/catalog/books";
 
 describe("visibleBooksFilter", () => {
   it("los oficiales solo si están listados (no el libro de las tablas de nombres); los propios, todos", () => {

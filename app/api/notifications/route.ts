@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
 import { connectDB } from "@/lib/models/mongodb";
-import { sessionOf } from "@/lib/campaignApi";
+import { sessionOf } from "@/lib/server/campaigns/campaignApi";
 import { Notification } from "@/lib/models/Notification";
 import { User } from "@/lib/models/User";
 import { Campaign } from "@/lib/models/Campaign";
 import {
   describeNotification,
   type NotificationType,
-} from "@/lib/notificationText";
+} from "@/lib/rules/notificationText";
 
 // GET /api/notifications?limit=10  ->  lista y contador. Con limit=0 solo devuelve el contador.
 export async function GET(req: NextRequest) {

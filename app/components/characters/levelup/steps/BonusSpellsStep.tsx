@@ -2,7 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import { Check } from "lucide-react";
-import type { SpellOption } from "@/lib/rules/catalog";
+import type { SpellOption } from "@/lib/rules/catalog/types";
 import { bareName, refKey } from "@/lib/rules/dnd2024/equipmentRefs";
 import { spellListName } from "@/lib/rules/dnd2024/labels";
 import type { PendingChoice } from "@/lib/rules/dnd2024/levels";

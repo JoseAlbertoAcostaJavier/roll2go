@@ -2,10 +2,10 @@ import { BookOpen, UserRound } from "lucide-react";
 import Bbcode from "@/app/components/Bbcode";
 import ConfirmAction from "@/app/components/ConfirmAction";
 import UserLink from "@/app/components/UserLink";
-import { getCampaignAccess } from "@/lib/campaignAccess";
+import { getCampaignAccess } from "@/lib/server/campaigns/campaignAccess";
 import { Campaign } from "@/lib/models/Campaign";
-import { booksByIds } from "@/lib/rules/books";
-import { loadUserCards } from "@/lib/userCards";
+import { booksByIds } from "@/lib/server/catalog/books";
+import { loadUserCards } from "@/lib/server/account/userCards";
 
 const heading = "mb-3 border-l-4 border-brand pl-3 font-heading text-xl font-bold";
 

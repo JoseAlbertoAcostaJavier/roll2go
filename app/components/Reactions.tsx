@@ -3,7 +3,7 @@
 import { useCallback, useRef, useState } from "react";
 import { SmilePlus, ThumbsUp } from "lucide-react";
 import useDismiss from "@/app/components/useDismiss";
-import { LIKE, REACTIONS, reactionWho, type ReactionState } from "@/lib/forum";
+import { LIKE, REACTIONS, reactionWho, type ReactionState } from "@/lib/rules/forum";
 
 type Reaction = ReactionState[string];
 

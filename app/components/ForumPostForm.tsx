@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { LoaderCircle } from "lucide-react";
 import BbcodeEditor from "@/app/components/BbcodeEditor";
 import { errorClass, field, labelClass, primaryButton } from "@/app/components/formStyles";
-import { MAX_CONTENT, MAX_TITLE } from "@/lib/forum";
+import { MAX_CONTENT, MAX_TITLE } from "@/lib/rules/forum";
 
 type Props = {
   campaignId: string;

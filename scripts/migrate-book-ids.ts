@@ -9,7 +9,7 @@ try {
   process.loadEnvFile(".env.local");
 } catch {}
 
-import { convertBookIds } from "../lib/rules/migrateBookIds";
+import { convertBookIds } from "../lib/server/catalog/migrateBookIds";
 import { connectDB } from "../lib/models/mongodb";
 import { Book } from "../lib/models/Book";
 import { Campaign } from "../lib/models/Campaign";

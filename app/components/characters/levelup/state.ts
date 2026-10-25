@@ -1,6 +1,6 @@
 // Estado del asistente de subir de nivel: borrador en localStorage, qué falta en cada paso y las elecciones que se
 // envían a `POST /api/characters/[id]/levels`.
-import type { EntryOption } from "@/lib/rules/catalog";
+import type { EntryOption } from "@/lib/rules/catalog/types";
 import type { PendingChoice } from "@/lib/rules/dnd2024/levels";
 import type { Choice } from "@/lib/rules/dnd2024/sheet";
 import {

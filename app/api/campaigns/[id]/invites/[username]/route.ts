@@ -2,11 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { rateLimit, tooManyRequests } from "@/lib/utils/rateLimit";
 import { Campaign } from "@/lib/models/Campaign";
 import { CampaignInvite } from "@/lib/models/CampaignInvite";
-import { requireDm } from "@/lib/campaignApi";
-import { blockStatus } from "@/lib/blocks";
-import { findUserByUsername, relationBetween } from "@/lib/friends";
-import { MAX_MEMBERS } from "@/lib/members";
-import { notify } from "@/lib/notify";
+import { requireDm } from "@/lib/server/campaigns/campaignApi";
+import { blockStatus } from "@/lib/server/social/blocks";
+import { findUserByUsername, relationBetween } from "@/lib/server/social/friends";
+import { MAX_MEMBERS } from "@/lib/server/campaigns/members";
+import { notify } from "@/lib/server/notifications/notify";
 
 const MAX_PENDING = 30; // invitaciones sin responder por campaña
 

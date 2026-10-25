@@ -3,12 +3,12 @@ import { NextRequest } from "next/server";
 import { verifyHitDie } from "@/lib/rules/dnd2024/rolls";
 
 // Sesión, acceso al personaje y límite de peticiones falsos: la ruta no toca la base de datos
-vi.mock("@/lib/campaignApi", () => ({ sessionOf: async () => ({ id: "u1" }) }));
+vi.mock("@/lib/server/campaigns/campaignApi", () => ({ sessionOf: async () => ({ id: "u1" }) }));
 vi.mock("@/lib/utils/rateLimit", () => ({
   rateLimit: async () => ({ ok: true }),
   tooManyRequests: () => new Response(null, { status: 429 }),
 }));
-vi.mock("@/lib/characterAccess", () => ({
+vi.mock("@/lib/server/characters/characterAccess", () => ({
   loadCharacterFor: async (_user: string, id: string) => (id === "c1" ? { sheet: { levels: [{}, {}, {}] } } : null),
 }));
 

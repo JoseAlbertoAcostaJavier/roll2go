@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
-import { sessionOf } from "@/lib/campaignApi";
+import { sessionOf } from "@/lib/server/campaigns/campaignApi";
 import { rateLimit, tooManyRequests } from "@/lib/utils/rateLimit";
 import { connectDB } from "@/lib/models/mongodb";
 import { Campaign } from "@/lib/models/Campaign";
 import { Character } from "@/lib/models/Character";
-import { joinReasons } from "@/lib/campaignEligibility";
-import { OUTDATED_SHEET_ERROR, loadCharacterFor } from "@/lib/characterAccess";
-import { notify } from "@/lib/notify";
+import { joinReasons } from "@/lib/server/campaigns/campaignEligibility";
+import { OUTDATED_SHEET_ERROR, loadCharacterFor } from "@/lib/server/characters/characterAccess";
+import { notify } from "@/lib/server/notifications/notify";
 import { Notification } from "@/lib/models/Notification";
 
 type Ctx = { params: Promise<{ id: string }> };

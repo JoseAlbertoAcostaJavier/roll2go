@@ -1,6 +1,6 @@
 // Conversión de la hoja v1 (una clase con sus elecciones) a la v2 (historial de niveles e inventario). Función pura:
 // la usan la creación, la migración (`npm run migrate:levels`) y las páginas que aún abren personajes v1.
-import type { CatalogEntry } from "@/lib/rules/catalog";
+import type { CatalogEntry } from "@/lib/rules/catalog/types";
 import type { BackgroundData, ClassData, Ref } from "@/lib/rules/types";
 import { loadEquipmentEntries, refKey } from "./equipmentRefs";
 import { startingInventory } from "./inventory";

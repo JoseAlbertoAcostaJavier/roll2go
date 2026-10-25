@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { BookPlus, LoaderCircle, TriangleAlert } from "lucide-react";
-import type { SpellOption } from "@/lib/rules/catalog";
+import type { SpellOption } from "@/lib/rules/catalog/types";
 import type { CasterBlock } from "@/lib/rules/dnd2024/derive";
 import { bareName, refKey } from "@/lib/rules/dnd2024/equipmentRefs";
 import { ABILITY_NAMES, spellOptionName, spellOptionTitle } from "@/lib/rules/dnd2024/labels";

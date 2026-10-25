@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import AuthShell from "@/app/components/AuthShell";
 import RegisterForm from "@/app/components/RegisterForm";
-import { getCurrentUser } from "@/lib/currentUser";
+import { getCurrentUser } from "@/lib/server/auth/currentUser";
 
 
 export const metadata: Metadata = { title: "Crear cuenta" };

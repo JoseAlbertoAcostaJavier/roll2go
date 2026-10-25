@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import DeleteAccountForm from "@/app/components/DeleteAccountForm";
-import { requireUser } from "@/lib/currentUser";
+import { requireUser } from "@/lib/server/auth/currentUser";
 
 export const metadata: Metadata = { title: "Borrar cuenta" };
 

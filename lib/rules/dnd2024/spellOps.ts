@@ -2,7 +2,7 @@
 // gastar espacios y usos por descanso largo, descanso corto y largo, elegir la alternativa de conjuros de una
 // subclase y los conjuros de Dominio de conjuros. Funciones puras: validan la operación del cliente sobre la hoja guardada y
 // devuelven la hoja nueva; la ruta relee el personaje y recalcula los bloques antes de aplicarlas.
-import type { CatalogEntry } from "@/lib/rules/catalog";
+import type { CatalogEntry } from "@/lib/rules/catalog/types";
 import type { Ref, SpellData } from "@/lib/rules/types";
 import type { CasterBlock, Slots } from "./derive/spells";
 import { refKey } from "./equipmentRefs";

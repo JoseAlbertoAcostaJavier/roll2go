@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { sessionOf } from "@/lib/campaignApi";
+import { sessionOf } from "@/lib/server/campaigns/campaignApi";
 import { rateLimit, tooManyRequests } from "@/lib/utils/rateLimit";
 import { cleanText } from "@/lib/utils/utils";
 import { Character } from "@/lib/models/Character";
 import { Notification } from "@/lib/models/Notification";
 import { CampaignImage } from "@/lib/models/CampaignImage";
-import { OUTDATED_SHEET_ERROR, loadCharacterFor } from "@/lib/characterAccess";
-import { MAX_IMAGE, readImage, storeImage } from "@/lib/campaignInput";
+import { OUTDATED_SHEET_ERROR, loadCharacterFor } from "@/lib/server/characters/characterAccess";
+import { MAX_IMAGE, readImage, storeImage } from "@/lib/server/campaigns/campaignInput";
 import { ALIGNMENTS } from "@/lib/rules/dnd2024/alignments";
 import { parsePronouns } from "@/lib/rules/dnd2024/names";
 import { MAX_XP, TEXT_LIMITS } from "@/lib/rules/dnd2024/validate";

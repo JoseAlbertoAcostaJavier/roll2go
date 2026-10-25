@@ -5,7 +5,7 @@ import AdminUserActions from "@/app/components/AdminUserActions";
 import LocalDate from "@/app/components/LocalDate";
 import Pagination from "@/app/components/Pagination";
 import UserLink from "@/app/components/UserLink";
-import { requireAdmin } from "@/lib/currentUser";
+import { requireAdmin } from "@/lib/server/auth/currentUser";
 import { connectDB } from "@/lib/models/mongodb";
 import { User } from "@/lib/models/User";
 import { escapeRegex, first, pageFrom } from "@/lib/utils/utils";

@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/models/mongodb";
-import { sessionOf } from "@/lib/campaignApi";
+import { sessionOf } from "@/lib/server/campaigns/campaignApi";
 import { rateLimit, tooManyRequests } from "@/lib/utils/rateLimit";
 import { Book } from "@/lib/models/Book";
 import { system } from "@/lib/utils/systems";
-import { MAX_BOOKS_PER_USER, MAX_BOOK_DESCRIPTION, MAX_BOOK_NAME } from "@/lib/bookAccess";
+import { MAX_BOOKS_PER_USER, MAX_BOOK_DESCRIPTION, MAX_BOOK_NAME } from "@/lib/server/books/bookAccess";
 import { cleanText } from "@/lib/utils/utils";
 
 // Mis libros (opcional ?systemId=dnd-5)

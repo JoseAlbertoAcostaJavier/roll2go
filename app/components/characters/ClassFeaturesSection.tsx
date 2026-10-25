@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import { ChevronDown, LoaderCircle } from "lucide-react";
 import Bbcode from "@/app/components/Bbcode";
-import type { CatalogEntry, EntryOption } from "@/lib/rules/catalog";
+import type { CatalogEntry, EntryOption } from "@/lib/rules/catalog/types";
 import { weaponProficient } from "@/lib/rules/dnd2024/derive/attacks";
 import { bareName, refKey } from "@/lib/rules/dnd2024/equipmentRefs";
 import { FEATURE_OPTION_LABELS } from "@/lib/rules/dnd2024/featureChoices";

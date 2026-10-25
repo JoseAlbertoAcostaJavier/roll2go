@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
-import { booksAreValid, booksForCharacter, canRequestJoin } from "@/lib/CampaignRules";
-import type { BookOption } from "@/lib/rules/books";
+import { booksAreValid, booksForCharacter, canRequestJoin } from "@/lib/rules/campaignRules";
+import type { BookOption } from "@/lib/rules/catalog/types";
 
 const book = (id: string, systemId: string): BookOption => ({
   id,

@@ -1,6 +1,6 @@
 // Maestrías con armas (spec de subir de nivel §8.2): cuántas tiene el personaje, cuáles valen y cómo se muestran.
 // Funciones puras: las usan el creador, la ficha y las rutas que las guardan.
-import type { CatalogEntry } from "@/lib/rules/catalog";
+import type { CatalogEntry } from "@/lib/rules/catalog/types";
 import type { ClassData, ItemData, Ref } from "@/lib/rules/types";
 import { isRef, refKey } from "./equipmentRefs";
 import { masteryName } from "./labels";

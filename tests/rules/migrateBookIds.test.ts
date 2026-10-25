@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { convertBookIds } from "@/lib/rules/migrateBookIds";
+import { convertBookIds } from "@/lib/server/catalog/migrateBookIds";
 
 const XPHB = "64b7f0f0f0f0f0f0f0f0f0a1";
 const idByKey = new Map([["XPHB", XPHB]]);

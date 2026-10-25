@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { unstable_cache } from "next/cache";
-import { sessionOf } from "@/lib/campaignApi";
+import { sessionOf } from "@/lib/server/campaigns/campaignApi";
 import { connectDB } from "@/lib/models/mongodb";
 import { Book } from "@/lib/models/Book";
 import { BookEntry } from "@/lib/models/BookEntry";

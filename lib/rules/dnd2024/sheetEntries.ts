@@ -2,7 +2,7 @@
 // con sus rasgos hasta el nivel actual, dotes y rasgos opcionales elegidos, opciones de rasgo elegidas y objetos del
 // inventario (y, en una hoja v1, el equipo inicial elegido con el contenido de los paquetes). Puro: quien llama
 // inyecta la consulta en lote al catálogo.
-import type { CatalogEntry } from "@/lib/rules/catalog";
+import type { CatalogEntry } from "@/lib/rules/catalog/types";
 import { equipmentRefs, refKey } from "@/lib/rules/dnd2024/equipmentRefs";
 import { heldOptionalFeatures } from "@/lib/rules/dnd2024/levels";
 import type { AnySheet } from "@/lib/rules/dnd2024/sheet";

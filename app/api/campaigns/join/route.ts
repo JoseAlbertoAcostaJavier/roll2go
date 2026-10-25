@@ -3,9 +3,9 @@ import { connectDB } from "@/lib/models/mongodb";
 import { rateLimit, tooManyRequests } from "@/lib/utils/rateLimit";
 import { Campaign } from "@/lib/models/Campaign";
 import { Block } from "@/lib/models/Block";
-import { sessionOf } from "@/lib/campaignApi";
-import { INVITE_REGEX } from "@/lib/members";
-import { joinCampaign } from "@/lib/joinCampaign";
+import { sessionOf } from "@/lib/server/campaigns/campaignApi";
+import { INVITE_REGEX } from "@/lib/server/campaigns/members";
+import { joinCampaign } from "@/lib/server/campaigns/joinCampaign";
 
 export async function POST(req: NextRequest) {
   const session = await sessionOf(req);

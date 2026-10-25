@@ -2,8 +2,8 @@ import { after, NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/models/mongodb";
 import { User } from "@/lib/models/User";
 import { getClientIp, rateLimit, tooManyRequests } from "@/lib/utils/rateLimit";
-import { createResetToken } from "@/lib/verification";
-import { sendPasswordResetEmail } from "@/lib/mail";
+import { createResetToken } from "@/lib/server/auth/verification";
+import { sendPasswordResetEmail } from "@/lib/server/notifications/mail";
 
 export async function POST(req: NextRequest) {
   // Límite más estricto: 3 peticiones por hora para evitar spam masivo de correos

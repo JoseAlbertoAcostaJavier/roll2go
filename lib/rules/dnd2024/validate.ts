@@ -1,6 +1,6 @@
 // Validación en el servidor de la hoja de personaje. Los nombres salen del catálogo, nunca del cliente.
 import { cleanText } from "@/lib/utils/utils";
-import type { CatalogEntry } from "@/lib/rules/catalog";
+import type { CatalogEntry } from "@/lib/rules/catalog/types";
 import {
   ABILITIES, type Ability, type BackgroundData, type ClassData, type FeatData, type FeatureData, type ItemData,
   type LineageData, type OptionalFeatureData, type Ref, type SpeciesData, type SpellData, type SubclassData,

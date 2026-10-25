@@ -10,11 +10,11 @@ const BOOK_X = "d00000000000000000000002";
 // Catálogo de prueba (todo en el libro B) y nombres de libros falsos; se cuentan las búsquedas de libros
 const catalog = buildCatalog();
 const db = vi.hoisted(() => ({ bookQueries: 0, missing: new Set<string>() }));
-vi.mock("@/lib/rules/catalog", () => ({
+vi.mock("@/lib/server/catalog/catalog", () => ({
   getEntry: async (r: { book: string; key: string }) =>
     db.missing.has(r.key) ? null : (catalog.get(refKey(r)) ?? null),
 }));
-vi.mock("@/lib/characterAccess", () => ({ OUTDATED_SHEET_ERROR: "antigua" }));
+vi.mock("@/lib/server/characters/characterAccess", () => ({ OUTDATED_SHEET_ERROR: "antigua" }));
 vi.mock("@/lib/models/Book", () => ({
   Book: {
     find: () => {
@@ -24,7 +24,7 @@ vi.mock("@/lib/models/Book", () => ({
   },
 }));
 
-const { joinReasons, storedSheetBooks } = await import("@/lib/campaignEligibility");
+const { joinReasons, storedSheetBooks } = await import("@/lib/server/campaigns/campaignEligibility");
 
 const v1 = (): Dnd2024Sheet => ({
   version: 1,

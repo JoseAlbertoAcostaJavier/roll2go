@@ -1,6 +1,6 @@
 // Conjuros de la ficha (spec de conjuros §2): un bloque por clase o subclase lanzadora con sus límites, los espacios
 // (combinados en multiclase y la Magia de pacto aparte) y los conjuros de especie, legado y dotes.
-import type { CatalogEntry } from "@/lib/rules/catalog";
+import type { CatalogEntry } from "@/lib/rules/catalog/types";
 import { refKey } from "@/lib/rules/dnd2024/equipmentRefs";
 import { chosenFeatSpells } from "@/lib/rules/dnd2024/featSpells";
 import {

@@ -3,7 +3,7 @@
 import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import RoundIcon from "@/app/components/RoundIcon";
-import type { SpellOption } from "@/lib/rules/catalog";
+import type { SpellOption } from "@/lib/rules/catalog/types";
 import type { SpellsSummary } from "@/lib/rules/dnd2024/derive";
 import { bareName, refKey } from "@/lib/rules/dnd2024/equipmentRefs";
 import { PACT_SLOT, recoversOnShortRest, type SpellOp } from "@/lib/rules/dnd2024/spellOps";

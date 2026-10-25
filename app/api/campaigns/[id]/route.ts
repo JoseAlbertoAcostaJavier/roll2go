@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
 import { connectDB } from "@/lib/models/mongodb";
-import { sessionOf } from "@/lib/campaignApi";
+import { sessionOf } from "@/lib/server/campaigns/campaignApi";
 import { rateLimit, tooManyRequests } from "@/lib/utils/rateLimit";
 import { Campaign } from "@/lib/models/Campaign";
 import { CampaignImage } from "@/lib/models/CampaignImage";
-import { booksByIds, visibleBooksOf } from "@/lib/rules/books";
-import { parseCampaignForm, storeImage } from "@/lib/campaignInput";
-import { deleteCampaignData } from "@/lib/accountCleanup";
+import { booksByIds, visibleBooksOf } from "@/lib/server/catalog/books";
+import { parseCampaignForm, storeImage } from "@/lib/server/campaigns/campaignInput";
+import { deleteCampaignData } from "@/lib/server/account/accountCleanup";
 type Ctx = { params: Promise<{ id: string }> };
 
 const notFound = () =>

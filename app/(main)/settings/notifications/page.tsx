@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import NotificationPrefsForm, { type Prefs } from "@/app/components/NotificationPrefsForm";
-import { requireUser } from "@/lib/currentUser";
+import { requireUser } from "@/lib/server/auth/currentUser";
 import { User } from "@/lib/models/User";
-import { CAMPAIGN_EMAIL_PREFS, wantsEmail, type EmailPrefs } from "@/lib/notificationText";
+import { CAMPAIGN_EMAIL_PREFS, wantsEmail, type EmailPrefs } from "@/lib/rules/notificationText";
 
 export const metadata: Metadata = { title: "Notificaciones" };
 

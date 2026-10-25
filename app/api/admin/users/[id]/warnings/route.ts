@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
-import { readReason, requireAdminApi } from "@/lib/adminApi";
+import { readReason, requireAdminApi } from "@/lib/server/admin/adminApi";
 import { rateLimit, tooManyRequests } from "@/lib/utils/rateLimit";
-import { notify } from "@/lib/notify";
+import { notify } from "@/lib/server/notifications/notify";
 import { User } from "@/lib/models/User";
 
 type Ctx = { params: Promise<{ id: string }> };

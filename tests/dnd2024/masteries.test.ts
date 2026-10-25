@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { CatalogEntry } from "@/lib/rules/catalog";
+import type { CatalogEntry } from "@/lib/rules/catalog/types";
 import { isMasteryWeapon, masteryCount, masteryLabel, validateMasteries } from "@/lib/rules/dnd2024/masteries";
 import type { Dnd2024SheetV2, LevelEntry } from "@/lib/rules/dnd2024/sheet";
 import type { ItemData } from "@/lib/rules/types";

@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/models/mongodb";
-import { sessionOf } from "@/lib/campaignApi";
+import { sessionOf } from "@/lib/server/campaigns/campaignApi";
 import { rateLimit, tooManyRequests } from "@/lib/utils/rateLimit";
 import { User } from "@/lib/models/User";
 import { CampaignImage } from "@/lib/models/CampaignImage";
-import { storeImage } from "@/lib/campaignInput";
-import { detectImageType } from "@/lib/images";
+import { storeImage } from "@/lib/server/campaigns/campaignInput";
+import { detectImageType } from "@/lib/server/account/images";
 
 const MAX_AVATAR = 512 * 1024; // el navegador ya la reduce a 256x256, así que pesa muy poco
 

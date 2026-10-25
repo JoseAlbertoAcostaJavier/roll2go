@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/models/mongodb";
-import { sessionOf } from "@/lib/campaignApi";
+import { sessionOf } from "@/lib/server/campaigns/campaignApi";
 import { rateLimit, tooManyRequests } from "@/lib/utils/rateLimit";
 import { Friendship, pairKey } from "@/lib/models/Friendship";
 import { Notification } from "@/lib/models/Notification";
-import { findUserByUsername } from "@/lib/friends";
-import { notify } from "@/lib/notify";
-import { blockStatus } from "@/lib/blocks";
+import { findUserByUsername } from "@/lib/server/social/friends";
+import { notify } from "@/lib/server/notifications/notify";
+import { blockStatus } from "@/lib/server/social/blocks";
 const MAX_PENDING = 50; // solicitudes enviadas sin responder
 
 export async function POST(req: NextRequest) {

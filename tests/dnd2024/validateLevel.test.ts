@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from "vitest";
-import type { CatalogEntry } from "@/lib/rules/catalog";
+import type { CatalogEntry } from "@/lib/rules/catalog/types";
 import { signHitDie, type HitDieRoll } from "@/lib/rules/dnd2024/rolls";
 import type { Choice, Dnd2024SheetV2, LevelEntry } from "@/lib/rules/dnd2024/sheet";
 import { validateLevel } from "@/lib/rules/dnd2024/validateLevel";

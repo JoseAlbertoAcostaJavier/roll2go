@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/models/mongodb";
-import { sessionOf } from "@/lib/campaignApi";
+import { sessionOf } from "@/lib/server/campaigns/campaignApi";
 import { rateLimit, tooManyRequests } from "@/lib/utils/rateLimit";
 import { Friendship, pairKey } from "@/lib/models/Friendship";
 import { Notification } from "@/lib/models/Notification";
-import { findUserByUsername } from "@/lib/friends";
-import { notify } from "@/lib/notify";
+import { findUserByUsername } from "@/lib/server/social/friends";
+import { notify } from "@/lib/server/notifications/notify";
 
 type Ctx = { params: Promise<{ username: string }> };
 

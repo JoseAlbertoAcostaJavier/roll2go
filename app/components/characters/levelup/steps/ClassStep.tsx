@@ -1,7 +1,7 @@
 "use client";
 
 import { Lock } from "lucide-react";
-import type { CatalogEntry } from "@/lib/rules/catalog";
+import type { CatalogEntry } from "@/lib/rules/catalog/types";
 import { bareName } from "@/lib/rules/dnd2024/equipmentRefs";
 import RoundIcon from "@/app/components/RoundIcon";
 

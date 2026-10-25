@@ -1,6 +1,6 @@
 // Referencias del catálogo que hacen falta para mostrar el equipo inicial: las de las opciones y, de los paquetes
 // ya cargados, las de su contenido. Quien llama repite hasta que no aparezcan referencias nuevas.
-import type { CatalogEntry } from "@/lib/rules/catalog";
+import type { CatalogEntry } from "@/lib/rules/catalog/types";
 import type { ItemData, Pack, Ref } from "@/lib/rules/types";
 
 export const refKey = (ref: Ref) => `${ref.book}:${ref.key}`;

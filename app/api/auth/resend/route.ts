@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/models/mongodb";
 import { User } from "@/lib/models/User";
 import { getClientIp, rateLimit, tooManyRequests } from "@/lib/utils/rateLimit";
-import { createVerificationToken, VERIFY_TTL_MS } from "@/lib/verification";
-import { sendVerificationEmail } from "@/lib/mail";
+import { createVerificationToken, VERIFY_TTL_MS } from "@/lib/server/auth/verification";
+import { sendVerificationEmail } from "@/lib/server/notifications/mail";
 
 //Permite pedir otro enlace.
 const COOLDOWN_MS = 60 * 1000; // mínimo entre dos envíos al mismo correo

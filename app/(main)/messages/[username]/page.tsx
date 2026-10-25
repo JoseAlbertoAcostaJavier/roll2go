@@ -4,12 +4,12 @@ import { notFound, redirect } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
 import Avatar from "@/app/components/Avatar";
 import ChatThread, { type ChatMessage } from "@/app/components/ChatThread";
-import { requireUser } from "@/lib/currentUser";
+import { requireUser } from "@/lib/server/auth/currentUser";
 import { connectDB } from "@/lib/models/mongodb";
 import { Message } from "@/lib/models/Message";
 import { pairKey } from "@/lib/models/Friendship";
-import { findUserByUsername, relationBetween } from "@/lib/friends";
-import { blockStatus } from "@/lib/blocks";
+import { findUserByUsername, relationBetween } from "@/lib/server/social/friends";
+import { blockStatus } from "@/lib/server/social/blocks";
 export const metadata: Metadata = { title: "Mensajes" };
 
 export default async function ConversationPage({ params }: { params: Promise<{ username: string }> }) {

@@ -3,7 +3,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Check, ChevronDown } from "lucide-react";
-import type { EntryOption } from "@/lib/rules/catalog";
+import type { EntryOption } from "@/lib/rules/catalog/types";
 import type { Ref } from "@/lib/rules/types";
 import { normalizeName } from "@/lib/rules/schemas";
 import { field, labelClass } from "../formStyles";

@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { SpellOption } from "@/lib/rules/catalog";
+import type { SpellOption } from "@/lib/rules/catalog/types";
 import { refKey } from "@/lib/rules/dnd2024/equipmentRefs";
-import { ALL_LISTS, spellOptionOf, type SpellRow } from "@/lib/rules/spellRows";
+import { ALL_LISTS, spellOptionOf, type SpellRow } from "@/lib/rules/catalog/spellRows";
 
 /** De dónde salen las listas: los libros de un personaje o, al crearlo, los que puede usar el usuario. */
 export type SpellListSource =

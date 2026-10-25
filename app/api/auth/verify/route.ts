@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/models/mongodb";
 import { User } from "@/lib/models/User";
 import { getClientIp, rateLimit, tooManyRequests } from "@/lib/utils/rateLimit";
-import { hashToken } from "@/lib/verification";
+import { hashToken } from "@/lib/server/auth/verification";
 
 export async function POST(req: NextRequest) {
   const limited = await rateLimit("verify", getClientIp(req), 30, 15 * 60);

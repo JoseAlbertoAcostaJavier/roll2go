@@ -3,7 +3,7 @@
 // conserva el personaje. Las elecciones van a `levels[].choices` como `featSpells`, en el nivel en que se gana la dote
 // (el 1 para la del trasfondo) o en el que la dote da más (Lanzador de rituales); Iniciado en la magia, además, deja
 // cambiar uno de sus conjuros en cada subida (`replace`). Funciones puras.
-import type { CatalogEntry } from "@/lib/rules/catalog";
+import type { CatalogEntry } from "@/lib/rules/catalog/types";
 import type { Ability, FeatData, FeatSpellFilter, Ref, SpellData } from "@/lib/rules/types";
 import { refKey } from "./equipmentRefs";
 import type { PendingChoice } from "./levels";

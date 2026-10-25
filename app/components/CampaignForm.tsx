@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ImagePlus, LoaderCircle, X } from "lucide-react";
 import BbcodeEditor from "@/app/components/BbcodeEditor";
-import type { BookOption } from "@/lib/rules/books";
+import type { BookOption } from "@/lib/rules/catalog/types";
 
 type Option = { id: string; name: string };
 type Errors = Partial<

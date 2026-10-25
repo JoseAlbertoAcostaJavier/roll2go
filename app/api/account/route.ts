@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { connectDB } from "@/lib/models/mongodb";
-import { COOKIE_NAME } from "@/lib/auth";
-import { sessionOf } from "@/lib/campaignApi";
+import { COOKIE_NAME } from "@/lib/server/auth/auth";
+import { sessionOf } from "@/lib/server/campaigns/campaignApi";
 import { rateLimit, tooManyRequests } from "@/lib/utils/rateLimit";
 import { User } from "@/lib/models/User";
-import { createVerificationToken } from "@/lib/verification";
-import { sendVerificationEmail } from "@/lib/mail";
-import { deleteUserData } from "@/lib/accountCleanup";
-import { CAMPAIGN_EMAIL_PREFS } from "@/lib/notificationText";
+import { createVerificationToken } from "@/lib/server/auth/verification";
+import { sendVerificationEmail } from "@/lib/server/notifications/mail";
+import { deleteUserData } from "@/lib/server/account/accountCleanup";
+import { CAMPAIGN_EMAIL_PREFS } from "@/lib/rules/notificationText";
 
 const USERNAME_REGEX = /^[a-zA-Z0-9_]{3,20}$/;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;

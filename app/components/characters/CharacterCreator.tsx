@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { LoaderCircle, TriangleAlert } from "lucide-react";
 import Bbcode from "@/app/components/Bbcode";
 import { card, cardTitle, errorClass, field, labelClass, primaryButton } from "@/app/components/formStyles";
-import type { CatalogEntry, EntryOption } from "@/lib/rules/catalog";
+import type { CatalogEntry, EntryOption } from "@/lib/rules/catalog/types";
 import {
   ABILITIES, type Ability, type BackgroundData, type ClassData, type Equipment, type FeatData, type FeatureData,
   type OptionalFeatureData, type Pack, type Ref, type SpeciesData,
@@ -22,7 +22,7 @@ import {
   emptySpellPick, featSpellsChoiceOf, featSpellsMissing, parseSpellPick, spellChoiceOf, spellPickMissing, type SpellPick,
 } from "@/lib/rules/dnd2024/spellPicks";
 import { PRONOUNS, type Pronoun } from "@/lib/rules/dnd2024/names";
-import { pendingSpellLists } from "@/lib/rules/spellRows";
+import { pendingSpellLists } from "@/lib/rules/catalog/spellRows";
 import type { CreationDraft } from "@/lib/rules/dnd2024/recreate";
 import { SKILLS_SOURCE } from "@/lib/rules/dnd2024/upgrade";
 import AbilityScores from "./AbilityScores";

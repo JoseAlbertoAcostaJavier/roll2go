@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { CatalogEntry } from "@/lib/rules/catalog";
+import type { CatalogEntry } from "@/lib/rules/catalog/types";
 import { equipmentRefs } from "@/lib/rules/dnd2024/equipmentRefs";
 
 const ref = (key: string) => ({ book: "b", key });

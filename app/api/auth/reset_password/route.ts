@@ -3,7 +3,7 @@ import bcrypt from "bcryptjs";
 import { connectDB } from "@/lib/models/mongodb";
 import { User } from "@/lib/models/User";
 import { getClientIp, rateLimit, tooManyRequests } from "@/lib/utils/rateLimit";
-import { hashToken } from "@/lib/verification";
+import { hashToken } from "@/lib/server/auth/verification";
 
 export async function POST(req: NextRequest) {
   // Máximo 10 intentos cada 15 minutos por IP

@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
 import { rateLimit, tooManyRequests } from "@/lib/utils/rateLimit";
 import { CampaignLogEntry } from "@/lib/models/CampaignLogEntry";
-import { requireMember } from "@/lib/campaignApi";
-import { parseLogBody } from "@/lib/logInput";
+import { requireMember } from "@/lib/server/campaigns/campaignApi";
+import { parseLogBody } from "@/lib/server/campaigns/logInput";
 
 type Ctx = { params: Promise<{ id: string; entryId: string }> };
 

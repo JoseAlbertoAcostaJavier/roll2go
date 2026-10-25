@@ -1,6 +1,6 @@
 // Validación en el servidor de un nivel nuevo (spec de subir de nivel §4.1): clase, requisitos de multiclase, las
 // elecciones que pide exactamente el nivel y los puntos de golpe. Los nombres salen del catálogo, nunca del cliente.
-import type { CatalogEntry } from "@/lib/rules/catalog";
+import type { CatalogEntry } from "@/lib/rules/catalog/types";
 import {
   ABILITIES, type Ability, type BackgroundData, type ClassData, type FeatData, type FeatureData, type Ref, type SubclassData,
 } from "@/lib/rules/types";

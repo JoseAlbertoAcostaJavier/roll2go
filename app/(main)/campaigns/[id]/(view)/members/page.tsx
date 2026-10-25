@@ -3,13 +3,13 @@ import ExpelMember from "@/app/components/ExpelMember";
 import InviteFriends, { type FriendOption } from "@/app/components/InviteFriends";
 import InviteLink from "@/app/components/InviteLink";
 import UserLink from "@/app/components/UserLink";
-import { getCampaignAccess } from "@/lib/campaignAccess";
+import { getCampaignAccess } from "@/lib/server/campaigns/campaignAccess";
 import { Campaign } from "@/lib/models/Campaign";
 import { CampaignInvite } from "@/lib/models/CampaignInvite";
-import { blockedIdsOf } from "@/lib/blocks";
-import { friendIdsOf } from "@/lib/friends";
-import { MAX_MEMBERS } from "@/lib/members";
-import { loadUserCards } from "@/lib/userCards";
+import { blockedIdsOf } from "@/lib/server/social/blocks";
+import { friendIdsOf } from "@/lib/server/social/friends";
+import { MAX_MEMBERS } from "@/lib/server/campaigns/members";
+import { loadUserCards } from "@/lib/server/account/userCards";
 
 const heading = "mb-3 border-l-4 border-brand pl-3 font-heading text-xl font-bold";
 const list = "divide-y divide-line rounded-lg border border-line bg-surface";

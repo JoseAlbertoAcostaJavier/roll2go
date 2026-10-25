@@ -1,10 +1,10 @@
 import Navbar from "@/app/components/Navbar";
 import ChatAssistant from "@/app/components/ChatAssistant";
-import { countUnread } from "@/lib/notify";
+import { countUnread } from "@/lib/server/notifications/notify";
 
 /* Layout de la página principal incluye: Navbar, footer y asistente de IA.   
 */
-import { getCurrentUser } from "@/lib/currentUser";
+import { getCurrentUser } from "@/lib/server/auth/currentUser";
 // ...
 
 export default async function MainLayout({ children }: { children: React.ReactNode }) {

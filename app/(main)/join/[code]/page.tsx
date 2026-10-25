@@ -3,12 +3,12 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import JoinButton from "@/app/components/JoinButton";
-import { COOKIE_NAME, verifySession } from "@/lib/auth";
+import { COOKIE_NAME, verifySession } from "@/lib/server/auth/auth";
 import { connectDB } from "@/lib/models/mongodb";
 import { Campaign } from "@/lib/models/Campaign";
 import { User } from "@/lib/models/User";
 import { system as rpgSystems } from "@/lib/utils/systems";
-import { INVITE_REGEX } from "@/lib/members";
+import { INVITE_REGEX } from "@/lib/server/campaigns/members";
 
 export const metadata: Metadata = { title: "Unirse a una campaña" };
 

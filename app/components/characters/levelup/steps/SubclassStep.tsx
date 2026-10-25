@@ -1,6 +1,6 @@
 "use client";
 
-import type { CatalogEntry } from "@/lib/rules/catalog";
+import type { CatalogEntry } from "@/lib/rules/catalog/types";
 import { refKey } from "@/lib/rules/dnd2024/equipmentRefs";
 import type { Ref, SubclassData } from "@/lib/rules/types";
 import RuleSelect from "../../RuleSelect";

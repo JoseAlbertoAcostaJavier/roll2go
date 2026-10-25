@@ -5,10 +5,10 @@ import { notFound } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
 import { connectDB } from "@/lib/models/mongodb";
 import { Campaign } from "@/lib/models/Campaign";
-import { requireUser } from "@/lib/currentUser";
+import { requireUser } from "@/lib/server/auth/currentUser";
 import { system as rpgSystems } from "@/lib/utils/systems";
 import { first } from "@/lib/utils/utils";
-import { NotFoundError, listEntries, listMasteryWeapons, usableBooks, type EntryOption } from "@/lib/rules/catalog";
+import { NotFoundError, listEntries, listMasteryWeapons, usableBooks, type EntryOption } from "@/lib/server/catalog/catalog";
 import type { SpeciesData } from "@/lib/rules/types";
 import CharacterCreator from "@/app/components/characters/CharacterCreator";
 

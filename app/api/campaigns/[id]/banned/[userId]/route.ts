@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
 import { Campaign } from "@/lib/models/Campaign";
-import { requireDm } from "@/lib/campaignApi";
+import { requireDm } from "@/lib/server/campaigns/campaignApi";
 
 export async function DELETE(
   req: NextRequest,

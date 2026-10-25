@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { rateLimit, tooManyRequests } from "@/lib/utils/rateLimit";
 import { CampaignLogEntry } from "@/lib/models/CampaignLogEntry";
-import { requireMember } from "@/lib/campaignApi";
-import { parseLogBody } from "@/lib/logInput";
-import { notify } from "@/lib/notify";
+import { requireMember } from "@/lib/server/campaigns/campaignApi";
+import { parseLogBody } from "@/lib/server/campaigns/logInput";
+import { notify } from "@/lib/server/notifications/notify";
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
