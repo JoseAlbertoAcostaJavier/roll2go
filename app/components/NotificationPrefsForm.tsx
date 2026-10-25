@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { LoaderCircle } from "lucide-react";
 import { card, cardTitle, primaryButton, successClass } from "@/app/components/formStyles";
-import { CAMPAIGN_EMAIL_PREFS, type CampaignEmailPref } from "@/lib/rules/notificationText";
+import { CAMPAIGN_EMAIL_PREFS, type CampaignEmailPref } from "@/lib/shared/notificationText";
 
 export type Prefs = {
   messages: boolean;

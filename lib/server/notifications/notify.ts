@@ -9,7 +9,7 @@ import {
   emailPrefFor,
   wantsEmail,
   type NotificationType,
-} from "@/lib/rules/notificationText";
+} from "@/lib/shared/notificationText";
 import { sendNotificationEmail } from "@/lib/server/notifications/notifyMail";
 import { isBlockedEither } from "@/lib/server/social/blocks";
 

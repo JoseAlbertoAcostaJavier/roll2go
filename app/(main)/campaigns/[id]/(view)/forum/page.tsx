@@ -5,7 +5,7 @@ import LocalDate from "@/app/components/LocalDate";
 import Pagination from "@/app/components/Pagination";
 import { getCampaignAccess } from "@/lib/server/campaigns/campaignAccess";
 import { ForumPost } from "@/lib/models/ForumPost";
-import { THREADS_PER_PAGE } from "@/lib/rules/forum";
+import { THREADS_PER_PAGE } from "@/lib/shared/forum";
 import { loadUserCards } from "@/lib/server/account/userCards";
 import { pageFrom } from "@/lib/utils/utils";
 

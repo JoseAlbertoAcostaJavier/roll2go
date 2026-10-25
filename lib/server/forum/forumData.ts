@@ -1,7 +1,7 @@
 import "server-only";
 import mongoose from "mongoose";
 import { ForumReaction } from "@/lib/models/ForumReaction";
-import { MAX_REACTION_NAMES, type ReactionState } from "@/lib/rules/forum";
+import { MAX_REACTION_NAMES, type ReactionState } from "@/lib/shared/forum";
 import { loadUserCards } from "@/lib/server/account/userCards";
 
 // Reacciones de varios mensajes a la vez: cuántas hay de cada emoji, si tú has puesto cada una y quién más

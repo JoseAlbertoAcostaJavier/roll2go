@@ -5,7 +5,7 @@ import { ForumPost } from "@/lib/models/ForumPost";
 import { ForumReaction } from "@/lib/models/ForumReaction";
 import { Notification } from "@/lib/models/Notification";
 import { requireMember } from "@/lib/server/campaigns/campaignApi";
-import { parseForumBody } from "@/lib/rules/forum";
+import { parseForumBody } from "@/lib/shared/forum";
 
 type Ctx = { params: Promise<{ id: string; postId: string }> };
 

@@ -8,7 +8,7 @@ import { Campaign } from "@/lib/models/Campaign";
 import {
   describeNotification,
   type NotificationType,
-} from "@/lib/rules/notificationText";
+} from "@/lib/shared/notificationText";
 
 // GET /api/notifications?limit=10  ->  lista y contador. Con limit=0 solo devuelve el contador.
 export async function GET(req: NextRequest) {

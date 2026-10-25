@@ -9,7 +9,7 @@ import ForumPostForm from "@/app/components/ForumPostForm";
 import LocalDate from "@/app/components/LocalDate";
 import Reactions from "@/app/components/Reactions";
 import UserLink from "@/app/components/UserLink";
-import type { ReactionState } from "@/lib/rules/forum";
+import type { ReactionState } from "@/lib/shared/forum";
 import type { UserCard } from "@/lib/server/account/userCards";
 
 export type ForumMessageData = {

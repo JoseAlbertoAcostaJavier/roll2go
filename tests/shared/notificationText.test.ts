@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { describeNotification, emailPrefFor, NOTIFICATION_TYPES } from "@/lib/rules/notificationText";
+import { describeNotification, emailPrefFor, NOTIFICATION_TYPES } from "@/lib/shared/notificationText";
 
 describe("character_level_up", () => {
   it("es un tipo válido y va con los avisos del DM", () => {

@@ -7,7 +7,7 @@ import ForumPostForm from "@/app/components/ForumPostForm";
 import Pagination from "@/app/components/Pagination";
 import { getCampaignAccess } from "@/lib/server/campaigns/campaignAccess";
 import { ForumPost } from "@/lib/models/ForumPost";
-import { REPLIES_PER_PAGE } from "@/lib/rules/forum";
+import { REPLIES_PER_PAGE } from "@/lib/shared/forum";
 import { loadReactions } from "@/lib/server/forum/forumData";
 import { loadUserCards } from "@/lib/server/account/userCards";
 import { pageFrom } from "@/lib/utils/utils";

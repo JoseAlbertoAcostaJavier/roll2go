@@ -4,7 +4,7 @@ import { rateLimit, tooManyRequests } from "@/lib/utils/rateLimit";
 import { ForumPost } from "@/lib/models/ForumPost";
 import { ForumReaction } from "@/lib/models/ForumReaction";
 import { requireMember } from "@/lib/server/campaigns/campaignApi";
-import { REACTION_EMOJIS } from "@/lib/rules/forum";
+import { REACTION_EMOJIS } from "@/lib/shared/forum";
 
 // POST { emoji }: pone la reacción, o la quita si ya la tenías. Devuelve { active, count }.
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string; postId: string }> }) {

@@ -8,7 +8,7 @@ import { User } from "@/lib/models/User";
 import { createVerificationToken } from "@/lib/server/auth/verification";
 import { sendVerificationEmail } from "@/lib/server/notifications/mail";
 import { deleteUserData } from "@/lib/server/account/accountCleanup";
-import { CAMPAIGN_EMAIL_PREFS } from "@/lib/rules/notificationText";
+import { CAMPAIGN_EMAIL_PREFS } from "@/lib/shared/notificationText";
 
 const USERNAME_REGEX = /^[a-zA-Z0-9_]{3,20}$/;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;

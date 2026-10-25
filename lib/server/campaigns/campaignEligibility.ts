@@ -3,7 +3,7 @@ import "server-only";
 // nombres de los libros no permitidos). La usan la ruta de la solicitud y las páginas que ofrecen unir personajes.
 import mongoose from "mongoose";
 import { Book } from "@/lib/models/Book";
-import { canRequestJoin } from "@/lib/rules/campaignRules";
+import { canRequestJoin } from "@/lib/shared/campaignRules";
 import { OUTDATED_SHEET_ERROR } from "@/lib/server/characters/characterAccess";
 import { getEntry } from "@/lib/server/catalog/catalog";
 import { booksUsedBy } from "@/lib/rules/dnd2024/booksUsed";
