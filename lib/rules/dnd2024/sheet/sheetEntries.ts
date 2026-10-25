@@ -4,7 +4,7 @@
 // inyecta la consulta en lote al catálogo.
 import type { CatalogEntry } from "@/lib/rules/catalog/types";
 import { equipmentRefs, refKey } from "@/lib/rules/dnd2024/sheet/equipmentRefs";
-import { heldOptionalFeatures } from "@/lib/rules/dnd2024/levels/pendingChoices";
+import { heldOptionalFeatures } from "@/lib/rules/dnd2024/levels/held";
 import type { AnySheet } from "@/lib/rules/dnd2024/sheet/sheet";
 import { summarizeClasses } from "@/lib/rules/dnd2024/sheet/upgrade";
 import type { BackgroundData, ClassData, LevelFeature, Ref, SubclassData } from "@/lib/rules/types";

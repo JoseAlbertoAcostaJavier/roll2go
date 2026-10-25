@@ -7,8 +7,9 @@ import {
   BONUS_SPELL_ORIGINS, IMPROVED_ILLUSIONS, IMPROVED_ILLUSIONS_CANTRIP, SIGNATURE_SPELLS, SPELL_MASTERY,
 } from "@/lib/rules/dnd2024/levels/featureChoices";
 import {
-  chosenSpells, heldArcana, heldBonusCantrips, heldBonusSpells, heldOptionalFeatures, secretSpellLists,
-} from "@/lib/rules/dnd2024/levels/pendingChoices";
+  chosenSpells, heldArcana, heldBonusCantrips, heldBonusSpells, heldOptionalFeatures,
+} from "@/lib/rules/dnd2024/levels/held";
+import { secretSpellLists } from "@/lib/rules/dnd2024/levels/spellPending";
 import type { Dnd2024SheetV2, Named } from "@/lib/rules/dnd2024/sheet/sheet";
 import { maxSpellLevel, PACT_SLOTS, preparedKey, slotLevels, spellListOf } from "@/lib/rules/dnd2024/spells/spellcasting";
 import { summarizeClasses } from "@/lib/rules/dnd2024/sheet/upgrade";

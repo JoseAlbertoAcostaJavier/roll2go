@@ -1,6 +1,7 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import type { CatalogEntry } from "@/lib/rules/catalog/types";
-import { checkChoices, validateSheet } from "@/lib/rules/dnd2024/creation/validateSheet";
+import { checkChoices } from "@/lib/rules/dnd2024/creation/checkChoices";
+import { validateSheet } from "@/lib/rules/dnd2024/creation/validateSheet";
 import { signRolls } from "@/lib/rules/dnd2024/creation/rolls";
 import type { Ref } from "@/lib/rules/types";
 import { B as FB, buildCatalog, ref as fref } from "../fixtureCatalog";

@@ -11,14 +11,13 @@ import {
   checkFeatSpellChoices, chosenFeatSpells, featSpellClash, levelFeatSpellPending, splitFeatSpells, type FeatWithData,
 } from "../spells/featSpells";
 import { refKey } from "../sheet/equipmentRefs";
-import {
-  heldArcana, heldBonusSpells, heldOptionalFeatures, heldPicks, meetsMulticlass, pendingChoices,
-} from "./pendingChoices";
+import { heldArcana, heldBonusSpells, heldOptionalFeatures, heldPicks } from "./held";
+import { meetsMulticlass, pendingChoices } from "./pendingChoices";
 import { currentMasteries } from "./masteries";
 import { verifyHitDie } from "../creation/rolls";
 import type { Dnd2024SheetV2, LevelEntry, Named } from "../sheet/sheet";
 import { SUBCLASS_SOURCE, summarizeClasses } from "../sheet/upgrade";
-import { checkChoices, loadInto } from "../creation/validateSheet";
+import { checkChoices, loadInto } from "../creation/checkChoices";
 
 export type ValidateLevelCtx = {
   userId: string;

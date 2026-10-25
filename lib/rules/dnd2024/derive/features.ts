@@ -4,7 +4,7 @@ import type { CatalogEntry } from "@/lib/rules/catalog/types";
 import { refKey } from "@/lib/rules/dnd2024/sheet/equipmentRefs";
 import { FEATURE_OPTION_LABELS } from "@/lib/rules/dnd2024/levels/featureChoices";
 import { optionalFeatureLabel } from "@/lib/rules/dnd2024/sheet/labels";
-import { heldFeats, heldOptionalFeatures } from "@/lib/rules/dnd2024/levels/pendingChoices";
+import { heldFeats, heldOptionalFeatures } from "@/lib/rules/dnd2024/levels/held";
 import type { Dnd2024SheetV2, Named } from "@/lib/rules/dnd2024/sheet/sheet";
 import type { BackgroundData, ClassData, LevelFeature, Ref, SubclassData } from "@/lib/rules/types";
 

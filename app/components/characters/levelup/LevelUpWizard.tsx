@@ -12,10 +12,11 @@ import { chosenSpells, knownSpellRefs } from "@/lib/rules/dnd2024/derive/spells"
 import { refKey } from "@/lib/rules/dnd2024/sheet/equipmentRefs";
 import { FEATURE_OPTION_LABELS } from "@/lib/rules/dnd2024/levels/featureChoices";
 import { ABILITY_NAMES, skillName } from "@/lib/rules/dnd2024/sheet/labels";
+import { heldArcana, heldBonusSpells, heldOptionalFeatures, heldPicks } from "@/lib/rules/dnd2024/levels/held";
 import {
-  heldArcana, heldBonusSpells, heldOptionalFeatures, heldPicks, meetsFeatPrerequisite, meetsMulticlass, pendingChoices,
-  spellsSource, withBonusCantrips, type PendingChoice,
+  meetsFeatPrerequisite, meetsMulticlass, pendingChoices, withBonusCantrips, type PendingChoice,
 } from "@/lib/rules/dnd2024/levels/pendingChoices";
+import { spellsSource } from "@/lib/rules/dnd2024/levels/spellPending";
 import { currentMasteries, masteryLabel } from "@/lib/rules/dnd2024/levels/masteries";
 import type { Dnd2024SheetV2, LevelEntry } from "@/lib/rules/dnd2024/sheet/sheet";
 import { emptySpellPick } from "@/lib/rules/dnd2024/spells/spellPicks";

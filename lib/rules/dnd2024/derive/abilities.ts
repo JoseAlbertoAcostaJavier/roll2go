@@ -1,6 +1,6 @@
 // Características, salvaciones y habilidades de la hoja v2, con su desglose.
 import { ABILITY_NAMES, fmtMod } from "@/lib/rules/dnd2024/sheet/labels";
-import { heldFeats } from "@/lib/rules/dnd2024/levels/pendingChoices";
+import { heldFeats } from "@/lib/rules/dnd2024/levels/held";
 import type { Dnd2024SheetV2 } from "@/lib/rules/dnd2024/sheet/sheet";
 import { ABILITIES, type Ability, type Ref } from "@/lib/rules/types";
 import { makeBreakdown, type Breakdown, type Part } from "./breakdown";

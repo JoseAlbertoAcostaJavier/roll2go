@@ -2,17 +2,21 @@
 // puras: las usan el asistente de subir de nivel, el creador (nivel 1) y la validación del servidor.
 import type { CatalogEntry } from "@/lib/rules/catalog/types";
 import type {
-  Ability, ClassData, FeatSpellFilter, FeatureData, LevelCounts, LevelFeature, OptionalFeatureData, Ref, SpellcastingMode,
+  Ability, ClassData, FeatSpellFilter, FeatureData, LevelCounts, LevelFeature, OptionalFeatureData, Ref,
   SubclassData,
 } from "@/lib/rules/types";
 import type { Derived } from "../derive";
 import { refKey } from "../sheet/equipmentRefs";
 import {
   BONUS_SPELL_ORIGINS, FEATURE_CHOICES, IMPROVED_ILLUSIONS, IMPROVED_ILLUSIONS_CANTRIP, MAGICAL_DISCOVERIES,
-  MAGICAL_SECRETS, MYSTIC_ARCANUM, REPLACEABLE_FIGHTING_STYLE, SCHOOL_SAVANT, SIGNATURE_SPELLS, type ChoiceSpec,
+  MYSTIC_ARCANUM, REPLACEABLE_FIGHTING_STYLE, SCHOOL_SAVANT, SIGNATURE_SPELLS, type ChoiceSpec,
 } from "./featureChoices";
+import { chosenSpells, classChoices, heldBonusCantrips, heldBonusSpells } from "./held";
+import {
+  bonusCantrips, secretSpellLists, spellsSource, type BonusSpellsPending, type SpellsPending,
+} from "./spellPending";
 import { ABILITY_NAMES, optionalFeatureLabel } from "../sheet/labels";
-import type { Choice, Dnd2024SheetV2, FeatPickValue, LevelEntry, Named, SpellChoice, SpellSwap } from "../sheet/sheet";
+import type { Choice, Dnd2024SheetV2 } from "../sheet/sheet";
 import { maxSpellLevel, spellListOf } from "../spells/spellcasting";
 import { SKILLS_SOURCE, SUBCLASS_SOURCE, summarizeClasses } from "../sheet/upgrade";
 
@@ -52,41 +56,6 @@ export type PendingChoice = {
   bonusSpells?: BonusSpellsPending;
 };
 
-/**
- * Conjuros que da un rasgo fuera de los límites (`bonusSpells`): la clase en cuyo bloque quedan siempre preparados,
- * las listas de las que se eligen, si solo trucos, si del libro de la clase, el nivel exacto (`level`) o el máximo
- * (`maxLevel`, con trucos), y el origen con el que se muestran. Con `optionalReplace` y `count: 0`, el nivel solo
- * permite sustituir uno de los que ya da el rasgo por otro que cumpla lo mismo.
- */
-export type BonusSpellsPending = {
-  class: Ref;
-  lists: string[];
-  cantripsOnly?: boolean;
-  fromSpellbook?: boolean;
-  level?: number;
-  maxLevel?: number;
-  origin: string;
-};
-
-export type SpellsPending = {
-  class: Ref;
-  mode: SpellcastingMode;
-  list: string;
-  /**
-   * Con Secretos mágicos: las listas de las que puede elegir los conjuros nuevos y los sustitutos (incluida `list`);
-   * los trucos, solo de `list`.
-   */
-  lists?: string[];
-  cantrips: number;
-  spells: number;
-  maxLevel: number;
-  /** Sabio de la escuela: conjuros de Mago de la escuela `school` (letra de 5etools) que entran gratis en el libro. */
-  free?: { count: number; school: string; maxLevel: number };
-};
-
-/** Fuente de la elección de conjuros de una clase o subclase lanzadora. */
-export const spellsSource = (caster: Ref) => `progression:spells|${bareKey(caster.key)}`;
-
 const ASI_PREFIX = "classFeature:ability score improvement|";
 // Categoría de las dotes generales (la alternativa a la mejora de característica)
 const GENERAL_FEATS = ["G"];
@@ -98,21 +67,6 @@ const NO_PROGRESSIONS: Pick<ClassData["progressions"], "feats" | "optionalFeatur
 
 const FEAT_LABELS: Record<string, string> = { FS: "Estilo de combate", EB: "Don épico", G: "Dote general" };
 
-/** Opciones de rasgo que dan un truco más de la lista de su clase (Taumaturgo del Clérigo, Mago del Druida). */
-export const BONUS_CANTRIPS: Readonly<Record<string, number>> = {
-  "classFeature:thaumaturge|cleric|xphb|1": 1,
-  "classFeature:magician|druid|xphb|1": 1,
-};
-
-/** Trucos de más que dan las opciones de rasgo `options` (claves del catálogo). */
-export const bonusCantrips = (options: string[]) => options.reduce((n, k) => n + (BONUS_CANTRIPS[k] ?? 0), 0);
-
-/** Trucos de más de una clase por las opciones de rasgo elegidas en sus niveles del historial. */
-export function heldBonusCantrips(levels: LevelEntry[], cls: Ref): number {
-  return bonusCantrips(levels.filter((l) => refKey(l.class.ref) === refKey(cls))
-    .flatMap((l) => l.choices.flatMap((c) => (c.type === "featureOption" ? [c.value.ref.key] : []))));
-}
-
 /**
  * La elección de conjuros de `pending` con los trucos de más de las opciones de rasgo elegidas en ese mismo nivel
  * (`options`: claves del catálogo, p. ej. el Taumaturgo al crear un Clérigo).
@@ -123,77 +77,6 @@ export function withBonusCantrips(pending: PendingChoice[], options: string[]): 
   return pending.map((p) => (p.type === "spells" && p.spells
     ? { ...p, count: p.count + extra, spells: { ...p.spells, cantrips: p.spells.cantrips + extra } }
     : p));
-}
-
-// Sustituye en `list` el conjuro que sale por el que entra
-function applySwap(list: Named[], swap: SpellSwap | undefined) {
-  if (!swap) return;
-  const i = list.findIndex((s) => refKey(s.ref) === refKey(swap.out.ref));
-  if (i >= 0) list.splice(i, 1);
-  list.push(swap.in);
-}
-
-/**
- * Trucos y conjuros elegidos para una clase en el historial (en modo `spellbook`, las entradas del libro, también las
- * gratis del Sabio de la escuela), con las sustituciones aplicadas en orden.
- */
-export function chosenSpells(sheet: Pick<Dnd2024SheetV2, "levels">, cls: Ref): { cantrips: Named[]; spells: Named[] } {
-  const cantrips: Named[] = [];
-  const spells: Named[] = [];
-  for (const l of sheet.levels) {
-    for (const c of l.choices) {
-      if (c.type !== "spells" || refKey(c.value.class) !== refKey(cls)) continue;
-      const v: SpellChoice = c.value;
-      cantrips.push(...v.cantrips);
-      spells.push(...v.spells, ...(v.free ?? []));
-      // El truco sustituido sale de los trucos y el conjuro, de los aprendidos
-      applySwap(cantrips, v.replaceCantrip);
-      applySwap(spells, v.replace);
-    }
-  }
-  return { cantrips, spells };
-}
-
-// Elecciones de un tipo hechas en los niveles de una clase
-function classChoices<T extends Choice["type"]>(
-  levels: LevelEntry[], cls: Ref, type: T,
-): Extract<Choice, { type: T }>[] {
-  return levels.filter((l) => refKey(l.class.ref) === refKey(cls))
-    .flatMap((l) => l.choices.filter((c): c is Extract<Choice, { type: T }> => c.type === type));
-}
-
-/** Arcanos (Arcano místico) que conserva una clase: los elegidos en sus niveles, con las sustituciones en orden. */
-export function heldArcana(levels: LevelEntry[], cls: Ref): Named[] {
-  const held: Named[] = [];
-  for (const c of classChoices(levels, cls, "arcanum")) {
-    if (c.value) held.push(c.value);
-    applySwap(held, c.replace);
-  }
-  return held;
-}
-
-/**
- * Conjuros que conserva una clase de cada elección `bonusSpells` (por `source`: Descubrimientos mágicos…), con las
- * sustituciones aplicadas en orden.
- */
-export function heldBonusSpells(levels: LevelEntry[], cls: Ref): Map<string, Named[]> {
-  const held = new Map<string, Named[]>();
-  for (const c of classChoices(levels, cls, "bonusSpells")) {
-    const list = held.get(c.source) ?? [];
-    list.push(...c.value.spells);
-    applySwap(list, c.value.replace);
-    held.set(c.source, list);
-  }
-  return held;
-}
-
-/**
- * Listas de las que una clase elige sus conjuros (no los trucos) en un nivel de clase por Secretos mágicos (con la
- * suya, `list`); vacío si no tiene el rasgo.
- */
-export function secretSpellLists(data: Pick<ClassData, "features"> | undefined, classLevel: number, list: string): string[] {
-  const extra = (data?.features ?? []).filter((f) => f.level <= classLevel).flatMap((f) => MAGICAL_SECRETS[f.ref.key] ?? []);
-  return extra.length ? [...new Set([list, ...extra])] : [];
 }
 
 /** Número acumulado en un nivel: el del mayor nivel de la progresión que no lo supera. */
@@ -481,55 +364,6 @@ export function meetsMulticlass(
     if (!missing.includes(text)) missing.push(text);
   }
   return missing.length ? { ok: false, reason: `Necesitas ${missing.join(" y ")}` } : { ok: true };
-}
-
-/**
- * Dotes y rasgos opcionales que el personaje conserva de cada elección (por `source`): las elegidas en el historial
- * menos las que se sustituyeron después.
- */
-export function heldPicks(levels: LevelEntry[]): Map<string, FeatPickValue[]> {
-  const held = new Map<string, FeatPickValue[]>();
-  for (const l of levels) {
-    for (const c of l.choices) {
-      if (c.type !== "feat" && c.type !== "optionalFeature") continue;
-      const gone = new Set((c.replaced ?? []).map((r) => refKey(r.ref)));
-      held.set(c.source, [...(held.get(c.source) ?? []).filter((p) => !gone.has(refKey(p.ref))), ...c.value]);
-    }
-  }
-  return held;
-}
-
-// Lo que conserva de las elecciones de tipo `type`, con el nivel total en que se ganó y la elección que lo dio
-function heldWithLevel(levels: LevelEntry[], type: "feat" | "optionalFeature") {
-  const held = heldPicks(levels);
-  // Si se volvió a elegir una que se había sustituido, cuenta la última vez
-  const last = new Map<string, FeatPickValue & { level: number; source: string }>();
-  for (const l of levels) {
-    for (const c of l.choices) {
-      if (c.type !== type) continue;
-      for (const f of c.value) {
-        if (held.get(c.source)?.some((h) => refKey(h.ref) === refKey(f.ref))) {
-          last.set(`${c.source}|${refKey(f.ref)}`, { ...f, level: l.n, source: c.source });
-        }
-      }
-    }
-  }
-  return [...last.values()];
-}
-
-/** Dotes de las elecciones `feat` (estilos de combate, dones épicos…) que conserva, con el nivel total en que se ganaron. */
-export function heldFeats(levels: LevelEntry[]): (FeatPickValue & { level: number })[] {
-  // (sin `source`, que solo usan los rasgos opcionales)
-  return heldWithLevel(levels, "feat")
-    .map(({ ref, name, ability, level }) => ({ ref, name, level, ...(ability ? { ability } : {}) }));
-}
-
-/**
- * Rasgos opcionales (metamagia, invocaciones, maniobras) que conserva, con el nivel total en que se ganaron y la
- * progresión que los da (`progression:maneuvers|…`).
- */
-export function heldOptionalFeatures(levels: LevelEntry[]): (Named & { level: number; source: string })[] {
-  return heldWithLevel(levels, "optionalFeature");
 }
 
 /** Lo que piden los prerrequisitos de las dotes: nivel total, características, armaduras y lanzamiento de conjuros. */
