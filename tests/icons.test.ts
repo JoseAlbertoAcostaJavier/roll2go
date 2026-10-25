@@ -24,3 +24,12 @@ describe("iconSrc", () => {
     for (const s of ["active", "retired", "dead", "npc"]) expect(onDisk(iconSrc("status", s)), s).toBe(true);
   });
 });
+
+describe("iconos de grupos de rasgos", () => {
+  it("existen y tienen su ruta", () => {
+    for (const f of ["feats", "invocations", "others", "weapon-mastery"]) {
+      expect(iconSrc("feature", f)).toBe(`/assets/icons/features/${f}.svg`);
+      expect(onDisk(iconSrc("feature", f)), f).toBe(true);
+    }
+  });
+});

@@ -13,6 +13,8 @@ export type FeatureGroup = {
   /** `option`: rasgos opcionales elegidos de una progresión (un grupo por progresión: «Maniobras»…). */
   source: "species" | "lineage" | "class" | "subclass" | "option" | "feat";
   ref: Ref | null;
+  /** En los grupos `option`: la progresión que los da («eldritch invocations», «maneuvers»…). */
+  progression?: string;
   /** Nivel en la clase (bloques de clase y subclase). */
   level?: number;
   /**
@@ -124,8 +126,9 @@ export function featureGroups(
   // ("progression:maneuvers|battle master|fighter|xphb" → «Maniobras»)
   const optional = new Map<string, FeatureGroup>();
   for (const o of heldOptionalFeatures(sheet.levels)) {
-    const title = capitalize(optionalFeatureLabel(o.source.replace(/^[^:]*:/, "").split("|")[0]));
-    const group = optional.get(title) ?? { title, source: "option", ref: null, features: [] };
+    const progression = o.source.replace(/^[^:]*:/, "").split("|")[0];
+    const title = capitalize(optionalFeatureLabel(progression));
+    const group = optional.get(title) ?? { title, source: "option", ref: null, progression, features: [] };
     group.features.push({ ref: o.ref, name: entryName(o.ref, o.name), level: o.level });
     optional.set(title, group);
   }

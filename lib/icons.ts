@@ -1,6 +1,9 @@
-// Iconos de clase, escuela de magia, especie y estado del personaje (public/assets/icons)
+// Iconos de clase, escuela de magia, especie, estado y grupos de rasgos (public/assets/icons)
 
-export type IconKind = "class" | "school" | "species" | "status";
+export type IconKind = "class" | "school" | "species" | "status" | "feature";
+
+/** Iconos de grupos de rasgos (public/assets/icons/features). */
+export type FeatureIcon = "feats" | "invocations" | "others" | "weapon-mastery";
 
 // Escuela de 5etools (`SpellData.school`) → nombre del archivo
 const SCHOOLS: Record<string, string> = {
@@ -16,5 +19,6 @@ export function iconSrc(kind: IconKind, id: string | null | undefined): string |
     case "species": return `/assets/icons/species/${id}.png`;
     case "school": return SCHOOLS[id] ? `/assets/icons/schools/${SCHOOLS[id]}.svg` : null;
     case "status": return `/assets/icons/status/${id}.svg`;
+    case "feature": return `/assets/icons/features/${id}.svg`;
   }
 }

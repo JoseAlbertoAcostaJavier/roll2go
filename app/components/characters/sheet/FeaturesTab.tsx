@@ -1,4 +1,4 @@
-import { Award, ChevronDown, Dna, ListChecks, Sparkles } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import type { CatalogEntry } from "@/lib/rules/catalog";
 import type { FeatureGroup } from "@/lib/rules/dnd2024/derive";
 import { bareName, refKey } from "@/lib/rules/dnd2024/equipmentRefs";
@@ -35,14 +35,11 @@ function GroupHeading({ group, entry }: { group: FeatureGroup; entry: CatalogEnt
     : group.source === "lineage" && entry?.parent ? <RoundIcon kind="species" id={bareName(entry.parent.key)} label={title} size={40} />
     : group.source === "subclass" && entry?.parent ? <RoundIcon kind="class" id={bareName(entry.parent.key)} label={title} size={40} />
     : null;
-  const Icon = { feat: Award, subclass: Sparkles, option: ListChecks, species: Dna, lineage: Dna, class: Dna }[group.source];
+  // Dotes, invocaciones y el resto: iconos de grupo
+  const feature = group.source === "feat" ? "feats" : group.progression?.includes("invocation") ? "invocations" : "others";
   return (
     <div className="flex items-center gap-3">
-      {icon ?? (
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 border-white bg-surface text-brand-soft">
-          <Icon size={18} aria-hidden="true" />
-        </span>
-      )}
+      {icon ?? <RoundIcon kind="feature" id={feature} label={title} size={40} />}
       <h3 className="font-heading text-xl font-bold">
         {title}
         {kind && <span className="ml-2 text-sm font-semibold uppercase tracking-wide text-muted">{kind}</span>}

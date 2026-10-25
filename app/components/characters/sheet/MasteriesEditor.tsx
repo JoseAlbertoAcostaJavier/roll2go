@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { LoaderCircle, Pencil, Swords } from "lucide-react";
+import { LoaderCircle, Pencil } from "lucide-react";
+import RoundIcon from "@/app/components/RoundIcon";
 import { card, errorClass, primaryButton } from "@/app/components/formStyles";
 import { refFromKey } from "../ClassFeaturesSection";
 import SkillPicker, { type PickerOption } from "../fields/SkillPicker";
@@ -63,9 +64,7 @@ export default function MasteriesEditor({
     <section className={`${card} mb-6 animate-fade-up`}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 border-white bg-surface text-brand-soft">
-            <Swords size={18} aria-hidden="true" />
-          </span>
+          <RoundIcon kind="feature" id="weapon-mastery" label="Maestrías con armas" size={40} />
           <h3 className="font-heading text-xl font-bold">Maestrías con armas</h3>
         </div>
         {isOwner && !editing && (

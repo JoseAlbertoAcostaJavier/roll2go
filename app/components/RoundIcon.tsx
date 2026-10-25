@@ -18,6 +18,8 @@ export default function RoundIcon({ kind, id, label, size = 44, className = "" }
   className?: string;
 }) {
   const src = iconSrc(kind, id);
+  // Solo las insignias redondas de clase y escuela se amplían; especies y rasgos ya llenan el cuadrado
+  const badge = kind === "class" || kind === "school";
   // Ruta cuya imagen falló (al cambiar de icono se vuelve a intentar)
   const [failed, setFailed] = useState<string | null>(null);
   const show = !!src && failed !== src;
@@ -34,8 +36,8 @@ export default function RoundIcon({ kind, id, label, size = 44, className = "" }
           src={src}
           alt=""
           loading="lazy"
-          className={`animate-fade-in h-full w-full ${kind === "species" ? "object-cover" : "object-contain"}`}
-          style={kind === "species" ? undefined : { transform: `scale(${BADGE_ZOOM})` }}
+          className={`animate-fade-in h-full w-full ${badge ? "object-contain" : "object-cover"}`}
+          style={badge ? { transform: `scale(${BADGE_ZOOM})` } : undefined}
           onError={() => setFailed(src)}
         />
       ) : (

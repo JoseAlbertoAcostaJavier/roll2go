@@ -2,7 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Sparkles } from "lucide-react";
+import RoundIcon from "@/app/components/RoundIcon";
 import type { SpellOption } from "@/lib/rules/catalog";
 import type { SpellsSummary } from "@/lib/rules/dnd2024/derive";
 import { bareName, refKey } from "@/lib/rules/dnd2024/equipmentRefs";
@@ -113,9 +113,7 @@ export default function SpellsTab({ characterId, isOwner, initial, lists, spells
       {other.length > 0 && (
         <section className={`${card} animate-fade-up`} aria-labelledby="other-spells-title">
           <div className="mb-2 flex items-center gap-3">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 border-white bg-surface text-brand-soft">
-              <Sparkles size={20} aria-hidden="true" />
-            </span>
+            <RoundIcon kind="feature" id="others" label="Otros" size={40} />
             <h3 id="other-spells-title" className="font-heading text-xl font-bold">Otros</h3>
           </div>
           <p className="mb-2 text-sm text-muted">Conjuros de especie, legado, dotes y otros rasgos: siempre preparados.</p>
