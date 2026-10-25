@@ -7,9 +7,9 @@ import { connectDB } from "@/lib/models/mongodb";
 import { Campaign } from "@/lib/models/Campaign";
 import { Character } from "@/lib/models/Character";
 import { NotFoundError, getEntries, getEntry, usableBooks } from "@/lib/server/catalog/catalog";
-import type { AnySheet, Dnd2024SheetV2 } from "@/lib/rules/dnd2024/sheet";
-import { loadSheetEntries } from "@/lib/rules/dnd2024/sheetEntries";
-import { loadUpgradeEntries, missingForUpgrade, upgradeSheet } from "@/lib/rules/dnd2024/upgrade";
+import type { AnySheet, Dnd2024SheetV2 } from "@/lib/rules/dnd2024/sheet/sheet";
+import { loadSheetEntries } from "@/lib/rules/dnd2024/sheet/sheetEntries";
+import { loadUpgradeEntries, missingForUpgrade, upgradeSheet } from "@/lib/rules/dnd2024/sheet/upgrade";
 
 const newId = () => new mongoose.Types.ObjectId().toHexString();
 

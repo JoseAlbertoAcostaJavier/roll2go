@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { CatalogEntry } from "@/lib/rules/catalog/types";
-import { refKey } from "@/lib/rules/dnd2024/equipmentRefs";
+import { refKey } from "@/lib/rules/dnd2024/sheet/equipmentRefs";
 import type { Ref } from "@/lib/rules/types";
 
 /* Entradas completas del catálogo pedidas al servidor (descripciones, objetos del equipo…), por `libro:clave`:

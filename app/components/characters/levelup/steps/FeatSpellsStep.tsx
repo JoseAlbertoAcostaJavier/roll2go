@@ -2,12 +2,12 @@
 
 import { useMemo } from "react";
 import type { SpellOption } from "@/lib/rules/catalog/types";
-import { bareName, refKey } from "@/lib/rules/dnd2024/equipmentRefs";
-import { fitsFeatSpell } from "@/lib/rules/dnd2024/featSpells";
-import { ABILITY_NAMES, spellListName } from "@/lib/rules/dnd2024/labels";
-import type { PendingChoice } from "@/lib/rules/dnd2024/levels";
-import type { Named } from "@/lib/rules/dnd2024/sheet";
-import type { SpellPick } from "@/lib/rules/dnd2024/spellPicks";
+import { bareName, refKey } from "@/lib/rules/dnd2024/sheet/equipmentRefs";
+import { fitsFeatSpell } from "@/lib/rules/dnd2024/spells/featSpells";
+import { ABILITY_NAMES, spellListName } from "@/lib/rules/dnd2024/sheet/labels";
+import type { PendingChoice } from "@/lib/rules/dnd2024/levels/pendingChoices";
+import type { Named } from "@/lib/rules/dnd2024/sheet/sheet";
+import type { SpellPick } from "@/lib/rules/dnd2024/spells/spellPicks";
 import type { Ability, FeatSpellFilter } from "@/lib/rules/types";
 import { field, labelClass } from "@/app/components/formStyles";
 import RuleSelect from "../../RuleSelect";

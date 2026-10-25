@@ -12,8 +12,8 @@ try {
 import { connectDB } from "../lib/models/mongodb";
 import { Character } from "../lib/models/Character";
 import { getEntry } from "../lib/server/catalog/catalog";
-import type { Dnd2024Sheet } from "../lib/rules/dnd2024/sheet";
-import { loadUpgradeEntries, missingForUpgrade, upgradeSheet } from "../lib/rules/dnd2024/upgrade";
+import type { Dnd2024Sheet } from "../lib/rules/dnd2024/sheet/sheet";
+import { loadUpgradeEntries, missingForUpgrade, upgradeSheet } from "../lib/rules/dnd2024/sheet/upgrade";
 
 async function main() {
   await connectDB();

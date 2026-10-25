@@ -5,8 +5,8 @@ import { rateLimit, tooManyRequests } from "@/lib/utils/rateLimit";
 import { Character } from "@/lib/models/Character";
 import { OUTDATED_SHEET_ERROR, loadCharacterFor } from "@/lib/server/characters/characterAccess";
 import { resolveRef, type CatalogEntry } from "@/lib/server/catalog/catalog";
-import { applyInventoryOp } from "@/lib/rules/dnd2024/edits";
-import { refKey } from "@/lib/rules/dnd2024/equipmentRefs";
+import { applyInventoryOp } from "@/lib/rules/dnd2024/sheet/edits";
+import { refKey } from "@/lib/rules/dnd2024/sheet/equipmentRefs";
 import type { Ref } from "@/lib/rules/types";
 
 type Ctx = { params: Promise<{ id: string }> };

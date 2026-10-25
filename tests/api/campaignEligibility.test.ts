@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { Dnd2024Sheet, Dnd2024SheetV2 } from "@/lib/rules/dnd2024/sheet";
-import { refKey } from "@/lib/rules/dnd2024/equipmentRefs";
+import type { Dnd2024Sheet, Dnd2024SheetV2 } from "@/lib/rules/dnd2024/sheet/sheet";
+import { refKey } from "@/lib/rules/dnd2024/sheet/equipmentRefs";
 import { B, buildCatalog, ref } from "../dnd2024/fixtureCatalog";
 
 const USER = "a00000000000000000000001";

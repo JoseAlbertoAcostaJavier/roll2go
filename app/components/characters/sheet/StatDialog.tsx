@@ -3,7 +3,7 @@
 import { useEffect, useId, useRef } from "react";
 import { X } from "lucide-react";
 import type { Breakdown } from "@/lib/rules/dnd2024/derive";
-import { partText, totalText, type BreakdownUnit } from "@/lib/rules/dnd2024/statTexts";
+import { partText, totalText, type BreakdownUnit } from "@/lib/rules/dnd2024/sheet/statTexts";
 
 // Detalle de un valor de la pestaña Información (spec §3): qué es y de dónde sale su número. Mismo comportamiento que
 // la ficha de conjuro: foco atrapado, Escape cierra y el foco vuelve al botón que lo abrió.

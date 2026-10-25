@@ -6,8 +6,8 @@ import { OUTDATED_SHEET_ERROR, loadCharacterFor } from "@/lib/server/characters/
 import { getEntries } from "@/lib/server/catalog/catalog";
 import { derive } from "@/lib/rules/dnd2024/derive";
 import { weaponProficient } from "@/lib/rules/dnd2024/derive/attacks";
-import { bareName, isRef, refKey } from "@/lib/rules/dnd2024/equipmentRefs";
-import { masteryCount, masteryMeleeOnly, validateMasteries } from "@/lib/rules/dnd2024/masteries";
+import { bareName, isRef, refKey } from "@/lib/rules/dnd2024/sheet/equipmentRefs";
+import { masteryCount, masteryMeleeOnly, validateMasteries } from "@/lib/rules/dnd2024/levels/masteries";
 import type { ItemData } from "@/lib/rules/types";
 
 type Ctx = { params: Promise<{ id: string }> };

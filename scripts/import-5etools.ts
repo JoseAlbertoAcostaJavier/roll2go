@@ -21,7 +21,7 @@ import {
 import { planImport } from "../lib/rules/import/plan";
 import { matchFoundry, type FoundryFiles } from "../lib/rules/import/foundry";
 import { normalizeName } from "../lib/rules/schemas";
-import { FEATURE_CHOICES, SPECIFIED_CHOICES } from "../lib/rules/dnd2024/featureChoices";
+import { FEATURE_CHOICES, SPECIFIED_CHOICES } from "../lib/rules/dnd2024/levels/featureChoices";
 import es from "../lib/rules/i18n/es.json";
 import type { SpellData } from "../lib/rules/types";
 

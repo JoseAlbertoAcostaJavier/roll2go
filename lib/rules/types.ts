@@ -42,7 +42,7 @@ export type LineageData = {
 
 /** Progresión de espacios: lanzador completo, medio (redondeando hacia arriba), tercio (hacia abajo) o Magia de pacto. */
 export type SpellcastingProgression = "full" | "half" | "third" | "pact";
-/** Cómo se eligen los conjuros preparados (ver `lib/rules/dnd2024/spellcastingModes.ts`). */
+/** Cómo se eligen los conjuros preparados (ver `lib/rules/dnd2024/spells/spellcastingModes.ts`). */
 export type SpellcastingMode = "list" | "levelUp" | "spellbook";
 export type Spellcasting = { ability: Ability; progression: SpellcastingProgression; mode: SpellcastingMode };
 

@@ -6,10 +6,10 @@ import { cleanText } from "@/lib/utils/utils";
 import { Character } from "@/lib/models/Character";
 import { OUTDATED_SHEET_ERROR, loadCharacterFor } from "@/lib/server/characters/characterAccess";
 import { listEntries, resolveRef } from "@/lib/server/catalog/catalog";
-import { ALIGNMENTS } from "@/lib/rules/dnd2024/alignments";
-import { parsePronouns } from "@/lib/rules/dnd2024/names";
-import { creationUpdate } from "@/lib/rules/dnd2024/recreate";
-import { validateSheet } from "@/lib/rules/dnd2024/validate";
+import { ALIGNMENTS } from "@/lib/rules/dnd2024/sheet/alignments";
+import { parsePronouns } from "@/lib/rules/dnd2024/creation/names";
+import { creationUpdate } from "@/lib/rules/dnd2024/creation/recreate";
+import { validateSheet } from "@/lib/rules/dnd2024/creation/validateSheet";
 
 type Ctx = { params: Promise<{ id: string }> };
 

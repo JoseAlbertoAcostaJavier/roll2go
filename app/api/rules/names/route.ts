@@ -5,7 +5,7 @@ import { connectDB } from "@/lib/models/mongodb";
 import { Book } from "@/lib/models/Book";
 import { BookEntry } from "@/lib/models/BookEntry";
 import { rateLimit, tooManyRequests } from "@/lib/utils/rateLimit";
-import { generateName, nameTableFor, PRONOUNS, type Pronoun } from "@/lib/rules/dnd2024/names";
+import { generateName, nameTableFor, PRONOUNS, type Pronoun } from "@/lib/rules/dnd2024/creation/names";
 import { validateEntryData } from "@/lib/rules/schemas";
 import type { NameTableData } from "@/lib/rules/types";
 

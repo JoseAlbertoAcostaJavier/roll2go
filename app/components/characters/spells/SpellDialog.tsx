@@ -4,7 +4,7 @@ import { useEffect, useId, useRef, useState, type RefObject } from "react";
 import { useSearchParams } from "next/navigation";
 import { LoaderCircle, X } from "lucide-react";
 import type { CatalogEntry, SpellOption } from "@/lib/rules/catalog/types";
-import { spellLevelLabel, spellSchoolName } from "@/lib/rules/dnd2024/spellTextClient";
+import { spellLevelLabel, spellSchoolName } from "@/lib/rules/dnd2024/spells/spellTextClient";
 import type { SpellData } from "@/lib/rules/types";
 import Bbcode from "@/app/components/Bbcode";
 import RoundIcon from "@/app/components/RoundIcon";

@@ -11,9 +11,9 @@ import { Character } from "@/lib/models/Character";
 import { notify } from "@/lib/server/notifications/notify";
 import { MAX_IMAGE, readImage, storeImage } from "@/lib/server/campaigns/campaignInput";
 import { NotFoundError, listEntries, resolveRef, usableBooks } from "@/lib/server/catalog/catalog";
-import { validateSheet } from "@/lib/rules/dnd2024/validate";
-import { ALIGNMENTS } from "@/lib/rules/dnd2024/alignments";
-import { parsePronouns } from "@/lib/rules/dnd2024/names";
+import { validateSheet } from "@/lib/rules/dnd2024/creation/validateSheet";
+import { ALIGNMENTS } from "@/lib/rules/dnd2024/sheet/alignments";
+import { parsePronouns } from "@/lib/rules/dnd2024/creation/names";
 
 const STATUSES = ["active", "retired", "dead", "npc"] as const;
 const MAX_NAME = 80;

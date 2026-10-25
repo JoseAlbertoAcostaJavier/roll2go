@@ -1,7 +1,7 @@
 import { ChevronDown } from "lucide-react";
 import type { CatalogEntry } from "@/lib/rules/catalog/types";
 import type { FeatureGroup } from "@/lib/rules/dnd2024/derive";
-import { bareName, refKey } from "@/lib/rules/dnd2024/equipmentRefs";
+import { bareName, refKey } from "@/lib/rules/dnd2024/sheet/equipmentRefs";
 import type { Ref } from "@/lib/rules/types";
 import Bbcode from "@/app/components/Bbcode";
 import { card } from "@/app/components/formStyles";

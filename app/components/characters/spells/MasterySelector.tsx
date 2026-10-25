@@ -2,8 +2,8 @@
 
 import type { SpellOption } from "@/lib/rules/catalog/types";
 import type { CasterBlock } from "@/lib/rules/dnd2024/derive";
-import { bareName, refKey } from "@/lib/rules/dnd2024/equipmentRefs";
-import { ACTION_TIME } from "@/lib/rules/dnd2024/spellOps";
+import { bareName, refKey } from "@/lib/rules/dnd2024/sheet/equipmentRefs";
+import { ACTION_TIME } from "@/lib/rules/dnd2024/spells/spellOps";
 import type { Ref } from "@/lib/rules/types";
 import { field, labelClass } from "@/app/components/formStyles";
 

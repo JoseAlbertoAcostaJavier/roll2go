@@ -36,7 +36,7 @@ vi.mock("@/lib/server/catalog/catalog", () => ({
   resolveRef: async () => null,
   usableBooks: async () => ["libro"],
 }));
-vi.mock("@/lib/rules/dnd2024/validate", () => ({
+vi.mock("@/lib/rules/dnd2024/creation/validateSheet", () => ({
   validateSheet: async () => ({ ok: true, sheet: { version: 2, alignment: "" } }),
 }));
 

@@ -3,10 +3,10 @@
 import { useEffect, useRef, useState } from "react";
 import { Dices, LoaderCircle, Minus, Plus } from "lucide-react";
 import { ABILITIES, type Ability } from "@/lib/rules/types";
-import type { AbilityMethod } from "@/lib/rules/dnd2024/sheet";
-import { POINT_BUY_TOTAL, STANDARD_ARRAY, checkBackgroundBonus, pointBuyCost } from "@/lib/rules/dnd2024/abilities";
-import { assignValue, exceedsLimit, maxBase, poolSlots, totalsWithinLimit } from "@/lib/rules/dnd2024/assign";
-import { fmtMod } from "@/lib/rules/dnd2024/labels";
+import type { AbilityMethod } from "@/lib/rules/dnd2024/sheet/sheet";
+import { POINT_BUY_TOTAL, STANDARD_ARRAY, checkBackgroundBonus, pointBuyCost } from "@/lib/rules/dnd2024/creation/abilities";
+import { assignValue, exceedsLimit, maxBase, poolSlots, totalsWithinLimit } from "@/lib/rules/dnd2024/creation/assign";
+import { fmtMod } from "@/lib/rules/dnd2024/sheet/labels";
 import { field, labelClass } from "../formStyles";
 
 type Base = Record<Ability, number | null>;

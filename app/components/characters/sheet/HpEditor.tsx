@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { LoaderCircle, Minus, Plus } from "lucide-react";
-import { MAX_TEMP_HP } from "@/lib/rules/dnd2024/edits";
+import { MAX_TEMP_HP } from "@/lib/rules/dnd2024/sheet/edits";
 
 type Hp = { current: number; temp: number };
 

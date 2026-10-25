@@ -7,9 +7,9 @@ import { Notification } from "@/lib/models/Notification";
 import { CampaignImage } from "@/lib/models/CampaignImage";
 import { OUTDATED_SHEET_ERROR, loadCharacterFor } from "@/lib/server/characters/characterAccess";
 import { MAX_IMAGE, readImage, storeImage } from "@/lib/server/campaigns/campaignInput";
-import { ALIGNMENTS } from "@/lib/rules/dnd2024/alignments";
-import { parsePronouns } from "@/lib/rules/dnd2024/names";
-import { MAX_XP, TEXT_LIMITS } from "@/lib/rules/dnd2024/validate";
+import { ALIGNMENTS } from "@/lib/rules/dnd2024/sheet/alignments";
+import { parsePronouns } from "@/lib/rules/dnd2024/creation/names";
+import { MAX_XP, TEXT_LIMITS } from "@/lib/rules/dnd2024/creation/validateSheet";
 
 type Ctx = { params: Promise<{ id: string }> };
 

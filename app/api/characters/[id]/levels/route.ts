@@ -7,9 +7,9 @@ import { OUTDATED_SHEET_ERROR, loadCharacterFor } from "@/lib/server/characters/
 import { notify } from "@/lib/server/notifications/notify";
 import { getEntries, getEntry } from "@/lib/server/catalog/catalog";
 import { derive } from "@/lib/rules/dnd2024/derive";
-import { applyLevel, checkExpectedLevel } from "@/lib/rules/dnd2024/levelOps";
-import { loadSheetEntries } from "@/lib/rules/dnd2024/sheetEntries";
-import { validateLevel } from "@/lib/rules/dnd2024/validateLevel";
+import { applyLevel, checkExpectedLevel } from "@/lib/rules/dnd2024/levels/levelOps";
+import { loadSheetEntries } from "@/lib/rules/dnd2024/sheet/sheetEntries";
+import { validateLevel } from "@/lib/rules/dnd2024/levels/validateLevel";
 
 type Ctx = { params: Promise<{ id: string }> };
 

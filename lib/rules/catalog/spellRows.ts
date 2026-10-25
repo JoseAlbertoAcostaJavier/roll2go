@@ -1,7 +1,7 @@
 // Filas ligeras de las listas de conjuros que se piden bajo demanda (creador y asistente de subir de nivel): sin los
 // componentes (el texto del material es largo) ni el libro. Módulo puro, para el servidor y el navegador.
 import type { SpellOption } from "@/lib/rules/catalog/types";
-import type { PendingChoice } from "@/lib/rules/dnd2024/levels";
+import type { PendingChoice } from "@/lib/rules/dnd2024/levels/pendingChoices";
 import type { Ref } from "@/lib/rules/types";
 
 export type SpellRow = {

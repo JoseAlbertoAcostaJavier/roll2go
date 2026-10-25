@@ -4,7 +4,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { LoaderCircle, Plus } from "lucide-react";
 import type { EntryOption } from "@/lib/rules/catalog/types";
 import type { Ref } from "@/lib/rules/types";
-import { MAX_ITEM_NAME, MAX_QUANTITY } from "@/lib/rules/dnd2024/edits";
+import { MAX_ITEM_NAME, MAX_QUANTITY } from "@/lib/rules/dnd2024/sheet/edits";
 import { field, labelClass, primaryButton } from "@/app/components/formStyles";
 import RuleSelect from "../RuleSelect";
 

@@ -3,7 +3,7 @@ import { sessionOf } from "@/lib/server/campaigns/campaignApi";
 import { rateLimit, tooManyRequests } from "@/lib/utils/rateLimit";
 import { loadCharacterFor } from "@/lib/server/characters/characterAccess";
 import { resolveRef } from "@/lib/server/catalog/catalog";
-import { spellClassNames } from "@/lib/rules/dnd2024/spellText";
+import { spellClassNames } from "@/lib/rules/dnd2024/spells/spellText";
 import type { SpellData } from "@/lib/rules/types";
 
 type Ctx = { params: Promise<{ id: string; bookId: string; key: string }> };

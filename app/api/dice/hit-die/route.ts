@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { sessionOf } from "@/lib/server/campaigns/campaignApi";
 import { loadCharacterFor } from "@/lib/server/characters/characterAccess";
 import { rateLimit, tooManyRequests } from "@/lib/utils/rateLimit";
-import { HIT_DICE, hitDieValue, signHitDie } from "@/lib/rules/dnd2024/rolls";
-import { MAX_LEVEL } from "@/lib/rules/dnd2024/validateLevel";
+import { HIT_DICE, hitDieValue, signHitDie } from "@/lib/rules/dnd2024/creation/rolls";
+import { MAX_LEVEL } from "@/lib/rules/dnd2024/levels/validateLevel";
 
 // Tira un dado de golpe para el siguiente nivel de un personaje { characterId, die } (solo el dueño) y devuelve
 // { value, token }: el token va ligado al usuario, al personaje y a ese nivel, y se comprueba al guardar el nivel. La

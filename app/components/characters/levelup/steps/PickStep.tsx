@@ -1,9 +1,9 @@
 "use client";
 
 import type { EntryOption } from "@/lib/rules/catalog/types";
-import { refKey } from "@/lib/rules/dnd2024/equipmentRefs";
-import type { PendingChoice } from "@/lib/rules/dnd2024/levels";
-import type { Named } from "@/lib/rules/dnd2024/sheet";
+import { refKey } from "@/lib/rules/dnd2024/sheet/equipmentRefs";
+import type { PendingChoice } from "@/lib/rules/dnd2024/levels/pendingChoices";
+import type { Named } from "@/lib/rules/dnd2024/sheet/sheet";
 import type { Ability } from "@/lib/rules/types";
 import { labelClass } from "@/app/components/formStyles";
 import { ChoiceField, type ChoiceCtx } from "../../ClassFeaturesSection";

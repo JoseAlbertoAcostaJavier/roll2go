@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { LoaderCircle } from "lucide-react";
 import { card, cardTitle, errorClass, field, labelClass, primaryButton } from "@/app/components/formStyles";
-import type { Pronoun } from "@/lib/rules/dnd2024/names";
+import type { Pronoun } from "@/lib/rules/dnd2024/creation/names";
 import NameGeneratorButton from "./NameGeneratorButton";
 import FieldError from "./fields/FieldError";
 import ImageFields from "./fields/ImageFields";

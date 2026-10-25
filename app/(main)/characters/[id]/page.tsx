@@ -12,12 +12,12 @@ import { booksByIds } from "@/lib/server/catalog/books";
 import { listMasteryWeapons, listSpells } from "@/lib/server/catalog/catalog";
 import { derive } from "@/lib/rules/dnd2024/derive";
 import { weaponProficient } from "@/lib/rules/dnd2024/derive/attacks";
-import { bareName, refKey } from "@/lib/rules/dnd2024/equipmentRefs";
+import { bareName, refKey } from "@/lib/rules/dnd2024/sheet/equipmentRefs";
 import {
   currentMasteries, isMasteryWeapon, masteryCount, masteryLabel, masteryMeleeOnly,
-} from "@/lib/rules/dnd2024/masteries";
-import { parsePronouns, pronounsText } from "@/lib/rules/dnd2024/names";
-import { spellListOf } from "@/lib/rules/dnd2024/spellcasting";
+} from "@/lib/rules/dnd2024/levels/masteries";
+import { parsePronouns, pronounsText } from "@/lib/rules/dnd2024/creation/names";
+import { spellListOf } from "@/lib/rules/dnd2024/spells/spellcasting";
 import type { BackgroundData, ItemData } from "@/lib/rules/types";
 import SheetHeader from "@/app/components/characters/sheet/SheetHeader";
 import type { JoinableCampaign } from "@/app/components/characters/sheet/JoinCampaignDialog";

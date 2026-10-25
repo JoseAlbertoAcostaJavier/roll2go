@@ -1,7 +1,7 @@
 // Peso del inventario y capacidad de carga (spec §4.1). Pesos en libras.
 import type { CatalogEntry } from "@/lib/rules/catalog/types";
-import { refKey } from "@/lib/rules/dnd2024/equipmentRefs";
-import type { Inventory } from "@/lib/rules/dnd2024/sheet";
+import { refKey } from "@/lib/rules/dnd2024/sheet/equipmentRefs";
+import type { Inventory } from "@/lib/rules/dnd2024/sheet/sheet";
 import type { ItemData } from "@/lib/rules/types";
 
 const CAPACITY_PER_STR = 15;

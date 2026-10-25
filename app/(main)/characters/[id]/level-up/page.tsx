@@ -5,9 +5,9 @@ import { ChevronLeft } from "lucide-react";
 import { requireUser } from "@/lib/server/auth/currentUser";
 import { OUTDATED_SHEET_ERROR, loadCharacterFor } from "@/lib/server/characters/characterAccess";
 import { getEntries, listEntries, listMasteryWeapons, type CatalogEntry } from "@/lib/server/catalog/catalog";
-import { refKey } from "@/lib/rules/dnd2024/equipmentRefs";
-import { summarizeClasses } from "@/lib/rules/dnd2024/upgrade";
-import { MAX_LEVEL } from "@/lib/rules/dnd2024/validateLevel";
+import { refKey } from "@/lib/rules/dnd2024/sheet/equipmentRefs";
+import { summarizeClasses } from "@/lib/rules/dnd2024/sheet/upgrade";
+import { MAX_LEVEL } from "@/lib/rules/dnd2024/levels/validateLevel";
 import type { ClassData, FeatureData, Ref, SubclassData } from "@/lib/rules/types";
 import LevelUpWizard from "@/app/components/characters/levelup/LevelUpWizard";
 

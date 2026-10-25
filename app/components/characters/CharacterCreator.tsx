@@ -10,21 +10,21 @@ import {
   ABILITIES, type Ability, type BackgroundData, type ClassData, type Equipment, type FeatData, type FeatureData,
   type OptionalFeatureData, type Pack, type Ref, type SpeciesData,
 } from "@/lib/rules/types";
-import type { AbilityMethod, Dnd2024Sheet } from "@/lib/rules/dnd2024/sheet";
-import { checkBackgroundBonus } from "@/lib/rules/dnd2024/abilities";
-import { totalsWithinLimit } from "@/lib/rules/dnd2024/assign";
-import { bareName, equipmentRefs, refKey } from "@/lib/rules/dnd2024/equipmentRefs";
-import { ABILITY_NAMES, sizeName, skillName, toolName } from "@/lib/rules/dnd2024/labels";
-import { featSpellPending, featSpellsSource } from "@/lib/rules/dnd2024/featSpells";
-import { pendingChoices, withBonusCantrips, type PendingChoice } from "@/lib/rules/dnd2024/levels";
-import { maxSpellLevel, preparedKey, spellListOf } from "@/lib/rules/dnd2024/spellcasting";
+import type { AbilityMethod, Dnd2024Sheet } from "@/lib/rules/dnd2024/sheet/sheet";
+import { checkBackgroundBonus } from "@/lib/rules/dnd2024/creation/abilities";
+import { totalsWithinLimit } from "@/lib/rules/dnd2024/creation/assign";
+import { bareName, equipmentRefs, refKey } from "@/lib/rules/dnd2024/sheet/equipmentRefs";
+import { ABILITY_NAMES, sizeName, skillName, toolName } from "@/lib/rules/dnd2024/sheet/labels";
+import { featSpellPending, featSpellsSource } from "@/lib/rules/dnd2024/spells/featSpells";
+import { pendingChoices, withBonusCantrips, type PendingChoice } from "@/lib/rules/dnd2024/levels/pendingChoices";
+import { maxSpellLevel, preparedKey, spellListOf } from "@/lib/rules/dnd2024/spells/spellcasting";
 import {
   emptySpellPick, featSpellsChoiceOf, featSpellsMissing, parseSpellPick, spellChoiceOf, spellPickMissing, type SpellPick,
-} from "@/lib/rules/dnd2024/spellPicks";
-import { PRONOUNS, type Pronoun } from "@/lib/rules/dnd2024/names";
+} from "@/lib/rules/dnd2024/spells/spellPicks";
+import { PRONOUNS, type Pronoun } from "@/lib/rules/dnd2024/creation/names";
 import { pendingSpellLists } from "@/lib/rules/catalog/spellRows";
-import type { CreationDraft } from "@/lib/rules/dnd2024/recreate";
-import { SKILLS_SOURCE } from "@/lib/rules/dnd2024/upgrade";
+import type { CreationDraft } from "@/lib/rules/dnd2024/creation/recreate";
+import { SKILLS_SOURCE } from "@/lib/rules/dnd2024/sheet/upgrade";
 import AbilityScores from "./AbilityScores";
 import CharacterSummary, { type MissingItem } from "./CharacterSummary";
 import RoundIcon from "../RoundIcon";

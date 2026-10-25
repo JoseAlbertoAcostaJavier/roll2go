@@ -6,9 +6,9 @@ import { Book } from "@/lib/models/Book";
 import { canRequestJoin } from "@/lib/shared/campaignRules";
 import { OUTDATED_SHEET_ERROR } from "@/lib/server/characters/characterAccess";
 import { getEntry } from "@/lib/server/catalog/catalog";
-import { booksUsedBy } from "@/lib/rules/dnd2024/booksUsed";
-import type { AnySheet } from "@/lib/rules/dnd2024/sheet";
-import { loadUpgradeEntries, missingForUpgrade, upgradeSheet } from "@/lib/rules/dnd2024/upgrade";
+import { booksUsedBy } from "@/lib/rules/dnd2024/creation/booksUsed";
+import type { AnySheet } from "@/lib/rules/dnd2024/sheet/sheet";
+import { loadUpgradeEntries, missingForUpgrade, upgradeSheet } from "@/lib/rules/dnd2024/sheet/upgrade";
 
 /** Campos de la campaña que hacen falta (como los guarda Mongo). */
 export type JoinCampaign = {

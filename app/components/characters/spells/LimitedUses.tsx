@@ -2,7 +2,7 @@
 
 import type { SpellOption } from "@/lib/rules/catalog/types";
 import type { CasterBlock } from "@/lib/rules/dnd2024/derive";
-import { bareName, refKey } from "@/lib/rules/dnd2024/equipmentRefs";
+import { bareName, refKey } from "@/lib/rules/dnd2024/sheet/equipmentRefs";
 import SpellList, { type SpellOpener, type SpellRowItem } from "./SpellList";
 
 type Limited = CasterBlock["limited"][number];

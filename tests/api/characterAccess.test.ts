@@ -28,8 +28,8 @@ vi.mock("@/lib/server/catalog/catalog", () => ({
   getEntry: async () => null,
   usableBooks: async () => ["libro"],
 }));
-vi.mock("@/lib/rules/dnd2024/sheetEntries", () => ({ loadSheetEntries: async () => new Map() }));
-vi.mock("@/lib/rules/dnd2024/upgrade", () => ({
+vi.mock("@/lib/rules/dnd2024/sheet/sheetEntries", () => ({ loadSheetEntries: async () => new Map() }));
+vi.mock("@/lib/rules/dnd2024/sheet/upgrade", () => ({
   loadUpgradeEntries: async () => new Map(),
   missingForUpgrade: () => [],
   upgradeSheet: (s: unknown) => s,

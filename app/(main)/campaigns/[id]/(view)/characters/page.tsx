@@ -5,7 +5,7 @@ import { Character } from "@/lib/models/Character";
 import { joinReasons } from "@/lib/server/campaigns/campaignEligibility";
 import { loadUserCards } from "@/lib/server/account/userCards";
 import { system as rpgSystems } from "@/lib/utils/systems";
-import { classesOf } from "@/lib/rules/dnd2024/upgrade";
+import { classesOf } from "@/lib/rules/dnd2024/sheet/upgrade";
 import CampaignCharacterCard, { type CampaignCharacterData } from "@/app/components/campaigns/CampaignCharacterCard";
 import AddCharacterDialog, { type AddableCharacter } from "@/app/components/campaigns/AddCharacterDialog";
 import { CharacterNoticeArea, CharacterNotices } from "@/app/components/campaigns/CharacterActions";

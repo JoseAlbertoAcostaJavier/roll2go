@@ -4,8 +4,8 @@ import { useMemo } from "react";
 import { CircleCheck, LoaderCircle } from "lucide-react";
 import type { CatalogEntry } from "@/lib/rules/catalog/types";
 import { derive } from "@/lib/rules/dnd2024/derive";
-import type { Dnd2024Sheet } from "@/lib/rules/dnd2024/sheet";
-import { fmtMod } from "@/lib/rules/dnd2024/labels";
+import type { Dnd2024Sheet } from "@/lib/rules/dnd2024/sheet/sheet";
+import { fmtMod } from "@/lib/rules/dnd2024/sheet/labels";
 
 export type MissingItem = { label: string; href: string };
 

@@ -1,17 +1,17 @@
 // Conjuros de la ficha (spec de conjuros §2): un bloque por clase o subclase lanzadora con sus límites, los espacios
 // (combinados en multiclase y la Magia de pacto aparte) y los conjuros de especie, legado y dotes.
 import type { CatalogEntry } from "@/lib/rules/catalog/types";
-import { refKey } from "@/lib/rules/dnd2024/equipmentRefs";
-import { chosenFeatSpells } from "@/lib/rules/dnd2024/featSpells";
+import { refKey } from "@/lib/rules/dnd2024/sheet/equipmentRefs";
+import { chosenFeatSpells } from "@/lib/rules/dnd2024/spells/featSpells";
 import {
   BONUS_SPELL_ORIGINS, IMPROVED_ILLUSIONS, IMPROVED_ILLUSIONS_CANTRIP, SIGNATURE_SPELLS, SPELL_MASTERY,
-} from "@/lib/rules/dnd2024/featureChoices";
+} from "@/lib/rules/dnd2024/levels/featureChoices";
 import {
   chosenSpells, heldArcana, heldBonusCantrips, heldBonusSpells, heldOptionalFeatures, secretSpellLists,
-} from "@/lib/rules/dnd2024/levels";
-import type { Dnd2024SheetV2, Named } from "@/lib/rules/dnd2024/sheet";
-import { maxSpellLevel, PACT_SLOTS, preparedKey, slotLevels, spellListOf } from "@/lib/rules/dnd2024/spellcasting";
-import { summarizeClasses } from "@/lib/rules/dnd2024/upgrade";
+} from "@/lib/rules/dnd2024/levels/pendingChoices";
+import type { Dnd2024SheetV2, Named } from "@/lib/rules/dnd2024/sheet/sheet";
+import { maxSpellLevel, PACT_SLOTS, preparedKey, slotLevels, spellListOf } from "@/lib/rules/dnd2024/spells/spellcasting";
+import { summarizeClasses } from "@/lib/rules/dnd2024/sheet/upgrade";
 import type {
   Ability, BackgroundData, ClassData, FeatData, LineageData, OptionalFeatureData, Ref, SpeciesData, Spellcasting,
   SpellcastingMode, SpellcastingProgression, SubclassData,

@@ -2,8 +2,8 @@
 
 import { Minus, Plus } from "lucide-react";
 import type { CatalogEntry, EntryOption } from "@/lib/rules/catalog/types";
-import { refKey } from "@/lib/rules/dnd2024/equipmentRefs";
-import { ABILITY_ABBR, ABILITY_NAMES, fmtMod } from "@/lib/rules/dnd2024/labels";
+import { refKey } from "@/lib/rules/dnd2024/sheet/equipmentRefs";
+import { ABILITY_ABBR, ABILITY_NAMES, fmtMod } from "@/lib/rules/dnd2024/sheet/labels";
 import { ABILITIES, type Ability, type Ref } from "@/lib/rules/types";
 import { labelClass } from "@/app/components/formStyles";
 import RuleSelect from "../../RuleSelect";

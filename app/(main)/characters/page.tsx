@@ -6,7 +6,7 @@ import { Campaign } from "@/lib/models/Campaign";
 import { Character } from "@/lib/models/Character";
 import { requireUser } from "@/lib/server/auth/currentUser";
 import { visibleBooksOf } from "@/lib/server/catalog/books";
-import { classesOf } from "@/lib/rules/dnd2024/upgrade";
+import { classesOf } from "@/lib/rules/dnd2024/sheet/upgrade";
 import { system as rpgSystems } from "@/lib/utils/systems";
 import { accentInsensitive, first } from "@/lib/utils/utils";
 import CharacterCard, { type CharacterCardData } from "@/app/components/characters/CharacterCard";

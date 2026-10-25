@@ -1,6 +1,6 @@
 "use client";
 
-import type { PendingChoice } from "@/lib/rules/dnd2024/levels";
+import type { PendingChoice } from "@/lib/rules/dnd2024/levels/pendingChoices";
 import { ChoiceField, type ChoiceCtx } from "../../ClassFeaturesSection";
 
 const INTRO: Partial<Record<PendingChoice["type"], string>> = {

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
-import type { Dnd2024SheetV2 } from "@/lib/rules/dnd2024/sheet";
+import type { Dnd2024SheetV2 } from "@/lib/rules/dnd2024/sheet/sheet";
 
 const CAMPAIGN = "c00000000000000000000001";
 const OTHER_CAMPAIGN = "c00000000000000000000002";

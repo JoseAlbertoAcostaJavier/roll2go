@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
-import type { Dnd2024SheetV2, LevelEntry } from "@/lib/rules/dnd2024/sheet";
+import type { Dnd2024SheetV2, LevelEntry } from "@/lib/rules/dnd2024/sheet/sheet";
 import { B, buildCatalog, ref } from "../dnd2024/fixtureCatalog";
 
 const catalog = buildCatalog(["class-cleric.json"]);
@@ -42,7 +42,7 @@ vi.mock("@/lib/server/characters/characterAccess", () => ({
   },
 }));
 vi.mock("@/lib/server/catalog/catalog", () => ({ getEntries: async () => [] }));
-vi.mock("@/lib/rules/dnd2024/sheetEntries", () => ({ loadSheetEntries: async () => catalog }));
+vi.mock("@/lib/rules/dnd2024/sheet/sheetEntries", () => ({ loadSheetEntries: async () => catalog }));
 vi.mock("@/lib/models/Character", () => ({
   Character: {
     updateOne: async (...args: unknown[]) => {

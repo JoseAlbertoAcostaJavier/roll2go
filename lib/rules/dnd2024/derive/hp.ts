@@ -1,5 +1,5 @@
 // Puntos de golpe de la hoja v2: los PG guardados de cada nivel + CON por nivel + bonificaciones.
-import type { Dnd2024SheetV2 } from "@/lib/rules/dnd2024/sheet";
+import type { Dnd2024SheetV2 } from "@/lib/rules/dnd2024/sheet/sheet";
 
 // PG extra por nivel de personaje: Dureza enana (especie) y la dote Duro (claves sin libro)
 const HP_PER_LEVEL: Record<string, number> = { "species:dwarf|xphb": 1, "feat:tough|xphb": 2 };

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Dices, LoaderCircle } from "lucide-react";
-import type { Pronoun } from "@/lib/rules/dnd2024/names";
+import type { Pronoun } from "@/lib/rules/dnd2024/creation/names";
 
 /* Botón 🎲 junto al nombre: pide al servidor un nombre al azar para la especie (identificador) y los pronombres. */
 export default function NameGeneratorButton({

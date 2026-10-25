@@ -6,7 +6,7 @@ import { Campaign } from "@/lib/models/Campaign";
 import { requireUser } from "@/lib/server/auth/currentUser";
 import { loadCharacterFor } from "@/lib/server/characters/characterAccess";
 import { listEntries, listMasteryWeapons, type EntryOption } from "@/lib/server/catalog/catalog";
-import { creationDraft } from "@/lib/rules/dnd2024/recreate";
+import { creationDraft } from "@/lib/rules/dnd2024/creation/recreate";
 import type { SpeciesData } from "@/lib/rules/types";
 import CharacterCreator from "@/app/components/characters/CharacterCreator";
 

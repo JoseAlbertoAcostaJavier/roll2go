@@ -5,10 +5,10 @@ import { Character } from "@/lib/models/Character";
 import { OUTDATED_SHEET_ERROR, loadCharacterFor } from "@/lib/server/characters/characterAccess";
 import { getEntries } from "@/lib/server/catalog/catalog";
 import { derive } from "@/lib/rules/dnd2024/derive";
-import { refKey } from "@/lib/rules/dnd2024/equipmentRefs";
-import { removeLastLevel } from "@/lib/rules/dnd2024/levelOps";
-import { masteryCount } from "@/lib/rules/dnd2024/masteries";
-import { loadSheetEntries } from "@/lib/rules/dnd2024/sheetEntries";
+import { refKey } from "@/lib/rules/dnd2024/sheet/equipmentRefs";
+import { removeLastLevel } from "@/lib/rules/dnd2024/levels/levelOps";
+import { masteryCount } from "@/lib/rules/dnd2024/levels/masteries";
+import { loadSheetEntries } from "@/lib/rules/dnd2024/sheet/sheetEntries";
 import type { SpellData } from "@/lib/rules/types";
 import { unchangedFilter } from "@/lib/utils/unchangedFilter";
 
