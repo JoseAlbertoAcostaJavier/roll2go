@@ -23,3 +23,7 @@ Tras desplegar la ampliación de conjuros:
 
 - Vuelve a ejecutar `npm run import:5etools -- --data <carpeta data de 5etools>` (listas de la dote base de Iniciado en la magia y conjuros del Pacto del tomo) y **reinicia el servidor**.
 - Los personajes ya creados de nivel alto reciben en su siguiente subida los rasgos nuevos que les falten (Arcano místico, Descubrimientos mágicos, conjuros gratis del Sabio de la escuela). Un Mago 20 sin Conjuros distintivos debe borrar el nivel 20 y volver a subirlo.
+
+Tras desplegar las defensas (resistencias, inmunidades y vulnerabilidades):
+
+- Vuelve a ejecutar `npm run import:5etools -- --data <carpeta data de 5etools>` y **reinicia el servidor**: hasta reimportar los libros, el catálogo no trae las defensas de especies, linajes, dotes y objetos.

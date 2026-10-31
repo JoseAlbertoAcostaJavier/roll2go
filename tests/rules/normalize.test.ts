@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { inlineTags } from "@/lib/rules/import/toBbcode";
 import {
-  normalizeAll, normalizeBackground, normalizeFeat, normalizeOptionalFeature, expandVersions, resolveCopy, textChoiceFeatures, toIdentifier, unreachableFeatures,
+  normalizeAll, normalizeBackground, normalizeDefenses, normalizeFeat, normalizeItem, normalizeLineage, normalizeOptionalFeature, expandVersions, resolveCopy, textChoiceFeatures, toIdentifier, unreachableFeatures,
   type NormalizedEntry, type RawFiles,
 } from "@/lib/rules/import/normalize";
 import type {
@@ -753,4 +753,35 @@ test("objetos: la rareza solo se guarda en los mágicos", () => {
   const { entries: es } = normalizeAll({ items: { item: [item("Sword", "none"), item("Sword +1", "rare")] } }, "XPHB");
   expect((es.find((e) => e.key === "item:sword|xphb")!.data as ItemData).rarity).toBeUndefined();
   expect((es.find((e) => e.key === "item:sword +1|xphb")!.data as ItemData).rarity).toBe("rare");
+});
+
+describe("normalizeDefenses", () => {
+  test("resistencias simples", () => {
+    expect(normalizeDefenses({ resist: ["poison"] })).toEqual({ resist: ["poison"] });
+  });
+  test("elección con count 1 por defecto", () => {
+    expect(normalizeDefenses({ resist: [{ choose: { from: ["acid", "fire"] } }] }))
+      .toEqual({ resist: [{ choose: { from: ["acid", "fire"], count: 1 } }] });
+  });
+  test("descarta lo condicional", () => {
+    expect(normalizeDefenses({ resist: [{ special: "x" }, { resist: ["fire"], note: "while raging", cond: true }] })).toBeUndefined();
+  });
+  test("estados en minúsculas", () => {
+    expect(normalizeDefenses({ conditionImmune: ["Frightened"] })).toEqual({ conditionImmune: ["frightened"] });
+  });
+  test("objeto con resistencia fija", () => {
+    const e = normalizeItem({ name: "Ring of Fire Resistance", source: "XDMG", type: "RG", resist: ["fire"] });
+    expect((e.data as ItemData).defenses).toEqual({ resist: ["fire"] });
+  });
+  test("dote con elección de 2", () => {
+    const e = normalizeFeat({ name: "X", source: "XPHB", category: "G", resist: [{ choose: { from: ["acid", "fire", "cold"], count: 2 } }] });
+    expect((e.data as FeatData).defenses).toEqual({ resist: [{ choose: { from: ["acid", "fire", "cold"], count: 2 } }] });
+  });
+  test("linaje con resistencia propia", () => {
+    const e = normalizeLineage(
+      { name: "Tiefling; Infernal Legacy", source: "XPHB", resist: ["fire"], _versionEntries: [{ name: "Infernal Legacy", entries: ["x"] }] },
+      { name: "Tiefling", source: "XPHB" },
+    );
+    expect((e.data as LineageData).defenses?.resist).toEqual(["fire"]);
+  });
 });
