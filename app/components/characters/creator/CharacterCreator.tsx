@@ -15,6 +15,7 @@ import { checkBackgroundBonus } from "@/lib/rules/dnd2024/creation/abilities";
 import { totalsWithinLimit } from "@/lib/rules/dnd2024/creation/assign";
 import { bareName, equipmentRefs, refKey } from "@/lib/rules/dnd2024/sheet/equipmentRefs";
 import { ABILITY_NAMES, sizeName, skillName, toolName } from "@/lib/rules/dnd2024/sheet/labels";
+import { crossSourceGranted } from "@/lib/rules/dnd2024/spells/grantedSpells";
 import { featSpellPending, featSpellsSource } from "@/lib/rules/dnd2024/spells/featSpells";
 import { pendingChoices, withBonusCantrips, type PendingChoice } from "@/lib/rules/dnd2024/levels/pendingChoices";
 import { maxSpellLevel, preparedKey, spellListOf } from "@/lib/rules/dnd2024/spells/spellcasting";
@@ -456,10 +457,19 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
   const featSpellsLeft = (p: PendingChoice) =>
     featSpellsMissing(p, form.featSpells[p.source], form.featAbility[p.source] ?? "");
   // Conjuros de nivel 1 que ya da otra cosa (especie, legado, dote del trasfondo, clase): no se eligen
-  const grantedSpells = useMemo(() => [form.species, form.lineage, bgData?.feat ?? null, form.klass].flatMap((r) => {
+  const baseGranted = useMemo(() => [form.species, form.lineage, bgData?.feat ?? null, form.klass].flatMap((r) => {
     const data = r ? (entries.get(refKey(r))?.data as { spells?: { level: number; ref: Ref }[] } | undefined) : undefined;
     return (data?.spells ?? []).filter((g) => g.level <= 1).map((g) => refKey(g.ref));
   }), [form.species, form.lineage, form.klass, bgData, entries]);
+  // Y lo que se elige en otra fuente (la clase o una dote): un mismo conjuro no se elige en dos sitios
+  const pickSources = [
+    { source: "class", label: "la clase", keys: [...form.spells.cantrips, ...form.spells.spells, ...(form.spells.free ?? [])] },
+    ...featPendings.map((p) => {
+      const v = form.featSpells[p.source];
+      return { source: p.source, label: p.label, keys: v ? [...v.cantrips, ...v.spells, v.replace.in].filter(Boolean) : [] };
+    }),
+  ];
+  const grantedFor = (source: string) => crossSourceGranted(baseGranted, pickSources, source);
 
   // ---- hoja ----
   const filledBase = (): Record<Ability, number | null> => {
@@ -684,7 +694,7 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
           id={id}
           p={p}
           spells={spells}
-          granted={grantedSpells}
+          granted={grantedFor(p.source)}
           value={form.featSpells[p.source] ?? emptySpellPick()}
           onChange={(v) => update({ featSpells: { ...form.featSpells, [p.source]: v } }, errorKey)}
           ability={form.featAbility[p.source] ?? ""}
@@ -916,7 +926,7 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
               pending={spellPending}
               spells={spells}
               held={NO_SPELLS}
-              granted={grantedSpells}
+              granted={grantedFor("class")}
               value={form.spells}
               onChange={(spells) => update({ spells }, ...spellErrorKeys())}
               prepared={casting.preparedLimit > 0

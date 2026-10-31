@@ -16,6 +16,7 @@ import { heldArcana, heldBonusSpells, heldOptionalFeatures, heldPicks } from "@/
 import {
   meetsFeatPrerequisite, meetsMulticlass, pendingChoices, withBonusCantrips, type PendingChoice,
 } from "@/lib/rules/dnd2024/levels/pendingChoices";
+import { crossSourceGranted, type GrantedSpell } from "@/lib/rules/dnd2024/spells/grantedSpells";
 import { spellsSource } from "@/lib/rules/dnd2024/levels/spellPending";
 import { LEVEL_CHANGED } from "@/lib/rules/dnd2024/levels/levelOps";
 import { currentMasteries, masteryLabel } from "@/lib/rules/dnd2024/levels/masteries";
@@ -308,6 +309,15 @@ function Wizard(props: Props & { draftKey: string; draft: string | null }) {
     ...[...(classData?.spells ?? []), ...((subclassEntry?.data as SubclassData | undefined)?.spells ?? [])]
       .filter((g) => g.level <= classLevel).map((g) => g.ref),
   ].map(refKey);
+  // Y lo que se elige en este nivel en la clase o en una dote: un mismo conjuro no se elige en dos sitios
+  const levelPicks = pending.filter((p) => p.type === "spells" || p.type === "featSpells").map((p) => {
+    const v = state.spells[p.source];
+    return {
+      source: p.source, label: p.type === "spells" ? "la clase" : p.label,
+      keys: v ? [...v.cantrips, ...v.spells, ...(v.free ?? []), v.replace.in, v.replaceCantrip.in].filter(Boolean) : [],
+    };
+  });
+  const grantedFor = (source: string): GrantedSpell[] => crossSourceGranted(grantedSpells, levelPicks, source);
   const spellNames = useMemo(() => new Map(spells.map((s) => [refKey(s.ref), nameOf(s)])), [spells]);
   const featSpellsHeld = useMemo(() => chosenFeatSpells(sheet.levels), [sheet]);
   // Arcano místico y conjuros de rasgos: los que ya da la elección, el libro de la clase con lo elegido en este nivel
@@ -504,7 +514,7 @@ function Wizard(props: Props & { draftKey: string; draft: string | null }) {
           id={`feat-spells-${n}`}
           p={p}
           spells={spells}
-          granted={grantedSpells}
+          granted={grantedFor(p.source)}
           held={p.featSpells ? (featSpellsHeld.get(refKey(p.featSpells.feat)) ?? []) : []}
           value={state.spells[p.source] ?? emptySpellPick()}
           onChange={(v) => update({ spells: { ...state.spells, [p.source]: v } })}
@@ -541,7 +551,7 @@ function Wizard(props: Props & { draftKey: string; draft: string | null }) {
           pending={p}
           spells={spells}
           held={heldSpells(p)}
-          granted={grantedSpells}
+          granted={grantedFor(p.source)}
           value={state.spells[p.source] ?? emptySpellPick()}
           onChange={(v) => update({ spells: { ...state.spells, [p.source]: v } })}
           characterId={characterId}

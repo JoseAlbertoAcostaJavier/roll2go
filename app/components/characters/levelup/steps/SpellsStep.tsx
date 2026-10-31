@@ -14,6 +14,7 @@ import type { Ref, SpellcastingMode } from "@/lib/rules/types";
 import { field, labelClass } from "@/app/components/ui/formStyles";
 import RuleSelect from "../../creator/RuleSelect";
 import { preparedFullNotice } from "../../spells/CasterBlockView";
+import type { GrantedSpell } from "@/lib/rules/dnd2024/spells/grantedSpells";
 import SpellDialog from "../../spells/SpellDialog";
 import SpellFilters from "../../spells/SpellFilters";
 import SpellList, { type SpellOpener, type SpellRowItem } from "../../spells/SpellList";
@@ -45,7 +46,7 @@ type Props = {
   /** Trucos y conjuros que ya tiene (aprendidos o su libro): marcados e inactivos, y de ahí sale el que se sustituye. */
   held: { cantrips: Named[]; spells: Named[] };
   /** Conjuros que ya tiene por otras vías (siempre preparados, especie, legado, dotes; `libro:clave`): no se eligen. */
-  granted?: string[];
+  granted?: GrantedSpell[];
   value: SpellPick;
   onChange: (value: SpellPick) => void;
   prepared?: PreparedPick;
@@ -95,9 +96,11 @@ export default function SpellsStep(props: Props) {
   // Sabio de la escuela: entradas gratis de su escuela (de 0 a `count`)
   const free = pending?.spells?.free;
   const freePicked = free ? (value.free ?? []).slice(0, free.count) : [];
-  const granted = new Set(props.granted ?? []);
-  const heldKeys = new Set([...held.cantrips, ...held.spells].map((h) => refKey(h.ref)).concat([...granted]));
-  const heldLabel = (s: SpellOption) => (granted.has(refKey(s.ref)) ? "Ya lo tienes"
+  const granted = new Map((props.granted ?? []).map((g) => [g.key, g.label]));
+  const heldKeys = new Set([...held.cantrips, ...held.spells].map((h) => refKey(h.ref)).concat([...granted.keys()]));
+  // De dónde viene lo que ya tiene: otra vía («Ya lo tienes») u otra elección («Ya lo eliges con la clase»)
+  const grantedText = (key: string) => (granted.get(key) ? `Ya lo eliges con ${granted.get(key)}` : "Ya lo tienes");
+  const heldLabel = (s: SpellOption) => (granted.has(refKey(s.ref)) ? grantedText(refKey(s.ref))
     : mode === "spellbook" && s.data.level > 0 ? "Ya está en tu libro" : "Ya lo conoces");
   const swapIns = [value.replace.in, value.replaceCantrip.in].filter(Boolean);
   const freeSet = new Set(freePicked);
@@ -156,7 +159,7 @@ export default function SpellsStep(props: Props) {
     const check = learnCheck(s) ?? (mode === "list" && preparable(s) ? prepareCheck(s) : undefined);
     // Sin casilla, los que ya tiene llevan la marca
     if (!check && heldKeys.has(refKey(s.ref)))
-      return { ...item(s, undefined), origin: granted.has(refKey(s.ref)) ? "Ya lo tienes"
+      return { ...item(s, undefined), origin: granted.has(refKey(s.ref)) ? grantedText(refKey(s.ref))
         : mode === "spellbook" && s.data.level > 0 ? "En tu libro" : "Ya lo conoces" };
     return item(s, check);
   };
