@@ -42,7 +42,8 @@ export default function ActionsTab({ attacks }: { attacks: Attack[] }) {
                 <td className="py-2 pr-3">
                   <span className="flex items-center gap-1.5 whitespace-nowrap">
                     {a.damage}
-                    <MaskIcon src={iconSrc("damageType", a.damageTypeId)} size={16} label={a.damageType} className="text-muted" />
+                    <MaskIcon src={iconSrc("damageType", a.damageTypeId)} size={16} className="text-muted" />
+                    {a.damageType && <span className="text-xs text-muted">{a.damageType}</span>}
                   </span>
                 </td>
                 <td className="py-2 text-muted">{a.properties.join(", ")}</td>

@@ -53,8 +53,10 @@ export default function SpellsTab({ characterId, isOwner, initial, lists, spells
         return false;
       }
       setState(data.spells as SpellsSummary);
-      // Otra tierra trae conjuros que pueden no estar en la lista cargada (de otras clases): se vuelve a pedir
-      if (op.op === "setOption") router.refresh();
+      // Se refresca la página tras cada operación: recalcula lo que depende del servidor (p. ej. si el descanso corto
+      // recupera algo) y, con otra tierra, trae conjuros que pueden no estar en la lista cargada (de otras clases).
+      // El estado local ya está al día, así que no hay parpadeo
+      router.refresh();
       return true;
     } catch {
       setError("No se pudo conectar con el servidor.");

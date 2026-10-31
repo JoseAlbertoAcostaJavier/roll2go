@@ -184,6 +184,7 @@ export default async function CharacterPage({ params, searchParams }: Props) {
         d={sheetData}
         characterId={id}
         isOwner={isOwner}
+        version={new Date(c.updatedAt ?? 0).getTime()}
         tabs={<SheetTabs base={base} active={tab} tabs={tabs} />}
       >
         <section {...panel("acciones")}>

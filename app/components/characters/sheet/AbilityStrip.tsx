@@ -6,8 +6,8 @@ import type { SheetData, ShowStat } from "./types";
 
 // Franja superior (spec §4.1): las 6 características, competencia, velocidad y PG. En móvil, las características en
 // rejilla de 3 y debajo competencia, velocidad y PG; en escritorio, todo en una fila
-export default function AbilityStrip({ d, characterId, isOwner, show }: {
-  d: SheetData; characterId: string; isOwner: boolean; show: ShowStat;
+export default function AbilityStrip({ d, characterId, isOwner, version, show }: {
+  d: SheetData; characterId: string; isOwner: boolean; version: number; show: ShowStat;
 }) {
   return (
     <section aria-label="Características y puntos de golpe" className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_auto]">
@@ -52,9 +52,11 @@ export default function AbilityStrip({ d, characterId, isOwner, show }: {
         <div className="col-span-2 rounded-md border border-line bg-surface px-3 py-3 text-center sm:col-span-1">
           <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted">Puntos de golpe</p>
           {isOwner ? (
-            // El editor guarda su estado: tras un descanso o al borrar un nivel se monta de nuevo con los PG nuevos
+            // El editor guarda su estado: se monta de nuevo cuando el personaje cambia en el servidor (descanso, borrar un nivel).
+            // La clave lleva `version` y no solo los PG: editar PG no refresca la página y, tras un descanso, los PG vuelven
+            // al valor de la carga, que la clave por valores no distinguiría
             <HpEditor
-              key={`${d.hp.max}:${d.hp.current}:${d.hp.temp}`}
+              key={`${version}:${d.hp.max}:${d.hp.current}:${d.hp.temp}`}
               characterId={characterId}
               max={d.hp.max}
               current={d.hp.current}
