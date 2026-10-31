@@ -10,7 +10,7 @@ export default function AbilityStrip({ d, characterId, isOwner, show }: {
   d: SheetData; characterId: string; isOwner: boolean; show: ShowStat;
 }) {
   return (
-    <section aria-label="Características y puntos de golpe" className="grid gap-3 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+    <section aria-label="Características y puntos de golpe" className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_auto]">
       {/* Características: modificador grande y puntuación en una píldora; cada una abre su desglose */}
       <div>
         <h3 className="sr-only">Características</h3>
@@ -34,7 +34,7 @@ export default function AbilityStrip({ d, characterId, isOwner, show }: {
       </div>
 
       {/* Competencia y velocidad en fichas compactas; los PG, a todo el ancho en móvil */}
-      <div className="grid grid-cols-2 content-start gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,2fr)]">
+      <div className="grid grid-cols-2 content-start gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,2fr)] xl:grid-cols-[6.5rem_6.5rem_auto]">
         <div className={chip}>
           <span className={chipLabel}>Competencia</span>
           <span className={chipValue}>{fmtMod(d.proficiencyBonus)}</span>
