@@ -2,16 +2,16 @@
 
 import { useMemo, useState } from "react";
 import { BookPlus, LoaderCircle, TriangleAlert } from "lucide-react";
-import type { SpellOption } from "@/lib/rules/catalog";
+import type { SpellOption } from "@/lib/rules/catalog/types";
 import type { CasterBlock } from "@/lib/rules/dnd2024/derive";
-import { bareName, refKey } from "@/lib/rules/dnd2024/equipmentRefs";
-import { ABILITY_NAMES, spellOptionName, spellOptionTitle } from "@/lib/rules/dnd2024/labels";
-import { EMPTY_SPELL_FILTER, matchesSpellFilter, type SpellFilter } from "@/lib/rules/dnd2024/spellFilters";
-import { recoversOnShortRest, type SpellOp } from "@/lib/rules/dnd2024/spellOps";
+import { bareName, refKey } from "@/lib/rules/dnd2024/sheet/equipmentRefs";
+import { ABILITY_NAMES, spellOptionName, spellOptionTitle } from "@/lib/rules/dnd2024/sheet/labels";
+import { EMPTY_SPELL_FILTER, matchesSpellFilter, type SpellFilter } from "@/lib/rules/dnd2024/spells/spellFilters";
+import { recoversOnShortRest, type SpellOp } from "@/lib/rules/dnd2024/spells/spellOps";
 import type { Ref } from "@/lib/rules/types";
-import { card, field, labelClass, primaryButton } from "@/app/components/formStyles";
-import RoundIcon from "@/app/components/RoundIcon";
-import RuleSelect from "../RuleSelect";
+import { card, field, labelClass, primaryButton } from "@/app/components/ui/formStyles";
+import RoundIcon from "@/app/components/ui/RoundIcon";
+import RuleSelect from "../creator/RuleSelect";
 import LimitedUses from "./LimitedUses";
 import MasterySelector from "./MasterySelector";
 import SpellFilters from "./SpellFilters";

@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Pencil } from "lucide-react";
-import ProfileCard from "@/app/components/ProfileCard";
-import { requireUser } from "@/lib/currentUser";
-import { getPublicProfile } from "@/lib/userProfile";
+import ProfileCard from "@/app/components/account/ProfileCard";
+import { requireUser } from "@/lib/server/auth/currentUser";
+import { getPublicProfile } from "@/lib/server/account/userProfile";
 
 export const metadata: Metadata = { title: "Mi perfil" };
 

@@ -3,9 +3,9 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { LoaderCircle, Pencil } from "lucide-react";
-import RoundIcon from "@/app/components/RoundIcon";
-import { card, errorClass, primaryButton } from "@/app/components/formStyles";
-import { refFromKey } from "../ClassFeaturesSection";
+import RoundIcon from "@/app/components/ui/RoundIcon";
+import { card, errorClass, primaryButton } from "@/app/components/ui/formStyles";
+import { refFromKey } from "../creator/ClassFeaturesSection";
 import SkillPicker, { type PickerOption } from "../fields/SkillPicker";
 
 /* Maestrías con armas actuales en la pestaña Rasgos. El dueño puede cambiarlas libremente (Roll2Go no registra los

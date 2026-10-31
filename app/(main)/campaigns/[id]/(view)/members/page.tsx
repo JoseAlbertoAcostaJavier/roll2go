@@ -1,15 +1,11 @@
-import ConfirmAction from "@/app/components/ConfirmAction";
-import ExpelMember from "@/app/components/ExpelMember";
-import InviteFriends, { type FriendOption } from "@/app/components/InviteFriends";
-import InviteLink from "@/app/components/InviteLink";
-import UserLink from "@/app/components/UserLink";
-import { getCampaignAccess } from "@/lib/campaignAccess";
-import { Campaign } from "@/lib/Campaign";
-import { CampaignInvite } from "@/lib/CampaignInvite";
-import { blockedIdsOf } from "@/lib/blocks";
-import { friendIdsOf } from "@/lib/friends";
-import { MAX_MEMBERS } from "@/lib/members";
-import { loadUserCards } from "@/lib/userCards";
+import ConfirmAction from "@/app/components/ui/ConfirmAction";
+import ExpelMember from "@/app/components/campaigns/ExpelMember";
+import InviteFriends, { type FriendOption } from "@/app/components/campaigns/InviteFriends";
+import InviteLink from "@/app/components/campaigns/InviteLink";
+import UserLink from "@/app/components/ui/UserLink";
+import { getCampaignAccess } from "@/lib/server/campaigns/campaignAccess";
+import { MAX_MEMBERS } from "@/lib/server/campaigns/members";
+import { listMembers } from "@/lib/server/campaigns/queries";
 
 const heading = "mb-3 border-l-4 border-brand pl-3 font-heading text-xl font-bold";
 const list = "divide-y divide-line rounded-lg border border-line bg-surface";
@@ -19,45 +15,11 @@ export default async function CampaignMembersPage({ params }: { params: Promise<
   const { id } = await params;
   const { session, campaign, isDm } = await getCampaignAccess(id);
 
-  const ownerId = String(campaign.owner);
-  const memberIds: string[] = campaign.members.map(String);
-
-  // Datos que solo ve el DM: enlace, bloqueados de la campaña, invitaciones pendientes y amigos invitables
-  let invite: { code: string | null; expiresAt: string | null } = { code: null, expiresAt: null };
-  let bannedIds: string[] = [];
-  let pendingIds: string[] = [];
-  let eligibleIds: string[] = [];
-  if (isDm) {
-    const c = await Campaign.findById(id).select("+inviteCode +inviteExpires banned").lean();
-    const valid = !!c?.inviteCode && (!c.inviteExpires || c.inviteExpires > new Date());
-    invite = {
-      code: valid ? c.inviteCode : null,
-      expiresAt: valid && c.inviteExpires ? c.inviteExpires.toISOString() : null,
-    };
-    bannedIds = (c?.banned ?? []).map(String);
-    const pending = await CampaignInvite.find({ campaign: id }).sort({ createdAt: -1 }).select("user").lean();
-    pendingIds = pending.map((p) => String(p.user));
-
-    const [friendIds, hiddenIds] = await Promise.all([friendIdsOf(session.id), blockedIdsOf(session.id)]);
-    const taken = new Set([...memberIds, ...bannedIds, ...pendingIds, ...hiddenIds]);
-    eligibleIds = friendIds.filter((f) => !taken.has(f));
-  }
-
-  const cards = await loadUserCards([...memberIds, ...bannedIds, ...pendingIds, ...eligibleIds]);
-  const friends: FriendOption[] = eligibleIds
-    .map((f) => cards.get(f))
-    .filter((u) => !!u)
-    .map((u) => ({ username: u.username, displayName: u.displayName, avatarUrl: u.avatarUrl }))
-    .sort((a, b) => a.displayName.localeCompare(b.displayName, "es"));
-
-  // Participantes: el DM primero y después por orden alfabético
-  const people = memberIds
-    .map((mid) => ({ id: mid, card: cards.get(mid) }))
-    .sort(
-      (a, b) =>
-        Number(b.id === ownerId) - Number(a.id === ownerId) ||
-        (a.card?.displayName ?? "").localeCompare(b.card?.displayName ?? "", "es"),
-    );
+  // Participantes (el DM primero) y, solo para el DM: enlace, bloqueados de la campaña, invitaciones pendientes y
+  // amigos invitables
+  const data = await listMembers(campaign, session.id, isDm);
+  const { ownerId, invite, bannedIds, pendingIds, people, cards } = data;
+  const friends: FriendOption[] = data.friends;
 
   return (
     <div className="space-y-8">

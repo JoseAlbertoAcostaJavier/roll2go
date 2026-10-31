@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { connectDB } from "@/lib/mongodb";
-import { sessionOf } from "@/lib/campaignApi";
-import { rateLimit, tooManyRequests } from "@/lib/rateLimit";
-import { User } from "@/lib/User";
-import { CampaignImage } from "@/lib/CampaignImage";
-import { storeImage } from "@/lib/campaignInput";
-import { detectImageType } from "@/lib/images";
+import { sessionOf } from "@/lib/server/campaigns/campaignApi";
+import { rateLimit, tooManyRequests } from "@/lib/server/rateLimit";
+import { detectImageType } from "@/lib/server/account/images";
+import { updateProfile } from "@/lib/server/account/profile";
+import { failureResponse } from "@/lib/server/result";
 
 const MAX_AVATAR = 512 * 1024; // el navegador ya la reduce a 256x256, así que pesa muy poco
 
@@ -56,50 +54,12 @@ export async function PATCH(req: NextRequest) {
   if (Object.keys(errors).length > 0)
     return NextResponse.json({ errors }, { status: 400 });
 
-  await connectDB();
-  const user = await User.findById(session.id).select("avatarId");
-  if (!user)
-    return NextResponse.json({ error: "Inicia sesión." }, { status: 401 });
-
-  const set: Record<string, unknown> = {
-    displayName,
-    displayNameLower: displayName.toLowerCase(),
-    pronouns,
-    location,
-    bio,
-  };  
-  const unset: Record<string, ""> = {};
-  let createdId: unknown;
-  let oldAvatar: unknown;
-
-  try {
-    if (newAvatar) {
-      createdId = await storeImage(newAvatar, session.id);
-      oldAvatar = user.avatarId;
-      set.avatarId = createdId;
-    } else if (text(form.get("removeAvatar")) === "true" && user.avatarId) {
-      oldAvatar = user.avatarId;
-      unset.avatarId = "";
-    }
-    await User.updateOne(
-      { _id: user._id },
-      Object.keys(unset).length ? { $set: set, $unset: unset } : { $set: set },
-    );
-  } catch (err) {
-    if (createdId) await CampaignImage.deleteOne({ _id: createdId });
-    console.error("Error al guardar el perfil:", err);
-    return NextResponse.json(
-      { error: "No se pudo guardar el perfil. Inténtalo de nuevo." },
-      { status: 500 },
-    );
-  }
-
-  if (oldAvatar) {
-    try {
-      await CampaignImage.deleteOne({ _id: oldAvatar });
-    } catch (err) {
-      console.error("No se pudo borrar la foto antigua:", err);
-    }
-  }
+  const result = await updateProfile(
+    session.id,
+    { displayName, pronouns, location, bio },
+    newAvatar,
+    text(form.get("removeAvatar")) === "true",
+  );
+  if (!result.ok) return failureResponse(result);
   return NextResponse.json({ ok: true });
 }

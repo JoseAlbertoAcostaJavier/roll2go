@@ -1,4 +1,4 @@
-import { errorClass } from "@/app/components/formStyles";
+import { errorClass } from "@/app/components/ui/formStyles";
 
 export default function FieldError({ errors, keys }: { errors: Record<string, string>; keys: string[] }) {
   const k = keys.find((x) => errors[x]);

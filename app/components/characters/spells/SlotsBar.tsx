@@ -2,7 +2,7 @@
 
 import { BedDouble, Coffee, LoaderCircle } from "lucide-react";
 import type { Slots } from "@/lib/rules/dnd2024/derive";
-import { card } from "@/app/components/formStyles";
+import { card } from "@/app/components/ui/formStyles";
 
 type Props = {
   slots: Slots;

@@ -1,0 +1,39 @@
+import mongoose, { Schema } from "mongoose";
+
+const CharacterSchema = new Schema(
+  {
+    owner: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+      index: true,
+    }, // el jugador
+    name: { type: String, required: true, trim: true, maxlength: 80 },
+    // Él, Ella, Elle (selección múltiple; vacío = sin indicar)
+    pronouns: { type: [{ type: String, enum: ["he", "she", "they"] }], default: [] },
+    systemId: { type: String, required: true }, // id de lib/utils/systems.ts
+    books: { type: [String], default: [] }, // libros de reglas que usa (ids de `Book`)
+
+    // Campaña a la que pertenece (vacío = personaje independiente, todavía sin campaña)
+    campaign: { type: Schema.Types.ObjectId, ref: "Campaign", index: true },
+    // "internal": creado desde la campaña. "external": creado fuera y añadido después
+    origin: { type: String, enum: ["internal", "external"] },
+    // "pending": solicitud de unirse que el DM aún no ha aceptado. Solo existe junto a `campaign`; los antiguos sin
+    // este campo cuentan como aprobados (las consultas usan `campaignStatus: { $ne: "pending" }`)
+    campaignStatus: { type: String, enum: ["approved", "pending"] },
+
+    // En activo, retirado o fallecido
+    status: { type: String, enum: ["active", "retired", "dead", "npc"], default: "active" },
+    portraitId: { type: Schema.Types.ObjectId, ref: "CampaignImage" },
+    imageId: { type: Schema.Types.ObjectId, ref: "CampaignImage" },
+    backstory: { type: String, default: "", maxlength: 100000 }, // BBCode
+    // La hoja del personaje: cada sistema tiene campos distintos, así que es flexible
+    sheet: { type: Schema.Types.Mixed, default: {} },
+  },
+  { timestamps: true, minimize: false },
+);
+CharacterSchema.index({ campaign: 1, createdAt: 1 });
+CharacterSchema.index({ owner: 1, status: 1, updatedAt: -1 });
+
+export const Character =
+  mongoose.models.Character || mongoose.model("Character", CharacterSchema);

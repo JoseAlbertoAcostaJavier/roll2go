@@ -3,9 +3,9 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { LoaderCircle, TriangleAlert, X } from "lucide-react";
-import type { Coins, Inventory } from "@/lib/rules/dnd2024/sheet";
-import { MAX_COINS, MAX_ITEM_NOTES, MAX_OTHER, MAX_QUANTITY, type InventoryOp } from "@/lib/rules/dnd2024/edits";
-import { card, cardTitle } from "@/app/components/formStyles";
+import type { Coins, Inventory } from "@/lib/rules/dnd2024/sheet/sheet";
+import { MAX_COINS, MAX_ITEM_NOTES, MAX_OTHER, MAX_QUANTITY, type InventoryOp } from "@/lib/rules/dnd2024/sheet/edits";
+import { card, cardTitle } from "@/app/components/ui/formStyles";
 import AddItemDialog, { type NewItem } from "./AddItemDialog";
 
 /** Datos del catálogo de cada línea (clave: id de la línea). Pesos en libras. */

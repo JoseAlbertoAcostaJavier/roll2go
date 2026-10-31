@@ -9,12 +9,12 @@ try {
   process.loadEnvFile(".env.local");
 } catch {}
 
-import { convertBookIds } from "../lib/rules/migrateBookIds";
-import { connectDB } from "../lib/mongodb";
-import { Book } from "../lib/Book";
-import { Campaign } from "../lib/Campaign";
-import { Character } from "../lib/Character";
-import { User } from "../lib/User";
+import { convertBookIds } from "../lib/server/catalog/migrateBookIds";
+import { connectDB } from "../lib/models/mongodb";
+import { Book } from "../lib/models/Book";
+import { Campaign } from "../lib/models/Campaign";
+import { Character } from "../lib/models/Character";
+import { User } from "../lib/models/User";
 
 async function main() {
   await connectDB();

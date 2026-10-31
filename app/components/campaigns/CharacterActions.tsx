@@ -4,7 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useId, useRef, useSt
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { Check, EllipsisVertical, LoaderCircle, TriangleAlert, X } from "lucide-react";
-import useDismiss from "@/app/components/useDismiss";
+import useDismiss from "@/app/components/ui/useDismiss";
 
 /* Acciones sobre los personajes de la campaña (spec §8.1): menú «⋮», botones Aceptar/Denegar del DM y el aviso de
    resultado. El aviso vive en la sección y no en la tarjeta, porque al quitar un personaje su tarjeta desaparece. */

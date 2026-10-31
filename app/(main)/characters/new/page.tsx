@@ -1,16 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import mongoose from "mongoose";
 import { notFound } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
-import { connectDB } from "@/lib/mongodb";
-import { Campaign } from "@/lib/Campaign";
-import { requireUser } from "@/lib/currentUser";
-import { system as rpgSystems } from "@/lib/systems";
-import { first } from "@/lib/utils";
-import { NotFoundError, listEntries, listMasteryWeapons, usableBooks, type EntryOption } from "@/lib/rules/catalog";
-import type { SpeciesData } from "@/lib/rules/types";
-import CharacterCreator from "@/app/components/characters/CharacterCreator";
+import { requireUser } from "@/lib/server/auth/currentUser";
+import { loadCreatorPage } from "@/lib/server/characters/queries";
+import { system as rpgSystems } from "@/lib/utils/systems";
+import { first } from "@/lib/utils/utils";
+import CharacterCreator from "@/app/components/characters/creator/CharacterCreator";
 
 export const metadata: Metadata = { title: "Nuevo personaje" };
 
@@ -31,46 +27,13 @@ export default async function NewCharacterPage({ searchParams }: { searchParams:
   if (!system?.creator) notFound();
 
   // La campaña tiene que ser del mismo sistema y admitir personajes internos; si no eres miembro, 404
-  let campaign: { id: string; name: string } | null = null;
-  if (campaignId) {
-    if (!mongoose.isValidObjectId(campaignId)) notFound();
-    await connectDB();
-    const doc = await Campaign.findOne({ _id: campaignId, members: user.id })
-      .select("name systemId characters")
-      .lean();
-    if (!doc || doc.systemId !== systemId || !(doc.characters?.allowed === true && doc.characters?.internal === true)) notFound();
-    campaign = { id: campaignId, name: doc.name };
-  }
-
   const chosen = booksParam.split(",").map((s) => s.trim()).filter(Boolean).slice(0, 50);
-  let books: string[];
-  try {
-    books = await usableBooks({ userId: user.id, systemId, campaignId: campaignId || undefined, chosenBooks: chosen });
-  } catch (e) {
-    if (e instanceof NotFoundError) notFound();
-    throw e;
-  }
-
+  const page = await loadCreatorPage(user.id, { systemId, campaignId, chosenBooks: chosen });
+  if (!page) notFound();
+  const { campaign } = page;
   // Dotes, rasgos opcionales y armas con maestría: para las elecciones de nivel 1 de la clase (las listas de conjuros
   // las pide el creador al elegir la clase)
-  const [species, classes, backgrounds, feats, optionalFeatures, weapons] = await Promise.all([
-    listEntries({ books, kind: "species" }),
-    listEntries({ books, kind: "class" }),
-    listEntries({ books, kind: "background" }),
-    listEntries({ books, kind: "feat" }),
-    listEntries({ books, kind: "optionalFeature" }),
-    listMasteryWeapons(books),
-  ]);
-  // Legados de cada especie que los tiene (del mismo libro que la especie), por "libro:clave" de la especie
-  const lineages: Record<string, EntryOption[]> = {};
-  await Promise.all(
-    species
-      .filter((s) => (s.data as SpeciesData | null)?.hasLineages)
-      .map(async (s) => {
-        const list = await listEntries({ books, kind: "lineage", parent: s.ref.key });
-        lineages[`${s.ref.book}:${s.ref.key}`] = list.filter((l) => l.ref.book === s.ref.book);
-      }),
-  );
+  const { species, lineages, classes, backgrounds, feats, optionalFeatures, weapons } = page.lists;
 
   const back = campaign ? `/campaigns/${campaign.id}/characters` : "/characters";
 

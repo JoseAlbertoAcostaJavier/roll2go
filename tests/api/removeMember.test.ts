@@ -5,23 +5,23 @@ const CAMPAIGN = "c00000000000000000000001";
 const PLAYER = "a00000000000000000000003";
 const calls = vi.hoisted(() => ({ updateMany: [] as unknown[][] }));
 
-vi.mock("@/lib/campaignApi", () => ({
+vi.mock("@/lib/server/campaigns/campaignApi", () => ({
   requireMember: async () => ({
     session: { id: "a00000000000000000000002" },
     campaign: { _id: "c00000000000000000000001", owner: "a00000000000000000000002" },
     isDm: true,
   }),
 }));
-vi.mock("@/lib/rateLimit", () => ({
+vi.mock("@/lib/server/rateLimit", () => ({
   rateLimit: async () => ({ ok: true }),
   tooManyRequests: () => new Response(null, { status: 429 }),
 }));
-vi.mock("@/lib/Campaign", () => ({ Campaign: { updateOne: async () => ({ modifiedCount: 1 }) } }));
-vi.mock("@/lib/Character", () => ({
+vi.mock("@/lib/models/Campaign", () => ({ Campaign: { updateOne: async () => ({ modifiedCount: 1 }) } }));
+vi.mock("@/lib/models/Character", () => ({
   Character: { updateMany: async (...args: unknown[]) => (calls.updateMany.push(args), { modifiedCount: 1 }) },
 }));
-vi.mock("@/lib/CampaignLogEntry", () => ({ CampaignLogEntry: { countDocuments: async () => 0 } }));
-vi.mock("@/lib/notify", () => ({ notify: async () => {} }));
+vi.mock("@/lib/models/CampaignLogEntry", () => ({ CampaignLogEntry: { countDocuments: async () => 0 } }));
+vi.mock("@/lib/server/notifications/notify", () => ({ notify: async () => {} }));
 
 const { DELETE } = await import("@/app/api/campaigns/[id]/members/[userId]/route");
 

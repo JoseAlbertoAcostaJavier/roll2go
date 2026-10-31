@@ -9,11 +9,11 @@ const ID = "b00000000000000000000001";
 const db = vi.hoisted(() => ({ character: null as Record<string, unknown> | null }));
 const sheet = { version: 2 };
 
-vi.mock("@/lib/mongodb", () => ({ connectDB: async () => {} }));
-vi.mock("@/lib/Character", () => ({
+vi.mock("@/lib/models/mongodb", () => ({ connectDB: async () => {} }));
+vi.mock("@/lib/models/Character", () => ({
   Character: { findById: () => ({ lean: async () => db.character }) },
 }));
-vi.mock("@/lib/Campaign", () => ({
+vi.mock("@/lib/models/Campaign", () => ({
   Campaign: {
     exists: async (f: { _id: string; owner?: string; members?: string }) => {
       if (f._id !== CAMPAIGN) return null;
@@ -22,20 +22,20 @@ vi.mock("@/lib/Campaign", () => ({
     },
   },
 }));
-vi.mock("@/lib/rules/catalog", () => ({
+vi.mock("@/lib/server/catalog/catalog", () => ({
   NotFoundError: class extends Error {},
   getEntries: async () => [],
   getEntry: async () => null,
   usableBooks: async () => ["libro"],
 }));
-vi.mock("@/lib/rules/dnd2024/sheetEntries", () => ({ loadSheetEntries: async () => new Map() }));
-vi.mock("@/lib/rules/dnd2024/upgrade", () => ({
+vi.mock("@/lib/rules/dnd2024/sheet/sheetEntries", () => ({ loadSheetEntries: async () => new Map() }));
+vi.mock("@/lib/rules/dnd2024/sheet/upgrade", () => ({
   loadUpgradeEntries: async () => new Map(),
   missingForUpgrade: () => [],
   upgradeSheet: (s: unknown) => s,
 }));
 
-const { loadCharacterFor } = await import("@/lib/characterAccess");
+const { loadCharacterFor } = await import("@/lib/server/characters/characterAccess");
 
 const readable = async (userId: string) => (await loadCharacterFor(userId, ID, "read")) !== null;
 

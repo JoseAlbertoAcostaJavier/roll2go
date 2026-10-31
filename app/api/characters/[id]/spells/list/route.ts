@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { sessionOf } from "@/lib/campaignApi";
-import { rateLimit, tooManyRequests } from "@/lib/rateLimit";
-import { loadCharacterFor } from "@/lib/characterAccess";
-import { listSpellRows } from "@/lib/rules/catalog";
-import { SPELL_LIST_CACHE, validList } from "@/lib/rules/spellRows";
+import { sessionOf } from "@/lib/server/campaigns/campaignApi";
+import { rateLimit, tooManyRequests } from "@/lib/server/rateLimit";
+import { loadCharacterFor } from "@/lib/server/characters/characterAccess";
+import { listSpellRows } from "@/lib/server/catalog/catalog";
+import { SPELL_LIST_CACHE, validList } from "@/lib/rules/catalog/spellRows";
 
 type Ctx = { params: Promise<{ id: string }> };
 

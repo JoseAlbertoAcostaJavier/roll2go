@@ -1,13 +1,13 @@
 "use client";
 
 import { Minus, Plus } from "lucide-react";
-import type { CatalogEntry, EntryOption } from "@/lib/rules/catalog";
-import { refKey } from "@/lib/rules/dnd2024/equipmentRefs";
-import { ABILITY_ABBR, ABILITY_NAMES, fmtMod } from "@/lib/rules/dnd2024/labels";
+import type { CatalogEntry, EntryOption } from "@/lib/rules/catalog/types";
+import { refKey } from "@/lib/rules/dnd2024/sheet/equipmentRefs";
+import { ABILITY_ABBR, ABILITY_NAMES, fmtMod } from "@/lib/rules/dnd2024/sheet/labels";
 import { ABILITIES, type Ability, type Ref } from "@/lib/rules/types";
-import { labelClass } from "@/app/components/formStyles";
-import RuleSelect from "../../RuleSelect";
-import { Description, refFromKey } from "../../ClassFeaturesSection";
+import { labelClass } from "@/app/components/ui/formStyles";
+import RuleSelect from "../../creator/RuleSelect";
+import { Description, refFromKey } from "../../creator/ClassFeaturesSection";
 import { ABILITY_CAP, ASI_POINTS, featAbility, type AsiPick } from "../state";
 
 const modOf = (score: number) => Math.floor((score - 10) / 2);

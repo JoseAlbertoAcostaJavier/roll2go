@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { sessionOf } from "@/lib/campaignApi";
-import { booksByIds } from "@/lib/rules/books";
-import { NotFoundError, resolveRef, usableBooks } from "@/lib/rules/catalog";
-import { spellClassNames } from "@/lib/rules/dnd2024/spellText";
+import { sessionOf } from "@/lib/server/campaigns/campaignApi";
+import { booksByIds } from "@/lib/server/catalog/books";
+import { NotFoundError, resolveRef, usableBooks } from "@/lib/server/catalog/catalog";
+import { spellClassNames } from "@/lib/rules/dnd2024/spells/spellText";
 import type { SpellData } from "@/lib/rules/types";
 
 type Ctx = { params: Promise<{ bookId: string; key: string }> };

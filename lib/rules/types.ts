@@ -13,6 +13,23 @@ export type Ref = { book: string; key: string };
 export type EntryKind =
   | "species" | "lineage" | "class" | "subclass" | "classFeature" | "subclassFeature"
   | "background" | "feat" | "spell" | "item" | "language" | "skill" | "optionalFeature" | "nameTable";
+// Todos los tipos de entrada, en el orden de EntryKind
+export const ENTRY_KINDS: readonly EntryKind[] = [
+  "species",
+  "lineage",
+  "class",
+  "subclass",
+  "classFeature",
+  "subclassFeature",
+  "background",
+  "feat",
+  "spell",
+  "item",
+  "language",
+  "skill",
+  "optionalFeature",
+  "nameTable",
+];
 
 /** Elemento de equipo: una entrada del catálogo, monedas (pc) o un texto libre. */
 export type Pack = { ref?: Ref; quantity?: number; value?: number; displayName?: string };
@@ -42,7 +59,7 @@ export type LineageData = {
 
 /** Progresión de espacios: lanzador completo, medio (redondeando hacia arriba), tercio (hacia abajo) o Magia de pacto. */
 export type SpellcastingProgression = "full" | "half" | "third" | "pact";
-/** Cómo se eligen los conjuros preparados (ver `lib/rules/dnd2024/spellcastingModes.ts`). */
+/** Cómo se eligen los conjuros preparados (ver `lib/rules/dnd2024/spells/spellcastingModes.ts`). */
 export type SpellcastingMode = "list" | "levelUp" | "spellbook";
 export type Spellcasting = { ability: Ability; progression: SpellcastingProgression; mode: SpellcastingMode };
 

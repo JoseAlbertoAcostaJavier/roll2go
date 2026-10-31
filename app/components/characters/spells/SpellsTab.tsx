@@ -2,12 +2,12 @@
 
 import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import RoundIcon from "@/app/components/RoundIcon";
-import type { SpellOption } from "@/lib/rules/catalog";
+import RoundIcon from "@/app/components/ui/RoundIcon";
+import type { SpellOption } from "@/lib/rules/catalog/types";
 import type { SpellsSummary } from "@/lib/rules/dnd2024/derive";
-import { bareName, refKey } from "@/lib/rules/dnd2024/equipmentRefs";
-import { PACT_SLOT, recoversOnShortRest, type SpellOp } from "@/lib/rules/dnd2024/spellOps";
-import { card } from "@/app/components/formStyles";
+import { bareName, refKey } from "@/lib/rules/dnd2024/sheet/equipmentRefs";
+import { PACT_SLOT, recoversOnShortRest, type SpellOp } from "@/lib/rules/dnd2024/spells/spellOps";
+import { card } from "@/app/components/ui/formStyles";
 import CasterBlockView from "./CasterBlockView";
 import SlotsBar from "./SlotsBar";
 import SpellDialog from "./SpellDialog";

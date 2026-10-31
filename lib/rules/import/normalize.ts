@@ -10,9 +10,9 @@ import type {
 } from "../types";
 import { normalizeName, validateEntryData } from "../schemas";
 import { entriesToBbcode } from "./toBbcode";
-import { ABILITY_NAMES, CHOICE_LABELS, FEAT_CATEGORIES, proficiencyName, skillName, toolName } from "../dnd2024/labels";
-import { spellComponents, spellDuration, spellRange, spellTags, spellTime } from "../dnd2024/spellText";
-import { spellcastingMode } from "../dnd2024/spellcastingModes";
+import { ABILITY_NAMES, CHOICE_LABELS, FEAT_CATEGORIES, proficiencyName, skillName, toolName } from "../dnd2024/sheet/labels";
+import { spellComponents, spellDuration, spellRange, spellTags, spellTime } from "../dnd2024/spells/spellText";
+import { spellcastingMode } from "../dnd2024/spells/spellcastingModes";
 import es from "../i18n/es.json";
 
 export const BOOK_PLACEHOLDER = "__BOOK__";

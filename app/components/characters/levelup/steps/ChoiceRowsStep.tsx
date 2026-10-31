@@ -1,7 +1,7 @@
 "use client";
 
-import type { PendingChoice } from "@/lib/rules/dnd2024/levels";
-import { ChoiceField, type ChoiceCtx } from "../../ClassFeaturesSection";
+import type { PendingChoice } from "@/lib/rules/dnd2024/levels/pendingChoices";
+import { ChoiceField, type ChoiceCtx } from "../../creator/ClassFeaturesSection";
 
 const INTRO: Partial<Record<PendingChoice["type"], string>> = {
   skills: "Ganas competencia en habilidades nuevas.",

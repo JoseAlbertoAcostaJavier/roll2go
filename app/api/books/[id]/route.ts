@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
-import { sessionOf } from "@/lib/campaignApi";
-import { rateLimit, tooManyRequests } from "@/lib/rateLimit";
-import { Book } from "@/lib/Book";
-import { BookEntry } from "@/lib/BookEntry";
-import { MAX_BOOK_DESCRIPTION, MAX_BOOK_NAME, loadBook } from "@/lib/bookAccess";
-import { cleanText } from "@/lib/utils";
+import { sessionOf } from "@/lib/server/campaigns/campaignApi";
+import { rateLimit, tooManyRequests } from "@/lib/server/rateLimit";
+import { MAX_BOOK_DESCRIPTION, MAX_BOOK_NAME, loadBook } from "@/lib/server/books/bookAccess";
+import { deleteBook, updateBook } from "@/lib/server/books/books";
+import { cleanText } from "@/lib/utils/utils";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -46,7 +45,7 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
   if (Object.keys(update).length === 0)
     return NextResponse.json({ error: "No hay nada que guardar." }, { status: 400 });
 
-  await Book.updateOne({ _id: id }, { $set: update });
+  await updateBook(id, update);
   revalidateTag(`book:${id}`, "max");
   return NextResponse.json({ ok: true });
 }
@@ -60,8 +59,7 @@ export async function DELETE(req: NextRequest, { params }: Ctx) {
   const found = await loadBook(id, session.id);
   if (!found?.canEdit) return notFound();
 
-  await BookEntry.deleteMany({ book: id });
-  await Book.deleteOne({ _id: id });
+  await deleteBook(id);
   revalidateTag(`book:${id}`, "max");
   return NextResponse.json({ ok: true });
 }

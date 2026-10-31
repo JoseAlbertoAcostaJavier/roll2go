@@ -1,32 +1,17 @@
 import { BookOpen, UserRound } from "lucide-react";
-import Bbcode from "@/app/components/Bbcode";
-import ConfirmAction from "@/app/components/ConfirmAction";
-import UserLink from "@/app/components/UserLink";
-import { getCampaignAccess } from "@/lib/campaignAccess";
-import { Campaign } from "@/lib/Campaign";
-import { booksByIds } from "@/lib/rules/books";
-import { loadUserCards } from "@/lib/userCards";
+import Bbcode from "@/app/components/ui/Bbcode";
+import ConfirmAction from "@/app/components/ui/ConfirmAction";
+import UserLink from "@/app/components/ui/UserLink";
+import { getCampaignAccess } from "@/lib/server/campaigns/campaignAccess";
+import { campaignOverview } from "@/lib/server/campaigns/queries";
 
 const heading = "mb-3 border-l-4 border-brand pl-3 font-heading text-xl font-bold";
 
 export default async function CampaignDetailsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const { session, campaign, isDm } = await getCampaignAccess(id);
-
-  // Las notas privadas solo se cargan de la base de datos si eres el DM
-  const notes = isDm
-    ? ((await Campaign.findById(id).select("+privateNotes").lean())?.privateNotes as string | undefined)
-    : undefined;
-
-  // Participantes: el DM primero
-  const ownerId = String(campaign.owner);
-  const cards = await loadUserCards(campaign.members);
-  const people = [...cards.values()].sort(
-    (a, b) => Number(b.id === ownerId) - Number(a.id === ownerId) || a.displayName.localeCompare(b.displayName, "es"),
-  );
-  const bookNames = campaign.restrictBooks
-    ? (await booksByIds(campaign.allowedBooks as string[])).map((b) => b.name)
-    : null;
+  // Participantes (el DM primero), libros permitidos y las notas privadas (solo el DM)
+  const { notes, ownerId, people, bookNames } = await campaignOverview(campaign, isDm);
   const ch = campaign.characters;
   const characterText = !ch?.allowed
     ? "No se pueden añadir personajes."

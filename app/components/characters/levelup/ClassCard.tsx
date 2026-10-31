@@ -1,11 +1,11 @@
 "use client";
 
 import { ChevronDown } from "lucide-react";
-import Bbcode from "@/app/components/Bbcode";
-import type { CatalogEntry } from "@/lib/rules/catalog";
-import { refKey } from "@/lib/rules/dnd2024/equipmentRefs";
+import Bbcode from "@/app/components/ui/Bbcode";
+import type { CatalogEntry } from "@/lib/rules/catalog/types";
+import { refKey } from "@/lib/rules/dnd2024/sheet/equipmentRefs";
 import type { ClassData, Ref } from "@/lib/rules/types";
-import { nameFromKey } from "../ClassFeaturesSection";
+import { nameFromKey } from "../creator/ClassFeaturesSection";
 import { ClassIcon } from "./steps/ClassStep";
 
 // Al abrir la tabla, la fila del nuevo nivel queda a la vista (sin mover la página)

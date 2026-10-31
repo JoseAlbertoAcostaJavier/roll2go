@@ -1,10 +1,10 @@
-import type { CatalogEntry } from "@/lib/rules/catalog";
-import { ALIGNMENTS, alignmentName } from "@/lib/rules/dnd2024/alignments";
-import { ABILITY_NAMES, skillName, toolName } from "@/lib/rules/dnd2024/labels";
-import type { Dnd2024SheetV2 } from "@/lib/rules/dnd2024/sheet";
+import type { CatalogEntry } from "@/lib/rules/catalog/types";
+import { ALIGNMENTS, alignmentName } from "@/lib/rules/dnd2024/sheet/alignments";
+import { ABILITY_NAMES, skillName, toolName } from "@/lib/rules/dnd2024/sheet/labels";
+import type { Dnd2024SheetV2 } from "@/lib/rules/dnd2024/sheet/sheet";
 import type { Ability, BackgroundData } from "@/lib/rules/types";
-import Bbcode from "@/app/components/Bbcode";
-import { card, cardTitle } from "@/app/components/formStyles";
+import Bbcode from "@/app/components/ui/Bbcode";
+import { card, cardTitle } from "@/app/components/ui/formStyles";
 
 type Props = {
   sheet: Dnd2024SheetV2;

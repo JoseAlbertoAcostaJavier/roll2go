@@ -2,10 +2,10 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ChevronLeft, RotateCcw } from "lucide-react";
-import { requireUser } from "@/lib/currentUser";
-import { loadCharacterFor } from "@/lib/characterAccess";
-import { bareName, refKey } from "@/lib/rules/dnd2024/equipmentRefs";
-import { parsePronouns } from "@/lib/rules/dnd2024/names";
+import { requireUser } from "@/lib/server/auth/currentUser";
+import { loadCharacterFor } from "@/lib/server/characters/characterAccess";
+import { bareName, refKey } from "@/lib/rules/dnd2024/sheet/equipmentRefs";
+import { parsePronouns } from "@/lib/rules/dnd2024/creation/names";
 import CharacterEditForm from "@/app/components/characters/CharacterEditForm";
 import DeleteCharacter from "@/app/components/characters/DeleteCharacter";
 

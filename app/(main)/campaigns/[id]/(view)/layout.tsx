@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ChevronLeft, Pencil } from "lucide-react";
-import CampaignTabs from "@/app/components/CampaignTabs";
-import { getCampaignAccess } from "@/lib/campaignAccess";
-import { system as rpgSystems } from "@/lib/systems";
+import CampaignTabs from "@/app/components/campaigns/CampaignTabs";
+import { getCampaignAccess } from "@/lib/server/campaigns/campaignAccess";
+import { system as rpgSystems } from "@/lib/utils/systems";
 
 type Props = { params: Promise<{ id: string }> };
 

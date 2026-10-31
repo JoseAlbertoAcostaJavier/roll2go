@@ -1,5 +1,5 @@
 // Ataques de la ficha (spec §4.2): armas equipadas y ataque sin armas. Sin bonificadores mágicos.
-import { damageTypeName, masteryName, weaponPropertyName } from "@/lib/rules/dnd2024/labels";
+import { damageTypeName, masteryName, weaponPropertyName } from "@/lib/rules/dnd2024/sheet/labels";
 import type { Ability, ItemData } from "@/lib/rules/types";
 
 export type Attack = {

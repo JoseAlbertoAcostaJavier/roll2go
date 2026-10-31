@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
-import type { Dnd2024SheetV2 } from "@/lib/rules/dnd2024/sheet";
+import type { Dnd2024SheetV2 } from "@/lib/rules/dnd2024/sheet/sheet";
 
 const CAMPAIGN = "c00000000000000000000001";
 const OTHER_CAMPAIGN = "c00000000000000000000002";
@@ -37,20 +37,20 @@ const db = vi.hoisted(() => ({
   cleared: [] as unknown[],
 }));
 const lean = (v: unknown) => ({ select: () => ({ lean: async () => v }) });
-vi.mock("@/lib/campaignApi", () => ({ sessionOf: async () => db.session }));
-vi.mock("@/lib/rateLimit", () => ({
+vi.mock("@/lib/server/campaigns/campaignApi", () => ({ sessionOf: async () => db.session }));
+vi.mock("@/lib/server/rateLimit", () => ({
   rateLimit: async () => ({ ok: true }),
   tooManyRequests: () => new Response(null, { status: 429 }),
 }));
-vi.mock("@/lib/mongodb", () => ({ connectDB: async () => {} }));
-vi.mock("@/lib/characterAccess", () => ({
+vi.mock("@/lib/models/mongodb", () => ({ connectDB: async () => {} }));
+vi.mock("@/lib/server/characters/characterAccess", () => ({
   OUTDATED_SHEET_ERROR: "antigua",
   loadCharacterFor: async () => db.found,
 }));
-vi.mock("@/lib/Campaign", () => ({
+vi.mock("@/lib/models/Campaign", () => ({
   Campaign: { findById: (id: string) => lean(db.campaign && String(db.campaign._id) === String(id) ? db.campaign : null) },
 }));
-vi.mock("@/lib/Book", () => ({
+vi.mock("@/lib/models/Book", () => ({
   Book: {
     find: () =>
       lean([
@@ -59,14 +59,14 @@ vi.mock("@/lib/Book", () => ({
       ]),
   },
 }));
-vi.mock("@/lib/Character", () => ({
+vi.mock("@/lib/models/Character", () => ({
   Character: {
     findOne: () => lean(db.owned),
     updateOne: async (...args: unknown[]) => (db.updates.push(args), { matchedCount: db.matched }),
   },
 }));
-vi.mock("@/lib/notify", () => ({ notify: async (n: Record<string, unknown>) => void db.notified.push(n) }));
-vi.mock("@/lib/Notification", () => ({
+vi.mock("@/lib/server/notifications/notify", () => ({ notify: async (n: Record<string, unknown>) => void db.notified.push(n) }));
+vi.mock("@/lib/models/Notification", () => ({
   Notification: { deleteMany: async (filter: unknown) => (db.cleared.push(filter), { deletedCount: 1 }) },
 }));
 

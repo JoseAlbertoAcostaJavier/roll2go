@@ -2,10 +2,10 @@
 
 import { useCallback, useRef, useState } from "react";
 import { Check, ChevronDown, Search, X } from "lucide-react";
-import { EMPTY_SPELL_FILTER, type SpellFilter } from "@/lib/rules/dnd2024/spellFilters";
-import { spellSchoolName } from "@/lib/rules/dnd2024/spellTextClient";
-import { field } from "@/app/components/formStyles";
-import useDismiss from "@/app/components/useDismiss";
+import { EMPTY_SPELL_FILTER, type SpellFilter } from "@/lib/rules/dnd2024/spells/spellFilters";
+import { spellSchoolName } from "@/lib/rules/dnd2024/spells/spellTextClient";
+import { field } from "@/app/components/ui/formStyles";
+import useDismiss from "@/app/components/ui/useDismiss";
 
 const LEVELS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
 const SCHOOLS = ["A", "C", "D", "E", "V", "I", "N", "T"];

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseBbcode } from "@/lib/bbcode";
+import { parseBbcode } from "@/lib/utils/bbcode";
 import { entriesToBbcode, inlineTags } from "@/lib/rules/import/toBbcode";
 
 describe("inlineTags", () => {

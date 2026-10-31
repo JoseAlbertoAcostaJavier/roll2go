@@ -1,11 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { connectDB } from "@/lib/mongodb";
-import { rateLimit, tooManyRequests } from "@/lib/rateLimit";
-import { Campaign } from "@/lib/Campaign";
-import { Block } from "@/lib/Block";
-import { sessionOf } from "@/lib/campaignApi";
-import { INVITE_REGEX } from "@/lib/members";
-import { joinCampaign } from "@/lib/joinCampaign";
+import { rateLimit, tooManyRequests } from "@/lib/server/rateLimit";
+import { sessionOf } from "@/lib/server/campaigns/campaignApi";
+import { joinByInviteCode } from "@/lib/server/campaigns/joinCampaign";
+import { failureResponse } from "@/lib/server/result";
 
 export async function POST(req: NextRequest) {
   const session = await sessionOf(req);
@@ -25,47 +22,9 @@ export async function POST(req: NextRequest) {
   } catch {
     return NextResponse.json({ error: "Petición no válida." }, { status: 400 });
   }
-  const invalid = () =>
-    NextResponse.json(
-      { error: "El enlace no es válido o ha caducado." },
-      { status: 404 },
-    );
 
   const code = typeof body.code === "string" ? body.code : "";
-  if (!INVITE_REGEX.test(code)) return invalid();
-
-  try {
-    await connectDB();
-    const campaign = await Campaign.findOne({
-      inviteCode: code,
-      $or: [
-        { inviteExpires: { $exists: false } },
-        { inviteExpires: { $gt: new Date() } },
-      ],
-    }).select("owner");
-    if (!campaign) return invalid();
-
-    // Quien ha sido bloqueado por el DM recibe el mismo mensaje que con un enlace caducado
-    if (await Block.exists({ blocker: campaign.owner, blocked: session.id }))
-      return invalid();
-
-    const result = await joinCampaign(campaign._id, session.id);
-    if (result === "banned" || result === "missing") return invalid();
-    if (result === "full") {
-      return NextResponse.json(
-        { error: "La campaña ha alcanzado el máximo de participantes." },
-        { status: 409 },
-      );
-    }
-    return NextResponse.json({
-      id: String(campaign._id),
-      already: result === "already",
-    });
-  } catch (err) {
-    console.error("Error al unirse a la campaña:", err);
-    return NextResponse.json(
-      { error: "No se pudo completar la unión. Inténtalo de nuevo." },
-      { status: 500 },
-    );
-  }
+  const result = await joinByInviteCode(session.id, code);
+  if (!result.ok) return failureResponse(result);
+  return NextResponse.json({ id: result.id, already: result.already });
 }

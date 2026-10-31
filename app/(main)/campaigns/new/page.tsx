@@ -1,11 +1,10 @@
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import CampaignForm from "@/app/components/CampaignForm";
-import { COOKIE_NAME, verifySession } from "@/lib/auth";
-import { connectDB } from "@/lib/mongodb";
-import { system as rpgSystems } from "@/lib/systems";
-import { visibleBooksOf } from "@/lib/rules/books";
+import CampaignForm from "@/app/components/campaigns/CampaignForm";
+import { COOKIE_NAME, verifySession } from "@/lib/server/auth/auth";
+import { system as rpgSystems } from "@/lib/utils/systems";
+import { visibleBooksOf } from "@/lib/server/catalog/books";
 
 export const metadata: Metadata = { title: "Crear campaña" };
 
@@ -14,7 +13,6 @@ export default async function NewCampaignPage() {
   const session = token ? await verifySession(token) : null;
   if (!session) redirect("/sign_in?next=/campaigns/new");
 
-  await connectDB();
   const books = await visibleBooksOf(session.id);
 
   return (

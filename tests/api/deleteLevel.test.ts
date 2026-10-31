@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
-import type { Dnd2024SheetV2, LevelEntry } from "@/lib/rules/dnd2024/sheet";
+import type { Dnd2024SheetV2, LevelEntry } from "@/lib/rules/dnd2024/sheet/sheet";
 import { B, buildCatalog, ref } from "../dnd2024/fixtureCatalog";
 
 const catalog = buildCatalog(["class-cleric.json"]);
@@ -29,21 +29,21 @@ const sheet = {
 // Sesión, acceso, catálogo y base de datos falsos: la escritura condicional siempre falla y `exists` dice si el
 // personaje sigue en el mismo nivel
 const db = vi.hoisted(() => ({ sameLevel: true, sheet: null as unknown, updates: [] as unknown[] }));
-vi.mock("@/lib/campaignApi", () => ({ sessionOf: async () => ({ id: "u1" }) }));
-vi.mock("@/lib/rateLimit", () => ({
+vi.mock("@/lib/server/campaigns/campaignApi", () => ({ sessionOf: async () => ({ id: "u1" }) }));
+vi.mock("@/lib/server/rateLimit", () => ({
   rateLimit: async () => ({ ok: true }),
   tooManyRequests: () => new Response(null, { status: 429 }),
 }));
-vi.mock("@/lib/characterAccess", () => ({
+vi.mock("@/lib/server/characters/characterAccess", () => ({
   OUTDATED_SHEET_ERROR: "antigua",
   loadCharacterFor: async () => {
     const current = (db.sheet ?? sheet) as Dnd2024SheetV2;
     return { character: { sheet: current }, sheet: current, books: [B], entries: catalog, outdated: false };
   },
 }));
-vi.mock("@/lib/rules/catalog", () => ({ getEntries: async () => [] }));
-vi.mock("@/lib/rules/dnd2024/sheetEntries", () => ({ loadSheetEntries: async () => catalog }));
-vi.mock("@/lib/Character", () => ({
+vi.mock("@/lib/server/catalog/catalog", () => ({ getEntries: async () => [] }));
+vi.mock("@/lib/rules/dnd2024/sheet/sheetEntries", () => ({ loadSheetEntries: async () => catalog }));
+vi.mock("@/lib/models/Character", () => ({
   Character: {
     updateOne: async (...args: unknown[]) => {
       db.updates.push(args);

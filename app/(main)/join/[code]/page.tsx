@@ -2,13 +2,10 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import JoinButton from "@/app/components/JoinButton";
-import { COOKIE_NAME, verifySession } from "@/lib/auth";
-import { connectDB } from "@/lib/mongodb";
-import { Campaign } from "@/lib/Campaign";
-import { User } from "@/lib/User";
-import { system as rpgSystems } from "@/lib/systems";
-import { INVITE_REGEX } from "@/lib/members";
+import JoinButton from "@/app/components/campaigns/JoinButton";
+import { COOKIE_NAME, verifySession } from "@/lib/server/auth/auth";
+import { loadInviteLanding } from "@/lib/server/campaigns/joinCampaign";
+import { system as rpgSystems } from "@/lib/utils/systems";
 
 export const metadata: Metadata = { title: "Unirse a una campaña" };
 
@@ -20,21 +17,10 @@ export default async function JoinPage({ params }: { params: Promise<{ code: str
   const session = token ? await verifySession(token) : null;
   if (!session) redirect(`/sign_in?next=${encodeURIComponent(`/join/${code}`)}`);
 
-  let campaign = null;
-  if (INVITE_REGEX.test(code)) {
-    await connectDB();
-    campaign = await Campaign.findOne({
-      inviteCode: code,
-      $or: [{ inviteExpires: { $exists: false } }, { inviteExpires: { $gt: new Date() } }],
-    })
-      .select("name systemId shortDescription owner members imageId")
-      .lean();
-  }
+  const campaign = await loadInviteLanding(code, session.id);
 
   // Si ya eres miembro, directo a la campaña
-  if (campaign && campaign.members.some((m: unknown) => String(m) === session.id)) {
-    redirect(`/campaigns/${campaign._id}`);
-  }
+  if (campaign?.member) redirect(`/campaigns/${campaign.id}`);
 
   const shell = "mx-auto max-w-lg px-5 py-14";
 
@@ -54,9 +40,8 @@ export default async function JoinPage({ params }: { params: Promise<{ code: str
     );
   }
 
-  const owner = await User.findById(campaign.owner).select("username").lean();
   const systemName = rpgSystems.find((s) => s.id === campaign.systemId)?.name ?? campaign.systemId;
-  const players = Math.max(0, (campaign.members?.length ?? 1) - 1);
+  const players = Math.max(0, campaign.memberCount - 1);
 
   return (
     <div className={shell}>
@@ -69,7 +54,7 @@ export default async function JoinPage({ params }: { params: Promise<{ code: str
           <p className="mb-1 text-sm text-muted">Te han invitado a la campaña</p>
           <h1 className="mb-1 font-heading text-2xl font-extrabold">{campaign.name}</h1>
           <p className="mb-3 text-sm text-muted">
-            {systemName} · DM: <span className="font-semibold text-[#6fd08c]">{owner?.username ?? "Desconocido"}</span> ·{" "}
+            {systemName} · DM: <span className="font-semibold text-[#6fd08c]">{campaign.ownerName ?? "Desconocido"}</span> ·{" "}
             {players} {players === 1 ? "participante" : "participantes"}
           </p>
           {campaign.shortDescription && <p className="mb-5 text-sm text-muted">{campaign.shortDescription}</p>}

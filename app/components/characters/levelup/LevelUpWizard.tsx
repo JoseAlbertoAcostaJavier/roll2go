@@ -3,29 +3,31 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { Check, ChevronLeft, ChevronRight, LoaderCircle } from "lucide-react";
-import { card, primaryButton } from "@/app/components/formStyles";
-import type { CatalogEntry, EntryOption } from "@/lib/rules/catalog";
+import { card, primaryButton } from "@/app/components/ui/formStyles";
+import type { CatalogEntry, EntryOption } from "@/lib/rules/catalog/types";
 import { derive } from "@/lib/rules/dnd2024/derive";
 import { characterFeats } from "@/lib/rules/dnd2024/derive/features";
-import { chosenFeatSpells, levelFeatSpellPending, type FeatWithData } from "@/lib/rules/dnd2024/featSpells";
+import { chosenFeatSpells, levelFeatSpellPending, type FeatWithData } from "@/lib/rules/dnd2024/spells/featSpells";
 import { chosenSpells, knownSpellRefs } from "@/lib/rules/dnd2024/derive/spells";
-import { refKey } from "@/lib/rules/dnd2024/equipmentRefs";
-import { FEATURE_OPTION_LABELS } from "@/lib/rules/dnd2024/featureChoices";
-import { ABILITY_NAMES, skillName } from "@/lib/rules/dnd2024/labels";
+import { refKey } from "@/lib/rules/dnd2024/sheet/equipmentRefs";
+import { FEATURE_OPTION_LABELS } from "@/lib/rules/dnd2024/levels/featureChoices";
+import { ABILITY_NAMES, skillName } from "@/lib/rules/dnd2024/sheet/labels";
+import { heldArcana, heldBonusSpells, heldOptionalFeatures, heldPicks } from "@/lib/rules/dnd2024/levels/held";
 import {
-  heldArcana, heldBonusSpells, heldOptionalFeatures, heldPicks, meetsFeatPrerequisite, meetsMulticlass, pendingChoices,
-  spellsSource, withBonusCantrips, type PendingChoice,
-} from "@/lib/rules/dnd2024/levels";
-import { currentMasteries, masteryLabel } from "@/lib/rules/dnd2024/masteries";
-import type { Dnd2024SheetV2, LevelEntry } from "@/lib/rules/dnd2024/sheet";
-import { emptySpellPick } from "@/lib/rules/dnd2024/spellPicks";
-import { pendingSpellLists } from "@/lib/rules/spellRows";
-import { summarizeClasses } from "@/lib/rules/dnd2024/upgrade";
+  meetsFeatPrerequisite, meetsMulticlass, pendingChoices, withBonusCantrips, type PendingChoice,
+} from "@/lib/rules/dnd2024/levels/pendingChoices";
+import { spellsSource } from "@/lib/rules/dnd2024/levels/spellPending";
+import { LEVEL_CHANGED } from "@/lib/rules/dnd2024/levels/levelOps";
+import { currentMasteries, masteryLabel } from "@/lib/rules/dnd2024/levels/masteries";
+import type { Dnd2024SheetV2, LevelEntry } from "@/lib/rules/dnd2024/sheet/sheet";
+import { emptySpellPick } from "@/lib/rules/dnd2024/spells/spellPicks";
+import { pendingSpellLists } from "@/lib/rules/catalog/spellRows";
+import { summarizeClasses } from "@/lib/rules/dnd2024/sheet/upgrade";
 import {
   ABILITIES, type Ability, type BackgroundData, type ClassData, type FeatData, type ItemData, type Ref, type SubclassData,
 } from "@/lib/rules/types";
-import { nameFromKey, refFromKey, type ChoiceCtx } from "../ClassFeaturesSection";
-import useCatalogEntries from "../useCatalogEntries";
+import { nameFromKey, refFromKey, type ChoiceCtx } from "../creator/ClassFeaturesSection";
+import useCatalogEntries from "../hooks/useCatalogEntries";
 import ClassCard from "./ClassCard";
 import DeleteLevel from "./DeleteLevel";
 import {
@@ -44,7 +46,7 @@ import FeatSpellsStep from "./steps/FeatSpellsStep";
 import SpellsStep from "./steps/SpellsStep";
 import SubclassStep from "./steps/SubclassStep";
 import SpellListsStatus from "../SpellListsStatus";
-import useSpellLists from "../useSpellLists";
+import useSpellLists from "../hooks/useSpellLists";
 
 type Props = {
   characterId: string;
@@ -63,7 +65,6 @@ type Props = {
 
 type Step = { id: string; title: string; p?: PendingChoice };
 
-const CONFLICT = "El personaje ha cambiado de nivel; recarga la página.";
 const ROW_TYPES: PendingChoice["type"][] = ["skills", "expertise", "weaponMastery"];
 const uniq = <T,>(list: T[]) => [...new Set(list)];
 const nameOf = (e: { nameEs: string | null; name: string }) => e.nameEs ?? e.name;
@@ -416,7 +417,7 @@ function Wizard(props: Props & { draftKey: string; draft: string | null }) {
         router.refresh();
         return;
       }
-      if (res.status === 409) setConflict(data?.error ?? CONFLICT);
+      if (res.status === 409) setConflict(data?.error ?? LEVEL_CHANGED);
       else if (data?.errors) setErrors(uniq(Object.values(data.errors as Record<string, string>)));
       else setErrors([data?.error ?? `El servidor ha respondido con un error (${res.status}).`]);
     } catch {

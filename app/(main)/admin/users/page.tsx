@@ -1,26 +1,22 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { BadgeCheck, Ban, Search, ShieldAlert, TriangleAlert } from "lucide-react";
-import AdminUserActions from "@/app/components/AdminUserActions";
-import LocalDate from "@/app/components/LocalDate";
-import Pagination from "@/app/components/Pagination";
-import UserLink from "@/app/components/UserLink";
-import { requireAdmin } from "@/lib/currentUser";
-import { connectDB } from "@/lib/mongodb";
-import { User } from "@/lib/User";
-import { escapeRegex, first, pageFrom } from "@/lib/utils";
+import AdminUserActions from "@/app/components/admin/AdminUserActions";
+import LocalDate from "@/app/components/ui/LocalDate";
+import Pagination from "@/app/components/ui/Pagination";
+import UserLink from "@/app/components/ui/UserLink";
+import { listUsers, type UserFilter } from "@/lib/server/admin/users";
+import { requireAdmin } from "@/lib/server/auth/currentUser";
+import { first } from "@/lib/utils/utils";
 
 export const metadata: Metadata = { title: "Usuarios de Roll2Go" };
 
-const PER_PAGE = 20;
-const FILTERS = [
+const FILTERS: { id: UserFilter; label: string }[] = [
   { id: "all", label: "Todos" },
   { id: "warned", label: "Con advertencias" },
   { id: "banned", label: "Baneados" },
-] as const;
-type FilterId = (typeof FILTERS)[number]["id"];
-
-type Warning = { reason: string; createdAt: Date };
+];
+type FilterId = UserFilter;
 
 const field =
   "h-11 w-full rounded-md border border-line bg-surface pl-10 pr-3 text-fg placeholder:text-muted focus:border-brand focus:outline-none";
@@ -36,25 +32,8 @@ export default async function AdminUsersPage({
   const q = (first(sp.q) ?? "").trim().replace(/^@/, "").slice(0, 40);
   const filterId: FilterId = FILTERS.find((f) => f.id === first(sp.filter))?.id ?? "all";
 
-  // Búsqueda por el principio del @usuario o del nombre visible (los dos campos en minúsculas tienen índice)
-  const filter: Record<string, unknown> = {};
-  if (q) {
-    const prefix = new RegExp("^" + escapeRegex(q.toLowerCase()));
-    filter.$or = [{ usernameLower: prefix }, { displayNameLower: prefix }];
-  }
-  if (filterId === "banned") filter.bannedAt = { $ne: null };
-  if (filterId === "warned") filter["warnings.0"] = { $exists: true };
-
-  await connectDB();
-  const total = await User.countDocuments(filter);
-  const pages = Math.max(1, Math.ceil(total / PER_PAGE));
-  const page = pageFrom(sp.page, pages);
-  const users = await User.find(filter)
-    .select("username displayName email verified createdAt avatarId role warnings bannedAt banReason")
-    .sort({ createdAt: -1 })
-    .skip((page - 1) * PER_PAGE)
-    .limit(PER_PAGE)
-    .lean();
+  // Búsqueda por el principio del @usuario o del nombre visible
+  const { total, pages, page, users } = await listUsers(q, filterId, sp.page);
 
   const hrefFor = (params: { q?: string; filter?: FilterId; page?: number }) => {
     const s = new URLSearchParams();
@@ -112,9 +91,7 @@ export default async function AdminUsersPage({
       ) : (
         <ul className="space-y-3">
           {users.map((u, i) => {
-            const id = String(u._id);
-            const warnings = [...((u.warnings ?? []) as Warning[])].reverse(); // la más reciente primero
-            const isAdmin = u.role === "admin";
+            const { id, warnings, isAdmin } = u; // advertencias: la más reciente primero
             const banned = !!u.bannedAt;
             return (
               <li
@@ -125,12 +102,7 @@ export default async function AdminUsersPage({
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
                     <UserLink
-                      user={{
-                        id,
-                        username: u.username,
-                        displayName: u.displayName || u.username,
-                        avatarUrl: u.avatarId ? `/api/images/${u.avatarId}` : null,
-                      }}
+                      user={{ id, username: u.username, displayName: u.displayName, avatarUrl: u.avatarUrl }}
                       size={40}
                       showHandle
                     />
@@ -164,10 +136,10 @@ export default async function AdminUsersPage({
                 </div>
 
                 <p className="mt-2 text-xs text-muted">
-                  Alta: <LocalDate iso={new Date(u.createdAt).toISOString()} withTime={false} />
+                  Alta: <LocalDate iso={u.createdAt.toISOString()} withTime={false} />
                   {banned && (
                     <>
-                      {" · "}Baneado el <LocalDate iso={new Date(u.bannedAt).toISOString()} withTime={false} />
+                      {" · "}Baneado el <LocalDate iso={u.bannedAt!.toISOString()} withTime={false} />
                     </>
                   )}
                 </p>

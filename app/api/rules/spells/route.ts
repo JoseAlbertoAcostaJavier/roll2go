@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { sessionOf } from "@/lib/campaignApi";
-import { rateLimit, tooManyRequests } from "@/lib/rateLimit";
-import { NotFoundError, listSpellRows, usableBooks } from "@/lib/rules/catalog";
-import { SPELL_LIST_CACHE, validList } from "@/lib/rules/spellRows";
+import { sessionOf } from "@/lib/server/campaigns/campaignApi";
+import { rateLimit, tooManyRequests } from "@/lib/server/rateLimit";
+import { NotFoundError, listSpellRows, usableBooks } from "@/lib/server/catalog/catalog";
+import { SPELL_LIST_CACHE, validList } from "@/lib/rules/catalog/spellRows";
 
 // Conjuros de una lista de clase en filas ligeras, para el creador (spec ampliación de conjuros §5): de los libros que
 // el usuario puede usar en el sistema (con la campaña, los que admite), acotados a los elegidos.

@@ -1,16 +1,14 @@
 import Link from "next/link";
 import { Globe, Lock, Pencil, Plus } from "lucide-react";
-import Bbcode from "@/app/components/Bbcode";
-import ConfirmAction from "@/app/components/ConfirmAction";
-import { getCampaignAccess } from "@/lib/campaignAccess";
-import { CampaignLogEntry } from "@/lib/CampaignLogEntry";
-import LocalDate from "@/app/components/LocalDate";
-import UserLink from "@/app/components/UserLink";
-import { loadUserCards } from "@/lib/userCards";
-import { first, pageFrom } from "@/lib/utils";
-import Pagination from "@/app/components/Pagination";
+import Bbcode from "@/app/components/ui/Bbcode";
+import ConfirmAction from "@/app/components/ui/ConfirmAction";
+import { getCampaignAccess } from "@/lib/server/campaigns/campaignAccess";
+import { listLogEntries } from "@/lib/server/campaigns/queries";
+import LocalDate from "@/app/components/ui/LocalDate";
+import UserLink from "@/app/components/ui/UserLink";
+import { first, pageFrom } from "@/lib/utils/utils";
+import Pagination from "@/app/components/ui/Pagination";
 
-const PAGE_SIZE = 10;
 const FILTERS = [
   ["all", "Todas"],
   ["public", "Públicas"],
@@ -31,22 +29,8 @@ export default async function CampaignLogPage({
   const v = FILTERS.find(([key]) => key === first(sp.v))?.[0] ?? "all";
   const page = pageFrom(sp.page, 1000);
 
-  const filter = {
-    campaign: campaign._id,
-    // El DM ve todas las notas; un jugador, las públicas y las suyas. Esto lo decide el servidor.
-    ...(isDm ? {} : { $or: [{ visibility: "public" }, { author: session.id }] }),
-    ...(v !== "all" ? { visibility: v } : {}),
-  };
-
-  const total = await CampaignLogEntry.countDocuments(filter);
-  const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-  const entries = await CampaignLogEntry.find(filter)
-    .sort({ createdAt: -1 })
-    .skip((page - 1) * PAGE_SIZE)
-    .limit(PAGE_SIZE)
-    .lean();
-
-  const authors = await loadUserCards(entries.map((e) => e.author));
+  // El DM ve todas las notas; un jugador, las públicas y las suyas
+  const { pages, entries, authors } = await listLogEntries(campaign, session.id, isDm, v, page);
 
   const href = (p: number, filterKey: string) => {
     const q = new URLSearchParams();

@@ -1,15 +1,15 @@
 // Estado del asistente de subir de nivel: borrador en localStorage, qué falta en cada paso y las elecciones que se
 // envían a `POST /api/characters/[id]/levels`.
-import type { EntryOption } from "@/lib/rules/catalog";
-import type { PendingChoice } from "@/lib/rules/dnd2024/levels";
-import type { Choice } from "@/lib/rules/dnd2024/sheet";
+import type { EntryOption } from "@/lib/rules/catalog/types";
+import type { PendingChoice } from "@/lib/rules/dnd2024/levels/pendingChoices";
+import type { Choice } from "@/lib/rules/dnd2024/sheet/sheet";
 import {
   bonusChoiceOf, bonusPickMissing, featSpellsChoiceOf, featSpellsMissing, parseSpellPick, spellChoiceOf, spellPickMissing,
   type SpellPick,
-} from "@/lib/rules/dnd2024/spellPicks";
-import { SUBCLASS_SOURCE } from "@/lib/rules/dnd2024/upgrade";
+} from "@/lib/rules/dnd2024/spells/spellPicks";
+import { SUBCLASS_SOURCE } from "@/lib/rules/dnd2024/sheet/upgrade";
 import { ABILITIES, type Ability, type FeatData } from "@/lib/rules/types";
-import { choicesFor, refFromKey, type ChoiceValues } from "../ClassFeaturesSection";
+import { choicesFor, refFromKey, type ChoiceValues } from "../creator/ClassFeaturesSection";
 
 /** PG del nivel: la media o una tirada firmada, con el dado con que se obtuvieron (si cambia la clase, no valen). */
 export type HpPick = { method: "average" | "roll"; value: number; die: number; token?: string };

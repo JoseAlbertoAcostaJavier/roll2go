@@ -2,12 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
-import CampaignForm from "@/app/components/CampaignForm";
-import DeleteCampaign from "@/app/components/DeleteCampaign";
-import { getCampaignAccess } from "@/lib/campaignAccess";
-import { Campaign } from "@/lib/Campaign";
-import { system as rpgSystems } from "@/lib/systems";
-import { booksByIds, visibleBooksOf } from "@/lib/rules/books";
+import CampaignForm from "@/app/components/campaigns/CampaignForm";
+import DeleteCampaign from "@/app/components/campaigns/DeleteCampaign";
+import { getCampaignAccess } from "@/lib/server/campaigns/campaignAccess";
+import { campaignForEdit } from "@/lib/server/campaigns/queries";
+import { system as rpgSystems } from "@/lib/utils/systems";
 
 export const metadata: Metadata = { title: "Editar campaña" };
 
@@ -16,14 +15,11 @@ export default async function EditCampaignPage({ params }: { params: Promise<{ i
   const { session, isDm } = await getCampaignAccess(id);
   if (!isDm) redirect(`/campaigns/${id}`); // los jugadores no pueden editar
 
-  // Aquí sí se cargan las notas privadas: solo las ve el DM
-  const full = await Campaign.findOne({ _id: id, owner: session.id }).select("+privateNotes").lean();
-  if (!full) notFound();
-
-  // Los libros ya aprobados se mantienen visibles aunque el DM ya no los vea
-  const visible = await visibleBooksOf(session.id, full.systemId); // el sistema no cambia al editar
-  const approved = await booksByIds((full.allowedBooks ?? []) as string[]);
-  const books = [...new Map([...visible, ...approved].map((b) => [b.id, b])).values()];
+  // Aquí sí se cargan las notas privadas: solo las ve el DM. Los libros ya aprobados se mantienen visibles aunque
+  // el DM ya no los vea.
+  const found = await campaignForEdit(id, session.id);
+  if (!found) notFound();
+  const { campaign: full, books } = found;
 
   return (
     <div className="mx-auto max-w-3xl px-5 py-10">

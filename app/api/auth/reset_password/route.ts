@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import bcrypt from "bcryptjs";
-import { connectDB } from "@/lib/mongodb";
-import { User } from "@/lib/User";
-import { getClientIp, rateLimit, tooManyRequests } from "@/lib/rateLimit";
-import { hashToken } from "@/lib/verification";
+import { resetPassword } from "@/lib/server/auth/emailTokens";
+import { failureResponse } from "@/lib/server/result";
+import { getClientIp, rateLimit, tooManyRequests } from "@/lib/server/rateLimit";
 
 export async function POST(req: NextRequest) {
   // Máximo 10 intentos cada 15 minutos por IP
@@ -34,41 +32,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  try {
-    await connectDB();
-    const passwordHash = await bcrypt.hash(password, 10);
-
-    // Operación atómica: solo una petición puede gastar el token, y solo si no ha caducado.
-    // verified: true -> abrir el enlace del correo demuestra que el correo es suyo.
-    const user = await User.findOneAndUpdate(
-      {
-        resetTokenHash: hashToken(token),
-        resetTokenExpires: { $gt: new Date() },
-      },
-      {
-        $set: { passwordHash, verified: true },
-        $unset: {
-          resetTokenHash: "",
-          resetTokenExpires: "",
-          verifyTokenHash: "",
-          verifyTokenExpires: "",
-        },
-      },
-    );
-
-    if (!user) {
-      return NextResponse.json(
-        { error: "El enlace es inválido o ha expirado. Pide uno nuevo." },
-        { status: 400 },
-      );
-    }
-
-    return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error("Error en reset_password:", error);
-    return NextResponse.json(
-      { error: "Error interno del servidor." },
-      { status: 500 },
-    );
-  }
+  const result = await resetPassword(token, password);
+  if (!result.ok) return failureResponse(result);
+  return NextResponse.json({ success: true });
 }

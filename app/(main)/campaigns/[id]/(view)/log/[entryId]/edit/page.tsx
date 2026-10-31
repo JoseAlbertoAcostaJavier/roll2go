@@ -1,16 +1,14 @@
 import { notFound } from "next/navigation";
-import mongoose from "mongoose";
-import LogEntryForm from "@/app/components/LogEntryForm";
-import { getCampaignAccess } from "@/lib/campaignAccess";
-import { CampaignLogEntry } from "@/lib/CampaignLogEntry";
+import LogEntryForm from "@/app/components/campaigns/LogEntryForm";
+import { getCampaignAccess } from "@/lib/server/campaigns/campaignAccess";
+import { logEntryForEdit } from "@/lib/server/campaigns/queries";
 
 export default async function EditLogEntryPage({ params }: { params: Promise<{ id: string; entryId: string }> }) {
   const { id, entryId } = await params;
   const { session } = await getCampaignAccess(id);
-  if (!mongoose.isValidObjectId(entryId)) notFound();
 
   // Solo el autor puede editar su nota
-  const entry = await CampaignLogEntry.findOne({ _id: entryId, campaign: id, author: session.id }).lean();
+  const entry = await logEntryForEdit(id, entryId, session.id);
   if (!entry) notFound();
 
   return (

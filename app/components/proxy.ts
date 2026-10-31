@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { COOKIE_NAME, verifySession } from "@/lib/auth";
+import { COOKIE_NAME, verifySession } from "@/lib/server/auth/auth";
 
 /* Las páginas privadas redirigen al login si no hay sesión válida.
    Es una comodidad de navegación: cuando existan APIs que guarden datos

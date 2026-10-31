@@ -22,26 +22,26 @@ const SPELLS: Record<string, ReturnType<typeof spell>[]> = {
 const db = vi.hoisted(() => ({ reader: true, limited: false }));
 
 vi.mock("next/cache", () => ({ unstable_cache: (fn: () => unknown) => fn }));
-vi.mock("@/lib/mongodb", () => ({ connectDB: async () => {} }));
-vi.mock("@/lib/campaignApi", () => ({ sessionOf: async () => ({ id: "u1" }) }));
-vi.mock("@/lib/rateLimit", () => ({
+vi.mock("@/lib/models/mongodb", () => ({ connectDB: async () => {} }));
+vi.mock("@/lib/server/campaigns/campaignApi", () => ({ sessionOf: async () => ({ id: "u1" }) }));
+vi.mock("@/lib/server/rateLimit", () => ({
   rateLimit: async () => (db.limited ? { ok: false, retryAfter: 60 } : { ok: true }),
   tooManyRequests: () => new Response(null, { status: 429 }),
 }));
-vi.mock("@/lib/rules/books", () => ({
+vi.mock("@/lib/server/catalog/books", () => ({
   visibleBooksOf: async () => [{ id: A }, { id: B }],
 }));
-vi.mock("@/lib/Book", () => ({
+vi.mock("@/lib/models/Book", () => ({
   Book: { findById: (id: string) => ({ select: () => ({ lean: async () => ({ _id: id, name: `Libro ${id.slice(-1)}` }) }) }) },
 }));
-vi.mock("@/lib/BookEntry", () => ({
+vi.mock("@/lib/models/BookEntry", () => ({
   BookEntry: {
     find: (f: { book: string }) => ({
       select: () => ({ sort: () => ({ lean: async () => (SPELLS[f.book] ?? []).map((s) => ({ ...s, book: f.book })) }) }),
     }),
   },
 }));
-vi.mock("@/lib/Campaign", () => ({
+vi.mock("@/lib/models/Campaign", () => ({
   Campaign: {
     findOne: (f: { _id: string; members: string }) => ({
       select: () => ({
@@ -50,7 +50,7 @@ vi.mock("@/lib/Campaign", () => ({
     }),
   },
 }));
-vi.mock("@/lib/characterAccess", () => ({
+vi.mock("@/lib/server/characters/characterAccess", () => ({
   loadCharacterFor: async (_user: string, _id: string, mode: string) =>
     (db.reader && mode === "read" ? { books: [B] } : null),
 }));
@@ -131,7 +131,7 @@ describe("GET /api/characters/[id]/spells/list", () => {
 });
 
 describe("pendingSpellLists: listas que pide cada paso", async () => {
-  const { pendingSpellLists } = await import("@/lib/rules/spellRows");
+  const { pendingSpellLists } = await import("@/lib/rules/catalog/spellRows");
   const r = { book: A, key: "x" };
   const base = { source: "s", count: 1, label: "" };
 

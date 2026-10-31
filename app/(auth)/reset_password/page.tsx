@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import AuthShell from "@/app/components/AuthShell";
-import ResetPasswordForm from "@/app/components/ResetPasswordForm";
+import AuthShell from "@/app/components/layout/AuthShell";
+import ResetPasswordForm from "@/app/components/auth/ResetPasswordForm";
 
 export const metadata: Metadata = { title: "Nueva contraseña" };
 

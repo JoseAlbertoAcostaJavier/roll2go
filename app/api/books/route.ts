@@ -1,26 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
-import { connectDB } from "@/lib/mongodb";
-import { sessionOf } from "@/lib/campaignApi";
-import { rateLimit, tooManyRequests } from "@/lib/rateLimit";
-import { Book } from "@/lib/Book";
-import { system } from "@/lib/systems";
-import { MAX_BOOKS_PER_USER, MAX_BOOK_DESCRIPTION, MAX_BOOK_NAME } from "@/lib/bookAccess";
-import { cleanText } from "@/lib/utils";
+import { sessionOf } from "@/lib/server/campaigns/campaignApi";
+import { rateLimit, tooManyRequests } from "@/lib/server/rateLimit";
+import { system } from "@/lib/utils/systems";
+import { MAX_BOOK_DESCRIPTION, MAX_BOOK_NAME } from "@/lib/server/books/bookAccess";
+import { createBook, listMyBooks } from "@/lib/server/books/books";
+import { failureResponse } from "@/lib/server/result";
+import { cleanText } from "@/lib/utils/utils";
 
 // Mis libros (opcional ?systemId=dnd-5)
 export async function GET(req: NextRequest) {
   const session = await sessionOf(req);
   if (!session)
     return NextResponse.json({ error: "No has iniciado sesión." }, { status: 401 });
-  await connectDB();
-  const systemId = req.nextUrl.searchParams.get("systemId");
-  const books = await Book.find({
-    owner: session.id,
-    ...(systemId ? { systemId } : {}),
-  })
-    .select("-description") // el listado no necesita el texto completo
-    .sort({ updatedAt: -1 })
-    .lean();
+  const books = await listMyBooks(session.id, req.nextUrl.searchParams.get("systemId"));
   return NextResponse.json({ books });
 }
 
@@ -40,21 +32,11 @@ export async function POST(req: NextRequest) {
   if (!system.some((s) => s.id === systemId))
     return NextResponse.json({ error: "Sistema no válido." }, { status: 400 });
 
-  await connectDB();
-  if ((await Book.countDocuments({ owner: session.id })) >= MAX_BOOKS_PER_USER)
-    return NextResponse.json(
-      { error: `Has alcanzado el máximo de ${MAX_BOOKS_PER_USER} libros.` },
-      { status: 400 },
-    );
-
-  const book = await Book.create({
-    owner: session.id,
-    systemId,
+  const result = await createBook(session.id, {
     name,
+    systemId,
     description: cleanText(String(body?.description ?? "")).slice(0, MAX_BOOK_DESCRIPTION),
-    language: "es",
-    visibility: "private",
-    license: { type: "own" }, // lo oficial/SRD nunca se crea por esta ruta
   });
-  return NextResponse.json({ id: String(book._id) }, { status: 201 });
+  if (!result.ok) return failureResponse(result);
+  return NextResponse.json({ id: result.id }, { status: 201 });
 }

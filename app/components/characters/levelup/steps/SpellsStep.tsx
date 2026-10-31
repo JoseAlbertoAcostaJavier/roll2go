@@ -2,17 +2,17 @@
 
 import { useMemo, useRef, useState } from "react";
 import { Check } from "lucide-react";
-import type { SpellOption } from "@/lib/rules/catalog";
-import { bareName, refKey } from "@/lib/rules/dnd2024/equipmentRefs";
-import { spellListName } from "@/lib/rules/dnd2024/labels";
-import type { PendingChoice } from "@/lib/rules/dnd2024/levels";
-import type { Named } from "@/lib/rules/dnd2024/sheet";
-import { EMPTY_SPELL_FILTER, matchesSpellFilter, type SpellFilter } from "@/lib/rules/dnd2024/spellFilters";
-import type { SpellPick, SwapPick } from "@/lib/rules/dnd2024/spellPicks";
-import { spellSchoolName } from "@/lib/rules/dnd2024/spellTextClient";
+import type { SpellOption } from "@/lib/rules/catalog/types";
+import { bareName, refKey } from "@/lib/rules/dnd2024/sheet/equipmentRefs";
+import { spellListName } from "@/lib/rules/dnd2024/sheet/labels";
+import type { PendingChoice } from "@/lib/rules/dnd2024/levels/pendingChoices";
+import type { Named } from "@/lib/rules/dnd2024/sheet/sheet";
+import { EMPTY_SPELL_FILTER, matchesSpellFilter, type SpellFilter } from "@/lib/rules/dnd2024/spells/spellFilters";
+import type { SpellPick, SwapPick } from "@/lib/rules/dnd2024/spells/spellPicks";
+import { spellSchoolName } from "@/lib/rules/dnd2024/spells/spellTextClient";
 import type { Ref, SpellcastingMode } from "@/lib/rules/types";
-import { field, labelClass } from "@/app/components/formStyles";
-import RuleSelect from "../../RuleSelect";
+import { field, labelClass } from "@/app/components/ui/formStyles";
+import RuleSelect from "../../creator/RuleSelect";
 import { preparedFullNotice } from "../../spells/CasterBlockView";
 import SpellDialog from "../../spells/SpellDialog";
 import SpellFilters from "../../spells/SpellFilters";

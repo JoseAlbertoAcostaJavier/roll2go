@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { bbcodeToText, parseBbcode, plainText } from "@/lib/bbcode";
+import { bbcodeToText, parseBbcode, plainText } from "@/lib/utils/bbcode";
 
 describe("bbcode [ref]", () => {
   it("parsea [ref=tipo:clave] como nodo ref", () => {

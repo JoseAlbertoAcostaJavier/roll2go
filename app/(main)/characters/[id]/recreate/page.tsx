@@ -2,13 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
-import { Campaign } from "@/lib/Campaign";
-import { requireUser } from "@/lib/currentUser";
-import { loadCharacterFor } from "@/lib/characterAccess";
-import { listEntries, listMasteryWeapons, type EntryOption } from "@/lib/rules/catalog";
-import { creationDraft } from "@/lib/rules/dnd2024/recreate";
-import type { SpeciesData } from "@/lib/rules/types";
-import CharacterCreator from "@/app/components/characters/CharacterCreator";
+import { requireUser } from "@/lib/server/auth/currentUser";
+import { loadCharacterFor } from "@/lib/server/characters/characterAccess";
+import { campaignRefOf, loadCreatorLists } from "@/lib/server/characters/queries";
+import { creationDraft } from "@/lib/rules/dnd2024/creation/recreate";
+import CharacterCreator from "@/app/components/characters/creator/CharacterCreator";
 
 export const metadata: Metadata = { title: "Rehacer creación" };
 
@@ -21,27 +19,10 @@ export default async function RecreateCharacterPage({ params }: { params: Promis
   if (found.sheet.levels.length !== 1) redirect(`/characters/${id}/edit`);
   const { character: c, sheet, books } = found;
 
-  const campaignDoc = c.campaign ? await Campaign.findById(c.campaign).select("name").lean() : null;
-  const campaign = campaignDoc ? { id: String(c.campaign), name: campaignDoc.name as string } : null;
+  const campaign = await campaignRefOf(c);
 
   // Las mismas listas que en el alta, con los libros del personaje (las de conjuros, bajo demanda)
-  const [species, classes, backgrounds, feats, optionalFeatures, weapons] = await Promise.all([
-    listEntries({ books, kind: "species" }),
-    listEntries({ books, kind: "class" }),
-    listEntries({ books, kind: "background" }),
-    listEntries({ books, kind: "feat" }),
-    listEntries({ books, kind: "optionalFeature" }),
-    listMasteryWeapons(books),
-  ]);
-  const lineages: Record<string, EntryOption[]> = {};
-  await Promise.all(
-    species
-      .filter((s) => (s.data as SpeciesData | null)?.hasLineages)
-      .map(async (s) => {
-        const list = await listEntries({ books, kind: "lineage", parent: s.ref.key });
-        lineages[`${s.ref.book}:${s.ref.key}`] = list.filter((l) => l.ref.book === s.ref.book);
-      }),
-  );
+  const { species, lineages, classes, backgrounds, feats, optionalFeatures, weapons } = await loadCreatorLists(books);
 
   const initial = creationDraft(
     { name: c.name, pronouns: (c.pronouns ?? []) as string[], status: c.status, backstory: c.backstory ?? "" },

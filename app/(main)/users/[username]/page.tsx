@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
-import ConfirmAction from "@/app/components/ConfirmAction";
-import FriendActions from "@/app/components/FriendActions";
-import ProfileCard from "@/app/components/ProfileCard";
-import { requireUser } from "@/lib/currentUser";
-import { getPublicProfile } from "@/lib/userProfile";
-import { relationBetween } from "@/lib/friends";
-import { blockStatus } from "@/lib/blocks";
+import ConfirmAction from "@/app/components/ui/ConfirmAction";
+import FriendActions from "@/app/components/social/FriendActions";
+import ProfileCard from "@/app/components/account/ProfileCard";
+import { requireUser } from "@/lib/server/auth/currentUser";
+import { getPublicProfile } from "@/lib/server/account/userProfile";
+import { relationBetween } from "@/lib/server/social/friends";
+import { blockStatus } from "@/lib/server/social/blocks";
 
 export const metadata: Metadata = { title: "Perfil" };
 

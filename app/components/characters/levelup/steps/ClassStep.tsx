@@ -1,9 +1,9 @@
 "use client";
 
 import { Lock } from "lucide-react";
-import type { CatalogEntry } from "@/lib/rules/catalog";
-import { bareName } from "@/lib/rules/dnd2024/equipmentRefs";
-import RoundIcon from "@/app/components/RoundIcon";
+import type { CatalogEntry } from "@/lib/rules/catalog/types";
+import { bareName } from "@/lib/rules/dnd2024/sheet/equipmentRefs";
+import RoundIcon from "@/app/components/ui/RoundIcon";
 
 export type ClassChoice = {
   key: string;

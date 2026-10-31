@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { sessionOf } from "@/lib/campaignApi";
-import { rateLimit, tooManyRequests } from "@/lib/rateLimit";
-import { loadCharacterFor } from "@/lib/characterAccess";
-import { resolveRef } from "@/lib/rules/catalog";
-import { spellClassNames } from "@/lib/rules/dnd2024/spellText";
+import { sessionOf } from "@/lib/server/campaigns/campaignApi";
+import { rateLimit, tooManyRequests } from "@/lib/server/rateLimit";
+import { loadCharacterFor } from "@/lib/server/characters/characterAccess";
+import { resolveRef } from "@/lib/server/catalog/catalog";
+import { spellClassNames } from "@/lib/rules/dnd2024/spells/spellText";
 import type { SpellData } from "@/lib/rules/types";
 
 type Ctx = { params: Promise<{ id: string; bookId: string; key: string }> };

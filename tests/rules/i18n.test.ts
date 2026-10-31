@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import es from "@/lib/rules/i18n/es.json";
 import { normalizeAll, type RawFiles } from "@/lib/rules/import/normalize";
-import { ENTRY_KINDS } from "@/lib/BookEntry";
+import { ENTRY_KINDS } from "@/lib/rules/types";
 
 const fixture = (f: string) =>
   JSON.parse(readFileSync(path.join(import.meta.dirname, "../fixtures/5etools", f), "utf8"));

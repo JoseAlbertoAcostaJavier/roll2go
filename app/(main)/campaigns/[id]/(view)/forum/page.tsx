@@ -1,13 +1,10 @@
 import Link from "next/link";
 import { MessageSquare, MessagesSquare, Pin, Plus } from "lucide-react";
-import Avatar from "@/app/components/Avatar";
-import LocalDate from "@/app/components/LocalDate";
-import Pagination from "@/app/components/Pagination";
-import { getCampaignAccess } from "@/lib/campaignAccess";
-import { ForumPost } from "@/lib/ForumPost";
-import { THREADS_PER_PAGE } from "@/lib/forum";
-import { loadUserCards } from "@/lib/userCards";
-import { pageFrom } from "@/lib/utils";
+import Avatar from "@/app/components/ui/Avatar";
+import LocalDate from "@/app/components/ui/LocalDate";
+import Pagination from "@/app/components/ui/Pagination";
+import { getCampaignAccess } from "@/lib/server/campaigns/campaignAccess";
+import { listThreads } from "@/lib/server/forum/queries";
 
 const newButton =
   "flex items-center gap-2 rounded-md bg-brand px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-brand-hover";
@@ -23,27 +20,8 @@ export default async function ForumPage({
   const sp = await searchParams;
   const { campaign } = await getCampaignAccess(id);
 
-  const filter = { campaign: campaign._id, parent: null };
-  const total = await ForumPost.countDocuments(filter);
-  const pages = Math.max(1, Math.ceil(total / THREADS_PER_PAGE));
-  const page = pageFrom(sp.page, pages);
-
-  // Fijados primero y después por última actividad
-  const threads = await ForumPost.find(filter)
-    .select("author title pinned createdAt lastActivityAt")
-    .sort({ pinned: -1, lastActivityAt: -1 })
-    .skip((page - 1) * THREADS_PER_PAGE)
-    .limit(THREADS_PER_PAGE)
-    .lean();
-
-  // Número de respuestas y autor de la última de cada hilo, en una sola consulta
-  const stats = await ForumPost.aggregate<{ _id: unknown; n: number; lastAuthor: unknown }>([
-    { $match: { parent: { $in: threads.map((t) => t._id) } } },
-    { $sort: { createdAt: 1 } },
-    { $group: { _id: "$parent", n: { $sum: 1 }, lastAuthor: { $last: "$author" } } },
-  ]);
-  const statsById = new Map(stats.map((s) => [String(s._id), s]));
-  const cards = await loadUserCards([...threads.map((t) => t.author), ...stats.map((s) => s.lastAuthor)]);
+  // Fijados primero y después por última actividad, con sus respuestas y el autor de la última
+  const { total, pages, page, threads, statsById, cards } = await listThreads(campaign, sp.page);
 
   return (
     <section>

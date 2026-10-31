@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import mongoose from "mongoose";
-import { readReason, requireAdminApi } from "@/lib/adminApi";
-import { rateLimit, tooManyRequests } from "@/lib/rateLimit";
-import { notify } from "@/lib/notify";
-import { User } from "@/lib/User";
+import { readReason, requireAdminApi } from "@/lib/server/admin/adminApi";
+import { warnUser } from "@/lib/server/admin/moderation";
+import { failureResponse } from "@/lib/server/result";
+import { rateLimit, tooManyRequests } from "@/lib/server/rateLimit";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -19,30 +18,7 @@ export async function POST(req: NextRequest, { params }: Ctx) {
   const input = await readReason(req);
   if ("error" in input) return input.error;
 
-  if (!mongoose.isValidObjectId(id))
-    return NextResponse.json({ error: "Usuario no encontrado." }, { status: 404 });
-  if (id === ctx.session.id)
-    return NextResponse.json({ error: "No puedes advertirte a ti mismo." }, { status: 400 });
-
-  try {
-    const res = await User.updateOne(
-      { _id: id },
-      { $push: { warnings: { reason: input.reason, by: ctx.session.id, createdAt: new Date() } } },
-    );
-    if (res.matchedCount === 0)
-      return NextResponse.json({ error: "Usuario no encontrado." }, { status: 404 });
-
-    await notify({
-      user: id,
-      type: "system",
-      text: `Has recibido una advertencia de la moderación de Roll2Go. Motivo: ${input.reason}`,
-    });
-    return NextResponse.json({ ok: true });
-  } catch (err) {
-    console.error("Error al advertir al usuario:", err);
-    return NextResponse.json(
-      { error: "No se pudo guardar la advertencia. Inténtalo de nuevo." },
-      { status: 500 },
-    );
-  }
+  const result = await warnUser(ctx.session.id, id, input.reason);
+  if (!result.ok) return failureResponse(result);
+  return NextResponse.json({ ok: true });
 }

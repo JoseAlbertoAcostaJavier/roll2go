@@ -1,7 +1,7 @@
 // Catálogo de prueba con los datos de 5etools de tests/fixtures, normalizados como en el importador.
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import type { CatalogEntry } from "@/lib/rules/catalog";
+import type { CatalogEntry } from "@/lib/rules/catalog/types";
 import { BOOK_PLACEHOLDER, normalizeAll, type RawFiles } from "@/lib/rules/import/normalize";
 
 const fixture = (f: string) =>

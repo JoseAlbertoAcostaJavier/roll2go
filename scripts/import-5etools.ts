@@ -12,16 +12,16 @@ try {
   process.loadEnvFile(".env.local");
 } catch {}
 
-import { connectDB } from "../lib/mongodb";
-import { Book } from "../lib/Book";
-import { BookEntry, ENTRY_KINDS } from "../lib/BookEntry";
+import { connectDB } from "../lib/models/mongodb";
+import { Book } from "../lib/models/Book";
+import { BookEntry, ENTRY_KINDS } from "../lib/models/BookEntry";
 import {
   BOOK_PLACEHOLDER, normalizeAll, textChoiceFeatures, unreachableFeatures, type RawFiles,
 } from "../lib/rules/import/normalize";
 import { planImport } from "../lib/rules/import/plan";
 import { matchFoundry, type FoundryFiles } from "../lib/rules/import/foundry";
 import { normalizeName } from "../lib/rules/schemas";
-import { FEATURE_CHOICES, SPECIFIED_CHOICES } from "../lib/rules/dnd2024/featureChoices";
+import { FEATURE_CHOICES, SPECIFIED_CHOICES } from "../lib/rules/dnd2024/levels/featureChoices";
 import es from "../lib/rules/i18n/es.json";
 import type { SpellData } from "../lib/rules/types";
 
