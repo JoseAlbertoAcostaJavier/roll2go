@@ -5,7 +5,7 @@
 // padre siempre está en el mismo libro. Todas las claves llevan el tipo delante (`spell:fireball|xphb`).
 import { ABILITIES } from "../types";
 import type {
-  Ability, ClassTable, EntryData, EntryKind, Equipment, FeatSpellChoice, FeatSpellFilter, FeatureData, LevelCounts,
+  Ability, ClassTable, Defenses, DefenseList, EntryData, EntryKind, Equipment, FeatSpellChoice, FeatSpellFilter, FeatureData, LevelCounts,
   LevelFeature, MulticlassData, NameGender, OptionalFeatureData, Pack, Ref, Spellcasting, SpellcastingProgression, SpellGrant,
 } from "../types";
 import { normalizeName, validateEntryData } from "../schemas";
@@ -373,6 +373,31 @@ const entry = <K extends EntryKind>(head: Omit<NormalizedEntry, "data">, data: E
 
 // ---------- normalizadores por tipo ----------
 
+const DEFENSE_FIELDS = ["resist", "immune", "vulnerable", "conditionImmune"] as const;
+
+/** Resistencias, inmunidades, vulnerabilidades y estados inmunes; se descartan las condicionales (`special`, `cond`, listas anidadas). */
+export function normalizeDefenses(raw: Rec): Defenses | undefined {
+  const out: Defenses = {};
+  for (const field of DEFENSE_FIELDS) {
+    const list: DefenseList = [];
+    for (const v of asArr(raw[field])) {
+      if (typeof v === "string") list.push(lower(v));
+      else if (isObj(v) && isObj(v.choose) && v.special === undefined && v.cond === undefined) {
+        const from = asArr(v.choose.from).map((x) => lower(str(x))).filter(Boolean);
+        if (from.length) list.push({ choose: { from, count: typeof v.choose.count === "number" ? v.choose.count : 1 } });
+      }
+    }
+    if (list.length) out[field] = list;
+  }
+  return Object.keys(out).length ? out : undefined;
+}
+
+/** `{ defenses }` para añadir a los datos, o nada. */
+const withDefenses = (raw: Rec): { defenses?: Defenses } => {
+  const defenses = normalizeDefenses(raw);
+  return defenses ? { defenses } : {};
+};
+
 export function normalizeSpecies(raw: Rec, ctx: NormalizeContext): NormalizedEntry {
   const skillBlock = asArr(raw.skillProficiencies)[0];
   const skills: { fixed: string[]; choose?: { count: number; from: string[] } } = { fixed: [] };
@@ -396,6 +421,7 @@ export function normalizeSpecies(raw: Rec, ctx: NormalizeContext): NormalizedEnt
     skills,
     spells: spellGrants(ownSpells),
     hasLineages: asArr(raw._versions).length > 0,
+    ...withDefenses(raw),
   });
 }
 
@@ -415,6 +441,7 @@ export function normalizeLineage(version: Rec, species: Rec): NormalizedEntry {
   const data: EntryData["lineage"] = {
     spells: spellGrants(asArr(version.additionalSpells).filter((b) => isObj(b) && b.name === undefined)),
     traitName: nameOf(own[0]) || name,
+    ...withDefenses(version),
   };
   if (typeof version.darkvision === "number" && version.darkvision !== species.darkvision) data.darkvision = version.darkvision;
   const speed = walkSpeed(version.speed);
@@ -469,6 +496,7 @@ export function normalizeFeat(raw: Rec): NormalizedEntry {
     category: FEAT_CATEGORIES[str(raw.category)] ?? (str(raw.category) as EntryData["feat"]["category"]),
     ...(str(raw.category) ? { categoryCode: str(raw.category) } : {}),
     repeatable: raw.repeatable === true,
+    ...withDefenses(raw),
   };
   const prerequisite = prerequisiteText(raw.prerequisite);
   if (prerequisite) data.prerequisite = prerequisite;
@@ -530,6 +558,7 @@ export function normalizeItem(raw: Rec): NormalizedEntry {
     type,
     weight: typeof raw.weight === "number" ? raw.weight : 0,
     value: typeof raw.value === "number" ? raw.value : 0,
+    ...withDefenses(raw),
   };
   if (str(raw.rarity) && raw.rarity !== "none") data.rarity = str(raw.rarity);
   if (type in ARMOR && typeof raw.ac === "number") {

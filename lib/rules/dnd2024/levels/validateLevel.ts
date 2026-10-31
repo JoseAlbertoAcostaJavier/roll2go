@@ -8,7 +8,7 @@ import { derive } from "../derive";
 import { characterFeats } from "../derive/features";
 import { chosenSpells, knownSpellRefs } from "../derive/spells";
 import {
-  checkFeatSpellChoices, chosenFeatSpells, featSpellClash, levelFeatSpellPending, splitFeatSpells, type FeatWithData,
+  checkFeatSpellChoices, chosenFeatSpells, featNameOfLabel, featSpellClash, levelFeatSpellPending, splitFeatSpells, type FeatWithData,
 } from "../spells/featSpells";
 import { refKey } from "../sheet/equipmentRefs";
 import { heldArcana, heldBonusSpells, heldOptionalFeatures, heldPicks } from "./held";
@@ -179,10 +179,13 @@ export async function validateLevel(
     { path: CHOICES_PATH, books: ctx.books, resolve: ctx.resolve, held: chosenFeatSpells(sheet.levels) },
   );
   for (const [k, msg] of Object.entries(featSpells.errors)) err(k, msg);
-  // El mismo conjuro no se elige a la vez con una dote y para la clase
+  // El mismo conjuro no se elige a la vez con una dote y para la clase, ni con dos dotes
   const clash = featSpellClash([...checked.choices, ...featSpells.choices]);
-  const clashLabel = clash ? featPending.find((p) => p.source === clash.source)?.label : "";
-  if (clash) err(`${CHOICES_PATH}.${clash.source}`, `${clashLabel}: ${clash.name} ya lo eliges con la clase.`);
+  if (clash) {
+    const labelOf = (source: string) => featPending.find((p) => p.source === source)?.label ?? "";
+    const other = clash.with === null ? "la clase" : featNameOfLabel(labelOf(clash.with));
+    err(`${CHOICES_PATH}.${clash.source}`, `${labelOf(clash.source)}: ${clash.name} ya lo eliges con ${other}.`);
+  }
 
   // Puntos de golpe: media exacta o tirada firmada; el máximo solo en el nivel 1 de la primera clase (la creación)
   const hp = checkHp(input.hp, data.hitDie, ctx.userId, ctx.characterId, n);

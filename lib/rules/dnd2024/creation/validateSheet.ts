@@ -9,14 +9,10 @@ import { POINT_BUY_TOTAL, STANDARD_ARRAY, checkBackgroundBonus, pointBuyCost } f
 import { checkChoices, loadInto } from "./checkChoices";
 import { checkFeatSpells } from "./checkFeatSpells";
 import { has, isObj, isStringList } from "./rawInput";
-import { abilityScores } from "../derive/abilities";
-import { casterBlocks, spellSlots } from "../derive/spells";
 import { splitFeatSpells } from "../spells/featSpells";
 import { pendingChoices } from "../levels/pendingChoices";
 import { abilityRollValue, verifyRolls } from "./rolls";
-import { isRef, loadEquipmentEntries, refKey } from "../sheet/equipmentRefs";
-import { preparedKey } from "../spells/spellcasting";
-import { applySpellOp } from "../spells/spellOps";
+import { loadEquipmentEntries, refKey } from "../sheet/equipmentRefs";
 import {
   ABILITY_METHODS, type AbilityMethod, type Choice, type Dnd2024Sheet, type Dnd2024SheetV2, type Named,
 } from "../sheet/sheet";
@@ -302,36 +298,5 @@ export async function validateSheet(input: unknown, ctx: ValidateCtx): Promise<V
   const v2 = upgradeSheet(sheet, entries, ctx.makeId);
   v2.levels[0].choices = choices;
   v2.weaponMasteries = choices.flatMap((c) => (c.type === "weaponMastery" ? c.value : []));
-  const prepared = await initialPrepared(v2, input.prepared, classEntries, ctx);
-  if ("error" in prepared) return { ok: false, errors: { prepared: prepared.error } };
-  v2.prepared = prepared.prepared;
   return { ok: true, sheet: v2 };
-}
-
-/**
- * Preparados iniciales (`{ [clave de la clase]: Ref[] }`, modos `list` y `spellbook`): se comprueban como si se
- * preparasen uno a uno en la ficha (lista o libro de la clase, nivel y límite, que nunca se supera).
- */
-async function initialPrepared(
-  sheet: Dnd2024SheetV2, raw: unknown, classEntries: Map<string, CatalogEntry>, ctx: ValidateCtx,
-): Promise<{ prepared: Record<string, Ref[]> } | { error: string }> {
-  if (raw == null) return { prepared: {} };
-  const lists = isObj(raw) ? Object.entries(raw) : null;
-  if (!lists || !lists.every(([, refs]) => Array.isArray(refs) && refs.every(isRef)))
-    return { error: "Conjuros preparados no válidos." };
-  const entries = new Map(classEntries);
-  const refs = lists.flatMap(([, list]) => list as Ref[]);
-  await loadInto(entries, refs.filter((r) => r.key.startsWith("spell:") && ctx.books.includes(r.book)), ctx.resolve);
-  const blocks = casterBlocks(sheet, { abilities: abilityScores(sheet), proficiencyBonus: 0 }, entries);
-  const opCtx = { blocks, slots: spellSlots(sheet, entries), resolve: (r: Ref) => entries.get(refKey(r)) ?? null };
-  let current = sheet;
-  for (const [key, list] of lists) {
-    const block = blocks.find((b) => preparedKey(b.class) === key);
-    for (const ref of list as Ref[]) {
-      const r = applySpellOp(current, { op: "prepare", class: block?.class ?? null, ref }, opCtx);
-      if (!r.ok) return { error: r.error };
-      current = r.sheet;
-    }
-  }
-  return { prepared: current.prepared };
 }

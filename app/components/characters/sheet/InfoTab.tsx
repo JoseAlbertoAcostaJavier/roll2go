@@ -1,14 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { TriangleAlert } from "lucide-react";
-import type { Breakdown, Derived } from "@/lib/rules/dnd2024/derive";
+import type { Breakdown, DefenseKind, DefenseRow, Derived } from "@/lib/rules/dnd2024/derive";
 import { PASSIVE_SKILLS } from "@/lib/rules/dnd2024/derive/abilities";
 import {
-  ABILITY_ABBR, ABILITY_NAMES, distanceText, fmtMod, proficiencyName, skillName, toolName,
+  ABILITY_ABBR, ABILITY_NAMES, defenseTypeName, distanceText, fmtMod, proficiencyName, skillName, toolName,
 } from "@/lib/rules/dnd2024/sheet/labels";
 import {
-  ABILITY_TEXTS, AC_TEXT, INITIATIVE_TEXT, saveText, SKILL_TEXTS, SPEED_TEXT, type BreakdownUnit,
+  ABILITY_TEXTS, AC_TEXT, DEFENSES_TEXT, INITIATIVE_TEXT, saveText, SKILL_TEXTS, SPEED_TEXT, type BreakdownUnit,
 } from "@/lib/rules/dnd2024/sheet/statTexts";
 import { ABILITIES, type Ability } from "@/lib/rules/types";
 import { card, cardTitle } from "@/app/components/ui/formStyles";
@@ -42,14 +42,25 @@ const chipValue = "font-heading text-xl font-extrabold leading-tight";
 type Stat =
   | { kind: "ability" | "save"; ability: Ability }
   | { kind: "skill"; id: string; ability: Ability }
-  | { kind: "ac" | "initiative" | "speed" };
+  | { kind: "ac" | "initiative" | "speed" | "defenses" };
 type Open = { stat: Stat; opener: HTMLElement };
-type Detail = { title: string; subject: string; description: string; breakdown: Breakdown; unit?: BreakdownUnit };
+type Detail = {
+  title: string; subject?: string; description: string; breakdown?: Breakdown; unit?: BreakdownUnit; children?: ReactNode;
+};
+
+// Grupos de la tarjeta de defensas, en el orden en que llegan las filas
+const DEFENSE_GROUPS: { kind: DefenseKind; title: string }[] = [
+  { kind: "resist", title: "Resistencias" },
+  { kind: "immune", title: "Inmunidades" },
+  { kind: "vulnerable", title: "Vulnerabilidades" },
+  { kind: "conditionImmune", title: "Inmunidad a estados" },
+];
+const defenseLabel = (r: DefenseRow) => (r.type === null ? "a elegir" : defenseTypeName(r.kind, r.type));
 
 /** Los valores derivados que muestra la pestaña (solo esos viajan al navegador). */
 export type InfoData = Pick<Derived,
   | "abilities" | "proficiencyBonus" | "hp" | "ac" | "armorWarning" | "initiative" | "speed" | "darkvision" | "saves"
-  | "skills" | "armor" | "weapons" | "tools" | "languages" | "attacks" | "breakdowns">;
+  | "skills" | "armor" | "weapons" | "tools" | "languages" | "attacks" | "breakdowns" | "defenses">;
 
 type Props = { d: InfoData; characterId: string; isOwner: boolean };
 
@@ -95,6 +106,26 @@ export default function InfoTab({ d, characterId, isOwner }: Props) {
         return { title: "Iniciativa", subject: "la iniciativa", description: INITIATIVE_TEXT, breakdown: b.initiative };
       case "speed":
         return { title: "Velocidad", subject: "la velocidad", description: SPEED_TEXT, breakdown: b.speed, unit: "feet" };
+      case "defenses":
+        return {
+          title: "Defensas", description: DEFENSES_TEXT,
+          children: DEFENSE_GROUPS.map((g) => {
+            const rows = d.defenses.filter((r) => r.kind === g.kind);
+            if (rows.length === 0) return null;
+            return (
+              <section key={g.kind} className="mb-3 last:mb-0">
+                <h4 className="mb-1 text-sm font-semibold">{g.title}</h4>
+                <ul className="divide-y divide-line text-sm">
+                  {rows.map((r) => (
+                    <li key={r.type ?? "?"} className="py-1.5">
+                      {defenseLabel(r)} <span className="text-muted">· {r.sources.join(", ")}</span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            );
+          }),
+        };
     }
   }
 
@@ -182,6 +213,31 @@ export default function InfoTab({ d, characterId, isOwner }: Props) {
           </div>
         </div>
       </section>
+
+      {/* Defensas: resistencias, inmunidades y vulnerabilidades, solo si las hay */}
+      {d.defenses.length > 0 && (
+        <section className={`${card} animate-fade-up`} style={{ animationDelay: "75ms" }}>
+          <h3 className={cardTitle}>Defensas</h3>
+          <button
+            type="button"
+            aria-haspopup="dialog"
+            data-print="text"
+            onClick={show({ kind: "defenses" })}
+            className={`${statButton} block w-full space-y-1 rounded px-1 py-1 text-left text-sm`}
+          >
+            {DEFENSE_GROUPS.map((g) => {
+              const rows = d.defenses.filter((r) => r.kind === g.kind);
+              if (rows.length === 0) return null;
+              return (
+                <span key={g.kind} className="block">
+                  <span className="font-semibold">{g.title}: </span>
+                  <span className="text-muted">{rows.map(defenseLabel).join(", ")}</span>
+                </span>
+              );
+            })}
+          </button>
+        </section>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-[1fr_1.4fr]">
         <section className={`${card} animate-fade-up`} style={{ animationDelay: "100ms" }}>

@@ -7,7 +7,7 @@ import { card, primaryButton } from "@/app/components/ui/formStyles";
 import type { CatalogEntry, EntryOption } from "@/lib/rules/catalog/types";
 import { derive } from "@/lib/rules/dnd2024/derive";
 import { characterFeats } from "@/lib/rules/dnd2024/derive/features";
-import { chosenFeatSpells, levelFeatSpellPending, type FeatWithData } from "@/lib/rules/dnd2024/spells/featSpells";
+import { chosenFeatSpells, featNameOfLabel, levelFeatSpellPending, type FeatWithData } from "@/lib/rules/dnd2024/spells/featSpells";
 import { chosenSpells, knownSpellRefs } from "@/lib/rules/dnd2024/derive/spells";
 import { refKey } from "@/lib/rules/dnd2024/sheet/equipmentRefs";
 import { FEATURE_OPTION_LABELS } from "@/lib/rules/dnd2024/levels/featureChoices";
@@ -16,6 +16,7 @@ import { heldArcana, heldBonusSpells, heldOptionalFeatures, heldPicks } from "@/
 import {
   meetsFeatPrerequisite, meetsMulticlass, pendingChoices, withBonusCantrips, type PendingChoice,
 } from "@/lib/rules/dnd2024/levels/pendingChoices";
+import { crossSourceGranted, type GrantedSpell } from "@/lib/rules/dnd2024/spells/grantedSpells";
 import { spellsSource } from "@/lib/rules/dnd2024/levels/spellPending";
 import { LEVEL_CHANGED } from "@/lib/rules/dnd2024/levels/levelOps";
 import { currentMasteries, masteryLabel } from "@/lib/rules/dnd2024/levels/masteries";
@@ -123,7 +124,7 @@ function Wizard(props: Props & { draftKey: string; draft: string | null }) {
   const defaultClass = (classChoices.find((c) => c.key === lastClass && !c.blocked) ?? classChoices.find((c) => !c.blocked))?.key ?? "";
 
   const [state, setState] = useState<LevelUpState>(() => parseDraft(props.draft, {
-    classKey: defaultClass, subclassKey: "", values: {}, replaced: {}, featAbility: {}, asi: {}, spells: {}, hp: null,
+    classKey: defaultClass, subclassKey: "", values: {}, replaced: {}, featAbility: {}, featResist: {}, asi: {}, spells: {}, hp: null,
     step: "class",
   }));
   const [saving, setSaving] = useState(false);
@@ -308,6 +309,15 @@ function Wizard(props: Props & { draftKey: string; draft: string | null }) {
     ...[...(classData?.spells ?? []), ...((subclassEntry?.data as SubclassData | undefined)?.spells ?? [])]
       .filter((g) => g.level <= classLevel).map((g) => g.ref),
   ].map(refKey);
+  // Y lo que se elige en este nivel en la clase o en una dote: un mismo conjuro no se elige en dos sitios
+  const levelPicks = pending.filter((p) => p.type === "spells" || p.type === "featSpells").map((p) => {
+    const v = state.spells[p.source];
+    return {
+      source: p.source, label: p.type === "spells" ? "la clase" : featNameOfLabel(p.label),
+      keys: v ? [...v.cantrips, ...v.spells, ...(v.free ?? []), v.replace.in, v.replaceCantrip.in].filter(Boolean) : [],
+    };
+  });
+  const grantedFor = (source: string): GrantedSpell[] => crossSourceGranted(grantedSpells, levelPicks, source);
   const spellNames = useMemo(() => new Map(spells.map((s) => [refKey(s.ref), nameOf(s)])), [spells]);
   const featSpellsHeld = useMemo(() => chosenFeatSpells(sheet.levels), [sheet]);
   // Arcano místico y conjuros de rasgos: los que ya da la elección, el libro de la clase con lo elegido en este nivel
@@ -504,7 +514,7 @@ function Wizard(props: Props & { draftKey: string; draft: string | null }) {
           id={`feat-spells-${n}`}
           p={p}
           spells={spells}
-          granted={grantedSpells}
+          granted={grantedFor(p.source)}
           held={p.featSpells ? (featSpellsHeld.get(refKey(p.featSpells.feat)) ?? []) : []}
           value={state.spells[p.source] ?? emptySpellPick()}
           onChange={(v) => update({ spells: { ...state.spells, [p.source]: v } })}
@@ -541,7 +551,7 @@ function Wizard(props: Props & { draftKey: string; draft: string | null }) {
           pending={p}
           spells={spells}
           held={heldSpells(p)}
-          granted={grantedSpells}
+          granted={grantedFor(p.source)}
           value={state.spells[p.source] ?? emptySpellPick()}
           onChange={(v) => update({ spells: { ...state.spells, [p.source]: v } })}
           characterId={characterId}
@@ -567,6 +577,8 @@ function Wizard(props: Props & { draftKey: string; draft: string | null }) {
         onReplace={(k) => update({ replaced: { ...state.replaced, [p.source]: k } })}
         featAbility={(k) => state.featAbility[featAbilityKey(p.source, k)]}
         onFeatAbility={(k, a) => update({ featAbility: { ...state.featAbility, [featAbilityKey(p.source, k)]: a } })}
+        featResist={(k) => state.featResist[featAbilityKey(p.source, k)]}
+        onFeatResist={(k, v) => update({ featResist: { ...state.featResist, [featAbilityKey(p.source, k)]: v } })}
         scores={scores}
       />
     );

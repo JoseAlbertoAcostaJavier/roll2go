@@ -85,7 +85,7 @@ export default async function CharacterPage({ params, searchParams }: Props) {
   const itemInfo: Record<string, ItemInfo> = {};
   for (const line of sheet.inventory.items) {
     const data = line.ref ? (entries.get(refKey(line.ref))?.data as ItemData | undefined) : undefined;
-    itemInfo[line.id] = { weight: data?.weight ?? 0, equippable: !!(data?.armor || data?.weapon) };
+    itemInfo[line.id] = { weight: data?.weight ?? 0, equippable: !!(data?.armor || data?.weapon || data?.defenses) };
   }
 
   // Maestrías con armas: las actuales y, para cambiarlas, las armas con maestría y competencia (del Bárbaro, solo
@@ -133,6 +133,7 @@ export default async function CharacterPage({ params, searchParams }: Props) {
     abilities: d.abilities, proficiencyBonus: d.proficiencyBonus, hp: d.hp, ac: d.ac, armorWarning: d.armorWarning,
     initiative: d.initiative, speed: d.speed, darkvision: d.darkvision, saves: d.saves, skills: d.skills, armor: d.armor,
     weapons: d.weapons, tools: d.tools, languages: d.languages, attacks: d.attacks, breakdowns: d.breakdowns,
+    defenses: d.defenses,
   };
 
   const base = `/characters/${id}`;

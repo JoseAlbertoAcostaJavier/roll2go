@@ -71,6 +71,9 @@ export const INITIATIVE_TEXT =
 export const SPEED_TEXT =
   "La velocidad es la distancia que puedes recorrer en tu turno. Puedes repartir el movimiento antes y después de tu acción; el terreno difícil cuesta el doble.";
 
+export const DEFENSES_TEXT =
+  "Con resistencia a un tipo de daño recibes la mitad; con vulnerabilidad, el doble; con inmunidad, ninguno. La inmunidad a un estado impide que se te pueda aplicar.";
+
 /**
  * Unidad de un desglose en el diálogo de detalle: sin unidad, modificadores con signo; `plain`, puntuación de
  * característica o CA (la base y el total sin signo); `feet`, velocidad en pies (la base sin signo y el total con

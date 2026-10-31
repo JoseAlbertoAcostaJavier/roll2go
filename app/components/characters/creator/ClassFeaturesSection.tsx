@@ -6,7 +6,7 @@ import Bbcode from "@/app/components/ui/Bbcode";
 import type { CatalogEntry, EntryOption } from "@/lib/rules/catalog/types";
 import { weaponProficient } from "@/lib/rules/dnd2024/derive/attacks";
 import { bareName, refKey } from "@/lib/rules/dnd2024/sheet/equipmentRefs";
-import { FEATURE_OPTION_LABELS } from "@/lib/rules/dnd2024/levels/featureChoices";
+import { FEATURE_OPTION_LABELS, optionalFeatureAtLevel } from "@/lib/rules/dnd2024/levels/featureChoices";
 import { SKILL_NAMES, featFitsCategories, skillName } from "@/lib/rules/dnd2024/sheet/labels";
 import type { PendingChoice } from "@/lib/rules/dnd2024/levels/pendingChoices";
 import { isMasteryWeapon, masteryLabel, meleeOnlySource } from "@/lib/rules/dnd2024/levels/masteries";
@@ -150,14 +150,14 @@ export function choiceOptions(p: PendingChoice, ctx: ChoiceCtx): PickerOption[] 
       return ctx.optionalFeatures
         .filter((o) => {
           const d = o.data as OptionalFeatureData | null;
-          return !!d && d.featureType.some((t) => p.featureType?.includes(t)) && !held.has(refKey(o.ref));
+          return !!d && d.featureType.some((t) => p.featureType?.includes(t)) && !held.has(refKey(o.ref))
+            && optionalFeatureAtLevel(d, ctx.classLevel);
         })
         .map((o) => {
           const pre = (o.data as OptionalFeatureData).prerequisite;
-          const blocked = pre?.level && pre.level > ctx.classLevel ? `Requiere nivel ${pre.level}`
-            : pre?.pact && !have.includes(pre.pact) ? `Requiere ${nameByKey(pre.pact)}`
-              : pre?.feature && !have.includes(pre.feature) ? `Requiere ${nameByKey(pre.feature)}`
-                : null;
+          const blocked = pre?.pact && !have.includes(pre.pact) ? `Requiere ${nameByKey(pre.pact)}`
+            : pre?.feature && !have.includes(pre.feature) ? `Requiere ${nameByKey(pre.feature)}`
+              : null;
           return { id: refKey(o.ref), label: nameOf(o), ...(blocked ? { disabled: blocked } : {}) };
         });
     }

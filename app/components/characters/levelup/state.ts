@@ -15,7 +15,11 @@ import { choicesFor, refFromKey, type ChoiceValues } from "../creator/ClassFeatu
 export type HpPick = { method: "average" | "roll"; value: number; die: number; token?: string };
 
 /** Mejora de característica: +2 a una o +1 a dos, o una dote general (y la característica que sube, si da). */
-export type AsiPick = { mode: "abilities" | "feat"; abilities: Partial<Record<Ability, number>>; feat: string; ability: Ability | "" };
+export type AsiPick = {
+  mode: "abilities" | "feat"; abilities: Partial<Record<Ability, number>>; feat: string; ability: Ability | "";
+  /** Tipos de daño de la dote, si da una resistencia a elegir. */
+  resist: string[];
+};
 
 export type LevelUpState = {
   /** Clase en la que sube (`libro:clave`). */
@@ -27,6 +31,8 @@ export type LevelUpState = {
   replaced: Record<string, string>;
   /** Característica que mejora cada dote elegida, por `featAbilityKey`; y la de lanzamiento de sus conjuros, por `source`. */
   featAbility: Record<string, Ability>;
+  /** Tipos de daño que resiste cada dote elegida (si da una resistencia a elegir), por `featAbilityKey`. */
+  featResist: Record<string, string[]>;
   asi: Record<string, AsiPick>;
   /**
    * Conjuros elegidos y sustituciones, por `source` (también los de las dotes, con su lista, el Arcano místico y los
@@ -42,7 +48,7 @@ export const ASI_POINTS = 2;
 export const ABILITY_CAP = 20;
 const EPIC_CAP = 30;
 
-export const emptyAsi = (): AsiPick => ({ mode: "abilities", abilities: {}, feat: "", ability: "" });
+export const emptyAsi = (): AsiPick => ({ mode: "abilities", abilities: {}, feat: "", ability: "", resist: [] });
 export const featAbilityKey = (source: string, featKey: string) => `${source} ${featKey}`;
 export const draftKeyOf = (characterId: string, n: number) => `roll2go:level-up:${characterId}:${n}`;
 
@@ -79,12 +85,14 @@ export function parseDraft(raw: string | null, fallback: LevelUpState): LevelUpS
     values: record(d.values, (x) => strings(x)),
     replaced: record(d.replaced, (x) => (typeof x === "string" ? x : null)),
     featAbility: record(d.featAbility, (x) => (isAbility(x) ? x : null)),
+    featResist: record(d.featResist, (x) => (Array.isArray(x) ? strings(x) : null)),
     asi: record(d.asi, (x) => (isObj(x)
       ? {
         mode: x.mode === "feat" ? "feat" : "abilities",
         abilities: record(x.abilities, (n) => (n === 1 || n === 2 ? n : null)),
         feat: str(x.feat),
         ability: isAbility(x.ability) ? x.ability : "",
+        resist: strings(x.resist),
       }
       : null)),
     spells: record(d.spells, (x) => parseSpellPick(x)),
@@ -99,6 +107,21 @@ export function featAbility(feat: EntryOption | undefined, chosen: Ability | "" 
   const from = data?.abilityIncrease ?? [];
   const ability = from.length === 1 ? from[0] : chosen && from.includes(chosen) ? chosen : null;
   return { from, ability, cap: data?.category === "epicBoon" ? EPIC_CAP : ABILITY_CAP };
+}
+
+/** La resistencia a elegir de una dote (`choose`): de qué tipos de daño y cuántos; null si no tiene. */
+export function featResistChoose(feat: EntryOption | undefined): { from: string[]; count: number } | null {
+  const list = (feat?.data as FeatData | null | undefined)?.defenses?.resist ?? [];
+  for (const x of list) if (typeof x !== "string") return x.choose;
+  return null;
+}
+
+/** Los tipos de daño elegidos si están completos y son válidos para la dote; si no, null. */
+function validResist(feat: EntryOption | undefined, chosen: string[] | undefined): string[] | null {
+  const choose = featResistChoose(feat);
+  const given = (chosen ?? []).filter(Boolean);
+  if (!choose) return null;
+  return given.length === choose.count && new Set(given).size === given.length && given.every((t) => choose.from.includes(t)) ? given : null;
 }
 
 const sum = (abilities: Partial<Record<Ability, number>>) => Object.values(abilities).reduce((s, v) => s + (v ?? 0), 0);
@@ -129,6 +152,7 @@ export function missingChoice(p: PendingChoice, env: ChoiceEnv): string | null {
     const fa = featAbility(featOf(a.feat), a.ability);
     if (fa.from.length && !fa.ability) return "elegir la característica que mejora la dote";
     if (fa.ability && scores[fa.ability] + 1 > fa.cap) return `una característica que no pase de ${fa.cap}`;
+    if (featResistChoose(featOf(a.feat)) && !validResist(featOf(a.feat), a.resist)) return "elegir los tipos de daño de la dote";
     return null;
   }
   if (p.type === "spells") return spellPickMissing(p, state.spells[p.source]);
@@ -141,6 +165,9 @@ export function missingChoice(p: PendingChoice, env: ChoiceEnv): string | null {
     for (const k of chosen) {
       const fa = featAbility(featOf(k), state.featAbility[featAbilityKey(p.source, k)]);
       if (fa.from.length && !fa.ability) return "elegir la característica que mejora la dote";
+      if (featResistChoose(featOf(k)) && !validResist(featOf(k), state.featResist[featAbilityKey(p.source, k)])) {
+        return "elegir los tipos de daño de la dote";
+      }
     }
   }
   return null;
@@ -162,8 +189,10 @@ export function buildChoices(env: ChoiceEnv): Choice[] {
           const abilities = Object.fromEntries(Object.entries(a.abilities).filter(([, v]) => v)) as Partial<Record<Ability, 1 | 2>>;
           return [{ type: "asi", source: p.source, value: { abilities } }];
         }
-        const ability = featAbility(feats.find((f) => `${f.ref.book}:${f.ref.key}` === a.feat), a.ability).ability;
-        return [{ type: "asi", source: p.source, value: { feat: named(a.feat), ...(ability ? { ability } : {}) } }];
+        const feat = feats.find((f) => `${f.ref.book}:${f.ref.key}` === a.feat);
+        const ability = featAbility(feat, a.ability).ability;
+        const resist = validResist(feat, a.resist);
+        return [{ type: "asi", source: p.source, value: { feat: named(a.feat), ...(ability ? { ability } : {}), ...(resist ? { resist } : {}) } }];
       }
       case "feat":
         // Con `count: 0` y sin sustituir nada, no se envía
@@ -171,8 +200,10 @@ export function buildChoices(env: ChoiceEnv): Choice[] {
         return [{
           type: "feat", source: p.source,
           value: picked.map((k) => {
-            const ability = featAbility(feats.find((f) => `${f.ref.book}:${f.ref.key}` === k), state.featAbility[featAbilityKey(p.source, k)]).ability;
-            return { ...named(k), ...(ability ? { ability } : {}) };
+            const feat = feats.find((f) => `${f.ref.book}:${f.ref.key}` === k);
+            const ability = featAbility(feat, state.featAbility[featAbilityKey(p.source, k)]).ability;
+            const resist = validResist(feat, state.featResist[featAbilityKey(p.source, k)]);
+            return { ...named(k), ...(ability ? { ability } : {}), ...(resist ? { resist } : {}) };
           }),
           ...(replaced.length ? { replaced } : {}),
         }];

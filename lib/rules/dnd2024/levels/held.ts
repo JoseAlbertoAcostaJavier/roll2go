@@ -111,7 +111,9 @@ function heldWithLevel(levels: LevelEntry[], type: "feat" | "optionalFeature") {
 export function heldFeats(levels: LevelEntry[]): (FeatPickValue & { level: number })[] {
   // (sin `source`, que solo usan los rasgos opcionales)
   return heldWithLevel(levels, "feat")
-    .map(({ ref, name, ability, level }) => ({ ref, name, level, ...(ability ? { ability } : {}) }));
+    .map(({ ref, name, ability, resist, level }) => ({
+      ref, name, level, ...(ability ? { ability } : {}), ...(resist ? { resist } : {}),
+    }));
 }
 
 /**

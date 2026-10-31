@@ -40,6 +40,11 @@ export type LevelFeature = { ref: Ref; level: number };
 /** Opciones de equipo inicial por letra: `{ A: [...], B: [...], C: [...] }`. */
 export type Equipment = Record<string, Pack[]>;
 
+/** Tipos de daño o estados (en minúsculas e inglés, como 5etools); `choose` es una elección que se hace en la ficha. */
+export type DefenseList = (string | { choose: { from: string[]; count: number } })[];
+/** Resistencias, inmunidades y vulnerabilidades al daño, e inmunidades a estados. */
+export type Defenses = { resist?: DefenseList; immune?: DefenseList; vulnerable?: DefenseList; conditionImmune?: DefenseList };
+
 export type SpeciesData = {
   size: ("S" | "M" | "L")[];
   speed: number;
@@ -48,6 +53,7 @@ export type SpeciesData = {
   skills: { fixed: string[]; choose?: { count: number; from: string[] } };
   spells: SpellGrant[];
   hasLineages: boolean;
+  defenses?: Defenses;
 };
 
 export type LineageData = {
@@ -55,6 +61,7 @@ export type LineageData = {
   speed?: number;
   spells: SpellGrant[];
   traitName: string;
+  defenses?: Defenses;
 };
 
 /** Progresión de espacios: lanzador completo, medio (redondeando hacia arriba), tercio (hacia abajo) o Magia de pacto. */
@@ -186,6 +193,7 @@ export type FeatData = {
   spellChoices?: FeatSpellChoice[];
   /** Características entre las que se elige la de lanzamiento de esos conjuros (Iniciado en la magia). */
   spellAbility?: Ability[];
+  defenses?: Defenses;
 };
 
 export type SpellData = {
@@ -214,6 +222,7 @@ export type ItemData = {
   armor?: { ac: number; dexCap: number | null; stealthDisadvantage: boolean; category: string };
   weapon?: { damage: string; damageType: string; properties: string[]; mastery?: string; category: string };
   contents?: { ref: Ref; quantity: number }[];
+  defenses?: Defenses;
 };
 
 export type LanguageData = { type: "standard" | "rare" };

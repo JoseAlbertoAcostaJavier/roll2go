@@ -105,23 +105,32 @@ export async function checkChoices(
   const scoreOf = (a: Ability) => (ctx.character?.abilities[a] ?? 0) + (raised[a] ?? 0);
   const raise = (a: Ability, v: number) => { raised[a] = (raised[a] ?? 0) + v; };
 
-  // Dote elegida: prerrequisitos, repetición y la característica que sube (si la dote da +1). Devuelve el error o la
-  // característica elegida
-  const checkFeat = (e: CatalogEntry, rawAbility: unknown): { error: string } | { ability?: Ability } => {
+  // Dote elegida: prerrequisitos, repetición, la característica que sube (si la dote da +1) y los tipos de daño de su
+  // resistencia a elegir. Devuelve el error o lo elegido
+  const checkFeat = (e: CatalogEntry, rawAbility: unknown, rawResist: unknown): { error: string } | { ability?: Ability; resist?: string[] } => {
     const d = e.data as FeatData | null;
     const name = e.nameEs || e.name;
     if (ctx.character && !meetsFeatPrerequisite(d?.prerequisite, ctx.character)) {
       return { error: `no cumples los requisitos de ${name}.` };
     }
     if (ctx.character && !d?.repeatable && ctx.character.feats.includes(e.ref.key)) return { error: `ya tienes ${name}.` };
+    let resist: string[] | undefined;
+    const choose = d?.defenses?.resist?.find((x): x is { choose: { from: string[]; count: number } } => typeof x !== "string");
+    if (choose) {
+      const { from: types, count } = choose.choose;
+      const given = isStringList(rawResist) ? rawResist : [];
+      if (given.some((t) => !types.includes(t))) return { error: "tipo de daño no válido." };
+      if (given.length !== count || new Set(given).size !== count) return { error: `elige ${count} tipos de daño.` };
+      resist = given;
+    }
     const from = d?.abilityIncrease ?? [];
-    if (!from.length) return rawAbility === undefined ? {} : { error: `${name} no mejora ninguna característica.` };
+    if (!from.length) return rawAbility === undefined ? { ...(resist ? { resist } : {}) } : { error: `${name} no mejora ninguna característica.` };
     const ability = (rawAbility ?? (from.length === 1 ? from[0] : undefined)) as Ability;
     if (!from.includes(ability)) return { error: `elige qué característica mejora ${name}.` };
     const cap = d?.category === "epicBoon" ? EPIC_CAP : ABILITY_CAP;
     if (ctx.character && scoreOf(ability) + 1 > cap) return { error: `${ABILITY_NAMES[ability]} no puede pasar de ${cap}.` };
     raise(ability, 1);
-    return { ability };
+    return { ability, ...(resist ? { resist } : {}) };
   };
   // Lo que sustituye (`replaced`): como mucho uno de los que conserva de esta misma elección, si la elección lo permite
   const replacedOf = (p: PendingChoice, c: Obj): Named[] | null => {
@@ -190,12 +199,12 @@ export async function checkChoices(
       if (new Set(feats.map((e) => refKey(e.ref))).size !== feats.length) { bad("dote repetida."); continue; }
       const held = alreadyHeld(p, feats);
       if (held) { bad(`ya tienes ${held.nameEs || held.name}.`); continue; }
-      const checked = feats.map((e, k) => checkFeat(e, isObj(list[k]) ? list[k].ability : undefined));
+      const checked = feats.map((e, k) => checkFeat(e, isObj(list[k]) ? list[k].ability : undefined, isObj(list[k]) ? list[k].resist : undefined));
       const failed = checked.find((r): r is { error: string } => "error" in r);
       if (failed) { bad(failed.error); continue; }
       const featValue = feats.map((e, k) => {
-        const ability = (checked[k] as { ability?: Ability }).ability;
-        return { ...named(e), ...(ability ? { ability } : {}) };
+        const { ability, resist } = checked[k] as { ability?: Ability; resist?: string[] };
+        return { ...named(e), ...(ability ? { ability } : {}), ...(resist ? { resist } : {}) };
       });
       out.push({ type: "feat", source: p.source, value: featValue, ...(replaced.length ? { replaced } : {}) });
     } else if (p.type === "asi") {
@@ -211,13 +220,13 @@ export async function checkChoices(
         for (const [a, v] of parsed) raise(a, v);
         const abilities = Object.fromEntries(parsed) as Partial<Record<Ability, 1 | 2>>;
         out.push({ type: "asi", source: p.source, value: { abilities } });
-      } else if (has(value, "feat") && Object.keys(value).every((k) => k === "feat" || k === "ability")) {
+      } else if (has(value, "feat") && Object.keys(value).every((k) => k === "feat" || k === "ability" || k === "resist")) {
         const e = await load(value.feat, "feat");
         if (!e || e.ref.key.startsWith(ASI_FEAT)) { bad("elige una dote."); continue; }
         if (!featFitsCategories(e.data as FeatData | null, p.category)) { bad("dote de otra categoría."); continue; }
-        const r = checkFeat(e, value.ability);
+        const r = checkFeat(e, value.ability, value.resist);
         if ("error" in r) { bad(r.error); continue; }
-        out.push({ type: "asi", source: p.source, value: { feat: named(e), ...(r.ability ? { ability: r.ability } : {}) } });
+        out.push({ type: "asi", source: p.source, value: { feat: named(e), ...(r.ability ? { ability: r.ability } : {}), ...(r.resist ? { resist: r.resist } : {}) } });
       } else bad("elige una mejora.");
     } else if (p.type === "optionalFeature") {
       const replaced = replacedOf(p, c);

@@ -73,14 +73,14 @@ describe("creationDraft", () => {
       invocations: [k("optionalFeature:agonizing blast|xphb")],
     });
   });
-  it("pasa los conjuros iniciales y los preparados de la clase a claves `libro:clave`", () => {
+  it("pasa los conjuros iniciales a claves `libro:clave` (los preparados ya no van en el borrador)", () => {
     const d = creationDraft({ name: "Ana", pronouns: [], status: "active", backstory: "" }, sheet());
     const k = (key: string) => `${ref(key).book}:${key}`;
     expect(d.spells).toEqual({
       cantrips: [k("spell:light|xphb")], spells: [k("spell:sleep|xphb")],
       replace: { out: "", in: "" }, replaceCantrip: { out: "", in: "" },
     });
-    expect(d.prepared).toEqual([k("spell:x|xphb")]);
+    expect(d).not.toHaveProperty("prepared");
   });
   it("pasa cada elección de conjuros de dote o invocación por su fuente, con la lista y la característica", () => {
     const s = sheet();

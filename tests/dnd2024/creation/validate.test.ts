@@ -2,6 +2,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import type { CatalogEntry } from "@/lib/rules/catalog/types";
 import { checkChoices } from "@/lib/rules/dnd2024/creation/checkChoices";
 import { validateSheet } from "@/lib/rules/dnd2024/creation/validateSheet";
+import { featSpellClash } from "@/lib/rules/dnd2024/spells/featSpells";
 import { signRolls } from "@/lib/rules/dnd2024/creation/rolls";
 import type { Ref } from "@/lib/rules/types";
 import { B as FB, buildCatalog, ref as fref } from "../fixtureCatalog";
@@ -417,50 +418,21 @@ describe("validateSheet: elecciones de clase de nivel 1", () => {
     expect(errs(await wizard(spellChoice("wizard", cantrips, [...WIZARD_SPELLS.slice(0, 5), "fireball"]))))
       .toHaveProperty([SOURCE], "Conjuros: fireball es de nivel 3; el máximo es 1.");
   });
-  describe("preparados iniciales", () => {
-    const CLERIC_SPELLS = ["bless", "cure wounds", "healing word", "guiding bolt", "shield of faith"];
-    for (const name of CLERIC_SPELLS) {
-      extra(`spell:${name}|xphb`, {
-        level: 1, school: "A", time: "", range: "", components: "", duration: "", concentration: false, ritual: false,
-        classes: ["cleric"], tags: [],
-      }, name);
-    }
-    const prep = (cls: string, names: string[]) => ({ [`class:${cls}|xphb`]: names.map((n) => fref(`spell:${n}|xphb`)) });
+  describe("preparados", () => {
+    const prep = { "class:cleric|xphb": [fref("spell:bless|xphb")] };
     const cleric = (prepared: unknown) => validateSheet({
       ...sheetFor("cleric", [
         skills(["history", "medicine"]), order("classFeature:protector|cleric|xphb|1"), spellChoice("cleric", CLERIC_CANTRIPS),
       ]),
       prepared,
     }, fctx);
-    const wizard = (prepared: unknown) => validateSheet({
-      ...sheetFor("wizard", [skills(["arcana", "history"]), spellChoice("wizard", ["light", "mage hand", "fire bolt"], WIZARD_SPELLS.slice(0, 6))]),
-      prepared,
-    }, fctx);
 
-    it("Clérigo 1: guarda los preparados de su lista hasta el límite (4)", async () => {
-      const r = await cleric(prep("cleric", CLERIC_SPELLS.slice(0, 4)));
-      if (!r.ok) throw new Error(JSON.stringify(r.errors));
-      expect(r.sheet.prepared).toEqual(prep("cleric", CLERIC_SPELLS.slice(0, 4)));
-      const none = await cleric(undefined);
-      expect(none.ok && none.sheet.prepared).toEqual({});
-    });
-    it("nunca supera el límite", async () => {
-      expect(errs(await cleric(prep("cleric", CLERIC_SPELLS)))).toEqual({ prepared: "Ya tienes 4 de 4 conjuros preparados." });
-    });
-    it("rechaza trucos, conjuros de otra lista, de nivel alto o de una clase que no es la suya", async () => {
-      expect(errs(await cleric(prep("cleric", ["light"])))).toHaveProperty("prepared", "Los trucos no se preparan.");
-      expect(errs(await cleric(prep("cleric", ["sleep"])))).toHaveProperty("prepared", "sleep no está en la lista de Cleric.");
-      expect(errs(await wizard(prep("wizard", ["fireball"])))).toHaveProperty("prepared");
-      expect(errs(await cleric(prep("wizard", ["bless"])))).toHaveProperty("prepared", "Esa clase no lanza conjuros.");
-      expect(errs(await cleric({ "class:cleric|xphb": "bless" }))).toHaveProperty("prepared", "Conjuros preparados no válidos.");
-      expect(errs(await cleric([]))).toHaveProperty("prepared", "Conjuros preparados no válidos.");
-    });
-    it("Mago 1: solo prepara de su libro", async () => {
-      const r = await wizard(prep("wizard", WIZARD_SPELLS.slice(0, 4)));
-      if (!r.ok) throw new Error(JSON.stringify(r.errors));
-      expect(r.sheet.prepared).toEqual(prep("wizard", WIZARD_SPELLS.slice(0, 4)));
-      // El séptimo conjuro de la lista no está en el libro de 6
-      expect(errs(await wizard(prep("wizard", [WIZARD_SPELLS[6]])))).toHaveProperty("prepared", "grease no está en tu libro de conjuros.");
+    it("no se preparan al crear: lo enviado se ignora y la hoja queda con `prepared: {}`", async () => {
+      for (const prepared of [prep, { "class:cleric|xphb": "bless" }, [], undefined]) {
+        const r = await cleric(prepared);
+        if (!r.ok) throw new Error(JSON.stringify(r.errors));
+        expect(r.sheet.prepared).toEqual({});
+      }
     });
   });
   it("Orden divina con una opción que no es suya, o elección que no estaba pendiente → error", async () => {
@@ -615,5 +587,31 @@ describe("checkChoices: estilo de combate del Paladín", () => {
     const r = await checkChoices(pending, [{ type: "feat", source, value: [{ ref: blessed.ref, name: "x" }] }], cctx);
     expect(r.errors).toEqual({});
     expect(r.choices[0]).toMatchObject({ value: [{ name: "Blessed Warrior" }] });
+  });
+});
+
+describe("featSpellClash", () => {
+  const n = (name: string) => ({ ref: { book: "b1", key: `spell:${name}|xphb` }, name });
+  const fs = (source: string, cantrips: string[], spells: string[] = [], replaceIn?: string) => ({
+    type: "featSpells" as const, source,
+    value: {
+      feat: { book: "b1", key: "feat:x|xphb" }, cantrips: cantrips.map(n), spells: spells.map(n),
+      ...(replaceIn ? { replace: { out: n("old"), in: n(replaceIn) } } : {}),
+    },
+  });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const clash = (...c: unknown[]) => featSpellClash(c as any);
+  it("dos dotes con el mismo truco o conjuro: choca la segunda con la primera", () => {
+    expect(clash(fs("a", ["light"]), fs("b", ["guidance", "light"]))).toEqual({ source: "b", name: "light", with: "a" });
+    expect(clash(fs("a", [], ["bless"]), fs("b", [], ["bless"]))).toEqual({ source: "b", name: "bless", with: "a" });
+  });
+  it("también si el repetido es el conjuro al que se cambia", () => {
+    expect(clash(fs("a", ["light"]), fs("b", [], [], "light"))).toEqual({ source: "b", name: "light", with: "a" });
+    expect(clash(fs("a", [], [], "bless"), fs("b", [], ["bless"]))).toEqual({ source: "b", name: "bless", with: "a" });
+  });
+  it("dote contra clase: with es null; sin repetidos, null", () => {
+    const cls = { type: "spells" as const, source: "c", value: { cantrips: [n("light")], spells: [] } };
+    expect(clash(cls, fs("a", ["light"]))).toEqual({ source: "a", name: "light", with: null });
+    expect(clash(fs("a", ["light"]), fs("b", ["guidance"]))).toBeNull();
   });
 });

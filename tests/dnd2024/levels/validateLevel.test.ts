@@ -30,6 +30,16 @@ extra("feat:athlete|xphb", {
 extra("feat:boon of combat prowess|xphb", {
   category: "epicBoon", prerequisite: "Level 19+", repeatable: false, abilityIncrease: ["str", "dex", "con", "int", "wis", "cha"],
 }, "Boon of Combat Prowess");
+const DAMAGE_TYPES = ["acid", "bludgeoning", "cold", "fire", "force", "lightning", "necrotic", "piercing", "poison", "psychic", "radiant", "slashing", "thunder"];
+extra("feat:boon of energy resistance|xphb", {
+  category: "epicBoon", prerequisite: "Level 19+", repeatable: false, abilityIncrease: ["str", "dex", "con", "int", "wis", "cha"],
+  defenses: { resist: [{ choose: { from: ["acid", "cold", "fire", "lightning", "necrotic", "poison", "psychic", "radiant", "thunder"], count: 2 } }] },
+}, "Boon of Energy Resistance");
+// (dote general inventada con la misma elección, para probarla en lugar de una mejora de característica)
+extra("feat:warded|xphb", {
+  category: "general", repeatable: false, abilityIncrease: ["str"],
+  defenses: { resist: [{ choose: { from: DAMAGE_TYPES, count: 1 } }] },
+}, "Warded");
 extra("optionalFeature:armor of shadows|xphb", { featureType: ["EI"] }, "Armor of Shadows");
 extra("optionalFeature:mask of many faces|xphb", { featureType: ["EI"] }, "Mask of Many Faces");
 extra("optionalFeature:misty visions|xphb", { featureType: ["EI"] }, "Misty Visions");
@@ -483,6 +493,37 @@ describe("validateLevel", () => {
     expect(await errorsOf(sheet, boon("great weapon master", "str"))).toHaveProperty(["choices.progression:eb|barbarian|xphb"]);
   });
 
+  it("don de resistencia a la energía: elige dos tipos de daño de la lista, sin repetir", async () => {
+    const sheet = sheetWith([["barbarian", 18]]);
+    const source = "progression:eb|barbarian|xphb";
+    const boon = (resist?: unknown) => ({
+      expectedLevel: 19, class: client("class:barbarian|xphb"), hp: average,
+      choices: [{ type: "feat", source, value: [{ ...client("feat:boon of energy resistance|xphb"), ability: "str", ...(resist ? { resist } : {}) }] }],
+    });
+    const r = await validateLevel(sheet, boon(["cold", "fire"]), ctx());
+    if (!r.ok) throw new Error(JSON.stringify(r.errors));
+    expect(r.entry.choices[0]).toMatchObject({ type: "feat", value: [{ ability: "str", resist: ["cold", "fire"] }] });
+    expect((await errorsOf(sheet, boon(["cold"])))[`choices.${source}`]).toContain("elige 2 tipos de daño.");
+    expect((await errorsOf(sheet, boon()))[`choices.${source}`]).toContain("elige 2 tipos de daño.");
+    expect((await errorsOf(sheet, boon(["banana", "fire"])))[`choices.${source}`]).toContain("tipo de daño no válido.");
+    // «force» existe pero no está en la lista de la dote; repetir uno tampoco vale
+    expect(await errorsOf(sheet, boon(["force", "fire"]))).toHaveProperty([`choices.${source}`]);
+    expect(await errorsOf(sheet, boon(["fire", "fire"]))).toHaveProperty([`choices.${source}`]);
+  });
+
+  it("dote con resistencia a elegir en lugar de la mejora: guarda el tipo y llega a derive", async () => {
+    const warded = (resist?: unknown) => ({ feat: client("feat:warded|xphb"), ability: "str", ...(resist ? { resist } : {}) });
+    const r = await validateLevel(barbarian3(), input({ choices: [asi(warded(["poison"])), mastery()] }), ctx());
+    if (!r.ok) throw new Error(JSON.stringify(r.errors));
+    expect(r.entry.choices[0]).toMatchObject({ type: "asi", value: { feat: { name: "Warded" }, ability: "str", resist: ["poison"] } });
+    expect(await errorsOf(barbarian3(), input({ choices: [asi(warded()), mastery()] }))).toHaveProperty([`choices.${ASI}`]);
+    // Una dote sin esa elección ignora el campo
+    const gwm = { feat: client("feat:great weapon master|xphb"), ability: "str", resist: ["fire"] };
+    const ok = await validateLevel(barbarian3(), input({ choices: [asi(gwm), mastery()] }), ctx());
+    if (!ok.ok) throw new Error(JSON.stringify(ok.errors));
+    expect(ok.entry.choices[0]).not.toHaveProperty("value.resist");
+  });
+
   it("entrada no válida → error", async () => {
     expect(await errorsOf(barbarian3(), null)).not.toEqual({});
     expect(await errorsOf(barbarian3(), input({ choices: "x" }))).toHaveProperty("choices");
@@ -888,6 +929,29 @@ describe("dotes y Pacto del tomo", () => {
       expect(await errorsOf(warlock1(), withTome([tome(["find familiar", "bless"])])))
         .toHaveProperty([`choices.${TOME}`], "Conjuros de Pact of the Tome: bless no se puede elegir con esta dote.");
       expect(await errorsOf(warlock1(), withTome([]))).toHaveProperty("choices", "Falta elegir: Conjuros de Pact of the Tome.");
+    });
+    it("el mismo truco con el Pacto del tomo y con otra dote en el mismo nivel → error en la segunda", async () => {
+      extra("spell:guidance|xphb", {
+        level: 0, school: "V", time: "", range: "", components: "", duration: "", concentration: false, ritual: false,
+        classes: ["cleric"], tags: [],
+      }, "guidance");
+      const INITIATE = "featSpells:feat:magic initiate; cleric|xphb";
+      const s = warlock1();
+      s.levels[0].choices.push({
+        type: "featSpells", source: INITIATE, value: {
+          feat: ref("feat:magic initiate; cleric|xphb"), cantrips: [held("light"), held("sacred flame")], spells: [held("bless")],
+          ability: "wis",
+        },
+      });
+      const swap = featSpells(INITIATE, { cantrips: [], spells: [], replace: { out: spell("sacred flame"), in: spell("guidance") } });
+      const clashing = { ...tome(["find familiar", "speak with animals"]), value: {
+        cantrips: ["guidance", "vicious mockery", "druidcraft"].map(spell), spells: ["find familiar", "speak with animals"].map(spell),
+      } };
+      const errors = await errorsOf(s, withTome([swap, clashing]));
+      // Choca la que va después en el orden del nivel (la dote que ya tenía, tras la invocación que gana); la otra no tiene error
+      expect(errors).toEqual({
+        [`choices.${INITIATE}`]: "Conjuros de Magic Initiate; Cleric: guidance ya lo eliges con Pact of the Tome.",
+      });
     });
     it("si ya tenía el Pacto del tomo sin sus conjuros (hoja anterior), se piden en la siguiente subida", async () => {
       const s = sheetWith([["warlock", 1]], {

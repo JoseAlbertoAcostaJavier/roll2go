@@ -25,7 +25,7 @@ export type FeatureGroup = {
 };
 
 /** Dote del personaje con el nivel total en que se obtuvo. */
-export type FeatPick = { ref: Ref; name: string | null; level: number };
+export type FeatPick = { ref: Ref; name: string | null; level: number; resist?: string[] };
 
 /**
  * Dotes del personaje: la de origen del trasfondo, las elegidas en lugar de una mejora de característica y las de las
@@ -35,10 +35,12 @@ export function characterFeats(sheet: Dnd2024SheetV2, background: BackgroundData
   const feats: FeatPick[] = background?.feat ? [{ ref: background.feat, name: null, level: 1 }] : [];
   for (const l of sheet.levels) {
     for (const c of l.choices) {
-      if (c.type === "asi" && "feat" in c.value) feats.push({ ref: c.value.feat.ref, name: c.value.feat.name, level: l.n });
+      if (c.type === "asi" && "feat" in c.value) {
+        feats.push({ ref: c.value.feat.ref, name: c.value.feat.name, level: l.n, ...(c.value.resist ? { resist: c.value.resist } : {}) });
+      }
     }
   }
-  for (const f of heldFeats(sheet.levels)) feats.push({ ref: f.ref, name: f.name, level: f.level });
+  for (const f of heldFeats(sheet.levels)) feats.push({ ref: f.ref, name: f.name, level: f.level, ...(f.resist ? { resist: f.resist } : {}) });
   return feats.sort((a, b) => a.level - b.level);
 }
 

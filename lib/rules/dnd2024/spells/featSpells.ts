@@ -10,6 +10,9 @@ import type { PendingChoice } from "../levels/pendingChoices";
 import type { Choice, FeatSpellsValue, LevelEntry, Named } from "../sheet/sheet";
 
 /** Fuente de la elección de conjuros de una dote. */
+/** El nombre de la dote de la etiqueta de su elección («Conjuros de Iniciado en la magia» → «Iniciado en la magia»). */
+export const featNameOfLabel = (label: string) => label.replace(/^Conjuros de /, "");
+
 export const featSpellsSource = (feat: Ref) => `featSpells:${feat.key}`;
 
 /**
@@ -252,18 +255,26 @@ export function chosenFeatSpells(levels: LevelEntry[]): Map<string, Named[]> {
 }
 
 /**
- * Primer conjuro elegido a la vez con una dote (`featSpells`) y para una clase (`spells`) en las elecciones de un
- * mismo nivel, con la fuente de la elección de la dote; null si no hay.
+ * Primer conjuro elegido a la vez con una dote (`featSpells`) y para una clase (`spells`), o con dos dotes, en las
+ * elecciones de un mismo nivel. Devuelve la elección de la dote que repite (`source`), el conjuro y la elección de la
+ * otra dote (`with`: la anterior en la lista) o null si es contra la clase; null si no hay.
  */
-export function featSpellClash(choices: Choice[]): { source: string; name: string } | null {
+export function featSpellClash(choices: Choice[]): { source: string; name: string; with: string | null } | null {
   const classKeys = new Set(choices.flatMap((c) => (c.type === "spells"
     ? [...c.value.cantrips, ...c.value.spells, ...(c.value.free ?? []), c.value.replace?.in, c.value.replaceCantrip?.in]
     : [])).filter((x): x is Named => !!x).map((x) => refKey(x.ref)));
+  // Conjuros ya elegidos por las dotes anteriores, con la elección que los eligió
+  const byFeat = new Map<string, string>();
   for (const c of choices) {
     if (c.type !== "featSpells") continue;
-    const clash = [...c.value.cantrips, ...c.value.spells, c.value.replace?.in]
-      .find((x) => !!x && classKeys.has(refKey(x.ref)));
-    if (clash) return { source: c.source, name: clash.name };
+    const picked = [...c.value.cantrips, ...c.value.spells, c.value.replace?.in].filter((x): x is Named => !!x);
+    for (const x of picked) {
+      const k = refKey(x.ref);
+      if (classKeys.has(k)) return { source: c.source, name: x.name, with: null };
+      const other = byFeat.get(k);
+      if (other) return { source: c.source, name: x.name, with: other };
+    }
+    for (const x of picked) byFeat.set(refKey(x.ref), c.source);
   }
   return null;
 }

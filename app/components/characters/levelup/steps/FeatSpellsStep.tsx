@@ -9,6 +9,7 @@ import type { PendingChoice } from "@/lib/rules/dnd2024/levels/pendingChoices";
 import type { Named } from "@/lib/rules/dnd2024/sheet/sheet";
 import type { SpellPick } from "@/lib/rules/dnd2024/spells/spellPicks";
 import type { Ability, FeatSpellFilter } from "@/lib/rules/types";
+import type { GrantedSpell } from "@/lib/rules/dnd2024/spells/grantedSpells";
 import { field, labelClass } from "@/app/components/ui/formStyles";
 import RuleSelect from "../../creator/RuleSelect";
 import SpellsStep from "./SpellsStep";
@@ -19,7 +20,7 @@ type Props = {
   p: PendingChoice;
   spells: SpellOption[];
   /** Conjuros que ya tiene por otras vías (`libro:clave`). */
-  granted?: string[];
+  granted?: GrantedSpell[];
   /** Los que conserva de la dote (de ahí sale el que se cambia, si la elección lo permite). */
   held?: Named[];
   value: SpellPick;
@@ -57,7 +58,7 @@ export default function FeatSpellsStep({ id, p, ability, onAbility, held = [], .
   const swap = value.replace;
   const outSpell = swap.out ? byKey.get(swap.out) : undefined;
   const taken = new Set([
-    ...held.map((h) => refKey(h.ref)), ...(rest.granted ?? []), ...value.cantrips, ...value.spells,
+    ...held.map((h) => refKey(h.ref)), ...(rest.granted ?? []).map((g) => g.key), ...value.cantrips, ...value.spells,
   ]);
   const swapOptions = outSpell
     ? spells.filter((s) => {
