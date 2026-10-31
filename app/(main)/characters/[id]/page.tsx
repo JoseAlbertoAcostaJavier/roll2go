@@ -85,7 +85,7 @@ export default async function CharacterPage({ params, searchParams }: Props) {
   const itemInfo: Record<string, ItemInfo> = {};
   for (const line of sheet.inventory.items) {
     const data = line.ref ? (entries.get(refKey(line.ref))?.data as ItemData | undefined) : undefined;
-    itemInfo[line.id] = { weight: data?.weight ?? 0, equippable: !!(data?.armor || data?.weapon) };
+    itemInfo[line.id] = { weight: data?.weight ?? 0, equippable: !!(data?.armor || data?.weapon || data?.defenses) };
   }
 
   // Maestrías con armas: las actuales y, para cambiarlas, las armas con maestría y competencia (del Bárbaro, solo

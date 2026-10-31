@@ -48,7 +48,7 @@ export function applyHp(sheet: Dnd2024SheetV2, input: unknown, maxHp: number): E
 const itemData = (e: CatalogEntry | null) => e?.data as ItemData | undefined;
 const isShield = (d: ItemData | undefined) => d?.armor?.category === "shield";
 const isBodyArmor = (d: ItemData | undefined) => !!d?.armor && !isShield(d);
-const canEquip = (d: ItemData | undefined) => !!d && (!!d.weapon || !!d.armor);
+const canEquip = (d: ItemData | undefined) => !!d && (!!d.weapon || !!d.armor || !!d.defenses);
 
 const QUANTITY_ERROR = `La cantidad va de 0 a ${MAX_QUANTITY}.`;
 const NOTES_ERROR = `Las notas admiten ${MAX_ITEM_NOTES} caracteres como máximo.`;
@@ -119,7 +119,7 @@ export function applyInventoryOp(
         if (typeof op.equipped !== "boolean") return fail("Petición no válida.");
         if (op.equipped) {
           const data = itemData(line.ref ? resolveItem(line.ref) : null);
-          if (!canEquip(data)) return fail("Solo se pueden equipar armaduras, escudos y armas.");
+          if (!canEquip(data)) return fail("Solo se pueden equipar armaduras, escudos, armas y objetos con resistencias o inmunidades.");
           items = unequipSameKind(items, line, data);
         }
         next.equipped = op.equipped;

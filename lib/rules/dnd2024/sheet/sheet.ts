@@ -28,8 +28,11 @@ export type Dnd2024Sheet = {
   hp: { max: number | null; current: number | null; temp: number };
 };
 
-/** Dote elegida; `ability`: la característica que sube en 1 si la dote da esa mejora. */
-export type FeatPickValue = Named & { ability?: Ability };
+/**
+ * Dote elegida; `ability`: la característica que sube en 1 si la dote da esa mejora; `resist`: los tipos de daño
+ * elegidos si la dote da resistencia a elegir.
+ */
+export type FeatPickValue = Named & { ability?: Ability; resist?: string[] };
 
 /**
  * Conjuros elegidos en un nivel para una clase (o subclase lanzadora): trucos nuevos, conjuros aprendidos (modo
@@ -109,7 +112,7 @@ export type InventoryItem = {
   /** Copia del nombre o nombre libre. */
   name: string;
   quantity: number;
-  /** Solo para armaduras, escudos y armas. */
+  /** Solo para armaduras, escudos, armas y objetos con resistencias o inmunidades. */
   equipped: boolean;
   notes: string;
 };

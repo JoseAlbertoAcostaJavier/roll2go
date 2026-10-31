@@ -67,6 +67,18 @@ describe("applyInventoryOp", () => {
     expect(op(s, { op: "update", id: "p", equipped: true }).ok).toBe(false);
     expect(op(s, { op: "update", id: "x", equipped: true }).ok).toBe(false);
   });
+  it("equipa un objeto con defensas y no desequipa la armadura", () => {
+    const withRing = new Map(catalog);
+    const base = catalog.get(`${ref("item:explorer's pack|xphb").book}:item:explorer's pack|xphb`)!;
+    withRing.set(`${base.ref.book}:item:ring|xphb`, { ...base, ref: ref("item:ring|xphb"), data: { defenses: { resist: ["poison"] } } });
+    const s = sheetWith([line("a", "item:chain mail|xphb", true), line("r", "item:ring|xphb")]);
+    const r = applyInventoryOp(s, { op: "update", id: "r", equipped: true }, (x) => withRing.get(`${x.book}:${x.key}`) ?? null, makeId);
+    expect(r.ok && r.sheet.inventory.items.map((i) => i.equipped)).toEqual([true, true]);
+  });
+  it("el mensaje de rechazo menciona los objetos con defensas", () => {
+    const r = op(sheetWith([line("p", "item:explorer's pack|xphb")]), { op: "update", id: "p", equipped: true });
+    expect(!r.ok && r.error).toContain("resistencias o inmunidades");
+  });
   it("valida cantidad, ids y monedas", () => {
     const s = sheetWith([line("a", "item:greataxe|xphb")]);
     expect(op(s, { op: "update", id: "a", quantity: 10000 }).ok).toBe(false);

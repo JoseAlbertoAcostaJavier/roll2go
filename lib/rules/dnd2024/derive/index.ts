@@ -16,6 +16,7 @@ import {
 import { makeBreakdown, type Breakdown } from "./breakdown";
 import { armorClassBreakdown, UNARMORED_CLASSES, type ArmorData, type UnarmoredClass } from "./ac";
 import { unarmedAttack, weaponAttack, weaponProficient, type Attack } from "./attacks";
+import { defensesOf, type DefenseRow } from "./defenses";
 import { characterFeats, featureGroups, type FeatureGroup } from "./features";
 import { hitPoints } from "./hp";
 import { speedBreakdown } from "./speed";
@@ -24,6 +25,7 @@ import { carriedWeight } from "./weight";
 
 export type { Attack } from "./attacks";
 export type { Breakdown, Part } from "./breakdown";
+export type { DefenseKind, DefenseRow } from "./defenses";
 export type { FeatureGroup } from "./features";
 export type { CasterBlock, OtherSpell, Slots, SpellsSummary } from "./spells";
 export { armorClass, armorClassBreakdown } from "./ac";
@@ -59,6 +61,8 @@ export type Derived = {
   spells: SpellsSummary;
   /** Si tiene conjuros de alguna fuente (la ficha muestra la pestaña Conjuros). */
   hasSpells: boolean;
+  /** Resistencias, inmunidades y vulnerabilidades con sus fuentes (especie, linaje, dotes y objetos equipados). */
+  defenses: DefenseRow[];
   /** Nombres guardados de las referencias que ya no existen en el catálogo. */
   missing: string[];
   /** De dónde sale cada valor (sus totales coinciden con los de arriba). */
@@ -214,6 +218,18 @@ export function derive(input: AnySheet, entries: Map<string, CatalogEntry>): Der
   const ac = acBreakdown.total;
   const initiative = initiativeBreakdown.total;
   const speed = speedParts.total;
+  // Defensas: el linaje es una copia completa de su especie (con sus defensas ya incluidas o sustituidas), así que si
+  // tiene las suyas valen en lugar de las de la especie
+  const defenses = defensesOf([
+    ...(lineageData?.defenses
+      ? [{ name: nameOf(sheet.lineage!.ref, sheet.lineage!.name), defenses: lineageData.defenses }]
+      : [{ name: nameOf(sheet.species.ref, sheet.species.name), defenses: speciesData?.defenses }]),
+    ...feats.map((f) => ({
+      name: nameOf(f.ref, f.name ?? ""), defenses: (entries.get(refKey(f.ref))?.data as FeatData | undefined)?.defenses,
+      chosen: f.resist,
+    })),
+    ...equipped.map((e) => ({ name: e.name, defenses: e.data.defenses })),
+  ]);
   const size = sheet.speciesChoices.size ?? (speciesData?.size.length === 1 ? speciesData.size[0] : null);
 
   return {
@@ -237,6 +253,7 @@ export function derive(input: AnySheet, entries: Map<string, CatalogEntry>): Der
     weight: carriedWeight(sheet.inventory, entries, abilities.str.score, size),
     features: featureGroups(sheet, summary, feats, entries),
     ...spellsSummary(sheet, { abilities, proficiencyBonus }, entries),
+    defenses,
     missing: uniq(missing),
     breakdowns: {
       abilities: abilityParts,
