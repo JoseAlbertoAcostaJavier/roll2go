@@ -10,6 +10,9 @@ import type { PendingChoice } from "../levels/pendingChoices";
 import type { Choice, FeatSpellsValue, LevelEntry, Named } from "../sheet/sheet";
 
 /** Fuente de la elección de conjuros de una dote. */
+/** El nombre de la dote de la etiqueta de su elección («Conjuros de Iniciado en la magia» → «Iniciado en la magia»). */
+export const featNameOfLabel = (label: string) => label.replace(/^Conjuros de /, "");
+
 export const featSpellsSource = (feat: Ref) => `featSpells:${feat.key}`;
 
 /**

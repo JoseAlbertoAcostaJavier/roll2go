@@ -7,7 +7,7 @@ import { card, primaryButton } from "@/app/components/ui/formStyles";
 import type { CatalogEntry, EntryOption } from "@/lib/rules/catalog/types";
 import { derive } from "@/lib/rules/dnd2024/derive";
 import { characterFeats } from "@/lib/rules/dnd2024/derive/features";
-import { chosenFeatSpells, levelFeatSpellPending, type FeatWithData } from "@/lib/rules/dnd2024/spells/featSpells";
+import { chosenFeatSpells, featNameOfLabel, levelFeatSpellPending, type FeatWithData } from "@/lib/rules/dnd2024/spells/featSpells";
 import { chosenSpells, knownSpellRefs } from "@/lib/rules/dnd2024/derive/spells";
 import { refKey } from "@/lib/rules/dnd2024/sheet/equipmentRefs";
 import { FEATURE_OPTION_LABELS } from "@/lib/rules/dnd2024/levels/featureChoices";
@@ -313,7 +313,7 @@ function Wizard(props: Props & { draftKey: string; draft: string | null }) {
   const levelPicks = pending.filter((p) => p.type === "spells" || p.type === "featSpells").map((p) => {
     const v = state.spells[p.source];
     return {
-      source: p.source, label: p.type === "spells" ? "la clase" : p.label,
+      source: p.source, label: p.type === "spells" ? "la clase" : featNameOfLabel(p.label),
       keys: v ? [...v.cantrips, ...v.spells, ...(v.free ?? []), v.replace.in, v.replaceCantrip.in].filter(Boolean) : [],
     };
   });

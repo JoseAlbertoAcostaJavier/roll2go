@@ -35,6 +35,7 @@ describe("defenseTypeName", () => {
     expect(defenseTypeName("resist", "poison")).toBe("Veneno");
     expect(defenseTypeName("immune", "bludgeoning")).toBe("Contundente");
     expect(defenseTypeName("conditionImmune", "frightened")).toBe("Asustado");
+    expect(defenseTypeName("conditionImmune", "disease")).toBe("Enfermedad");
     expect(defenseTypeName("conditionImmune", "nonexistent")).toBe("nonexistent");
   });
 });

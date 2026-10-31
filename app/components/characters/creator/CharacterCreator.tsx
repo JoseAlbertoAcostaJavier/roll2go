@@ -17,7 +17,7 @@ import { draftWithoutRolls } from "@/lib/rules/dnd2024/creation/drafts";
 import { bareName, equipmentRefs, refKey } from "@/lib/rules/dnd2024/sheet/equipmentRefs";
 import { ABILITY_NAMES, sizeName, skillName, toolName } from "@/lib/rules/dnd2024/sheet/labels";
 import { crossSourceGranted } from "@/lib/rules/dnd2024/spells/grantedSpells";
-import { featSpellPending, featSpellsSource } from "@/lib/rules/dnd2024/spells/featSpells";
+import { featNameOfLabel, featSpellPending, featSpellsSource } from "@/lib/rules/dnd2024/spells/featSpells";
 import { pendingChoices, withBonusCantrips, type PendingChoice } from "@/lib/rules/dnd2024/levels/pendingChoices";
 import { maxSpellLevel, spellListOf } from "@/lib/rules/dnd2024/spells/spellcasting";
 import {
@@ -465,7 +465,7 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
     { source: "class", label: "la clase", keys: [...form.spells.cantrips, ...form.spells.spells, ...(form.spells.free ?? [])] },
     ...featPendings.map((p) => {
       const v = form.featSpells[p.source];
-      return { source: p.source, label: p.label, keys: v ? [...v.cantrips, ...v.spells, v.replace.in].filter(Boolean) : [] };
+      return { source: p.source, label: featNameOfLabel(p.label), keys: v ? [...v.cantrips, ...v.spells, v.replace.in].filter(Boolean) : [] };
     }),
   ];
   const grantedFor = (source: string) => crossSourceGranted(baseGranted, pickSources, source);

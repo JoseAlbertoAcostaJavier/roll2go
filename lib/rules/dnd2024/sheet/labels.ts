@@ -1,7 +1,6 @@
 // Nombres en español de los identificadores que guarda el catálogo en minúsculas e inglés (habilidades, etc.).
 import type { Ability, FeatData } from "@/lib/rules/types";
 import type { DefenseKind } from "../derive/defenses";
-import i18n from "../../i18n/es.json";
 
 /** Categoría de dote de 5etools (y de las elecciones de `pendingChoices`) → `FeatData.category`. */
 export const FEAT_CATEGORIES: Record<string, FeatData["category"]> = {
@@ -39,9 +38,17 @@ export const DAMAGE_TYPE_NAMES: Record<string, string> = {
   slashing: "Cortante", thunder: "Trueno",
 };
 
-/** Nombre en español del tipo de una defensa: el tipo de daño, o el estado (`i18n/es.json`); si falta, el tipo tal cual. */
+/** Estados de 5etools (en minúsculas e inglés) → nombre en español, como `condition:*` de `i18n/es.json` (que no se importa aquí para no llevarlo al navegador). */
+export const CONDITION_NAMES: Record<string, string> = {
+  blinded: "Cegado", charmed: "Hechizado", deafened: "Ensordecido", exhaustion: "Cansancio", frightened: "Asustado",
+  grappled: "Agarrado", incapacitated: "Incapacitado", invisible: "Invisible", paralyzed: "Paralizado",
+  petrified: "Petrificado", poisoned: "Envenenado", prone: "Derribado", restrained: "Apresado", stunned: "Aturdido",
+  unconscious: "Inconsciente", disease: "Enfermedad",
+};
+
+/** Nombre en español del tipo de una defensa: el tipo de daño o el estado; si falta, el tipo tal cual. */
 export function defenseTypeName(kind: DefenseKind, type: string): string {
-  if (kind === "conditionImmune") return (i18n as Record<string, string>)[`condition:${type}`] ?? type;
+  if (kind === "conditionImmune") return CONDITION_NAMES[type] ?? type;
   return DAMAGE_TYPE_NAMES[type] ?? type;
 }
 

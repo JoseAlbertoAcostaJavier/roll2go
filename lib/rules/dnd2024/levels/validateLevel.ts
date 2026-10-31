@@ -8,7 +8,7 @@ import { derive } from "../derive";
 import { characterFeats } from "../derive/features";
 import { chosenSpells, knownSpellRefs } from "../derive/spells";
 import {
-  checkFeatSpellChoices, chosenFeatSpells, featSpellClash, levelFeatSpellPending, splitFeatSpells, type FeatWithData,
+  checkFeatSpellChoices, chosenFeatSpells, featNameOfLabel, featSpellClash, levelFeatSpellPending, splitFeatSpells, type FeatWithData,
 } from "../spells/featSpells";
 import { refKey } from "../sheet/equipmentRefs";
 import { heldArcana, heldBonusSpells, heldOptionalFeatures, heldPicks } from "./held";
@@ -183,7 +183,7 @@ export async function validateLevel(
   const clash = featSpellClash([...checked.choices, ...featSpells.choices]);
   if (clash) {
     const labelOf = (source: string) => featPending.find((p) => p.source === source)?.label ?? "";
-    const other = clash.with === null ? "la clase" : labelOf(clash.with);
+    const other = clash.with === null ? "la clase" : featNameOfLabel(labelOf(clash.with));
     err(`${CHOICES_PATH}.${clash.source}`, `${labelOf(clash.source)}: ${clash.name} ya lo eliges con ${other}.`);
   }
 

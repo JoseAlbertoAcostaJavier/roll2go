@@ -73,7 +73,7 @@ describe("creationDraft", () => {
       invocations: [k("optionalFeature:agonizing blast|xphb")],
     });
   });
-  it("pasa los conjuros iniciales a claves (los preparados ya no van en el borrador) `libro:clave`", () => {
+  it("pasa los conjuros iniciales a claves `libro:clave` (los preparados ya no van en el borrador)", () => {
     const d = creationDraft({ name: "Ana", pronouns: [], status: "active", backstory: "" }, sheet());
     const k = (key: string) => `${ref(key).book}:${key}`;
     expect(d.spells).toEqual({

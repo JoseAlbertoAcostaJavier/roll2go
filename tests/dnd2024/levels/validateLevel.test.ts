@@ -950,7 +950,7 @@ describe("dotes y Pacto del tomo", () => {
       const errors = await errorsOf(s, withTome([swap, clashing]));
       // Choca la que va después en el orden del nivel (la dote que ya tenía, tras la invocación que gana); la otra no tiene error
       expect(errors).toEqual({
-        [`choices.${INITIATE}`]: "Conjuros de Magic Initiate; Cleric: guidance ya lo eliges con Conjuros de Pact of the Tome.",
+        [`choices.${INITIATE}`]: "Conjuros de Magic Initiate; Cleric: guidance ya lo eliges con Pact of the Tome.",
       });
     });
     it("si ya tenía el Pacto del tomo sin sus conjuros (hoja anterior), se piden en la siguiente subida", async () => {

@@ -28,7 +28,7 @@ type Props = {
   /** En lugar de la lista de la clase, los que acepta (conjuros de una dote) y el título de la lista. */
   accepts?: { test: (s: SpellOption) => boolean; title: string };
   maxLevel: number;
-  /** Elección de conjuros del nivel; sin ella (Paladín 1), solo se preparan. */
+  /** Elección de conjuros del nivel; sin ella (clase sin elección en este nivel), solo se muestran los que ya tiene. */
   pending: PendingChoice | null;
   /** Conjuros de los libros (se filtran por la lista de la clase). */
   spells: SpellOption[];
@@ -107,7 +107,7 @@ export default function SpellsStep(props: Props) {
     const kind = cantrip ? "cantrips" : "spells";
     const checked = picked[kind].includes(key);
     const isHeld = heldKeys.has(key);
-    const reason = isHeld ? heldLabel(s)
+    const reason = isHeld && !checked ? heldLabel(s)
       : swapIns.includes(key) ? "Ya lo eliges como sustituto"
       : freeSet.has(key) ? "Ya lo eliges gratis"
       : !checked && picked[kind].length >= count ? `Ya has elegido ${count}. Desmarca uno para elegir otro`
@@ -134,7 +134,7 @@ export default function SpellsStep(props: Props) {
   function freeCheck(s: SpellOption): SpellRowItem["check"] {
     const key = refKey(s.ref);
     const checked = freeSet.has(key);
-    const reason = heldKeys.has(key) ? heldLabel(s)
+    const reason = heldKeys.has(key) && !checked ? heldLabel(s)
       : picked.spells.includes(key) ? "Ya lo eliges para tu libro"
       : swapIns.includes(key) ? "Ya lo eliges como sustituto"
       : !checked && free && freePicked.length >= free.count ? `Ya has elegido ${free.count}. Desmarca uno para elegir otro`
