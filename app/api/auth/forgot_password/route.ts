@@ -24,10 +24,10 @@ export async function POST(req: NextRequest) {
       { error: "Correo electrónico no válido." },
       { status: 400 },
     );
-    // Y máximo 3 por hora para el mismo correo (evita llenar la bandeja de otra persona desde varias IP)
-    const byEmail = await rateLimit("forgot_pwd_email", email, 3, 60 * 60);
-    if (!byEmail.ok) return tooManyRequests(byEmail.retryAfter);
   }
+  // Y máximo 3 por hora para el mismo correo (evita llenar la bandeja de otra persona desde varias IP)
+  const byEmail = await rateLimit("forgot_pwd_email", email, 3, 60 * 60);
+  if (!byEmail.ok) return tooManyRequests(byEmail.retryAfter);
 
   // Por seguridad (anti-enumeración): 200 OK aunque el usuario no exista
   const result = await requestPasswordReset(email);

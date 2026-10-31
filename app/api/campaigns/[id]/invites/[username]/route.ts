@@ -1,33 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { rateLimit, tooManyRequests } from "@/lib/server/rateLimit";
 import { requireDm } from "@/lib/server/campaigns/campaignApi";
-import { inviteFriend } from "@/lib/server/campaigns/invites";
+import { cancelInvite } from "@/lib/server/campaigns/invites";
 import { failureResponse } from "@/lib/server/result";
 
-export async function POST(
+// Cancela la invitación pendiente a un usuario (solo el DM)
+export async function DELETE(
   req: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
+  { params }: { params: Promise<{ id: string; username: string }> },
 ) {
-  const { id } = await params;
+  const { id, username } = await params;
   const ctx = await requireDm(req, id);
   if (ctx.error) return ctx.error;
 
-  const limited = await rateLimit(
-    "campaign_invite",
-    ctx.session.id,
-    30,
-    60 * 60,
-  );
+  const limited = await rateLimit("campaign_invite", ctx.session.id, 30, 60 * 60);
   if (!limited.ok) return tooManyRequests(limited.retryAfter);
 
-  let body: { username?: unknown };
-  try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: "Petición no válida." }, { status: 400 });
-  }
-
-  const result = await inviteFriend(ctx, id, typeof body.username === "string" ? body.username : "");
+  const result = await cancelInvite(ctx, username);
   if (!result.ok) return failureResponse(result);
-  return NextResponse.json({ ok: true }, { status: 201 });
+  return NextResponse.json({ ok: true });
 }

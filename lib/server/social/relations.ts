@@ -29,13 +29,11 @@ export async function sendFriendRequest(
     const target = await findUserByUsername(username);
     if (!target) return fail(404, "No existe ningún usuario con ese nombre.");
     const targetId = String(target._id);
-    if (targetId === meId) {
-      // Nadie puede enviar una solicitud a quien le ha bloqueado, ni a quien ha bloqueado él
-      const block = await blockStatus(meId, targetId);
-      if (block.byMe) return fail(403, "Has bloqueado a este usuario. Desbloquéalo para poder enviarle una solicitud.");
-      if (block.byThem) return fail(403, "No puedes enviar una solicitud a este usuario.");
-      return fail(400, "No puedes enviarte una solicitud a ti mismo.");
-    }
+    if (targetId === meId) return fail(400, "No puedes enviarte una solicitud a ti mismo.");
+    // Nadie puede enviar una solicitud a quien le ha bloqueado, ni a quien ha bloqueado él
+    const block = await blockStatus(meId, targetId);
+    if (block.byMe) return fail(403, "Has bloqueado a este usuario. Desbloquéalo para poder enviarle una solicitud.");
+    if (block.byThem) return fail(403, "No puedes enviar una solicitud a este usuario.");
 
     const pair = pairKey(meId, targetId);
     const existing = await Friendship.findOne({ pair });
