@@ -22,7 +22,8 @@ import type { BackgroundData, ItemData } from "@/lib/rules/types";
 import SheetHeader from "@/app/components/characters/sheet/SheetHeader";
 import type { JoinableCampaign } from "@/app/components/characters/sheet/JoinCampaignDialog";
 import SheetTabs, { SHEET_TABS, type SheetTab } from "@/app/components/characters/sheet/SheetTabs";
-import InfoTab, { type InfoData } from "@/app/components/characters/sheet/InfoTab";
+import SheetLayout, { type SheetData } from "@/app/components/characters/sheet/SheetLayout";
+import ActionsTab from "@/app/components/characters/sheet/ActionsTab";
 import BackgroundTab from "@/app/components/characters/sheet/BackgroundTab";
 import FeaturesTab from "@/app/components/characters/sheet/FeaturesTab";
 import EquipmentTab, { type ItemInfo } from "@/app/components/characters/sheet/EquipmentTab";
@@ -130,12 +131,11 @@ export default async function CharacterPage({ params, searchParams }: Props) {
       .filter((s) => ownSpells.has(refKey(s.ref)) || (withLists && s.data.classes.some((c) => listIds.has(c))))
     : [];
 
-  // Pestaña Información: solo los valores que muestra (es un componente de cliente)
-  const info: InfoData = {
+  // Franja superior y cajas de la ficha: solo los valores que muestran (son componentes de cliente)
+  const sheetData: SheetData = {
     abilities: d.abilities, proficiencyBonus: d.proficiencyBonus, hp: d.hp, ac: d.ac, armorWarning: d.armorWarning,
     initiative: d.initiative, speed: d.speed, darkvision: d.darkvision, saves: d.saves, skills: d.skills, armor: d.armor,
-    weapons: d.weapons, tools: d.tools, languages: d.languages, attacks: d.attacks, breakdowns: d.breakdowns,
-    defenses: d.defenses,
+    weapons: d.weapons, tools: d.tools, languages: d.languages, breakdowns: d.breakdowns, defenses: d.defenses,
   };
 
   const base = `/characters/${id}`;
@@ -151,7 +151,7 @@ export default async function CharacterPage({ params, searchParams }: Props) {
   );
 
   return (
-    <div className="mx-auto max-w-280 px-4 py-8 sm:px-5">
+    <div className="mx-auto max-w-280 px-4 py-8 sm:px-5 xl:max-w-360">
       {/* Con otro aviso (p. ej. tras borrar un nivel desde la propia ficha) la cabecera se monta de nuevo para mostrarlo */}
       <SheetHeader
         key={String(query.saved ?? "")}
@@ -178,63 +178,69 @@ export default async function CharacterPage({ params, searchParams }: Props) {
         </p>
       )}
 
-      <SheetTabs base={base} active={tab} tabs={tabs} />
-
-      <section {...panel("acciones")}>
-        {panelTitle("acciones")}
-        {/* Los editores guardan su estado: al borrar un nivel desde la ficha se montan de nuevo con los PG recortados */}
-        <InfoTab key={`${d.level}:${d.hp.current}:${d.hp.temp}`} d={info} characterId={id} isOwner={isOwner} />
-      </section>
-      <section {...panel("trasfondo")}>
-        {panelTitle("trasfondo")}
-        <BackgroundTab
-          sheet={sheet}
-          backstory={c.backstory ?? ""}
-          imageUrl={c.imageId ? `/api/images/${c.imageId}` : null}
-          background={background}
-          feat={feat}
-        />
-      </section>
-      <section {...panel("rasgos")}>
-        {panelTitle("rasgos")}
-        <MasteriesEditor
-          key={d.level}
-          characterId={id}
-          isOwner={isOwner}
-          allowed={allowedMasteries}
-          current={masteryCurrent}
-          options={masteryOptions}
-        />
-        <FeaturesTab groups={d.features} entries={entries} />
-      </section>
-      <section {...panel("inventario")}>
-        {panelTitle("inventario")}
-        <EquipmentTab
-          characterId={id}
-          isOwner={isOwner}
-          inventory={sheet.inventory}
-          info={itemInfo}
-          capacity={d.weight.capacity}
-          armorWarning={d.armorWarning}
-          systemId={c.systemId as string}
-          books={found.books}
-        />
-      </section>
-
-      {d.hasSpells && (
-        <section {...panel("conjuros")}>
-          {panelTitle("conjuros")}
-          {/* Al borrar un nivel desde la ficha se monta de nuevo con los conjuros recortados */}
-          <SpellsTab
+      {/* Franja superior, cajas y panel de pestañas (spec §4); el editor de PG se monta de nuevo cuando cambian los PG
+          (descansos, borrar un nivel) */}
+      <SheetLayout
+        d={sheetData}
+        characterId={id}
+        isOwner={isOwner}
+        tabs={<SheetTabs base={base} active={tab} tabs={tabs} />}
+      >
+        <section {...panel("acciones")}>
+          {panelTitle("acciones")}
+          <ActionsTab attacks={d.attacks} />
+        </section>
+        <section {...panel("trasfondo")}>
+          {panelTitle("trasfondo")}
+          <BackgroundTab
+            sheet={sheet}
+            backstory={c.backstory ?? ""}
+            imageUrl={c.imageId ? `/api/images/${c.imageId}` : null}
+            background={background}
+            feat={feat}
+          />
+        </section>
+        <section {...panel("rasgos")}>
+          {panelTitle("rasgos")}
+          <MasteriesEditor
             key={d.level}
             characterId={id}
             isOwner={isOwner}
-            initial={d.spells}
-            lists={spellLists}
-            spells={spellOptions}
+            allowed={allowedMasteries}
+            current={masteryCurrent}
+            options={masteryOptions}
+          />
+          <FeaturesTab groups={d.features} entries={entries} />
+        </section>
+        <section {...panel("inventario")}>
+          {panelTitle("inventario")}
+          <EquipmentTab
+            characterId={id}
+            isOwner={isOwner}
+            inventory={sheet.inventory}
+            info={itemInfo}
+            capacity={d.weight.capacity}
+            armorWarning={d.armorWarning}
+            systemId={c.systemId as string}
+            books={found.books}
           />
         </section>
-      )}
+
+        {d.hasSpells && (
+          <section {...panel("conjuros")}>
+            {panelTitle("conjuros")}
+            {/* Al borrar un nivel desde la ficha se monta de nuevo con los conjuros recortados */}
+            <SpellsTab
+              key={d.level}
+              characterId={id}
+              isOwner={isOwner}
+              initial={d.spells}
+              lists={spellLists}
+              spells={spellOptions}
+            />
+          </section>
+        )}
+      </SheetLayout>
 
       {attributions.map((a) => (
         <p key={a} className="mt-6 text-xs text-muted">{a}</p>
