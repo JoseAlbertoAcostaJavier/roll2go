@@ -16,6 +16,7 @@ import {
 } from "@/lib/rules/dnd2024/levels/masteries";
 import { parsePronouns, pronounsText } from "@/lib/rules/dnd2024/creation/names";
 import { spellListOf } from "@/lib/rules/dnd2024/spells/spellcasting";
+import { shortRestRestores } from "@/lib/rules/dnd2024/spells/spellOps";
 import type { BackgroundData, ItemData } from "@/lib/rules/types";
 import SheetHeader from "@/app/components/characters/sheet/SheetHeader";
 import type { JoinableCampaign } from "@/app/components/characters/sheet/JoinCampaignDialog";
@@ -162,6 +163,7 @@ export default async function CharacterPage({ params, searchParams }: Props) {
         level={d.level}
         campaign={campaign}
         isOwner={isOwner}
+        shortRestRestores={shortRestRestores(d.spells)}
         joinable={joinable}
         systemName={rpgSystems.find((r) => r.id === c.systemId)?.name ?? c.systemId}
         notice={query.saved ? (NOTICES[String(query.saved)] ?? "Cambios guardados") : null}
@@ -180,7 +182,7 @@ export default async function CharacterPage({ params, searchParams }: Props) {
       <section {...panel("info")}>
         {panelTitle("info")}
         {/* Los editores guardan su estado: al borrar un nivel desde la ficha se montan de nuevo con los PG recortados */}
-        <InfoTab key={d.level} d={info} characterId={id} isOwner={isOwner} />
+        <InfoTab key={`${d.level}:${d.hp.current}:${d.hp.temp}`} d={info} characterId={id} isOwner={isOwner} />
       </section>
       <section {...panel("trasfondo")}>
         {panelTitle("trasfondo")}

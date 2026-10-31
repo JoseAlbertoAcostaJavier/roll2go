@@ -3,7 +3,7 @@ import { derive } from "@/lib/rules/dnd2024/derive";
 import { refKey } from "@/lib/rules/dnd2024/sheet/equipmentRefs";
 import type { Choice, Dnd2024SheetV2, LevelEntry, Named } from "@/lib/rules/dnd2024/sheet/sheet";
 import { removeLastLevel } from "@/lib/rules/dnd2024/levels/levelOps";
-import { applySpellOp, trimSpells } from "@/lib/rules/dnd2024/spells/spellOps";
+import { applySpellOp, shortRestRestores, trimSpells } from "@/lib/rules/dnd2024/spells/spellOps";
 import type { Ref, SpellData } from "@/lib/rules/types";
 import { B, buildCatalog, ref } from "../fixtureCatalog";
 
@@ -198,6 +198,14 @@ describe("espacios", () => {
     expect(Object.values(after.slotsUsed).every((v) => v === 0)).toBe(true);
     expect(derive(after, entries).spells.used).toEqual({});
   });
+  it("descanso largo: también recupera los puntos de golpe (current null, temporales a 0)", () => {
+    const s = { ...sheetOf(["cleric"]), hp: { max: null, current: 3, temp: 4 } };
+    expect(ok(apply(s, { op: "longRest" })).hp).toEqual({ max: null, current: null, temp: 0 });
+    // Conserva el máximo manual
+    expect(ok(apply({ ...s, hp: { max: 20, current: 3, temp: 4 } }, { op: "longRest" })).hp).toEqual({ max: 20, current: null, temp: 0 });
+    // El descanso corto no toca los puntos de golpe
+    expect(ok(apply(s, { op: "shortRest" })).hp).toEqual({ max: null, current: 3, temp: 4 });
+  });
   it("operación desconocida → error", () => {
     expect(errorOf(apply(sheetOf(["cleric"]), { op: "nada" }))).toBe("Operación no válida.");
     expect(errorOf(apply(sheetOf(["cleric"]), null))).toBe("Petición no válida.");
@@ -334,6 +342,31 @@ describe("usos por descanso largo (Arcano místico)", () => {
     expect(after.slotsUsed).toEqual({ 1: 1 });
     // Sin usos guardados no los añade
     expect(ok(apply({ ...warlock11(), slotsUsed: { pact: 1 } }, { op: "shortRest" }))).not.toHaveProperty("limitedUsed");
+  });
+});
+
+describe("shortRestRestores", () => {
+  const SIGNATURE = `signature:${B}:spell:fireball|xphb`;
+  it("sin rasgos de descanso corto → false aunque haya espacios gastados", () => {
+    const s = { ...sheetOf(["cleric", "cleric", "cleric"]), slotsUsed: { 1: 2 } };
+    expect(shortRestRestores(derive(s, entries).spells)).toBe(false);
+  });
+  it("Magia de pacto: solo si hay un espacio de pacto gastado", () => {
+    const s = sheetOf(["warlock", "warlock"]);
+    expect(shortRestRestores(derive(s, entries).spells)).toBe(false);
+    expect(shortRestRestores(derive({ ...s, slotsUsed: { pact: 1 } }, entries).spells)).toBe(true);
+    // Gastar espacios que no son de pacto no cuenta
+    expect(shortRestRestores(derive({ ...s, slotsUsed: { 1: 1 } }, entries).spells)).toBe(false);
+  });
+  it("Conjuros distintivos: solo si hay un uso gastado; los arcanos no cuentan", () => {
+    const arcanum = `arcanum:${B}:spell:circle of death|xphb`;
+    const spells = (limited: { key: string; used: number }[], pact = false) => ({
+      slots: { levels: {}, pact: pact ? { count: 1, level: 1 } : null }, used: {}, other: [],
+      blocks: [{ limited }] as never,
+    });
+    expect(shortRestRestores(spells([{ key: SIGNATURE, used: 0 }]))).toBe(false);
+    expect(shortRestRestores(spells([{ key: SIGNATURE, used: 1 }]))).toBe(true);
+    expect(shortRestRestores(spells([{ key: arcanum, used: 1 }]))).toBe(false);
   });
 });
 

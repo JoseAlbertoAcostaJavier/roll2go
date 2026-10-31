@@ -4,7 +4,7 @@
 // devuelven la hoja nueva; la ruta relee el personaje y recalcula los bloques antes de aplicarlas.
 import type { CatalogEntry } from "@/lib/rules/catalog/types";
 import type { Ref, SpellData } from "@/lib/rules/types";
-import type { CasterBlock, Slots } from "../derive/spells";
+import type { CasterBlock, Slots, SpellsSummary } from "../derive/spells";
 import { refKey } from "../sheet/equipmentRefs";
 import type { Dnd2024SheetV2, Named } from "../sheet/sheet";
 import { preparedKey, spellListOf } from "./spellcasting";
@@ -37,6 +37,14 @@ export const ACTION_TIME = "1 acción";
 const SIGNATURE_PREFIX = "signature:";
 /** Si los usos de esta clave de `limitedUsed` se recuperan también con un descanso corto (Conjuros distintivos). */
 export const recoversOnShortRest = (key: string) => key.startsWith(SIGNATURE_PREFIX);
+
+/** Si hay algo que un descanso corto recupere ahora: el personaje tiene Magia de pacto o Conjuros distintivos y
+ *  tiene gastado alguno de sus espacios de pacto o de sus usos. */
+export function shortRestRestores(spells: Pick<SpellsSummary, "blocks" | "slots" | "used">): boolean {
+  const shortLimited = spells.blocks.flatMap((b) => b.limited).filter((l) => recoversOnShortRest(l.key));
+  if (!spells.slots.pact && shortLimited.length === 0) return false;
+  return (spells.used[PACT_SLOT] ?? 0) > 0 || shortLimited.some((l) => l.used > 0);
+}
 
 type Obj = Record<string, unknown>;
 const isObj = (v: unknown): v is Obj => typeof v === "object" && v !== null && !Array.isArray(v);
@@ -134,7 +142,9 @@ export function applySpellOp(sheet: Dnd2024SheetV2, op: unknown, ctx: SpellOpCtx
     return { ok: true, sheet: { ...sheet, slotsUsed: { ...(sheet.slotsUsed ?? {}), [level]: op.used } } };
   }
 
-  if (op.op === "longRest") return { ok: true, sheet: { ...sheet, slotsUsed: {}, limitedUsed: {} } };
+  // Descanso largo: espacios y usos, y los puntos de golpe (`current: null` = al máximo) sin temporales
+  if (op.op === "longRest")
+    return { ok: true, sheet: { ...sheet, slotsUsed: {}, limitedUsed: {}, hp: { ...sheet.hp, current: null, temp: 0 } } };
 
   // Descanso corto: recupera los espacios de Magia de pacto y los usos de los Conjuros distintivos
   if (op.op === "shortRest") {

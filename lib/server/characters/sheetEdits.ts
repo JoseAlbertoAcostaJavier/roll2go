@@ -114,13 +114,13 @@ const MAX_ATTEMPTS = 3;
 const CHANGED_ERROR = "Los conjuros del personaje han cambiado; recarga la página.";
 
 // Campos de la hoja que cambia cada operación (la tierra también quita de los preparados los que pasa a dar; el
-// descanso largo recupera espacios y usos; el corto, los de pacto y los de los Conjuros distintivos)
+// descanso largo recupera espacios, usos y puntos de golpe; el corto, los de pacto y los de los Conjuros distintivos)
 type Field = keyof Pick<
-  Dnd2024SheetV2, "prepared" | "spellbookExtra" | "slotsUsed" | "spellOption" | "limitedUsed" | "spellMastery"
+  Dnd2024SheetV2, "prepared" | "spellbookExtra" | "slotsUsed" | "spellOption" | "limitedUsed" | "spellMastery" | "hp"
 >;
 const FIELDS: Record<string, Field[]> = {
   prepare: ["prepared"], unprepare: ["prepared"], copy: ["spellbookExtra"], slot: ["slotsUsed"],
-  longRest: ["slotsUsed", "limitedUsed"], shortRest: ["slotsUsed", "limitedUsed"], setOption: ["spellOption", "prepared"],
+  longRest: ["slotsUsed", "limitedUsed", "hp"], shortRest: ["slotsUsed", "limitedUsed"], setOption: ["spellOption", "prepared"],
   limited: ["limitedUsed"], setMastery: ["spellMastery"],
 };
 

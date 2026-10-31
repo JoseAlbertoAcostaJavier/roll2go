@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ChevronLeft, ChevronsUp, CircleCheck, Pencil, Printer, User as UserIcon, X } from "lucide-react";
 import DeleteLevel from "../levelup/DeleteLevel";
 import StatusBadge, { type CharacterStatus } from "./StatusBadge";
+import RestButtons from "./RestButtons";
 import JoinCampaignDialog, { LeaveCampaignButton, type JoinableCampaign } from "./JoinCampaignDialog";
 import { CharacterNoticeArea, CharacterNotices } from "@/app/components/campaigns/CharacterActions";
 
@@ -26,6 +27,8 @@ export type SheetHeaderProps = {
   /** Campaña del personaje; `pending` mientras el DM no acepte la solicitud, `isDm` si quien mira es su DM. */
   campaign: { id: string; name: string; pending: boolean; isDm: boolean } | null;
   isOwner: boolean;
+  /** Si un descanso corto recuperaría algo ahora (para el aviso del diálogo). */
+  shortRestRestores: boolean;
   /** Para el dueño sin campaña: sus campañas activas del sistema del personaje, con su elegibilidad. */
   joinable: JoinableCampaign[];
   systemName: string;
@@ -159,6 +162,7 @@ export default function SheetHeader(p: SheetHeaderProps) {
           </div>
 
           <div className="flex flex-wrap items-center gap-2 print:hidden">
+            {p.isOwner && <RestButtons characterId={p.id} shortRestRestores={p.shortRestRestores} />}
             {p.isOwner && p.level < MAX_LEVEL && (
               <Link
                 href={`/characters/${p.id}/level-up`}

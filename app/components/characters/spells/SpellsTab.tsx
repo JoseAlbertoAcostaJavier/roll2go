@@ -6,7 +6,7 @@ import RoundIcon from "@/app/components/ui/RoundIcon";
 import type { SpellOption } from "@/lib/rules/catalog/types";
 import type { SpellsSummary } from "@/lib/rules/dnd2024/derive";
 import { bareName, refKey } from "@/lib/rules/dnd2024/sheet/equipmentRefs";
-import { PACT_SLOT, recoversOnShortRest, type SpellOp } from "@/lib/rules/dnd2024/spells/spellOps";
+import type { SpellOp } from "@/lib/rules/dnd2024/spells/spellOps";
 import { card } from "@/app/components/ui/formStyles";
 import CasterBlockView from "./CasterBlockView";
 import SlotsBar from "./SlotsBar";
@@ -28,6 +28,12 @@ type Props = {
 export default function SpellsTab({ characterId, isOwner, initial, lists, spells }: Props) {
   const router = useRouter();
   const [state, setState] = useState(initial);
+  // Un descanso (cabecera) o cualquier otro cambio del servidor trae un resumen nuevo: se adopta en vez del guardado
+  const [seen, setSeen] = useState(initial);
+  if (seen !== initial) {
+    setSeen(initial);
+    setState(initial);
+  }
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const byKey = useMemo(() => new Map(spells.map((s) => [refKey(s.ref), s])), [spells]);
@@ -65,16 +71,6 @@ export default function SpellsTab({ characterId, isOwner, initial, lists, spells
     window.history.pushState(null, "", spellHref(ref));
   };
 
-  // Qué recupera cada descanso: el largo, todo; el corto, la Magia de pacto y los Conjuros distintivos (solo hay botón
-  // si el personaje tiene algo de eso)
-  const limited = state.blocks.flatMap((b) => b.limited);
-  const shortLimited = limited.filter((l) => recoversOnShortRest(l.key));
-  const restores = {
-    long: Object.values(state.used).some((n) => n > 0) || limited.some((l) => l.used > 0),
-    short: (state.used[PACT_SLOT] ?? 0) > 0 || shortLimited.some((l) => l.used > 0),
-  };
-  const hasShortRest = !!state.slots.pact || shortLimited.length > 0;
-
   const other = state.other.map((o) => {
     const spell = byKey.get(refKey(o.spell.ref)) ?? null;
     return { ref: o.spell.ref, name: o.spell.name || bareName(o.spell.ref.key), spell, origin: o.origin };
@@ -90,9 +86,6 @@ export default function SpellsTab({ characterId, isOwner, initial, lists, spells
         slots={state.slots}
         used={state.used}
         onSet={isOwner ? (level, used) => void send({ op: "slot", level, used }) : null}
-        onLongRest={isOwner ? () => void send({ op: "longRest" }) : null}
-        onShortRest={isOwner && hasShortRest ? () => void send({ op: "shortRest" }) : null}
-        restores={restores}
         busy={busy}
       />
 
