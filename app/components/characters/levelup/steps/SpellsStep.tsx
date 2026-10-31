@@ -13,21 +13,10 @@ import { spellSchoolName } from "@/lib/rules/dnd2024/spells/spellTextClient";
 import type { Ref, SpellcastingMode } from "@/lib/rules/types";
 import { field, labelClass } from "@/app/components/ui/formStyles";
 import RuleSelect from "../../creator/RuleSelect";
-import { preparedFullNotice } from "../../spells/CasterBlockView";
 import type { GrantedSpell } from "@/lib/rules/dnd2024/spells/grantedSpells";
 import SpellDialog from "../../spells/SpellDialog";
 import SpellFilters from "../../spells/SpellFilters";
 import SpellList, { type SpellOpener, type SpellRowItem } from "../../spells/SpellList";
-
-/** Preparados iniciales en la creación (modos `list` y `spellbook`). */
-export type PreparedPick = {
-  limit: number;
-  /** Marcados (`libro:clave`). */
-  value: string[];
-  /** Siempre preparados de la clase: no cuentan ni se marcan. */
-  always: string[];
-  onChange: (value: string[]) => void;
-};
 
 type Props = {
   /** Prefijo de los ids. */
@@ -49,7 +38,6 @@ type Props = {
   granted?: GrantedSpell[];
   value: SpellPick;
   onChange: (value: SpellPick) => void;
-  prepared?: PreparedPick;
   /** Para pedir la ficha de un conjuro: con personaje, sus libros; sin él, los de la campaña. */
   characterId: string | null;
   campaignId: string | null;
@@ -72,11 +60,10 @@ function Counter({ label, done, value }: { label: string; done: boolean; value: 
 
 /* Elección de conjuros al subir de nivel y al crear el personaje (spec de conjuros §4.2 y §4.3): la lista de la clase
    con filtros en modo selección («Elige 1 truco», «Elige 2 conjuros de nivel 1–2»), las sustituciones opcionales de un
-   truco y de un conjuro aprendido y, al crear, los preparados iniciales hasta el límite. Con Secretos mágicos, los
-   conjuros (no los trucos) también de otras listas, con un filtro por lista; con el Sabio de la escuela, las entradas
-   gratis de su escuela aparte. */
+   truco y de un conjuro aprendido. Con Secretos mágicos, los conjuros (no los trucos) también de otras listas, con un
+   filtro por lista; con el Sabio de la escuela, las entradas gratis de su escuela aparte. */
 export default function SpellsStep(props: Props) {
-  const { id, mode, maxLevel, pending, held, value, onChange, prepared } = props;
+  const { id, mode, maxLevel, pending, held, value, onChange } = props;
   const [filter, setFilter] = useState<SpellFilter>(EMPTY_SPELL_FILTER);
   const [listFilter, setListFilter] = useState("");
   const opener = useRef<HTMLElement | null>(null);
@@ -104,28 +91,14 @@ export default function SpellsStep(props: Props) {
     : mode === "spellbook" && s.data.level > 0 ? "Ya está en tu libro" : "Ya lo conoces");
   const swapIns = [value.replace.in, value.replaceCantrip.in].filter(Boolean);
   const freeSet = new Set(freePicked);
-  const prepSet = new Set(prepared?.value ?? []);
-  const always = new Set(prepared?.always ?? []);
-  const prepFull = !!prepared && prepared.value.length >= prepared.limit;
-  const fullNotice = prepared ? preparedFullNotice(prepared.value.length, prepared.limit) : "";
-  // En el Mago, solo se preparan los conjuros de su libro (los elegidos ahora)
-  const preparable = (s: SpellOption) => !!prepared && s.data.level >= 1 && s.data.level <= maxLevel
-    && (mode === "spellbook" ? picked.spells.includes(refKey(s.ref)) : mode === "list");
 
   function toggle(kind: "cantrips" | "spells", key: string) {
     const current = picked[kind];
     const next = current.includes(key) ? current.filter((k) => k !== key) : [...current, key];
     onChange({ ...value, [kind]: next });
-    // Un conjuro que sale del libro deja de estar preparado
-    if (kind === "spells" && mode === "spellbook" && prepared && !next.includes(key) && prepSet.has(key))
-      prepared.onChange(prepared.value.filter((k) => k !== key));
-  }
-  function togglePrepared(key: string) {
-    if (!prepared) return;
-    prepared.onChange(prepSet.has(key) ? prepared.value.filter((k) => k !== key) : [...prepared.value, key]);
   }
 
-  // Casilla de aprender (trucos y conjuros nuevos o entradas del libro) o, en modo `list`, de preparar
+  // Casilla de aprender (trucos y conjuros nuevos o entradas del libro)
   function learnCheck(s: SpellOption): SpellRowItem["check"] {
     const key = refKey(s.ref);
     const cantrip = s.data.level === 0;
@@ -145,18 +118,11 @@ export default function SpellsStep(props: Props) {
       onChange: () => toggle(kind, key),
     };
   }
-  function prepareCheck(s: SpellOption): SpellRowItem["check"] {
-    const key = refKey(s.ref);
-    if (always.has(key)) return { checked: true, disabled: true, reason: "Siempre preparado", onChange: () => {} };
-    const checked = prepSet.has(key);
-    const reason = !checked && prepFull ? fullNotice : undefined;
-    return { checked, disabled: !!reason, reason, onChange: () => togglePrepared(key) };
-  }
   const item = (s: SpellOption, check: SpellRowItem["check"]): SpellRowItem => ({
     ref: s.ref, name: nameOf(s), spell: s, check,
   });
   const rowOf = (s: SpellOption) => {
-    const check = learnCheck(s) ?? (mode === "list" && preparable(s) ? prepareCheck(s) : undefined);
+    const check = learnCheck(s);
     // Sin casilla, los que ya tiene llevan la marca
     if (!check && heldKeys.has(refKey(s.ref)))
       return { ...item(s, undefined), origin: granted.has(refKey(s.ref)) ? grantedText(refKey(s.ref))
@@ -185,10 +151,9 @@ export default function SpellsStep(props: Props) {
     : [];
 
   const spellsOf = (keys: string[]) => keys.map((k) => byKey.get(k)).filter((s): s is SpellOption => !!s);
-  const chosen = spellsOf([...picked.cantrips, ...picked.spells, ...(mode === "list" ? (prepared?.value ?? []) : [])])
+  const chosen = spellsOf([...picked.cantrips, ...picked.spells])
     .sort(byLevelAndName).map(rowOf)
     .concat(spellsOf(freePicked).sort(byLevelAndName).map((s) => ({ ...item(s, freeCheck(s)), origin: "Gratis" })));
-  const book = mode === "spellbook" && prepared ? spellsOf(picked.spells).sort(byLevelAndName).map((s) => item(s, prepareCheck(s))) : [];
   const filtered = list.filter((s) => matchesSpellFilter(s, filter)
     && (!listFilter || s.data.classes.includes(listFilter))).map(rowOf);
 
@@ -223,10 +188,6 @@ export default function SpellsStep(props: Props) {
       label: `Gratis de ${spellSchoolName(free.school)} (hasta ${free.count})`, done: freePicked.length === free.count,
       value: `${freePicked.length}/${free.count}`,
     }] : []),
-    ...(prepared && prepared.limit > 0 ? [{
-      label: `Prepara hasta ${plural(prepared.limit, "conjuro", "conjuros")}`, done: prepFull,
-      value: `${prepared.value.length}/${prepared.limit}`,
-    }] : []),
   ];
 
   return (
@@ -238,26 +199,11 @@ export default function SpellsStep(props: Props) {
       ) : (
         <p className="text-sm text-muted">Este nivel no da conjuros nuevos, pero puedes sustituir uno de los que conoces.</p>
       )}
-      {prepared && prepared.limit > 0 && (
-        <p className="text-xs text-muted">
-          {mode === "spellbook"
-            ? "Prepara conjuros de tu libro; podrás cambiarlos en la ficha."
-            : "Prepara conjuros de la lista de tu clase; podrás cambiarlos en la ficha."}
-        </p>
-      )}
 
       {chosen.length > 0 && (
         <div>
           <h3 className="text-sm font-semibold uppercase tracking-wide text-muted">Elegidos</h3>
           <SpellList items={chosen} empty="" onOpen={open} href={spellUrl} />
-        </div>
-      )}
-
-      {book.length > 0 && (
-        <div>
-          <h3 className="text-sm font-semibold uppercase tracking-wide text-muted">Preparados de tu libro</h3>
-          {prepFull && <p role="status" className="mt-1 text-xs text-muted">{fullNotice}</p>}
-          <SpellList items={book} empty="" onOpen={open} href={spellUrl} />
         </div>
       )}
 

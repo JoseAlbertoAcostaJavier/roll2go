@@ -3,7 +3,6 @@
 import type { Ability, Ref } from "@/lib/rules/types";
 import { refKey } from "../sheet/equipmentRefs";
 import type { Choice, Dnd2024SheetV2 } from "../sheet/sheet";
-import { preparedKey } from "../spells/spellcasting";
 import { emptySpellPick, type SpellPick } from "../spells/spellPicks";
 
 /** Borrador del creador (mismo formato que el que guarda en localStorage; el creador lo vuelve a comprobar). */
@@ -22,9 +21,8 @@ export type CreationDraft = {
   /** Elecciones de nivel 1 por `source`: habilidades o claves `libro:clave` de las entradas. */
   classChoices: Record<string, string[]>;
   classEquipment: string;
-  /** Trucos y conjuros iniciales (o libro) y preparados iniciales (claves `libro:clave`). */
+  /** Trucos y conjuros iniciales (o libro), claves `libro:clave`. Los preparados no se eligen al crear. */
   spells: SpellPick;
-  prepared: string[];
   /**
    * Conjuros de la dote del trasfondo (Iniciado en la magia…) y de las invocaciones de nivel 1 (Pacto del tomo), con la
    * lista elegida, y su característica de lanzamiento, por `source` de la elección.
@@ -78,7 +76,6 @@ export function creationDraft(
     spells.cantrips = spellChoice.value.cantrips.map((c) => refKey(c.ref));
     spells.spells = spellChoice.value.spells.map((c) => refKey(c.ref));
   }
-  const prepared = first ? (sheet.prepared[preparedKey(first.class.ref)] ?? []).map(refKey) : [];
   const featSpells: Record<string, SpellPick> = {};
   const featAbility: Record<string, Ability> = {};
   for (const c of first?.choices ?? []) {
@@ -106,7 +103,6 @@ export function creationDraft(
     classChoices,
     classEquipment: first?.equipment ?? "",
     spells,
-    prepared,
     featSpells,
     featAbility,
     method: sheet.abilityMethod,
