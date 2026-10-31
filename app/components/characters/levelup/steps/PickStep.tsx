@@ -7,7 +7,9 @@ import type { Named } from "@/lib/rules/dnd2024/sheet/sheet";
 import type { Ability } from "@/lib/rules/types";
 import { labelClass } from "@/app/components/ui/formStyles";
 import { ChoiceField, type ChoiceCtx } from "../../creator/ClassFeaturesSection";
+import { featResistChoose } from "../state";
 import { FeatAbilityField } from "./AsiStep";
+import { FeatResistField } from "./FeatResistField";
 
 // Singular y plural de lo que se elige
 const KIND: Partial<Record<PendingChoice["type"], [string, string]>> = {
@@ -17,7 +19,7 @@ const KIND: Partial<Record<PendingChoice["type"], [string, string]>> = {
 /* Dotes de progresión (estilo de combate, don épico), rasgos opcionales (metamagia, invocaciones…) y opciones de
    rasgo (Orden divina…). Si la elección lo permite, además puede sustituir una de las que ya tiene. */
 export default function PickStep({
-  p, ctx, slots, onChange, held, replaced, onReplace, featAbility, onFeatAbility, scores,
+  p, ctx, slots, onChange, held, replaced, onReplace, featAbility, onFeatAbility, featResist, onFeatResist, scores,
 }: {
   p: PendingChoice;
   ctx: ChoiceCtx;
@@ -30,6 +32,8 @@ export default function PickStep({
   onReplace: (key: string) => void;
   featAbility: (key: string) => Ability | undefined;
   onFeatAbility: (key: string, a: Ability) => void;
+  featResist: (key: string) => string[] | undefined;
+  onFeatResist: (key: string, v: string[]) => void;
   scores: Record<Ability, number>;
 }) {
   const [kind, kinds] = KIND[p.type] ?? ["opción", "opciones"];
@@ -61,15 +65,31 @@ export default function PickStep({
       )}
       {slots > 0 && (
         <ChoiceField p={p} ctx={ctx} count={slots} onChange={onChange}>
-          {(k) => p.type === "feat" && (
-            <FeatAbilityField
-              id={`feat-ability-${k.replace(/[^a-z0-9]+/gi, "-")}`}
-              feat={featOf(k)}
-              value={featAbility(k)}
-              scores={scores}
-              onChange={(a) => onFeatAbility(k, a)}
-            />
-          )}
+          {(k) => {
+            if (p.type !== "feat") return null;
+            const choose = featResistChoose(featOf(k));
+            const slug = k.replace(/[^a-z0-9]+/gi, "-");
+            return (
+              <>
+                <FeatAbilityField
+                  id={`feat-ability-${slug}`}
+                  feat={featOf(k)}
+                  value={featAbility(k)}
+                  scores={scores}
+                  onChange={(a) => onFeatAbility(k, a)}
+                />
+                {choose && (
+                  <FeatResistField
+                    id={`feat-resist-${slug}`}
+                    count={choose.count}
+                    from={choose.from}
+                    value={featResist(k) ?? []}
+                    onChange={(v) => onFeatResist(k, v)}
+                  />
+                )}
+              </>
+            );
+          }}
         </ChoiceField>
       )}
     </div>

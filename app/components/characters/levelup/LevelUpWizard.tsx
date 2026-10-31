@@ -124,7 +124,7 @@ function Wizard(props: Props & { draftKey: string; draft: string | null }) {
   const defaultClass = (classChoices.find((c) => c.key === lastClass && !c.blocked) ?? classChoices.find((c) => !c.blocked))?.key ?? "";
 
   const [state, setState] = useState<LevelUpState>(() => parseDraft(props.draft, {
-    classKey: defaultClass, subclassKey: "", values: {}, replaced: {}, featAbility: {}, asi: {}, spells: {}, hp: null,
+    classKey: defaultClass, subclassKey: "", values: {}, replaced: {}, featAbility: {}, featResist: {}, asi: {}, spells: {}, hp: null,
     step: "class",
   }));
   const [saving, setSaving] = useState(false);
@@ -577,6 +577,8 @@ function Wizard(props: Props & { draftKey: string; draft: string | null }) {
         onReplace={(k) => update({ replaced: { ...state.replaced, [p.source]: k } })}
         featAbility={(k) => state.featAbility[featAbilityKey(p.source, k)]}
         onFeatAbility={(k, a) => update({ featAbility: { ...state.featAbility, [featAbilityKey(p.source, k)]: a } })}
+        featResist={(k) => state.featResist[featAbilityKey(p.source, k)]}
+        onFeatResist={(k, v) => update({ featResist: { ...state.featResist, [featAbilityKey(p.source, k)]: v } })}
         scores={scores}
       />
     );

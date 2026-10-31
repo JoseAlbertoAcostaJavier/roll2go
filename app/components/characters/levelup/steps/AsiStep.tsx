@@ -8,7 +8,8 @@ import { ABILITIES, type Ability, type Ref } from "@/lib/rules/types";
 import { labelClass } from "@/app/components/ui/formStyles";
 import RuleSelect from "../../creator/RuleSelect";
 import { Description, refFromKey } from "../../creator/ClassFeaturesSection";
-import { ABILITY_CAP, ASI_POINTS, featAbility, type AsiPick } from "../state";
+import { ABILITY_CAP, ASI_POINTS, featAbility, featResistChoose, type AsiPick } from "../state";
+import { FeatResistField } from "./FeatResistField";
 
 const modOf = (score: number) => Math.floor((score - 10) / 2);
 const stepBtn =
@@ -69,6 +70,7 @@ export default function AsiStep({ value, onChange, scores, feats, entry }: {
     onChange({ ...value, abilities });
   };
   const feat = feats.find((f) => refKey(f.ref) === value.feat);
+  const choose = featResistChoose(feat);
 
   return (
     <div className="space-y-5">
@@ -130,7 +132,7 @@ export default function AsiStep({ value, onChange, scores, feats, entry }: {
             label="Dote general"
             options={feats}
             value={value.feat ? refFromKey(value.feat) : null}
-            onChange={(r) => onChange({ ...value, feat: r ? refKey(r) : "", ability: "" })}
+            onChange={(r) => onChange({ ...value, feat: r ? refKey(r) : "", ability: "", resist: [] })}
             placeholder="Busca una dote"
           />
           <p className="text-xs text-muted">Solo aparecen las dotes generales cuyos requisitos cumples y que aún no tienes.</p>
@@ -146,6 +148,15 @@ export default function AsiStep({ value, onChange, scores, feats, entry }: {
                 scores={scores}
                 onChange={(ability) => onChange({ ...value, ability })}
               />
+              {choose && (
+                <FeatResistField
+                  id="level-up-asi-feat-resist"
+                  count={choose.count}
+                  from={choose.from}
+                  value={value.resist}
+                  onChange={(resist) => onChange({ ...value, resist })}
+                />
+              )}
             </div>
           )}
         </div>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { distanceText, fmtMod, toolName } from "@/lib/rules/dnd2024/sheet/labels";
+import { defenseTypeName, distanceText, fmtMod, toolName } from "@/lib/rules/dnd2024/sheet/labels";
 
 describe("toolName", () => {
   it("traduce herramientas y elecciones genéricas", () => {
@@ -27,5 +27,14 @@ describe("fmtMod", () => {
     expect(fmtMod(3)).toBe("+3");
     expect(fmtMod(0)).toBe("+0");
     expect(fmtMod(-1)).toBe("−1");
+  });
+});
+
+describe("defenseTypeName", () => {
+  it("tipos de daño y estados en español", () => {
+    expect(defenseTypeName("resist", "poison")).toBe("Veneno");
+    expect(defenseTypeName("immune", "bludgeoning")).toBe("Contundente");
+    expect(defenseTypeName("conditionImmune", "frightened")).toBe("Asustado");
+    expect(defenseTypeName("conditionImmune", "nonexistent")).toBe("nonexistent");
   });
 });

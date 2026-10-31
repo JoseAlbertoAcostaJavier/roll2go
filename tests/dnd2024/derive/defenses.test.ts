@@ -87,6 +87,14 @@ describe("derive: defensas", () => {
     expect(derive(dwarf(entries, [], [pick(["cold", "fire"])]), entries).defenses.map((r) => r.type)).toEqual(["cold", "fire"]);
     expect(derive(dwarf(entries, [], [pick()]), entries).defenses).toEqual([{ kind: "resist", type: null, sources: ["Dote"] }]);
   });
+  it("una dote elegida en lugar de la mejora de característica también usa lo elegido", () => {
+    const entries = catalog({ feat: { resist: [{ choose: { from: ["cold", "fire", "acid"], count: 2 } }] } });
+    const asi = (resist?: string[]): Choice => ({
+      type: "asi", source: "asi:test", value: { feat: { ref: ref("feat:tough-ish|xphb"), name: "Dote" }, ...(resist ? { resist } : {}) },
+    });
+    expect(derive(dwarf(entries, [], [asi(["cold", "fire"])]), entries).defenses.map((r) => r.type)).toEqual(["cold", "fire"]);
+    expect(derive(dwarf(entries, [], [asi()]), entries).defenses).toEqual([{ kind: "resist", type: null, sources: ["Dote"] }]);
+  });
   it("una especie con choose y sin linaje sale «a elegir» sin lanzar", () => {
     const d = derive(base(), catalog({ species: { resist: [{ choose: { from: ["acid", "fire"], count: 1 } }] } }));
     expect(d.defenses).toEqual([{ kind: "resist", type: null, sources: ["Enano"] }]);

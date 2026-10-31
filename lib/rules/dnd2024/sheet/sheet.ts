@@ -73,7 +73,7 @@ export type BonusSpellsValue = { spells: Named[]; replace?: SpellSwap };
  */
 export type Choice =
   | { type: "subclass"; source: string; value: Named }
-  | { type: "asi"; source: string; value: { abilities: Partial<Record<Ability, 1 | 2>> } | { feat: Named; ability?: Ability } }
+  | { type: "asi"; source: string; value: { abilities: Partial<Record<Ability, 1 | 2>> } | { feat: Named; ability?: Ability; resist?: string[] } }
   | { type: "feat"; source: string; value: FeatPickValue[]; replaced?: Named[] }
   | { type: "optionalFeature"; source: string; value: Named[]; replaced?: Named[] }
   | { type: "weaponMastery"; source: string; value: Ref[] }

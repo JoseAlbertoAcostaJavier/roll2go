@@ -35,7 +35,9 @@ export function characterFeats(sheet: Dnd2024SheetV2, background: BackgroundData
   const feats: FeatPick[] = background?.feat ? [{ ref: background.feat, name: null, level: 1 }] : [];
   for (const l of sheet.levels) {
     for (const c of l.choices) {
-      if (c.type === "asi" && "feat" in c.value) feats.push({ ref: c.value.feat.ref, name: c.value.feat.name, level: l.n });
+      if (c.type === "asi" && "feat" in c.value) {
+        feats.push({ ref: c.value.feat.ref, name: c.value.feat.name, level: l.n, ...(c.value.resist ? { resist: c.value.resist } : {}) });
+      }
     }
   }
   for (const f of heldFeats(sheet.levels)) feats.push({ ref: f.ref, name: f.name, level: f.level, ...(f.resist ? { resist: f.resist } : {}) });

@@ -30,6 +30,16 @@ extra("feat:athlete|xphb", {
 extra("feat:boon of combat prowess|xphb", {
   category: "epicBoon", prerequisite: "Level 19+", repeatable: false, abilityIncrease: ["str", "dex", "con", "int", "wis", "cha"],
 }, "Boon of Combat Prowess");
+const DAMAGE_TYPES = ["acid", "bludgeoning", "cold", "fire", "force", "lightning", "necrotic", "piercing", "poison", "psychic", "radiant", "slashing", "thunder"];
+extra("feat:boon of energy resistance|xphb", {
+  category: "epicBoon", prerequisite: "Level 19+", repeatable: false, abilityIncrease: ["str", "dex", "con", "int", "wis", "cha"],
+  defenses: { resist: [{ choose: { from: ["acid", "cold", "fire", "lightning", "necrotic", "poison", "psychic", "radiant", "thunder"], count: 2 } }] },
+}, "Boon of Energy Resistance");
+// (dote general inventada con la misma elección, para probarla en lugar de una mejora de característica)
+extra("feat:warded|xphb", {
+  category: "general", repeatable: false, abilityIncrease: ["str"],
+  defenses: { resist: [{ choose: { from: DAMAGE_TYPES, count: 1 } }] },
+}, "Warded");
 extra("optionalFeature:armor of shadows|xphb", { featureType: ["EI"] }, "Armor of Shadows");
 extra("optionalFeature:mask of many faces|xphb", { featureType: ["EI"] }, "Mask of Many Faces");
 extra("optionalFeature:misty visions|xphb", { featureType: ["EI"] }, "Misty Visions");
@@ -481,6 +491,37 @@ describe("validateLevel", () => {
       value: [{ ref: ref("feat:boon of combat prowess|xphb"), name: "Boon of Combat Prowess", ability: "str" }],
     });
     expect(await errorsOf(sheet, boon("great weapon master", "str"))).toHaveProperty(["choices.progression:eb|barbarian|xphb"]);
+  });
+
+  it("don de resistencia a la energía: elige dos tipos de daño de la lista, sin repetir", async () => {
+    const sheet = sheetWith([["barbarian", 18]]);
+    const source = "progression:eb|barbarian|xphb";
+    const boon = (resist?: unknown) => ({
+      expectedLevel: 19, class: client("class:barbarian|xphb"), hp: average,
+      choices: [{ type: "feat", source, value: [{ ...client("feat:boon of energy resistance|xphb"), ability: "str", ...(resist ? { resist } : {}) }] }],
+    });
+    const r = await validateLevel(sheet, boon(["cold", "fire"]), ctx());
+    if (!r.ok) throw new Error(JSON.stringify(r.errors));
+    expect(r.entry.choices[0]).toMatchObject({ type: "feat", value: [{ ability: "str", resist: ["cold", "fire"] }] });
+    expect((await errorsOf(sheet, boon(["cold"])))[`choices.${source}`]).toContain("elige 2 tipos de daño.");
+    expect((await errorsOf(sheet, boon()))[`choices.${source}`]).toContain("elige 2 tipos de daño.");
+    expect((await errorsOf(sheet, boon(["banana", "fire"])))[`choices.${source}`]).toContain("tipo de daño no válido.");
+    // «force» existe pero no está en la lista de la dote; repetir uno tampoco vale
+    expect(await errorsOf(sheet, boon(["force", "fire"]))).toHaveProperty([`choices.${source}`]);
+    expect(await errorsOf(sheet, boon(["fire", "fire"]))).toHaveProperty([`choices.${source}`]);
+  });
+
+  it("dote con resistencia a elegir en lugar de la mejora: guarda el tipo y llega a derive", async () => {
+    const warded = (resist?: unknown) => ({ feat: client("feat:warded|xphb"), ability: "str", ...(resist ? { resist } : {}) });
+    const r = await validateLevel(barbarian3(), input({ choices: [asi(warded(["poison"])), mastery()] }), ctx());
+    if (!r.ok) throw new Error(JSON.stringify(r.errors));
+    expect(r.entry.choices[0]).toMatchObject({ type: "asi", value: { feat: { name: "Warded" }, ability: "str", resist: ["poison"] } });
+    expect(await errorsOf(barbarian3(), input({ choices: [asi(warded()), mastery()] }))).toHaveProperty([`choices.${ASI}`]);
+    // Una dote sin esa elección ignora el campo
+    const gwm = { feat: client("feat:great weapon master|xphb"), ability: "str", resist: ["fire"] };
+    const ok = await validateLevel(barbarian3(), input({ choices: [asi(gwm), mastery()] }), ctx());
+    if (!ok.ok) throw new Error(JSON.stringify(ok.errors));
+    expect(ok.entry.choices[0]).not.toHaveProperty("value.resist");
   });
 
   it("entrada no válida → error", async () => {

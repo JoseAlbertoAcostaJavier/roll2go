@@ -1,5 +1,7 @@
 // Nombres en español de los identificadores que guarda el catálogo en minúsculas e inglés (habilidades, etc.).
 import type { Ability, FeatData } from "@/lib/rules/types";
+import type { DefenseKind } from "../derive/defenses";
+import i18n from "../../i18n/es.json";
 
 /** Categoría de dote de 5etools (y de las elecciones de `pendingChoices`) → `FeatData.category`. */
 export const FEAT_CATEGORIES: Record<string, FeatData["category"]> = {
@@ -29,6 +31,19 @@ export const optionalFeatureLabel = (name: string) => OPTIONAL_FEATURE_LABELS[na
 export const ABILITY_NAMES: Record<Ability, string> = {
   str: "Fuerza", dex: "Destreza", con: "Constitución", int: "Inteligencia", wis: "Sabiduría", cha: "Carisma",
 };
+
+/** Tipos de daño (como los guarda el catálogo, en minúsculas e inglés) → nombre en español. */
+export const DAMAGE_TYPE_NAMES: Record<string, string> = {
+  acid: "Ácido", bludgeoning: "Contundente", cold: "Frío", fire: "Fuego", force: "Fuerza", lightning: "Relámpago",
+  necrotic: "Necrótico", piercing: "Perforante", poison: "Veneno", psychic: "Psíquico", radiant: "Radiante",
+  slashing: "Cortante", thunder: "Trueno",
+};
+
+/** Nombre en español del tipo de una defensa: el tipo de daño, o el estado (`i18n/es.json`); si falta, el tipo tal cual. */
+export function defenseTypeName(kind: DefenseKind, type: string): string {
+  if (kind === "conditionImmune") return (i18n as Record<string, string>)[`condition:${type}`] ?? type;
+  return DAMAGE_TYPE_NAMES[type] ?? type;
+}
 
 export const ABILITY_ABBR: Record<Ability, string> = {
   str: "FUE", dex: "DES", con: "CON", int: "INT", wis: "SAB", cha: "CAR",
@@ -142,7 +157,7 @@ const TOOL_NAMES: Record<string, string> = {
 export const toolName = (id: string) => CHOICE_LABELS[id] ?? TOOL_NAMES[id.toLowerCase()] ?? id;
 
 // Armas: tipos de daño, propiedades y maestrías (códigos e ids de 5etools)
-const DAMAGE_TYPE_NAMES: Record<string, string> = {
+const DAMAGE_CODE_NAMES: Record<string, string> = {
   A: "ácido", B: "contundente", C: "frío", F: "fuego", I: "veneno", L: "relámpago", N: "necrótico", O: "fuerza",
   P: "perforante", R: "radiante", S: "cortante", T: "trueno", Y: "psíquico",
 };
@@ -154,7 +169,7 @@ const MASTERY_NAMES: Record<string, string> = {
   cleave: "Hendir", graze: "Rozar", nick: "Mellar", push: "Empujar", sap: "Debilitar", slow: "Ralentizar",
   topple: "Derribar", vex: "Vejar",
 };
-export const damageTypeName = (code: string) => DAMAGE_TYPE_NAMES[code] ?? code;
+export const damageTypeName = (code: string) => DAMAGE_CODE_NAMES[code] ?? code;
 export const weaponPropertyName = (code: string) => WEAPON_PROPERTY_NAMES[code] ?? code;
 export const masteryName = (id: string) => MASTERY_NAMES[id.toLowerCase()] ?? capitalize(id);
 
