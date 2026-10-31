@@ -77,7 +77,7 @@ Afecta a la creación y a subir de nivel, que comparten componentes.
 ### 6.2 Elección de tipo
 
 - Una especie o linaje con `choose` (no ocurre en el Manual 2024 una vez elegido el linaje) se muestra como «a elegir» sin pedir nada.
-- Una dote con `choose` (Don de resistencia a la energía: 2 de 9) pide los tipos al cogerla, como una elección más del nivel: nueva `PendingChoice` de tipo `damageType` (`count`, `from`), validada en el servidor y guardada en el nivel. Las etiquetas en español salen de `lib/rules/i18n`.
+- Una dote con `choose` (Don de resistencia a la energía: 2 de 9) pide los tipos al cogerla, junto a la dote, igual que la característica que mejora: se guardan en la dote elegida (`FeatPickValue.resist`) y el servidor los valida al comprobar la dote. Las etiquetas en español salen de `lib/rules/i18n`.
 
 ### 6.3 Objetos
 
