@@ -10,6 +10,7 @@ import { booksByIds } from "@/lib/server/catalog/books";
 import { listMasteryWeapons, listSpells } from "@/lib/server/catalog/catalog";
 import { derive } from "@/lib/rules/dnd2024/derive";
 import { weaponProficient } from "@/lib/rules/dnd2024/derive/attacks";
+import { normalizeSheetTab } from "@/lib/rules/dnd2024/sheet/sheetTabs";
 import { bareName, refKey } from "@/lib/rules/dnd2024/sheet/equipmentRefs";
 import {
   currentMasteries, isMasteryWeapon, masteryCount, masteryLabel, masteryMeleeOnly,
@@ -20,7 +21,7 @@ import { shortRestRestores } from "@/lib/rules/dnd2024/spells/spellOps";
 import type { BackgroundData, ItemData } from "@/lib/rules/types";
 import SheetHeader from "@/app/components/characters/sheet/SheetHeader";
 import type { JoinableCampaign } from "@/app/components/characters/sheet/JoinCampaignDialog";
-import SheetTabs, { isSheetTab, SHEET_TABS, type SheetTab } from "@/app/components/characters/sheet/SheetTabs";
+import SheetTabs, { SHEET_TABS, type SheetTab } from "@/app/components/characters/sheet/SheetTabs";
 import InfoTab, { type InfoData } from "@/app/components/characters/sheet/InfoTab";
 import BackgroundTab from "@/app/components/characters/sheet/BackgroundTab";
 import FeaturesTab from "@/app/components/characters/sheet/FeaturesTab";
@@ -35,7 +36,7 @@ type Props = {
 };
 
 // Pestañas de todas las fichas; Conjuros, solo si el personaje tiene conjuros
-const BASE_TABS: SheetTab[] = ["info", "trasfondo", "rasgos", "equipo"];
+const BASE_TABS: SheetTab[] = ["acciones", "inventario", "rasgos", "trasfondo"];
 
 // Avisos al volver de una acción (`?saved=…`)
 const NOTICES: Record<string, string> = {
@@ -64,8 +65,8 @@ export default async function CharacterPage({ params, searchParams }: Props) {
   const d = derive(sheet, entries);
 
   const isOwner = String(c.owner) === user.id;
-  const tabs: SheetTab[] = d.hasSpells ? [...BASE_TABS, "conjuros"] : BASE_TABS;
-  const tab: SheetTab = isSheetTab(query.tab) && tabs.includes(query.tab) ? query.tab : "info";
+  const tabs: SheetTab[] = d.hasSpells ? ["acciones", "conjuros", "inventario", "rasgos", "trasfondo"] : BASE_TABS;
+  const tab = normalizeSheetTab(query.tab, tabs);
 
   // Su campaña o, si no tiene y eres su dueño, las campañas a las que puedes unirlo («Unir a una campaña»)
   const sheetCampaign = await loadSheetCampaign(user.id, c, isOwner);
@@ -179,8 +180,8 @@ export default async function CharacterPage({ params, searchParams }: Props) {
 
       <SheetTabs base={base} active={tab} tabs={tabs} />
 
-      <section {...panel("info")}>
-        {panelTitle("info")}
+      <section {...panel("acciones")}>
+        {panelTitle("acciones")}
         {/* Los editores guardan su estado: al borrar un nivel desde la ficha se montan de nuevo con los PG recortados */}
         <InfoTab key={`${d.level}:${d.hp.current}:${d.hp.temp}`} d={info} characterId={id} isOwner={isOwner} />
       </section>
@@ -206,8 +207,8 @@ export default async function CharacterPage({ params, searchParams }: Props) {
         />
         <FeaturesTab groups={d.features} entries={entries} />
       </section>
-      <section {...panel("equipo")}>
-        {panelTitle("equipo")}
+      <section {...panel("inventario")}>
+        {panelTitle("inventario")}
         <EquipmentTab
           characterId={id}
           isOwner={isOwner}
