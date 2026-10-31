@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type { PendingChoice } from "@/lib/rules/dnd2024/levels/pendingChoices";
+import type { SpellOption } from "@/lib/rules/catalog/types";
 import {
-  bonusChoiceOf, bonusPickMissing, emptySpellPick, featSpellsChoiceOf, featSpellsMissing, parseSpellPick, spellChoiceOf,
-  spellPickMissing,
+  bonusChoiceOf, bonusPickMissing, classSpellOptions, emptySpellPick, featSpellsChoiceOf, featSpellsMissing, parseSpellPick,
+  spellChoiceOf, spellPickMissing,
 } from "@/lib/rules/dnd2024/spells/spellPicks";
 
 const SORCERER = { book: "b", key: "class:sorcerer|xphb" };
@@ -154,5 +155,34 @@ describe("arcanum y bonusSpells", () => {
     expect(bonusChoiceOf(p, { ...emptySpellPick(), spells: [k("bless"), k("cure wounds"), k("x")] })).toEqual({
       type: "bonusSpells", source: p.source, value: { spells: [named("bless"), named("cure wounds")] },
     });
+  });
+});
+
+describe("classSpellOptions", () => {
+  const spell = (name: string, level: number, classes: string[]) =>
+    ({ ref: { book: "b", key: `spell:${name}|xphb` }, name, data: { level, classes, tags: [] } }) as unknown as SpellOption;
+  const spells = [
+    spell("misty step", 2, ["wizard", "sorcerer"]), spell("magic missile", 1, ["wizard", "sorcerer"]),
+    spell("fire bolt", 0, ["wizard"]), spell("cure wounds", 1, ["cleric"]), spell("aid", 2, ["cleric"]),
+    spell("sacred flame", 0, ["cleric"]),
+  ];
+  const keysOf = (o: Parameters<typeof classSpellOptions>[1]) => classSpellOptions(spells, o).map((s) => s.ref.key);
+
+  it("no incluye conjuros por encima del nivel máximo", () => {
+    const keys = keysOf({ listId: "wizard", maxLevel: 1 });
+    expect(keys).toContain("spell:fire bolt|xphb");
+    expect(keys).toContain("spell:magic missile|xphb");
+    expect(keys).not.toContain("spell:misty step|xphb");
+    expect(keys).toEqual(["spell:fire bolt|xphb", "spell:magic missile|xphb"]);
+  });
+  it("con Secretos mágicos aplica el mismo tope a las otras listas, sin sus trucos", () => {
+    const keys = keysOf({ listId: "wizard", maxLevel: 1, extraLists: ["cleric"] });
+    expect(keys).toContain("spell:cure wounds|xphb");
+    expect(keys).not.toContain("spell:aid|xphb");
+    expect(keys).not.toContain("spell:sacred flame|xphb");
+  });
+  it("con un filtro propio, también respeta el tope", () => {
+    const keys = keysOf({ listId: "wizard", maxLevel: 1, accepts: (s) => s.data.classes.includes("cleric") });
+    expect(keys).toEqual(["spell:sacred flame|xphb", "spell:cure wounds|xphb"]);
   });
 });

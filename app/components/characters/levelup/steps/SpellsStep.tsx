@@ -8,7 +8,7 @@ import { spellListName } from "@/lib/rules/dnd2024/sheet/labels";
 import type { PendingChoice } from "@/lib/rules/dnd2024/levels/pendingChoices";
 import type { Named } from "@/lib/rules/dnd2024/sheet/sheet";
 import { EMPTY_SPELL_FILTER, matchesSpellFilter, type SpellFilter } from "@/lib/rules/dnd2024/spells/spellFilters";
-import type { SpellPick, SwapPick } from "@/lib/rules/dnd2024/spells/spellPicks";
+import { classSpellOptions, type SpellPick, type SwapPick } from "@/lib/rules/dnd2024/spells/spellPicks";
 import { spellSchoolName } from "@/lib/rules/dnd2024/spells/spellTextClient";
 import type { Ref, SpellcastingMode } from "@/lib/rules/types";
 import { field, labelClass } from "@/app/components/ui/formStyles";
@@ -85,11 +85,8 @@ export default function SpellsStep(props: Props) {
   // Secretos mágicos: los conjuros de nivel 1 o más, de cualquiera de sus listas
   const extraLists = pending?.spells?.lists;
   const list = useMemo(
-    () => props.spells.filter((s) => (accepts ? accepts(s)
-      : s.data.classes.includes(props.listId)
-        || (!!extraLists && s.data.level >= 1 && s.data.classes.some((c) => extraLists.includes(c)))))
-      .sort(byLevelAndName),
-    [props.spells, props.listId, accepts, extraLists],
+    () => classSpellOptions(props.spells, { listId: props.listId, maxLevel, extraLists, accepts }),
+    [props.spells, props.listId, maxLevel, accepts, extraLists],
   );
   const tags = useMemo(() => [...new Set(list.flatMap((s) => s.data.tags))].sort((a, b) => a.localeCompare(b, "es")), [list]);
 
@@ -135,7 +132,6 @@ export default function SpellsStep(props: Props) {
     const checked = picked[kind].includes(key);
     const isHeld = heldKeys.has(key);
     const reason = isHeld ? heldLabel(s)
-      : !cantrip && s.data.level > maxLevel ? `Nivel demasiado alto (hasta el ${maxLevel})`
       : swapIns.includes(key) ? "Ya lo eliges como sustituto"
       : freeSet.has(key) ? "Ya lo eliges gratis"
       : !checked && picked[kind].length >= count ? `Ya has elegido ${count}. Desmarca uno para elegir otro`
@@ -154,7 +150,7 @@ export default function SpellsStep(props: Props) {
     return { checked, disabled: !!reason, reason, onChange: () => togglePrepared(key) };
   }
   const item = (s: SpellOption, check: SpellRowItem["check"]): SpellRowItem => ({
-    ref: s.ref, name: nameOf(s), spell: s, check, dimmed: s.data.level > maxLevel,
+    ref: s.ref, name: nameOf(s), spell: s, check,
   });
   const rowOf = (s: SpellOption) => {
     const check = learnCheck(s) ?? (mode === "list" && preparable(s) ? prepareCheck(s) : undefined);

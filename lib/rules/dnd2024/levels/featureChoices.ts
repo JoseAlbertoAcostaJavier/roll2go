@@ -3,6 +3,8 @@
 // Jugador 2024 esa lista debe quedar vacía: cada rasgo está en `FEATURE_CHOICES` o en `NOT_A_CHOICE`.
 // Solo importa tipos: lo usa también el script de importación.
 
+import type { OptionalFeatureData } from "@/lib/rules/types";
+
 /**
  * Elección escrita a mano. Sin `from`: cualquier habilidad (o, en la pericia, cualquiera en la que tenga competencia).
  * En `featureOption`, `from` lleva ids estables (`option:…`) con su nombre en `FEATURE_OPTION_LABELS`.
@@ -216,3 +218,7 @@ export const NOT_A_CHOICE: ReadonlySet<string> = new Set([
 export const SPECIFIED_CHOICES: ReadonlySet<string> = new Set([
   ...Object.keys(FEATURE_CHOICES), ...NOT_A_CHOICE, ...SPELL_RULE_FEATURES,
 ]);
+
+/** Si la opción (p. ej. una invocación) se puede elegir con ese nivel de clase; los requisitos de pacto o de rasgo no cuentan. */
+export const optionalFeatureAtLevel = (data: OptionalFeatureData, classLevel: number): boolean =>
+  !(data.prerequisite?.level && data.prerequisite.level > classLevel);

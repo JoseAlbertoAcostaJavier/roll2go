@@ -1,5 +1,6 @@
 // Elección de conjuros en el creador y en el asistente de subir de nivel (spec de conjuros §4.2 y §4.3): lo que lleva
 // marcado el usuario (claves `libro:clave`), lo que le falta y la elección `spells` que se envía. Funciones puras.
+import type { SpellOption } from "@/lib/rules/catalog/types";
 import type { Ability, Ref } from "@/lib/rules/types";
 import type { PendingChoice } from "../levels/pendingChoices";
 import type { Choice, SpellChoice } from "../sheet/sheet";
@@ -159,4 +160,22 @@ export function bonusChoiceOf(p: PendingChoice, pick: SpellPick | undefined): Ch
     return { type: "bonusSpells", source: p.source, value: { spells, ...(replace ? { replace } : {}) } };
   }
   return null;
+}
+
+const spellName = (s: SpellOption) => s.nameEs ?? s.name;
+
+/**
+ * Los trucos y conjuros que se pueden elegir al aprender: los de la lista de la clase (o de `extraLists`, solo de nivel 1
+ * o más, en Secretos mágicos; o los que cumpla `accepts`), con los conjuros hasta `maxLevel`. Ordenados por nivel y nombre.
+ */
+export function classSpellOptions(
+  spells: SpellOption[],
+  o: { listId: string; maxLevel: number; extraLists?: string[]; accepts?: (s: SpellOption) => boolean },
+): SpellOption[] {
+  const { listId, maxLevel, extraLists, accepts } = o;
+  return spells
+    .filter((s) => s.data.level <= maxLevel && (accepts ? accepts(s)
+      : s.data.classes.includes(listId)
+        || (!!extraLists && s.data.level >= 1 && s.data.classes.some((c) => extraLists.includes(c)))))
+    .sort((a, b) => a.data.level - b.data.level || spellName(a).localeCompare(spellName(b), "es"));
 }
