@@ -17,6 +17,7 @@ import {
   meetsFeatPrerequisite, meetsMulticlass, pendingChoices, withBonusCantrips, type PendingChoice,
 } from "@/lib/rules/dnd2024/levels/pendingChoices";
 import { spellsSource } from "@/lib/rules/dnd2024/levels/spellPending";
+import { LEVEL_CHANGED } from "@/lib/rules/dnd2024/levels/levelOps";
 import { currentMasteries, masteryLabel } from "@/lib/rules/dnd2024/levels/masteries";
 import type { Dnd2024SheetV2, LevelEntry } from "@/lib/rules/dnd2024/sheet/sheet";
 import { emptySpellPick } from "@/lib/rules/dnd2024/spells/spellPicks";
@@ -64,7 +65,6 @@ type Props = {
 
 type Step = { id: string; title: string; p?: PendingChoice };
 
-const CONFLICT = "El personaje ha cambiado de nivel; recarga la página.";
 const ROW_TYPES: PendingChoice["type"][] = ["skills", "expertise", "weaponMastery"];
 const uniq = <T,>(list: T[]) => [...new Set(list)];
 const nameOf = (e: { nameEs: string | null; name: string }) => e.nameEs ?? e.name;
@@ -417,7 +417,7 @@ function Wizard(props: Props & { draftKey: string; draft: string | null }) {
         router.refresh();
         return;
       }
-      if (res.status === 409) setConflict(data?.error ?? CONFLICT);
+      if (res.status === 409) setConflict(data?.error ?? LEVEL_CHANGED);
       else if (data?.errors) setErrors(uniq(Object.values(data.errors as Record<string, string>)));
       else setErrors([data?.error ?? `El servidor ha respondido con un error (${res.status}).`]);
     } catch {

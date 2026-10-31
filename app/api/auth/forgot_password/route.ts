@@ -1,9 +1,8 @@
 import { after, NextRequest, NextResponse } from "next/server";
-import { connectDB } from "@/lib/models/mongodb";
-import { User } from "@/lib/models/User";
 import { getClientIp, rateLimit, tooManyRequests } from "@/lib/utils/rateLimit";
-import { createResetToken } from "@/lib/server/auth/verification";
+import { requestPasswordReset } from "@/lib/server/auth/emailTokens";
 import { sendPasswordResetEmail } from "@/lib/server/notifications/mail";
+import { failureResponse } from "@/lib/server/result";
 
 export async function POST(req: NextRequest) {
   // Límite más estricto: 3 peticiones por hora para evitar spam masivo de correos
@@ -30,36 +29,21 @@ export async function POST(req: NextRequest) {
     if (!byEmail.ok) return tooManyRequests(byEmail.retryAfter);
   }
 
-  try {
-    await connectDB();
-    const user = await User.findOne({ email });
+  // Por seguridad (anti-enumeración): 200 OK aunque el usuario no exista
+  const result = await requestPasswordReset(email);
+  if (!result.ok) return failureResponse(result);
 
-    // Por seguridad (anti-enumeración): Devolver 200 OK aunque el usuario no exista
-    if (!user) {
-      return NextResponse.json({ success: true });
-    }
-
-    // Generar y guardar el hash del token en el usuario
-    const { token, hash, expires } = createResetToken();
-    user.resetTokenHash = hash;
-    user.resetTokenExpires = expires;
-    await user.save();
-
-    // El correo se envía DESPUÉS de responder: así la respuesta tarda casi lo mismo exista o no la cuenta
+  // El correo se envía DESPUÉS de responder: así la respuesta tarda casi lo mismo exista o no la cuenta
+  const { mail } = result;
+  if (mail) {
     after(async () => {
       try {
-        await sendPasswordResetEmail(user.email, user.username, token);
+        await sendPasswordResetEmail(mail.email, mail.username, mail.token);
       } catch (err) {
         console.error("No se pudo enviar el correo de recuperación:", err);
       }
     });
-
-    return NextResponse.json({ success: true });
-  } catch (err) {
-    console.error("Error en forgot_password:", err);
-    return NextResponse.json(
-      { error: "Error interno del servidor." },
-      { status: 500 },
-    );
   }
+
+  return NextResponse.json({ success: true });
 }

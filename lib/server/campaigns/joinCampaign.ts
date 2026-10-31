@@ -2,6 +2,10 @@ import "server-only";
 import { connectDB } from "@/lib/models/mongodb";
 import { Campaign } from "@/lib/models/Campaign";
 import { Block } from "@/lib/models/Block";
+import { CampaignInvite } from "@/lib/models/CampaignInvite";
+import { Notification } from "@/lib/models/Notification";
+import { User } from "@/lib/models/User";
+import { isValidId } from "@/lib/server/ids";
 import { INVITE_REGEX, MAX_MEMBERS } from "@/lib/server/campaigns/members";
 import { notify } from "@/lib/server/notifications/notify";
 import { fail, type Result } from "@/lib/server/result";
@@ -77,5 +81,68 @@ export async function joinByInviteCode(
   } catch (err) {
     console.error("Error al unirse a la campaña:", err);
     return fail(500, "No se pudo completar la unión. Inténtalo de nuevo.");
+  }
+}
+
+/* Página de un enlace de invitación: la campaña que ofrece (con el nombre del DM), { member: true } si ya eres miembro o
+   null si el enlace no existe, ha caducado o el DM lo ha desactivado. */
+export async function loadInviteLanding(code: string, userId: string) {
+  if (!INVITE_REGEX.test(code)) return null;
+  await connectDB();
+  const campaign = await Campaign.findOne({
+    inviteCode: code,
+    $or: [{ inviteExpires: { $exists: false } }, { inviteExpires: { $gt: new Date() } }],
+  })
+    .select("name systemId shortDescription owner members imageId")
+    .lean();
+  if (!campaign) return null;
+  if (campaign.members.some((m: unknown) => String(m) === userId)) return { member: true as const, id: String(campaign._id) };
+
+  const owner = await User.findById(campaign.owner).select("username").lean();
+  return {
+    member: false as const,
+    id: String(campaign._id),
+    name: campaign.name as string,
+    systemId: campaign.systemId as string,
+    shortDescription: (campaign.shortDescription ?? "") as string,
+    imageId: campaign.imageId ? String(campaign.imageId) : null,
+    memberCount: (campaign.members?.length ?? 1) as number,
+    ownerName: (owner?.username ?? null) as string | null,
+  };
+}
+
+/* Aceptar o rechazar una invitación dirigida a ti. Al rechazarla, o al aceptarla y entrar (o no poder entrar porque
+   la campaña ya no existe o te han expulsado), desaparecen la invitación y su aviso. Devuelve la campaña al entrar. */
+export async function answerInvite(
+  userId: string,
+  inviteId: string,
+  action: "accept" | "decline",
+): Promise<Result<{ campaignId?: string }>> {
+  const gone = () => fail(404, "La invitación ya no existe.");
+  if (!isValidId(inviteId)) return gone();
+
+  try {
+    await connectDB();
+    const invite = await CampaignInvite.findOne({ _id: inviteId, user: userId });
+    if (!invite) return gone();
+
+    const clean = async () => {
+      await invite.deleteOne();
+      await Notification.deleteMany({ user: userId, type: "campaign_invite", campaign: invite.campaign });
+    };
+
+    if (action === "decline") {
+      await clean();
+      return { ok: true };
+    }
+
+    const result = await joinCampaign(invite.campaign, userId);
+    if (result === "full") return fail(409, "La campaña ha alcanzado el máximo de participantes.");
+    await clean();
+    if (result === "banned" || result === "missing") return gone();
+    return { ok: true, campaignId: String(invite.campaign) };
+  } catch (err) {
+    console.error("Error al responder a la invitación:", err);
+    return fail(500, "No se pudo completar la acción. Inténtalo de nuevo.");
   }
 }

@@ -17,6 +17,7 @@ import { validateSheet } from "@/lib/rules/dnd2024/creation/validateSheet";
 import { ALIGNMENTS } from "@/lib/rules/dnd2024/sheet/alignments";
 import { parsePronouns } from "@/lib/rules/dnd2024/creation/names";
 import { creationUpdate } from "@/lib/rules/dnd2024/creation/recreate";
+import { LEVEL_CHANGED } from "@/lib/rules/dnd2024/levels/levelOps";
 import type { Dnd2024SheetV2 } from "@/lib/rules/dnd2024/sheet/sheet";
 
 const STATUSES = ["active", "retired", "dead", "npc"] as const;
@@ -192,6 +193,6 @@ export async function recreateCharacter(userId: string, id: string, form: FormDa
     { _id: id, "sheet.version": 2, "sheet.levels": { $size: 1 } },
     { $set: { name, pronouns: pronouns ?? [], ...creationUpdate(result.sheet) } },
   );
-  if (res.matchedCount === 0) return fail(409, "El personaje ha cambiado de nivel; recarga la página.");
+  if (res.matchedCount === 0) return fail(409, LEVEL_CHANGED);
   return { ok: true };
 }

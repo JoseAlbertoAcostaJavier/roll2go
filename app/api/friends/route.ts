@@ -1,13 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { connectDB } from "@/lib/models/mongodb";
 import { sessionOf } from "@/lib/server/campaigns/campaignApi";
 import { rateLimit, tooManyRequests } from "@/lib/utils/rateLimit";
-import { Friendship, pairKey } from "@/lib/models/Friendship";
-import { Notification } from "@/lib/models/Notification";
-import { findUserByUsername } from "@/lib/server/social/friends";
-import { notify } from "@/lib/server/notifications/notify";
-import { blockStatus } from "@/lib/server/social/blocks";
-const MAX_PENDING = 50; // solicitudes enviadas sin responder
+import { sendFriendRequest } from "@/lib/server/social/relations";
+import { failureResponse } from "@/lib/server/result";
 
 export async function POST(req: NextRequest) {
   const session = await sessionOf(req);
@@ -24,101 +19,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Petición no válida." }, { status: 400 });
   }
 
-  try {
-    await connectDB();
-    const target = await findUserByUsername(
-      typeof body.username === "string" ? body.username : "",
-    );
-    if (!target)
-      return NextResponse.json(
-        { error: "No existe ningún usuario con ese nombre." },
-        { status: 404 },
-      );
-    const targetId = String(target._id);
-    if (targetId === session.id) {
-      // Nadie puede enviar una solicitud a quien le ha bloqueado, ni a quien ha bloqueado él
-      const block = await blockStatus(session.id, targetId);
-      if (block.byMe) {
-        return NextResponse.json(
-          {
-            error:
-              "Has bloqueado a este usuario. Desbloquéalo para poder enviarle una solicitud.",
-          },
-          { status: 403 },
-        );
-      }
-      if (block.byThem) {
-        return NextResponse.json(
-          { error: "No puedes enviar una solicitud a este usuario." },
-          { status: 403 },
-        );
-      }
-      return NextResponse.json(
-        { error: "No puedes enviarte una solicitud a ti mismo." },
-        { status: 400 },
-      );
-    }
-
-    const pair = pairKey(session.id, targetId);
-    const existing = await Friendship.findOne({ pair });
-    if (existing) {
-      if (existing.status === "accepted")
-        return NextResponse.json({ error: "Ya sois amigos." }, { status: 409 });
-      if (String(existing.requester) === session.id) {
-        return NextResponse.json(
-          { error: "Ya has enviado una solicitud a este usuario." },
-          { status: 409 },
-        );
-      }
-      // Solicitud cruzada: esa persona ya te había pedido amistad, así que se acepta
-      existing.status = "accepted";
-      await existing.save();
-      await Notification.deleteMany({
-        user: session.id,
-        type: "friend_request",
-        actor: targetId,
-      });
-      await notify({
-        user: targetId,
-        type: "friend_accepted",
-        actor: session.id,
-      });
-      return NextResponse.json({ relation: "friend" });
-    }
-
-    if (
-      (await Friendship.countDocuments({
-        requester: session.id,
-        status: "pending",
-      })) >= MAX_PENDING
-    ) {
-      return NextResponse.json(
-        {
-          error:
-            "Tienes demasiadas solicitudes pendientes. Espera a que respondan.",
-        },
-        { status: 400 },
-      );
-    }
-
-    await Friendship.create({
-      requester: session.id,
-      recipient: targetId,
-      pair,
-    });
-    await notify({ user: targetId, type: "friend_request", actor: session.id });
-    return NextResponse.json({ relation: "outgoing" }, { status: 201 });
-  } catch (err) {
-    if ((err as { code?: number }).code === 11000) {
-      return NextResponse.json(
-        { error: "Ya existe una solicitud con este usuario." },
-        { status: 409 },
-      );
-    }
-    console.error("Error al enviar la solicitud:", err);
-    return NextResponse.json(
-      { error: "No se pudo enviar la solicitud. Inténtalo de nuevo." },
-      { status: 500 },
-    );
-  }
+  const result = await sendFriendRequest(session.id, typeof body.username === "string" ? body.username : "");
+  if (!result.ok) return failureResponse(result);
+  // Solicitud cruzada: ya sois amigos. Si no, la solicitud queda creada.
+  if (result.relation === "friend") return NextResponse.json({ relation: "friend" });
+  return NextResponse.json({ relation: "outgoing" }, { status: 201 });
 }

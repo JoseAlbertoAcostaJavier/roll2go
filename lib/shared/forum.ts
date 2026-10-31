@@ -1,3 +1,4 @@
+import type { UserCard } from "@/lib/server/account/userCards";
 import { cleanText } from "@/lib/utils/utils";
 
 export const REACTIONS = [
@@ -30,6 +31,26 @@ export const MAX_CONTENT = 10000;
 export const THREADS_PER_PAGE = 15;
 export const REPLIES_PER_PAGE = 30;
 
+/** Un mensaje del hilo tal como lo pinta ForumMessage, con lo que puede hacer quien mira. */
+export type ForumMessageData = {
+  id: string;
+  rootId: string;
+  isRoot: boolean;
+  number: number | null; // posición de la respuesta en el hilo (null en el mensaje principal)
+  title?: string;
+  content: string;
+  createdAt: string;
+  editedAt: string | null;
+  pinned: boolean;
+  author: UserCard | null;
+  authorIsDm: boolean;
+  // A quién responde (solo en respuestas dirigidas a otra respuesta). href: enlace si está en la misma página
+  replyTo: { name: string; href: string | null } | null;
+  reactions: ReactionState;
+  canEdit: boolean;
+  canDelete: boolean;
+  canPin: boolean;
+};
 
 // Valida un mensaje del foro (el servidor repite las comprobaciones del navegador)
 export function parseForumBody(body: { title?: unknown; content?: unknown }, isRoot: boolean) {

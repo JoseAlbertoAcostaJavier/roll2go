@@ -1,16 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
-import mongoose from "mongoose";
 import { sessionOf } from "@/lib/server/campaigns/campaignApi";
 import { rateLimit, tooManyRequests } from "@/lib/utils/rateLimit";
-import { BookEntry, ENTRY_KINDS } from "@/lib/models/BookEntry";
-import { MAX_BOOK_NAME, MAX_ENTRIES_PER_BOOK, MAX_ENTRY_DESCRIPTION, loadBook } from "@/lib/server/books/bookAccess";
-import { cleanText, escapeRegex } from "@/lib/utils/utils";
-import { normalizeName } from "@/lib/rules/schemas";
+import { MAX_BOOK_NAME, MAX_ENTRY_DESCRIPTION, loadBook } from "@/lib/server/books/bookAccess";
+import { createBookEntry, listBookEntries } from "@/lib/server/books/books";
+import { failureResponse } from "@/lib/server/result";
+import { cleanText } from "@/lib/utils/utils";
+import { ENTRY_KINDS, type EntryKind } from "@/lib/rules/types";
 
 type Ctx = { params: Promise<{ id: string }> };
 
-const isKind = (k: string) => (ENTRY_KINDS as readonly string[]).includes(k);
+const isKind = (k: string): k is EntryKind => (ENTRY_KINDS as readonly string[]).includes(k);
 
 // ?kind=spell&q=bola  (q: prefijo del nombre)
 export async function GET(req: NextRequest, { params }: Ctx) {
@@ -21,16 +21,7 @@ export async function GET(req: NextRequest, { params }: Ctx) {
 
   const kind = req.nextUrl.searchParams.get("kind");
   const q = (req.nextUrl.searchParams.get("q") ?? "").trim().slice(0, MAX_BOOK_NAME);
-  const filter: Record<string, unknown> = { book: id };
-  const qNorm = normalizeName(q);
-  if (kind && isKind(kind)) filter.kind = kind;
-  if (qNorm) filter.nameLower = { $regex: "^" + escapeRegex(qNorm) };
-
-  const entries = await BookEntry.find(filter)
-    .select("-description") // el listado no necesita el texto completo
-    .sort({ kind: 1, nameLower: 1 })
-    .limit(500)
-    .lean();
+  const entries = await listBookEntries(id, kind && isKind(kind) ? kind : null, q);
   return NextResponse.json({ entries });
 }
 
@@ -55,22 +46,12 @@ export async function POST(req: NextRequest, { params }: Ctx) {
   if (!isKind(kind))
     return NextResponse.json({ error: "Tipo de entrada no válido." }, { status: 400 });
 
-  if ((await BookEntry.countDocuments({ book: id })) >= MAX_ENTRIES_PER_BOOK)
-    return NextResponse.json(
-      { error: `Un libro admite como máximo ${MAX_ENTRIES_PER_BOOK} entradas.` },
-      { status: 400 },
-    );
-
-  const entry = await BookEntry.create({
-    book: id,
+  const result = await createBookEntry(id, {
     kind,
     name,
-    // Clave única dentro del libro, con el tipo delante como las importadas: `spell:bola-de-fuego|<id>`
-    key: `${kind}:${normalizeName(name).replace(/\s+/g, "-")}|${new mongoose.Types.ObjectId().toHexString()}`,
-    nameLower: normalizeName(name),
     description: cleanText(String(body?.description ?? "")).slice(0, MAX_ENTRY_DESCRIPTION),
-    data: {}, // fase 2: aquí irá la validación por tipo
   });
+  if (!result.ok) return failureResponse(result);
   revalidateTag(`book:${id}`, "max");
-  return NextResponse.json({ id: String(entry._id) }, { status: 201 });
+  return NextResponse.json({ id: result.id }, { status: 201 });
 }

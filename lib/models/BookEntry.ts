@@ -1,23 +1,8 @@
 import mongoose, { Schema } from "mongoose";
-import type { EntryKind } from "@/lib/rules/types";
+import { ENTRY_KINDS, type EntryKind } from "@/lib/rules/types";
 
-// Tipos de entrada del catálogo (deben coincidir con EntryKind de lib/rules/types.ts)
-export const ENTRY_KINDS: readonly EntryKind[] = [
-  "species",
-  "lineage",
-  "class",
-  "subclass",
-  "classFeature",
-  "subclassFeature",
-  "background",
-  "feat",
-  "spell",
-  "item",
-  "language",
-  "skill",
-  "optionalFeature",
-  "nameTable",
-];
+// Tipos de entrada del catálogo: viven en lib/rules/types.ts (puro) y se reexportan aquí para los scripts
+export { ENTRY_KINDS };
 export type { EntryKind };
 
 const BookEntrySchema = new Schema(

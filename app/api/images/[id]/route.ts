@@ -1,17 +1,11 @@
-import mongoose from "mongoose";
-import { connectDB } from "@/lib/models/mongodb";
-import { CampaignImage } from "@/lib/models/CampaignImage";
+import { loadImage } from "@/lib/server/account/images";
 
 export async function GET(
   _req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
-  if (!mongoose.isValidObjectId(id))
-    return new Response("No encontrada", { status: 404 });
-
-  await connectDB();
-  const img = await CampaignImage.findById(id);
+  const img = await loadImage(id);
   if (!img) return new Response("No encontrada", { status: 404 });
 
   return new Response(new Uint8Array(img.data), {

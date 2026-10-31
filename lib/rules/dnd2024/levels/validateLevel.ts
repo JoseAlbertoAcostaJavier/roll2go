@@ -14,6 +14,7 @@ import { refKey } from "../sheet/equipmentRefs";
 import { heldArcana, heldBonusSpells, heldOptionalFeatures, heldPicks } from "./held";
 import { meetsMulticlass, pendingChoices } from "./pendingChoices";
 import { currentMasteries } from "./masteries";
+import { LEVEL_CHANGED } from "./levelOps";
 import { verifyHitDie } from "../creation/rolls";
 import type { Dnd2024SheetV2, LevelEntry, Named } from "../sheet/sheet";
 import { SUBCLASS_SOURCE, summarizeClasses } from "../sheet/upgrade";
@@ -64,7 +65,7 @@ export async function validateLevel(
   if (current >= MAX_LEVEL) return { ok: false, errors: { level: `El nivel máximo es ${MAX_LEVEL}.` } };
   if (current === 0) return { ok: false, errors: { level: "El nivel 1 se elige al crear el personaje." } };
   const n = current + 1;
-  if (input.expectedLevel !== n) err("expectedLevel", "El personaje ha cambiado de nivel; recarga la página.");
+  if (input.expectedLevel !== n) err("expectedLevel", LEVEL_CHANGED);
 
   // Clase: de un libro utilizable; si es nueva, con los requisitos de multiclase
   const entries = new Map(ctx.entries);

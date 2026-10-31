@@ -1,14 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import bcrypt from "bcryptjs";
-import { connectDB } from "@/lib/models/mongodb";
-import { User } from "@/lib/models/User";
 import { COOKIE_NAME, signSession, sessionCookieOptions } from "@/lib/server/auth/auth";
+import { signIn } from "@/lib/server/auth/credentials";
+import { failureResponse } from "@/lib/server/result";
 import { getClientIp, rateLimit, tooManyRequests } from "@/lib/utils/rateLimit";
-
-// Hash falso: se compara igualmente cuando el usuario no existe, para que la
-// respuesta tarde lo mismo y no se pueda averiguar qué cuentas existen.
-// El coste (10) tiene que ser el mismo que el del registro.
-const DUMMY_HASH = bcrypt.hashSync("no-existe", 10);
 
 export async function POST(req: NextRequest) {
   // Máximo 10 intentos cada 15 minutos por IP
@@ -30,57 +24,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Rellena tu correo o usuario y la contraseña." }, { status: 400 });
   }
 
+  // Comprueba la contraseña, el baneo y la verificación
+  const result = await signIn(identifier, password);
+  if (!result.ok) return "body" in result ? NextResponse.json(result.body, { status: result.status }) : failureResponse(result);
+
   try {
-    // 1. Conectar a MongoDB a través de Mongoose
-    await connectDB();
-
-    // 2. Buscar al usuario (si lleva "@" es un correo; si no, un nombre de usuario).
-    //    passwordHash no se devuelve por defecto, así que se pide expresamente.
-    const isEmail = identifier.includes("@");
-    const user = await User.findOne(
-      isEmail ? { email: identifier.toLowerCase() } : { usernameLower: identifier.toLowerCase() },
-    ).select("+passwordHash");
-
-    // 3. Verificar contraseña
-    const ok = await bcrypt.compare(password, user?.passwordHash ?? DUMMY_HASH);
-
-    if (!user || !ok) {
-      // Mensaje genérico a propósito: no se dice si falló el usuario o la contraseña
-      return NextResponse.json({ error: "Credenciales incorrectas." }, { status: 401 });
-    }
-    // Cuenta baneada: solo se avisa tras acertar la contraseña, para no revelar qué cuentas lo están
-    if (user.bannedAt) {
-      return NextResponse.json(
-        {
-          error: user.banReason
-            ? `Tu cuenta ha sido suspendida de forma permanente. Motivo: ${user.banReason}`
-            : "Tu cuenta ha sido suspendida de forma permanente.",
-          code: "banned",
-        },
-        { status: 403 },
-      );
-    }
-    //Si el usuario no esta verificado, no le permitimos iniciar sesion 
-    if (!user.verified) {
-      return NextResponse.json(
-        {
-          error: "Tu cuenta aún no está verificada. Revisa tu correo.",
-          code: "unverified",
-          email: user.email,
-        },
-        { status: 403 },
-      );
-    }    
-
-    // 4. Crear sesión y firmar JWT
-    const id = user._id.toString();
-    const token = await signSession({ id, username: user.username }, remember);
-
-    const res = NextResponse.json({ user: { id, username: user.username } });
-
-    // 5. Inyectar la cookie en la respuesta
+    // Crear sesión, firmar JWT e inyectar la cookie en la respuesta
+    const { id, username } = result;
+    const token = await signSession({ id, username }, remember);
+    const res = NextResponse.json({ user: { id, username } });
     res.cookies.set(COOKIE_NAME, token, sessionCookieOptions(remember));
-
     return res;
   } catch (err) {
     console.error("Error al iniciar sesión:", err);

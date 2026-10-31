@@ -6,19 +6,16 @@ import { Character } from "@/lib/models/Character";
 import { loadForWrite } from "@/lib/server/characters/writeAccess";
 import { getEntries, getEntry } from "@/lib/server/catalog/catalog";
 import { notify } from "@/lib/server/notifications/notify";
-import { fail, type Result } from "@/lib/server/result";
+import { fail, invalid, type Result } from "@/lib/server/result";
 import { unchangedFilter } from "@/lib/utils/unchangedFilter";
 import { derive } from "@/lib/rules/dnd2024/derive";
-import { applyLevel, checkExpectedLevel, removeLastLevel } from "@/lib/rules/dnd2024/levels/levelOps";
+import { LEVEL_CHANGED, applyLevel, checkExpectedLevel, removeLastLevel } from "@/lib/rules/dnd2024/levels/levelOps";
 import { masteryCount } from "@/lib/rules/dnd2024/levels/masteries";
 import { validateLevel } from "@/lib/rules/dnd2024/levels/validateLevel";
 import { refKey } from "@/lib/rules/dnd2024/sheet/equipmentRefs";
 import type { LevelEntry } from "@/lib/rules/dnd2024/sheet/sheet";
 import { loadSheetEntries } from "@/lib/rules/dnd2024/sheet/sheetEntries";
 import type { SpellData } from "@/lib/rules/types";
-
-const LEVEL_CHANGED = "El personaje ha cambiado de nivel; recarga la página.";
-
 
 /* Sube un nivel { expectedLevel, class, choices, hp }; devuelve el nivel nuevo, o los errores por campo. Avisa al DM
    si el personaje está en su campaña. */
@@ -39,7 +36,7 @@ export async function levelUp(userId: string, id: string, body: unknown): Promis
     resolve: async (ref) => (found.books.includes(ref.book) ? getEntry(ref) : null),
     entries: found.entries,
   });
-  if (!result.ok) return { ok: false, status: 400, errors: result.errors };
+  if (!result.ok) return invalid(result.errors);
 
   // Máximos de PG antes y después: el nuevo puede traer una clase, una subclase o una dote que cuente
   const maxBefore = derive(sheet, found.entries).hp.max;

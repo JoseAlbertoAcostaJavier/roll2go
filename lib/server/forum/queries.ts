@@ -1,11 +1,11 @@
 import "server-only";
 // Datos de las páginas del foro de una campaña. Reciben lo que da getCampaignAccess (quien mira ya es miembro).
 import { ForumPost } from "@/lib/models/ForumPost";
-import { loadUserCards, type UserCard } from "@/lib/server/account/userCards";
+import { loadUserCards } from "@/lib/server/account/userCards";
 import type { getCampaignAccess } from "@/lib/server/campaigns/campaignAccess";
 import { loadReactions } from "@/lib/server/forum/forumData";
 import { isValidId } from "@/lib/server/ids";
-import { REPLIES_PER_PAGE, THREADS_PER_PAGE, type ReactionState } from "@/lib/shared/forum";
+import { REPLIES_PER_PAGE, THREADS_PER_PAGE, type ForumMessageData } from "@/lib/shared/forum";
 import { pageFrom } from "@/lib/utils/utils";
 
 type AccessCampaign = Awaited<ReturnType<typeof getCampaignAccess>>["campaign"];
@@ -36,26 +36,6 @@ export async function listThreads(campaign: AccessCampaign, pageParam: string | 
 
   return { total, pages, page, threads, statsById, cards };
 }
-
-/** Un mensaje del hilo tal como lo pinta ForumMessage, con lo que puede hacer quien mira. */
-export type ThreadMessage = {
-  id: string;
-  rootId: string;
-  isRoot: boolean;
-  number: number | null;
-  title?: string;
-  content: string;
-  createdAt: string;
-  editedAt: string | null;
-  pinned: boolean;
-  author: UserCard | null;
-  authorIsDm: boolean;
-  replyTo: { name: string; href: string | null } | null;
-  reactions: ReactionState;
-  canEdit: boolean;
-  canDelete: boolean;
-  canPin: boolean;
-};
 
 /* Un hilo con las respuestas de la página pedida, numeradas. null si no existe en esta campaña. Quien mira puede
    editar sus mensajes; borrar, los suyos o, si es el DM, cualquiera; fijar, solo el DM y solo el mensaje principal. */
@@ -94,10 +74,10 @@ export async function loadThread(
   const dmId = String(campaign.owner);
   const onPage = new Set(replies.map((r) => String(r._id)));
 
-  const toMessage = (p: typeof root, number: number | null): ThreadMessage => {
+  const toMessage = (p: typeof root, number: number | null): ForumMessageData => {
     const isRoot = number === null;
     const mine = String(p.author) === userId;
-    let replyTo: ThreadMessage["replyTo"] = null;
+    let replyTo: ForumMessageData["replyTo"] = null;
     if (p.replyTo) {
       const targetId = targetAuthor.get(String(p.replyTo));
       replyTo = {

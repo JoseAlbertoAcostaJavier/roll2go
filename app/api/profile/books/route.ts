@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { connectDB } from "@/lib/models/mongodb";
 import { sessionOf } from "@/lib/server/campaigns/campaignApi";
-import { User } from "@/lib/models/User";
-import { officialBookIds } from "@/lib/server/catalog/books";
+import { ownedBooksOf, setOwnedBooks } from "@/lib/server/account/profile";
 
 export async function GET(req: NextRequest) {
   const session = await sessionOf(req);
@@ -11,9 +9,7 @@ export async function GET(req: NextRequest) {
       { error: "No has iniciado sesión." },
       { status: 401 },
     );
-  await connectDB();
-  const me = await User.findById(session.id).select("ownedBooks").lean();
-  return NextResponse.json({ ownedBooks: me?.ownedBooks ?? [] });
+  return NextResponse.json({ ownedBooks: await ownedBooksOf(session.id) });
 }
 
 // Sustituye la lista de libros del usuario. Solo se aceptan ids de libros oficiales existentes.
@@ -35,9 +31,5 @@ export async function PUT(req: NextRequest) {
   const requested = Array.isArray(body.ownedBooks)
     ? [...new Set(body.ownedBooks.filter((id): id is string => typeof id === "string"))]
     : [];
-  const ownedBooks = await officialBookIds(requested);
-
-  await connectDB();
-  await User.updateOne({ _id: session.id }, { $set: { ownedBooks } });
-  return NextResponse.json({ ownedBooks });
+  return NextResponse.json({ ownedBooks: await setOwnedBooks(session.id, requested) });
 }

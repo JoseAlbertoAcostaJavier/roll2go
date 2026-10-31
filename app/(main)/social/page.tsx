@@ -4,16 +4,12 @@ import Avatar from "@/app/components/ui/Avatar";
 import FriendActions from "@/app/components/social/FriendActions";
 import UserSearch from "@/app/components/social/UserSearch";
 import { requireUser } from "@/lib/server/auth/currentUser";
-import { connectDB } from "@/lib/models/mongodb";
-import { Friendship } from "@/lib/models/Friendship";
-import { User } from "@/lib/models/User";
-import { relationOf, type Relation } from "@/lib/server/social/friends";
+import type { Relation } from "@/lib/server/social/friends";
 import ConfirmAction from "@/app/components/ui/ConfirmAction";
-import { Block } from "@/lib/models/Block";
-import { loadUserCards } from "@/lib/server/account/userCards";
+import { socialOverview, type SocialPerson } from "@/lib/server/social/queries";
 export const metadata: Metadata = { title: "Social" };
 
-type Person = { username: string; displayName: string; avatarUrl: string | null; relation: Relation };
+type Person = SocialPerson;
 
 function PersonCard({ p }: { p: Person }) {
   const status = { friend: "Tu amigo", outgoing: "Solicitud enviada", incoming: "Te ha enviado una solicitud", none: "" }[p.relation];
@@ -48,31 +44,9 @@ function Section({ title, people }: { title: string; people: Person[] }) {
 
 export default async function SocialPage() {
   const me = await requireUser("/social");
-  await connectDB();
-
-  const rows = await Friendship.find({ $or: [{ requester: me.id }, { recipient: me.id }] })
-    .sort({ updatedAt: -1 })
-    .limit(300)
-    .lean();
-  const otherIds = rows.map((r) => (String(r.requester) === me.id ? String(r.recipient) : String(r.requester)));
-  const users = await User.find({ _id: { $in: otherIds } }).select("username displayName avatarId").lean();
-  const byId = new Map(users.map((u) => [String(u._id), u] as const));
-
-  const people: Person[] = [];
-  rows.forEach((r, i) => {
-    const u = byId.get(otherIds[i]);
-    if (!u) return; // cuenta borrada
-    people.push({
-      username: u.username,
-      displayName: u.displayName || u.username,
-      avatarUrl: u.avatarId ? `/api/images/${u.avatarId}` : null,
-      relation: relationOf(me.id, r),
-    });
-  });
+  // Amigos, solicitudes y bloqueados
+  const { people, blockedUsers } = await socialOverview(me.id);
   const pick = (rel: Relation) => people.filter((p) => p.relation === rel);
-  const blocks = await Block.find({ blocker: me.id }).sort({ createdAt: -1 }).limit(200).lean();
-  const blockedCards = await loadUserCards(blocks.map((b) => b.blocked));
-  const blockedUsers = blocks.map((b) => blockedCards.get(String(b.blocked))).filter((u) => !!u);
   return (
     <div className="mx-auto max-w-280 px-5 py-10">
       <h1 className="mb-6 font-heading text-3xl font-extrabold">Lista de Amigos</h1>

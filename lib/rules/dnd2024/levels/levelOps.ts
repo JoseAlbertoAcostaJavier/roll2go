@@ -10,6 +10,9 @@ import { preparedKey } from "../spells/spellcasting";
 import { trimSpells } from "../spells/spellOps";
 import { summarizeClasses } from "../sheet/upgrade";
 
+// Texto del 409 cuando el personaje ha cambiado de nivel entre que se abrió la página y se guardó
+export const LEVEL_CHANGED = "El personaje ha cambiado de nivel; recarga la página.";
+
 const masteriesOf = (entry: LevelEntry) => entry.choices.flatMap((c) => (c.type === "weaponMastery" ? c.value : []));
 
 /** Comprueba el `expectedLevel` del cuerpo: no entero → 400; distinto del nivel actual + 1 → 409 (el personaje cambió). */
@@ -18,7 +21,7 @@ export function checkExpectedLevel(
 ): { ok: true } | { ok: false; status: 400 | 409; error: string } {
   if (!Number.isInteger(expected)) return { ok: false, status: 400, error: "Nivel esperado no válido." };
   if (expected !== current + 1)
-    return { ok: false, status: 409, error: "El personaje ha cambiado de nivel; recarga la página." };
+    return { ok: false, status: 409, error: LEVEL_CHANGED };
   return { ok: true };
 }
 

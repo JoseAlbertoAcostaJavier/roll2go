@@ -1,11 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import bcrypt from "bcryptjs";
-import { connectDB } from "@/lib/models/mongodb";
-import { User } from "@/lib/models/User";
-import { BannedEmail } from "@/lib/models/BannedEmail";
 import { getClientIp, rateLimit, tooManyRequests } from "@/lib/utils/rateLimit";
-import { createVerificationToken } from "@/lib/server/auth/verification";
-import { sendVerificationEmail } from "@/lib/server/notifications/mail";
+import { registerUser } from "@/lib/server/auth/credentials";
+import { failureResponse } from "@/lib/server/result";
 
 export async function POST(req: NextRequest) {
   // Máximo 10 registros por hora y por IP
@@ -41,87 +37,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ errors }, { status: 400 });
   }
 
-  try {
-    await connectDB();
-    const usernameLower = username.toLowerCase();
-
-    // Un correo baneado no puede crear otra cuenta
-    if (await BannedEmail.exists({ email })) {
-      return NextResponse.json(
-        { errors: { email: "Este correo no puede usarse para registrarse en Roll2Go." } },
-        { status: 403 },
-      );
-    }
-
-    // Comprobar si el correo o el usuario ya existen
-    const existing = await User.findOne({
-      $or: [{ email }, { usernameLower }],
-    });
-    if (existing) {
-      return NextResponse.json(
-        {
-          errors:
-            existing.email === email
-              ? { email: "Ya existe una cuenta con ese correo." }
-              : { username: "Ese nombre de usuario ya está en uso." },
-        },
-        { status: 409 },
-      );
-    }
-//Guarda la contraseña con Coste 10.
-    const passwordHash = await bcrypt.hash(password, 10);
-
-    // 1. Instanciamos el nuevo usuario. Verified es falso por defecto, y verifyTokenHash y verifyTokenExpires se rellenarán más abajo.
-    const newUser = new User({
-      username,
-      usernameLower,
-      email,
-      passwordHash,
-    });
-
-    // 2. Generamos el token de verificación y lo guardamos en el modelo
-    const { token, hash, expires } = createVerificationToken();
-    newUser.verifyTokenHash = hash;
-    newUser.verifyTokenExpires = expires;
-
-    await newUser.save();
-
-    // 3. Enviamos el correo. Si falla, se deshace el registro para que pueda volver a intentarlo
-    //    con el mismo nombre y correo.
-    try {
-      await sendVerificationEmail(newUser.email, newUser.username, token);
-    } catch (mailErr) {
-      console.error("No se pudo enviar el correo de verificación:", mailErr);
-      await User.deleteOne({ _id: newUser._id });
-      return NextResponse.json(
-        {
-          error:
-            "No se pudo enviar el correo de verificación. Inténtalo de nuevo en unos minutos.",
-        },
-        { status: 502 },
-      );
-    }
-
-    // 4. Respondemos con éxito sin iniciar la sesión
-    return NextResponse.json({ success: true }, { status: 201 });
-  } catch (err) {
-    // 11000 significa clave duplicada en MongoDB
-    if ((err as { code?: number }).code === 11000) {
-      const key =
-        (err as { keyPattern?: Record<string, unknown> }).keyPattern ?? {};
-      return NextResponse.json(
-        {
-          errors: key.email
-            ? { email: "Ya existe una cuenta con ese correo." }
-            : { username: "Ese nombre de usuario ya está en uso." },
-        },
-        { status: 409 },
-      );
-    }
-    console.error("Error en el registro:", err);
-    return NextResponse.json(
-      { error: "No se pudo crear la cuenta. Inténtalo de nuevo." },
-      { status: 500 },
-    );
-  }
+  // Crea la cuenta y envía el correo de verificación, sin iniciar la sesión
+  const result = await registerUser({ username, email, password });
+  if (!result.ok) return failureResponse(result);
+  return NextResponse.json({ success: true }, { status: 201 });
 }

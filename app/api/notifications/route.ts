@@ -1,14 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import mongoose from "mongoose";
-import { connectDB } from "@/lib/models/mongodb";
 import { sessionOf } from "@/lib/server/campaigns/campaignApi";
-import { Notification } from "@/lib/models/Notification";
-import { User } from "@/lib/models/User";
-import { Campaign } from "@/lib/models/Campaign";
-import {
-  describeNotification,
-  type NotificationType,
-} from "@/lib/shared/notificationText";
+import { deleteNotifications, listNotifications } from "@/lib/server/notifications/notifications";
+import { failureResponse } from "@/lib/server/result";
 
 // GET /api/notifications?limit=10  ->  lista y contador. Con limit=0 solo devuelve el contador.
 export async function GET(req: NextRequest) {
@@ -23,67 +16,7 @@ export async function GET(req: NextRequest) {
   );
 
   try {
-    await connectDB();
-    const unread = await Notification.countDocuments({
-      user: session.id,
-      read: false,
-    });
-    if (limit === 0) return NextResponse.json({ unread });
-
-    const items = await Notification.find({ user: session.id })
-      .sort({ createdAt: -1 })
-      .limit(limit)
-      .lean();
-    const actorIds = [
-      ...new Set(items.filter((n) => n.actor).map((n) => String(n.actor))),
-    ];
-    const campaignIds = [
-      ...new Set(
-        items.filter((n) => n.campaign).map((n) => String(n.campaign)),
-      ),
-    ];
-    const [actors, campaigns] = await Promise.all([
-      User.find({ _id: { $in: actorIds } })
-        .select("username displayName avatarId")
-        .lean(),
-      Campaign.find({ _id: { $in: campaignIds } })
-        .select("name")
-        .lean(),
-    ]);
-    const actorById = new Map(actors.map((a) => [String(a._id), a] as const));
-    const campaignById = new Map(
-      campaigns.map((c) => [String(c._id), c] as const),
-    );
-
-    return NextResponse.json({
-      unread,
-      items: items.map((n) => {
-        const a = n.actor ? actorById.get(String(n.actor)) : undefined;
-        const c = n.campaign ? campaignById.get(String(n.campaign)) : undefined;
-        const { text, href } = describeNotification(
-          { type: n.type as NotificationType, count: n.count, text: n.text, post: n.post ? String(n.post) : undefined, character: n.character ? String(n.character) : undefined },
-          a
-            ? { username: a.username, displayName: a.displayName || a.username }
-            : null,
-          c ? { id: String(c._id), name: c.name } : null,
-        );
-        return {
-          id: String(n._id),
-          type: n.type,
-          read: n.read,
-          createdAt: new Date(n.createdAt).toISOString(),
-          text,
-          href,
-          actor: a
-            ? {
-                username: a.username,
-                displayName: a.displayName || a.username,
-                avatarUrl: a.avatarId ? `/api/images/${a.avatarId}` : null,
-              }
-            : null,
-        };
-      }),
-    });
+    return NextResponse.json(await listNotifications(session.id, limit));
   } catch (err) {
     console.error("Error al cargar las notificaciones:", err);
     return NextResponse.json(
@@ -100,22 +33,7 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ error: "Inicia sesión." }, { status: 401 });
 
   const body = await req.json().catch(() => null);
-  let filter: Record<string, unknown>;
-  if (body?.all === true) filter = { user: session.id };
-  else if (typeof body?.id === "string" && mongoose.isValidObjectId(body.id))
-    filter = { _id: body.id, user: session.id };
-  else
-    return NextResponse.json({ error: "Petición no válida." }, { status: 400 });
-
-  try {
-    await connectDB();
-    await Notification.deleteMany(filter);
-    return NextResponse.json({ ok: true });
-  } catch (err) {
-    console.error("Error al borrar notificaciones:", err);
-    return NextResponse.json(
-      { error: "No se pudo completar la acción." },
-      { status: 500 },
-    );
-  }
+  const result = await deleteNotifications(session.id, body);
+  if (!result.ok) return failureResponse(result);
+  return NextResponse.json({ ok: true });
 }

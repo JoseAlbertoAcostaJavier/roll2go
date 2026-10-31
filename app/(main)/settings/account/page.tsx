@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
 import AccountForms from "@/app/components/account/AccountForms";
 import { requireUser } from "@/lib/server/auth/currentUser";
-import { User } from "@/lib/models/User";
+import { accountEmails } from "@/lib/server/account/settings";
 
 export const metadata: Metadata = { title: "Mi cuenta" };
 
 export default async function AccountSettingsPage() {
   const me = await requireUser("/settings/account");
-  const u = await User.findById(me.id).select("email +pendingEmail").lean();
+  const { email, pendingEmail } = await accountEmails(me.id);
 
-  return <AccountForms username={me.username} email={u?.email ?? ""} pendingEmail={u?.pendingEmail ?? null} />;
+  return <AccountForms username={me.username} email={email} pendingEmail={pendingEmail} />;
 }

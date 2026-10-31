@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
-import ForumMessage, { type ForumMessageData } from "@/app/components/forum/ForumMessage";
+import ForumMessage from "@/app/components/forum/ForumMessage";
 import ForumPostForm from "@/app/components/forum/ForumPostForm";
 import Pagination from "@/app/components/ui/Pagination";
 import { getCampaignAccess } from "@/lib/server/campaigns/campaignAccess";
@@ -21,8 +21,7 @@ export default async function ForumThreadPage({
   const thread = await loadThread(campaign, postId, sp.page, session.id, isDm);
   if (!thread) notFound();
   const { total, pages, page } = thread;
-  const root: ForumMessageData = thread.root;
-  const replies: ForumMessageData[] = thread.replies;
+  const { root, replies } = thread;
   const base = `/campaigns/${id}/forum/${postId}`;
 
   return (

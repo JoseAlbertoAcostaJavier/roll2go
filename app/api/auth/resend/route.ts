@@ -1,12 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { connectDB } from "@/lib/models/mongodb";
-import { User } from "@/lib/models/User";
+import { resendVerification } from "@/lib/server/auth/emailTokens";
+import { failureResponse } from "@/lib/server/result";
 import { getClientIp, rateLimit, tooManyRequests } from "@/lib/utils/rateLimit";
-import { createVerificationToken, VERIFY_TTL_MS } from "@/lib/server/auth/verification";
-import { sendVerificationEmail } from "@/lib/server/notifications/mail";
 
 //Permite pedir otro enlace.
-const COOLDOWN_MS = 60 * 1000; // mínimo entre dos envíos al mismo correo
 //Espera 1 minuto entre dos envios al mismo correo. Crea un token nuevo y lo guarda encima del anterior
 export async function POST(req: NextRequest) {
   // Máximo 5 peticiones cada 15 minutos por IP
@@ -33,38 +30,8 @@ export async function POST(req: NextRequest) {
   const byEmail = await rateLimit("resend_email", email, 3, 60 * 60);
   if (!byEmail.ok) return tooManyRequests(byEmail.retryAfter);
 
-  try {
-    await connectDB();
-    const user = await User.findOne({ email, verified: { $ne: true } }).select(
-      "+verifyTokenExpires",
-    );
-
-    if (user) {
-      // El momento del último envío se deduce de la caducidad del token anterior
-      const lastSent = user.verifyTokenExpires
-        ? user.verifyTokenExpires.getTime() - VERIFY_TTL_MS
-        : 0;
-      if (Date.now() - lastSent >= COOLDOWN_MS) {
-        const { token, hash, expires } = createVerificationToken();
-        // Al guardar uno nuevo, el enlace anterior deja de valer
-        await User.updateOne(
-          { _id: user._id },
-          { $set: { verifyTokenHash: hash, verifyTokenExpires: expires } },
-        );
-        await sendVerificationEmail(user.email, user.username, token);
-      }
-    }
-
-    // Siempre la misma respuesta, exista la cuenta o no
-    return NextResponse.json({ ok: true });
-  } catch (err) {
-    console.error("Error al reenviar la verificación:", err);
-    return NextResponse.json(
-      {
-        error:
-          "No se pudo enviar el correo. Inténtalo de nuevo en unos minutos.",
-      },
-      { status: 500 },
-    );
-  }
+  // Siempre la misma respuesta, exista la cuenta o no
+  const result = await resendVerification(email);
+  if (!result.ok) return failureResponse(result);
+  return NextResponse.json({ ok: true });
 }

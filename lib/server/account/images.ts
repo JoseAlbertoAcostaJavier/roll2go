@@ -1,4 +1,8 @@
 import "server-only";
+import { connectDB } from "@/lib/models/mongodb";
+import { CampaignImage } from "@/lib/models/CampaignImage";
+import { isValidId } from "@/lib/server/ids";
+
 // Detecta el tipo REAL de la imagen mirando sus primeros bytes (el nombre o el tipo que declara el
 // navegador se pueden falsificar). SVG no se admite a propósito: puede llevar scripts.
 export function detectImageType(
@@ -26,4 +30,13 @@ export function detectImageType(
     return "image/webp";
   }
   return null;
+}
+
+// Imagen guardada (foto de perfil, de campaña o de personaje), o null si el id no es válido o no existe
+export async function loadImage(id: string): Promise<{ data: Buffer; contentType: string } | null> {
+  if (!isValidId(id)) return null;
+  await connectDB();
+  const img = await CampaignImage.findById(id);
+  if (!img) return null;
+  return { data: img.data, contentType: img.contentType };
 }

@@ -5,41 +5,21 @@ import { ChevronLeft } from "lucide-react";
 import Avatar from "@/app/components/ui/Avatar";
 import ChatThread, { type ChatMessage } from "@/app/components/social/ChatThread";
 import { requireUser } from "@/lib/server/auth/currentUser";
-import { connectDB } from "@/lib/models/mongodb";
-import { Message } from "@/lib/models/Message";
-import { pairKey } from "@/lib/models/Friendship";
-import { findUserByUsername, relationBetween } from "@/lib/server/social/friends";
-import { blockStatus } from "@/lib/server/social/blocks";
+import { loadConversationPage } from "@/lib/server/social/messages";
+
 export const metadata: Metadata = { title: "Mensajes" };
 
 export default async function ConversationPage({ params }: { params: Promise<{ username: string }> }) {
   const { username } = await params;
   const me = await requireUser(`/messages/${username}`);
-  await connectDB();
-
-  const other = await findUserByUsername(username);
-  if (!other) notFound();
-  const otherId = String(other._id);
-  if (otherId === me.id) redirect("/messages");
-
-  const friends = (await relationBetween(me.id, otherId)) === "friend";
-  const canSend = friends && !(await blockStatus(me.id, otherId)).any;
-  const recent = await Message.find({ pair: pairKey(me.id, otherId) }).sort({ createdAt: -1 }).limit(50).lean();
-
+  const page = await loadConversationPage(me.id, username);
+  if (page.status === "missing") notFound();
+  if (page.status === "self") redirect("/messages");
   // Sin amistad y sin historial no hay nada que ver aquí
-  if (!canSend && recent.length === 0) redirect(`/users/${other.username}`);
+  if (page.status === "nothing") redirect(`/users/${page.username}`);
 
-  const initial: ChatMessage[] = recent.reverse().map((m) => ({
-    id: String(m._id),
-    mine: String(m.from) === me.id,
-    text: m.text,
-    createdAt: new Date(m.createdAt).toISOString(),
-  }));
-
-  const lastRead = await Message.findOne({ pair: pairKey(me.id, otherId), from: me.id, readAt: { $ne: null } })
-    .sort({ createdAt: -1 })
-    .select("_id")
-    .lean();
+  const { other, canSend } = page;
+  const initial: ChatMessage[] = page.messages;
 
   return (
     <div className="mx-auto max-w-2xl px-5 py-8">
@@ -47,16 +27,16 @@ export default async function ConversationPage({ params }: { params: Promise<{ u
         <ChevronLeft size={16} aria-hidden="true" /> Mensajes
       </Link>
       <Link href={`/users/${other.username}`} className="group mb-4 flex items-center gap-3">
-        <Avatar url={other.avatarId ? `/api/images/${other.avatarId}` : null} size={44} />
+        <Avatar url={other.avatarUrl} size={44} />
         <span>
-          <span className="block font-heading text-lg font-bold group-hover:underline">{other.displayName || other.username}</span>
+          <span className="block font-heading text-lg font-bold group-hover:underline">{other.displayName}</span>
           <span className="block text-xs text-muted">@{other.username}</span>
         </span>
       </Link>
       <ChatThread
         username={other.username}
         initial={initial}
-        initialReadId={lastRead ? String(lastRead._id) : null}
+        initialReadId={page.lastReadId}
         canSend={canSend}
       />    
       </div>

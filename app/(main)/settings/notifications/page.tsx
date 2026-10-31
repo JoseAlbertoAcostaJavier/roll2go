@@ -1,15 +1,14 @@
 import type { Metadata } from "next";
 import NotificationPrefsForm, { type Prefs } from "@/app/components/account/NotificationPrefsForm";
 import { requireUser } from "@/lib/server/auth/currentUser";
-import { User } from "@/lib/models/User";
-import { CAMPAIGN_EMAIL_PREFS, wantsEmail, type EmailPrefs } from "@/lib/shared/notificationText";
+import { emailPrefsOf } from "@/lib/server/account/settings";
+import { CAMPAIGN_EMAIL_PREFS, wantsEmail } from "@/lib/shared/notificationText";
 
 export const metadata: Metadata = { title: "Notificaciones" };
 
 export default async function NotificationSettingsPage() {
   const me = await requireUser("/settings/notifications");
-  const u = await User.findById(me.id).select("emailPrefs").lean();
-  const p = u?.emailPrefs as EmailPrefs | undefined;
+  const p = await emailPrefsOf(me.id);
 
   const initial: Prefs = {
     messages: wantsEmail(p, "messages"),

@@ -9,28 +9,7 @@ import ForumPostForm from "@/app/components/forum/ForumPostForm";
 import LocalDate from "@/app/components/ui/LocalDate";
 import Reactions from "@/app/components/forum/Reactions";
 import UserLink from "@/app/components/ui/UserLink";
-import type { ReactionState } from "@/lib/shared/forum";
-import type { UserCard } from "@/lib/server/account/userCards";
-
-export type ForumMessageData = {
-  id: string;
-  rootId: string;
-  isRoot: boolean;
-  number: number | null; // posición de la respuesta en el hilo (null en el mensaje principal)
-  title?: string;
-  content: string;
-  createdAt: string;
-  editedAt: string | null;
-  pinned: boolean;
-  author: UserCard | null;
-  authorIsDm: boolean;
-  // A quién responde (solo en respuestas dirigidas a otra respuesta). href: enlace si está en la misma página
-  replyTo: { name: string; href: string | null } | null;
-  reactions: ReactionState;
-  canEdit: boolean;
-  canDelete: boolean;
-  canPin: boolean;
-};
+import type { ForumMessageData } from "@/lib/shared/forum";
 
 const action =
   "flex items-center gap-1 rounded-md px-1.5 py-1 text-sm text-muted transition-colors hover:bg-panel hover:text-white disabled:opacity-50";

@@ -1,11 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { connectDB } from "@/lib/models/mongodb";
 import { sessionOf } from "@/lib/server/campaigns/campaignApi";
 import { rateLimit, tooManyRequests } from "@/lib/utils/rateLimit";
-import { Friendship, pairKey } from "@/lib/models/Friendship";
-import { Notification } from "@/lib/models/Notification";
-import { findUserByUsername } from "@/lib/server/social/friends";
-import { notify } from "@/lib/server/notifications/notify";
+import { answerFriendRequest, removeFriend } from "@/lib/server/social/relations";
+import { failureResponse } from "@/lib/server/result";
 
 type Ctx = { params: Promise<{ username: string }> };
 
@@ -29,52 +26,9 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     return NextResponse.json({ error: "Acción no válida." }, { status: 400 });
   }
 
-  try {
-    await connectDB();
-    const other = await findUserByUsername(username);
-    if (!other)
-      return NextResponse.json(
-        { error: "Usuario no encontrado." },
-        { status: 404 },
-      );
-    const otherId = String(other._id);
-
-    // Solo se puede responder a una solicitud pendiente que te hayan enviado a ti
-    const f = await Friendship.findOne({
-      pair: pairKey(session.id, otherId),
-      status: "pending",
-      recipient: session.id,
-    });
-    if (!f)
-      return NextResponse.json(
-        { error: "No hay ninguna solicitud pendiente de este usuario." },
-        { status: 404 },
-      );
-
-    await Notification.deleteMany({
-      user: session.id,
-      type: "friend_request",
-      actor: otherId,
-    });
-    if (body.action === "accept") {
-      f.status = "accepted";
-      await f.save();
-      await notify({
-        user: otherId,
-        type: "friend_accepted",
-        actor: session.id,
-      });
-      return NextResponse.json({ relation: "friend" });
-    }
-    await f.deleteOne();
-    return NextResponse.json({ relation: "none" });
-  } catch (err) {
-    console.error("Error al responder la solicitud:", err);
-    return NextResponse.json(
-      { error: "No se pudo completar la acción. Inténtalo de nuevo." },
-      { status: 500 },
-    );
-  }
+  const result = await answerFriendRequest(session.id, username, body.action);
+  if (!result.ok) return failureResponse(result);
+  return NextResponse.json({ relation: result.relation });
 }
 
 // DELETE: cancelar una solicitud enviada, o eliminar a un amigo
@@ -87,39 +41,7 @@ export async function DELETE(req: NextRequest, { params }: Ctx) {
   const limited = await rateLimit("friend_remove", session.id, 60, 60 * 60);
   if (!limited.ok) return tooManyRequests(limited.retryAfter);
 
-  try {
-    await connectDB();
-    const other = await findUserByUsername(username);
-    if (!other)
-      return NextResponse.json(
-        { error: "Usuario no encontrado." },
-        { status: 404 },
-      );
-    const otherId = String(other._id);
-
-    const result = await Friendship.deleteOne({
-      pair: pairKey(session.id, otherId),
-    });
-    if (result.deletedCount === 0)
-      return NextResponse.json(
-        { error: "No hay ninguna relación con este usuario." },
-        { status: 404 },
-      );
-
-    // Una solicitud cancelada desaparece también de las notificaciones del otro usuario
-    await Notification.deleteMany({
-      type: "friend_request",
-      $or: [
-        { user: session.id, actor: otherId },
-        { user: otherId, actor: session.id },
-      ],
-    });
-    return NextResponse.json({ relation: "none" });
-  } catch (err) {
-    console.error("Error al eliminar la amistad:", err);
-    return NextResponse.json(
-      { error: "No se pudo completar la acción. Inténtalo de nuevo." },
-      { status: 500 },
-    );
-  }
+  const result = await removeFriend(session.id, username);
+  if (!result.ok) return failureResponse(result);
+  return NextResponse.json({ relation: result.relation });
 }

@@ -13,6 +13,7 @@ import { derive } from "@/lib/rules/dnd2024/derive";
 import { weaponProficient } from "@/lib/rules/dnd2024/derive/attacks";
 import { applyHp, applyInventoryOp } from "@/lib/rules/dnd2024/sheet/edits";
 import { bareName, isRef, refKey } from "@/lib/rules/dnd2024/sheet/equipmentRefs";
+import { LEVEL_CHANGED } from "@/lib/rules/dnd2024/levels/levelOps";
 import { masteryCount, masteryMeleeOnly, validateMasteries } from "@/lib/rules/dnd2024/levels/masteries";
 import { applySpellOp } from "@/lib/rules/dnd2024/spells/spellOps";
 import type { Dnd2024SheetV2 } from "@/lib/rules/dnd2024/sheet/sheet";
@@ -20,8 +21,7 @@ import type { ItemData, Ref } from "@/lib/rules/types";
 
 type Derived = ReturnType<typeof derive>;
 
-const levelChanged = () => fail(409, "El personaje ha cambiado de nivel; recarga la página.");
-
+const levelChanged = () => fail(409, LEVEL_CHANGED);
 
 // PG actuales y temporales { current?, temp? }. Devuelve los tres valores.
 export async function saveHp(userId: string, id: string, body: unknown): Promise<Result<{ hp: Derived["hp"] }>> {
