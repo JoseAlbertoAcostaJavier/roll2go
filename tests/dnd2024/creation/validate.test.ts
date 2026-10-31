@@ -2,6 +2,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import type { CatalogEntry } from "@/lib/rules/catalog/types";
 import { checkChoices } from "@/lib/rules/dnd2024/creation/checkChoices";
 import { validateSheet } from "@/lib/rules/dnd2024/creation/validateSheet";
+import { featSpellClash } from "@/lib/rules/dnd2024/spells/featSpells";
 import { signRolls } from "@/lib/rules/dnd2024/creation/rolls";
 import type { Ref } from "@/lib/rules/types";
 import { B as FB, buildCatalog, ref as fref } from "../fixtureCatalog";
@@ -615,5 +616,31 @@ describe("checkChoices: estilo de combate del Paladín", () => {
     const r = await checkChoices(pending, [{ type: "feat", source, value: [{ ref: blessed.ref, name: "x" }] }], cctx);
     expect(r.errors).toEqual({});
     expect(r.choices[0]).toMatchObject({ value: [{ name: "Blessed Warrior" }] });
+  });
+});
+
+describe("featSpellClash", () => {
+  const n = (name: string) => ({ ref: { book: "b1", key: `spell:${name}|xphb` }, name });
+  const fs = (source: string, cantrips: string[], spells: string[] = [], replaceIn?: string) => ({
+    type: "featSpells" as const, source,
+    value: {
+      feat: { book: "b1", key: "feat:x|xphb" }, cantrips: cantrips.map(n), spells: spells.map(n),
+      ...(replaceIn ? { replace: { out: n("old"), in: n(replaceIn) } } : {}),
+    },
+  });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const clash = (...c: unknown[]) => featSpellClash(c as any);
+  it("dos dotes con el mismo truco o conjuro: choca la segunda con la primera", () => {
+    expect(clash(fs("a", ["light"]), fs("b", ["guidance", "light"]))).toEqual({ source: "b", name: "light", with: "a" });
+    expect(clash(fs("a", [], ["bless"]), fs("b", [], ["bless"]))).toEqual({ source: "b", name: "bless", with: "a" });
+  });
+  it("también si el repetido es el conjuro al que se cambia", () => {
+    expect(clash(fs("a", ["light"]), fs("b", [], [], "light"))).toEqual({ source: "b", name: "light", with: "a" });
+    expect(clash(fs("a", [], [], "bless"), fs("b", [], ["bless"]))).toEqual({ source: "b", name: "bless", with: "a" });
+  });
+  it("dote contra clase: with es null; sin repetidos, null", () => {
+    const cls = { type: "spells" as const, source: "c", value: { cantrips: [n("light")], spells: [] } };
+    expect(clash(cls, fs("a", ["light"]))).toEqual({ source: "a", name: "light", with: null });
+    expect(clash(fs("a", ["light"]), fs("b", ["guidance"]))).toBeNull();
   });
 });

@@ -28,13 +28,14 @@ export async function checkFeatSpells(
     featSpellPending(withSpells, (l) => l <= 1),
     raw, { path: "levels.0.choices", books: ctx.books, resolve: ctx.resolve },
   );
-  // El mismo conjuro no se elige a la vez con la dote y para la clase
+  // El mismo conjuro no se elige a la vez con la dote y para la clase, ni con dos dotes
   const clash = featSpellClash([...checked, ...featSpells.choices]);
   // (sin pisar un error anterior de esa elección: gana el primero, como en `err`)
   const clashKey = clash ? `levels.0.choices.${clash.source}` : "";
   if (clash && !(clashKey in featSpells.errors)) {
-    const label = withSpells.find((f) => featSpellsSource(f.ref) === clash.source)?.name ?? "";
-    featSpells.errors[clashKey] = `Conjuros de ${label}: ${clash.name} ya lo eliges con la clase.`;
+    const labelOf = (source: string) => withSpells.find((f) => featSpellsSource(f.ref) === source)?.name ?? "";
+    const other = clash.with === null ? "la clase" : labelOf(clash.with);
+    featSpells.errors[clashKey] = `Conjuros de ${labelOf(clash.source)}: ${clash.name} ya lo eliges con ${other}.`;
   }
   return featSpells;
 }

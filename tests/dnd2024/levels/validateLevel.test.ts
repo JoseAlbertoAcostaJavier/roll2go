@@ -889,6 +889,29 @@ describe("dotes y Pacto del tomo", () => {
         .toHaveProperty([`choices.${TOME}`], "Conjuros de Pact of the Tome: bless no se puede elegir con esta dote.");
       expect(await errorsOf(warlock1(), withTome([]))).toHaveProperty("choices", "Falta elegir: Conjuros de Pact of the Tome.");
     });
+    it("el mismo truco con el Pacto del tomo y con otra dote en el mismo nivel → error en la segunda", async () => {
+      extra("spell:guidance|xphb", {
+        level: 0, school: "V", time: "", range: "", components: "", duration: "", concentration: false, ritual: false,
+        classes: ["cleric"], tags: [],
+      }, "guidance");
+      const INITIATE = "featSpells:feat:magic initiate; cleric|xphb";
+      const s = warlock1();
+      s.levels[0].choices.push({
+        type: "featSpells", source: INITIATE, value: {
+          feat: ref("feat:magic initiate; cleric|xphb"), cantrips: [held("light"), held("sacred flame")], spells: [held("bless")],
+          ability: "wis",
+        },
+      });
+      const swap = featSpells(INITIATE, { cantrips: [], spells: [], replace: { out: spell("sacred flame"), in: spell("guidance") } });
+      const clashing = { ...tome(["find familiar", "speak with animals"]), value: {
+        cantrips: ["guidance", "vicious mockery", "druidcraft"].map(spell), spells: ["find familiar", "speak with animals"].map(spell),
+      } };
+      const errors = await errorsOf(s, withTome([swap, clashing]));
+      // Choca la que va después en el orden del nivel (la dote que ya tenía, tras la invocación que gana); la otra no tiene error
+      expect(errors).toEqual({
+        [`choices.${INITIATE}`]: "Conjuros de Magic Initiate; Cleric: guidance ya lo eliges con Conjuros de Pact of the Tome.",
+      });
+    });
     it("si ya tenía el Pacto del tomo sin sus conjuros (hoja anterior), se piden en la siguiente subida", async () => {
       const s = sheetWith([["warlock", 1]], {
         1: [{ type: "optionalFeature", source: INVOCATIONS, value: [named(ref("optionalFeature:pact of the tome|xphb"))] }],
