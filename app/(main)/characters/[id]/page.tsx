@@ -133,6 +133,7 @@ export default async function CharacterPage({ params, searchParams }: Props) {
     abilities: d.abilities, proficiencyBonus: d.proficiencyBonus, hp: d.hp, ac: d.ac, armorWarning: d.armorWarning,
     initiative: d.initiative, speed: d.speed, darkvision: d.darkvision, saves: d.saves, skills: d.skills, armor: d.armor,
     weapons: d.weapons, tools: d.tools, languages: d.languages, attacks: d.attacks, breakdowns: d.breakdowns,
+    defenses: d.defenses,
   };
 
   const base = `/characters/${id}`;

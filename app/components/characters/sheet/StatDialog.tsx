@@ -1,19 +1,21 @@
 "use client";
 
-import { useEffect, useId, useRef } from "react";
+import { useEffect, useId, useRef, type ReactNode } from "react";
 import { X } from "lucide-react";
 import type { Breakdown } from "@/lib/rules/dnd2024/derive";
 import { partText, totalText, type BreakdownUnit } from "@/lib/rules/dnd2024/sheet/statTexts";
 
 // Detalle de un valor de la pestaña Información (spec §3): qué es y de dónde sale su número. Mismo comportamiento que
 // la ficha de conjuro: foco atrapado, Escape cierra y el foco vuelve al botón que lo abrió.
-export default function StatDialog({ title, subject, description, breakdown, unit, onClose, opener }: {
+export default function StatDialog({ title, subject, description, breakdown, unit, children, onClose, opener }: {
   title: string;
   /** A qué afecta el desglose, para la frase de entrada: «tu puntuación de Fuerza», «la Clase de armadura»… */
-  subject: string;
+  subject?: string;
   description: string;
-  breakdown: Breakdown;
+  /** Sin desglose (las defensas), el contenido propio va en `children`. */
+  breakdown?: Breakdown;
   unit?: BreakdownUnit;
+  children?: ReactNode;
   onClose: () => void;
   /** Botón que abrió el diálogo (capturado al pulsar); recibe el foco al cerrar. */
   opener: HTMLElement | null;
@@ -84,25 +86,31 @@ export default function StatDialog({ title, subject, description, breakdown, uni
           <p className="mb-4 rounded-md border border-line bg-surface p-3 text-sm">{description}</p>
         )}
 
-        <p className="mb-2 text-sm text-muted">Los modificadores que afectan a {subject} son los siguientes:</p>
-        <table className="w-full text-sm">
-          <tbody className="divide-y divide-line">
-            {breakdown.parts.map((p, i) => (
-              <tr key={`${p.label}-${i}`}>
-                <th scope="row" className="py-1.5 pr-3 text-left font-normal">{p.label}</th>
-                <td className="py-1.5 text-right font-heading font-bold">{partText(p.value, i, unit)}</td>
-              </tr>
-            ))}
-            <tr className="border-t-2 border-line">
-              <th scope="row" className="py-1.5 pr-3 text-left font-bold">Total</th>
-              <td className="py-1.5 text-right font-heading font-extrabold">{totalText(breakdown.total, unit)}</td>
-            </tr>
-          </tbody>
-        </table>
+        {breakdown && (
+          <>
+            <p className="mb-2 text-sm text-muted">Los modificadores que afectan a {subject} son los siguientes:</p>
+            <table className="w-full text-sm">
+              <tbody className="divide-y divide-line">
+                {breakdown.parts.map((p, i) => (
+                  <tr key={`${p.label}-${i}`}>
+                    <th scope="row" className="py-1.5 pr-3 text-left font-normal">{p.label}</th>
+                    <td className="py-1.5 text-right font-heading font-bold">{partText(p.value, i, unit)}</td>
+                  </tr>
+                ))}
+                <tr className="border-t-2 border-line">
+                  <th scope="row" className="py-1.5 pr-3 text-left font-bold">Total</th>
+                  <td className="py-1.5 text-right font-heading font-extrabold">{totalText(breakdown.total, unit)}</td>
+                </tr>
+              </tbody>
+            </table>
 
-        {breakdown.notes?.map((n) => (
-          <p key={n} className="mt-2 text-sm text-muted">{n}</p>
-        ))}
+            {breakdown.notes?.map((n) => (
+              <p key={n} className="mt-2 text-sm text-muted">{n}</p>
+            ))}
+          </>
+        )}
+
+        {children}
       </div>
     </div>
   );
