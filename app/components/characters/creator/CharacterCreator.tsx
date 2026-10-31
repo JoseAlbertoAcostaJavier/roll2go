@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { LoaderCircle, TriangleAlert } from "lucide-react";
 import Bbcode from "@/app/components/ui/Bbcode";
@@ -13,6 +13,7 @@ import {
 import type { AbilityMethod, Dnd2024Sheet } from "@/lib/rules/dnd2024/sheet/sheet";
 import { checkBackgroundBonus } from "@/lib/rules/dnd2024/creation/abilities";
 import { totalsWithinLimit } from "@/lib/rules/dnd2024/creation/assign";
+import { draftWithoutRolls } from "@/lib/rules/dnd2024/creation/drafts";
 import { bareName, equipmentRefs, refKey } from "@/lib/rules/dnd2024/sheet/equipmentRefs";
 import { ABILITY_NAMES, sizeName, skillName, toolName } from "@/lib/rules/dnd2024/sheet/labels";
 import { crossSourceGranted } from "@/lib/rules/dnd2024/spells/grantedSpells";
@@ -307,8 +308,12 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
   // Al rehacer, el primer envío pide confirmar que se reinicia el inventario
   const [confirming, setConfirming] = useState(false);
 
+  // Tras crear con éxito, el borrador ya no se vuelve a escribir
+  const submitted = useRef(false);
+
   // Borrador: se guarda en cada cambio (si el navegador no deja, se sigue sin borrador)
   useEffect(() => {
+    if (submitted.current) return;
     try {
       localStorage.setItem(draftKey, JSON.stringify(form));
     } catch {
@@ -658,8 +663,18 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
         } else setFormError(data?.error ?? `El servidor ha respondido con un error (${res.status}).`);
         return;
       }
+      submitted.current = true;
       try {
         localStorage.removeItem(draftKey);
+        // Las tiradas son de un solo personaje: los borradores de otras campañas del sistema las pierden
+        // (si no, el siguiente personaje empezaría con ellas). Al rehacer no se tocan.
+        if (!recreate) {
+          const prefix = `roll2go:new-character:${props.systemId}:`;
+          for (const key of Object.keys(localStorage).filter((k) => k.startsWith(prefix))) {
+            const clean = draftWithoutRolls(localStorage.getItem(key) ?? "");
+            if (clean !== null) localStorage.setItem(key, clean);
+          }
+        }
       } catch {
         // almacenamiento no disponible
       }
