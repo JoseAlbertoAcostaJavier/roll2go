@@ -3,6 +3,7 @@ import "server-only";
 // `ctx` viene de requireDm.
 import { Campaign } from "@/lib/models/Campaign";
 import { CampaignInvite } from "@/lib/models/CampaignInvite";
+import { Notification } from "@/lib/models/Notification";
 import type { MemberContext } from "@/lib/server/campaigns/campaignApi";
 import { INVITE_EXPIRY_DAYS, MAX_MEMBERS, newInviteCode } from "@/lib/server/campaigns/members";
 import { blockStatus } from "@/lib/server/social/blocks";
@@ -112,5 +113,20 @@ export async function inviteFriend(ctx: MemberContext, campaignId: string, usern
       return fail(409, "Ya has invitado a este usuario.");
     console.error("Error al invitar:", err);
     return fail(500, "No se pudo enviar la invitación. Inténtalo de nuevo.");
+  }
+}
+
+// Cancela la invitación pendiente a un usuario (y el aviso que recibió)
+export async function cancelInvite(ctx: MemberContext, username: string): Promise<Result> {
+  try {
+    const target = await findUserByUsername(username);
+    if (!target) return fail(404, "No existe ningún usuario con ese nombre.");
+    const res = await CampaignInvite.deleteOne({ campaign: ctx.campaign._id, user: target._id });
+    if (res.deletedCount === 0) return fail(404, "Esa invitación ya no está pendiente.");
+    await Notification.deleteMany({ user: target._id, type: "campaign_invite", campaign: ctx.campaign._id });
+    return { ok: true };
+  } catch (err) {
+    console.error("Error al cancelar la invitación:", err);
+    return fail(500, "No se pudo cancelar la invitación. Inténtalo de nuevo.");
   }
 }

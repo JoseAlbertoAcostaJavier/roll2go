@@ -16,7 +16,7 @@ const state = vi.hoisted(() => ({
 }));
 
 vi.mock("@/lib/models/mongodb", () => ({ connectDB: async () => {} }));
-for (const name of ["Campaign", "CampaignInvite", "CampaignLogEntry", "Character", "CampaignImage", "User", "Block"]) {
+for (const name of ["Campaign", "CampaignInvite", "CampaignLogEntry", "Character", "CampaignImage", "User", "Block", "Notification"]) {
   vi.doMock(`@/lib/models/${name}`, () => ({ [name]: db.model(name) }));
 }
 vi.mock("@/lib/server/account/userCards", () => ({
@@ -44,7 +44,7 @@ vi.mock("@/lib/server/account/accountCleanup", () => ({ deleteCampaignData: asyn
 
 const queries = await import("@/lib/server/campaigns/queries");
 const { createCampaign, updateCampaign, deleteCampaign } = await import("@/lib/server/campaigns/manageCampaign");
-const { setInviteLink, inviteFriend } = await import("@/lib/server/campaigns/invites");
+const { setInviteLink, inviteFriend, cancelInvite } = await import("@/lib/server/campaigns/invites");
 const { removeMember, deleteMemberNotes, unbanMember } = await import("@/lib/server/campaigns/memberActions");
 const { updateLogEntry, deleteLogEntry, createLogEntry } = await import("@/lib/server/campaigns/logEntries");
 const { joinByInviteCode } = await import("@/lib/server/campaigns/joinCampaign");
@@ -273,6 +273,22 @@ describe("invitaciones", () => {
     db.results["CampaignInvite.countDocuments"] = 0;
     expect(await inviteFriend(ctx(DM), CAMPAIGN, "amigo")).toEqual({ ok: true });
     expect(state.notified).toEqual([{ user: FRIEND, type: "campaign_invite", actor: DM, campaign: CAMPAIGN }]);
+  });
+
+  it("cancelar: usuario inexistente o sin invitación pendiente → 404", async () => {
+    state.target = null;
+    expect(await cancelInvite(ctx(DM), "nadie")).toEqual({ ok: false, status: 404, error: "No existe ningún usuario con ese nombre." });
+    state.target = { _id: FRIEND };
+    db.results["CampaignInvite.deleteOne"] = { deletedCount: 0 };
+    expect(await cancelInvite(ctx(DM), "amigo")).toEqual({ ok: false, status: 404, error: "Esa invitación ya no está pendiente." });
+  });
+
+  it("cancelar: borra la invitación y su aviso", async () => {
+    state.target = { _id: FRIEND };
+    db.results["CampaignInvite.deleteOne"] = { deletedCount: 1 };
+    expect(await cancelInvite(ctx(DM), "amigo")).toEqual({ ok: true });
+    expect(db.callsOf("CampaignInvite", "deleteOne")[0][0]).toEqual({ campaign: CAMPAIGN, user: FRIEND });
+    expect(db.callsOf("Notification", "deleteMany")[0][0]).toEqual({ user: FRIEND, type: "campaign_invite", campaign: CAMPAIGN });
   });
 });
 

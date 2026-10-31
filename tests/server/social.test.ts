@@ -63,6 +63,19 @@ describe("amistades y bloqueos", () => {
     });
   });
 
+  it("solicitud a quien has bloqueado o a quien te ha bloqueado: 403 y no se crea", async () => {
+    state.target = other;
+    state.block = { byMe: true, byThem: false, any: true };
+    expect(await relations.sendFriendRequest(ME, "luis")).toEqual({
+      ok: false, status: 403, error: "Has bloqueado a este usuario. Desbloquéalo para poder enviarle una solicitud.",
+    });
+    state.block = { byMe: false, byThem: true, any: true };
+    expect(await relations.sendFriendRequest(ME, "luis")).toEqual({
+      ok: false, status: 403, error: "No puedes enviar una solicitud a este usuario.",
+    });
+    expect(db.callsOf("Friendship", "create")).toEqual([]);
+  });
+
   it("solicitud cruzada: se acepta la que ya había y se avisa", async () => {
     const existing = { status: "pending", requester: OTHER, save: vi.fn(async () => {}) };
     db.results["Friendship.findOne"] = existing;
