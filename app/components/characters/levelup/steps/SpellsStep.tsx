@@ -1,14 +1,14 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
-import { Check } from "lucide-react";
+import { Check, ChevronDown } from "lucide-react";
 import type { SpellOption } from "@/lib/rules/catalog/types";
 import { bareName, refKey } from "@/lib/rules/dnd2024/sheet/equipmentRefs";
 import { spellListName } from "@/lib/rules/dnd2024/sheet/labels";
 import type { PendingChoice } from "@/lib/rules/dnd2024/levels/pendingChoices";
 import type { Named } from "@/lib/rules/dnd2024/sheet/sheet";
 import { EMPTY_SPELL_FILTER, matchesSpellFilter, type SpellFilter } from "@/lib/rules/dnd2024/spells/spellFilters";
-import { classSpellOptions, type SpellPick, type SwapPick } from "@/lib/rules/dnd2024/spells/spellPicks";
+import { classSpellOptions, pickableMaxLevel, type SpellPick, type SwapPick } from "@/lib/rules/dnd2024/spells/spellPicks";
 import { spellSchoolName } from "@/lib/rules/dnd2024/spells/spellTextClient";
 import type { Ref, SpellcastingMode } from "@/lib/rules/types";
 import { field, labelClass } from "@/app/components/ui/formStyles";
@@ -72,9 +72,16 @@ export default function SpellsStep(props: Props) {
   const accepts = props.accepts?.test;
   // Secretos mágicos: los conjuros de nivel 1 o más, de cualquiera de sus listas
   const extraLists = pending?.spells?.lists;
+  // La lista y sus filtros llegan solo al nivel que se puede marcar (solo trucos si no se elige ningún conjuro)
+  const listMax = pickableMaxLevel({
+    maxLevel,
+    spells: pending?.spells?.spells ?? 0,
+    free: !!pending?.spells?.free,
+    replaceSpell: !!pending?.optionalReplace && mode === "levelUp" && held.spells.length > 0,
+  });
   const list = useMemo(
-    () => classSpellOptions(props.spells, { listId: props.listId, maxLevel, extraLists, accepts }),
-    [props.spells, props.listId, maxLevel, accepts, extraLists],
+    () => classSpellOptions(props.spells, { listId: props.listId, maxLevel: listMax, extraLists, accepts }),
+    [props.spells, props.listId, listMax, accepts, extraLists],
   );
   const tags = useMemo(() => [...new Set(list.flatMap((s) => s.data.tags))].sort((a, b) => a.localeCompare(b, "es")), [list]);
 
@@ -189,6 +196,8 @@ export default function SpellsStep(props: Props) {
       value: `${freePicked.length}/${free.count}`,
     }] : []),
   ];
+  // La lista empieza abierta mientras quede algo por elegir y plegada si ya está todo (p. ej. al volver a un borrador)
+  const [listOpen, setListOpen] = useState(() => counters.length === 0 || !counters.every((c) => c.done));
 
   return (
     <div className="min-w-0 space-y-5">
@@ -264,10 +273,11 @@ export default function SpellsStep(props: Props) {
         );
       })}
 
-      <div>
-        <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">
-          {props.accepts?.title ?? (extraLists ? "Listas de conjuros" : `Lista de ${props.casterName}`)}
-        </h3>
+      <details open={listOpen} onToggle={(e) => setListOpen(e.currentTarget.open)} className="group/list">
+        <summary className="mb-3 flex cursor-pointer list-none items-center gap-2 text-sm font-semibold uppercase tracking-wide text-muted hover:text-white">
+          <ChevronDown size={16} aria-hidden="true" className="shrink-0 transition-transform group-open/list:rotate-180" />
+          <h3>{props.accepts?.title ?? (extraLists ? "Listas de conjuros" : `Lista de ${props.casterName}`)}</h3>
+        </summary>
         {extraLists && (
           <div className="mb-3 max-w-xs">
             <label htmlFor={`${id}-list`} className={labelClass}>Lista</label>
@@ -277,7 +287,7 @@ export default function SpellsStep(props: Props) {
             </select>
           </div>
         )}
-        <SpellFilters id={`${id}-filters`} value={filter} onChange={setFilter} tags={tags} />
+        <SpellFilters id={`${id}-filters`} value={filter} onChange={setFilter} tags={tags} maxLevel={listMax} />
         <p className="mb-1 text-xs text-muted" aria-live="polite">{filtered.length} conjuros</p>
         <SpellList
           items={filtered}
@@ -287,7 +297,7 @@ export default function SpellsStep(props: Props) {
           onOpen={open}
           href={spellUrl}
         />
-      </div>
+      </details>
 
       <SpellDialog characterId={props.characterId} campaignId={props.campaignId} spells={byKey} opener={opener} />
     </div>

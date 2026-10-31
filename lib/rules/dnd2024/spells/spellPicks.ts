@@ -165,7 +165,15 @@ export function bonusChoiceOf(p: PendingChoice, pick: SpellPick | undefined): Ch
 const spellName = (s: SpellOption) => s.nameEs ?? s.name;
 
 /**
- * Los trucos y conjuros que se pueden elegir al aprender: los de la lista de la clase (o de `extraLists`, solo de nivel 1
+ * Nivel más alto que se puede marcar en la lista: `maxLevel` si se eligen conjuros (nuevos, gratis o el que sustituye a
+ * uno aprendido); si solo se eligen trucos, 0.
+ */
+export function pickableMaxLevel(o: { maxLevel: number; spells: number; free?: boolean; replaceSpell?: boolean }): number {
+  return o.spells > 0 || o.free || o.replaceSpell ? o.maxLevel : 0;
+}
+
+/**
+ * Los trucos y conjuros que se pueden elegir al aprender:los de la lista de la clase (o de `extraLists`, solo de nivel 1
  * o más, en Secretos mágicos; o los que cumpla `accepts`), con los conjuros hasta `maxLevel`. Ordenados por nivel y nombre.
  */
 export function classSpellOptions(
