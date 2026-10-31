@@ -769,6 +769,12 @@ describe("normalizeDefenses", () => {
   test("estados en minúsculas", () => {
     expect(normalizeDefenses({ conditionImmune: ["Frightened"] })).toEqual({ conditionImmune: ["frightened"] });
   });
+  test("arma con alcance: se guarda el original de 5etools", () => {
+    const e = normalizeItem({ name: "Longbow", source: "XPHB", type: "R", weapon: true, dmg1: "1d8", dmgType: "P", range: "150/600" });
+    expect((e.data as ItemData).weapon?.range).toBe("150/600");
+    const m = normalizeItem({ name: "Club", source: "XPHB", type: "M", weapon: true, dmg1: "1d4", dmgType: "B" });
+    expect((m.data as ItemData).weapon?.range).toBeUndefined();
+  });
   test("objeto con resistencia fija", () => {
     const e = normalizeItem({ name: "Ring of Fire Resistance", source: "XDMG", type: "RG", resist: ["fire"] });
     expect((e.data as ItemData).defenses).toEqual({ resist: ["fire"] });

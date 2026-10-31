@@ -220,7 +220,8 @@ export type ItemData = {
   /** Rareza de un objeto mágico (`uncommon`, `rare`…); los objetos normales no la llevan. */
   rarity?: string;
   armor?: { ac: number; dexCap: number | null; stealthDisadvantage: boolean; category: string };
-  weapon?: { damage: string; damageType: string; properties: string[]; mastery?: string; category: string };
+  weapon?: { damage: string; damageType: string; properties: string[]; mastery?: string; category: string;
+    /** Alcance de 5etools en pies, tal cual ("20/60"); solo en armas arrojadizas o de distancia. */ range?: string };
   contents?: { ref: Ref; quantity: number }[];
   defenses?: Defenses;
 };

@@ -572,6 +572,7 @@ export function normalizeItem(raw: Rec): NormalizedEntry {
       properties: asArr(raw.property).map((p) => stripSource(isObj(p) ? str(p.uid) : str(p))),
       ...(mastery ? { mastery } : {}),
       category: str(raw.weaponCategory),
+      ...(str(raw.range) ? { range: str(raw.range) } : {}),
     };
   }
   if (Array.isArray(raw.packContents)) {
