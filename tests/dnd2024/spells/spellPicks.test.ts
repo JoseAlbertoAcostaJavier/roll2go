@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { PendingChoice } from "@/lib/rules/dnd2024/levels/pendingChoices";
 import type { SpellOption } from "@/lib/rules/catalog/types";
 import {
-  bonusChoiceOf, bonusPickMissing, classSpellOptions, emptySpellPick, featSpellsChoiceOf, featSpellsMissing, parseSpellPick,
+  bonusChoiceOf, bonusPickMissing, classSpellOptions, emptySpellPick, pickableMaxLevel, featSpellsChoiceOf, featSpellsMissing, parseSpellPick,
   spellChoiceOf, spellPickMissing,
 } from "@/lib/rules/dnd2024/spells/spellPicks";
 
@@ -184,5 +184,16 @@ describe("classSpellOptions", () => {
   it("con un filtro propio, también respeta el tope", () => {
     const keys = keysOf({ listId: "wizard", maxLevel: 1, accepts: (s) => s.data.classes.includes("cleric") });
     expect(keys).toEqual(["spell:sacred flame|xphb", "spell:cure wounds|xphb"]);
+  });
+});
+
+describe("pickableMaxLevel", () => {
+  it("con conjuros que elegir, hasta el nivel máximo", () => {
+    expect(pickableMaxLevel({ maxLevel: 1, spells: 2 })).toBe(1);
+    expect(pickableMaxLevel({ maxLevel: 3, spells: 0, free: true })).toBe(3);
+    expect(pickableMaxLevel({ maxLevel: 2, spells: 0, replaceSpell: true })).toBe(2);
+  });
+  it("si solo se eligen trucos, solo trucos", () => {
+    expect(pickableMaxLevel({ maxLevel: 1, spells: 0 })).toBe(0);
   });
 });
