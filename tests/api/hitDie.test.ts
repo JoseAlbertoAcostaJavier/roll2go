@@ -4,7 +4,7 @@ import { verifyHitDie } from "@/lib/rules/dnd2024/creation/rolls";
 
 // Sesión, acceso al personaje y límite de peticiones falsos: la ruta no toca la base de datos
 vi.mock("@/lib/server/campaigns/campaignApi", () => ({ sessionOf: async () => ({ id: "u1" }) }));
-vi.mock("@/lib/utils/rateLimit", () => ({
+vi.mock("@/lib/server/rateLimit", () => ({
   rateLimit: async () => ({ ok: true }),
   tooManyRequests: () => new Response(null, { status: 429 }),
 }));

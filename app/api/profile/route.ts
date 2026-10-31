@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sessionOf } from "@/lib/server/campaigns/campaignApi";
-import { rateLimit, tooManyRequests } from "@/lib/utils/rateLimit";
+import { rateLimit, tooManyRequests } from "@/lib/server/rateLimit";
 import { detectImageType } from "@/lib/server/account/images";
 import { updateProfile } from "@/lib/server/account/profile";
 import { failureResponse } from "@/lib/server/result";

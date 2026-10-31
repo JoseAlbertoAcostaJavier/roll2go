@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sessionOf } from "@/lib/server/campaigns/campaignApi";
 import { officialNameTables } from "@/lib/server/catalog/nameTables";
-import { rateLimit, tooManyRequests } from "@/lib/utils/rateLimit";
+import { rateLimit, tooManyRequests } from "@/lib/server/rateLimit";
 import { generateName, nameTableFor, PRONOUNS, type Pronoun } from "@/lib/rules/dnd2024/creation/names";
 
 const SYSTEM = "dnd-2024";

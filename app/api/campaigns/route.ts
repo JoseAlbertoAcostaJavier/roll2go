@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { COOKIE_NAME, verifySession } from "@/lib/server/auth/auth";
-import { rateLimit, tooManyRequests } from "@/lib/utils/rateLimit";
+import { rateLimit, tooManyRequests } from "@/lib/server/rateLimit";
 import { createCampaign } from "@/lib/server/campaigns/manageCampaign";
 import { failureResponse } from "@/lib/server/result";
 

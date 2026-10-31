@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { COOKIE_NAME, signSession, sessionCookieOptions } from "@/lib/server/auth/auth";
 import { signIn } from "@/lib/server/auth/credentials";
 import { failureResponse } from "@/lib/server/result";
-import { getClientIp, rateLimit, tooManyRequests } from "@/lib/utils/rateLimit";
+import { getClientIp, rateLimit, tooManyRequests } from "@/lib/server/rateLimit";
 
 export async function POST(req: NextRequest) {
   // Máximo 10 intentos cada 15 minutos por IP

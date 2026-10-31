@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Avatar from "@/app/components/ui/Avatar";
-import type { UserCard } from "@/lib/server/account/userCards";
+import type { UserCard } from "@/lib/shared/users";
 
 export default function UserLink({
   user,

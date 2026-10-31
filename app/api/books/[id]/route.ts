@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
 import { sessionOf } from "@/lib/server/campaigns/campaignApi";
-import { rateLimit, tooManyRequests } from "@/lib/utils/rateLimit";
+import { rateLimit, tooManyRequests } from "@/lib/server/rateLimit";
 import { MAX_BOOK_DESCRIPTION, MAX_BOOK_NAME, loadBook } from "@/lib/server/books/bookAccess";
 import { deleteBook, updateBook } from "@/lib/server/books/books";
 import { cleanText } from "@/lib/utils/utils";

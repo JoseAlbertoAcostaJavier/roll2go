@@ -38,7 +38,7 @@ const db = vi.hoisted(() => ({
 }));
 const lean = (v: unknown) => ({ select: () => ({ lean: async () => v }) });
 vi.mock("@/lib/server/campaigns/campaignApi", () => ({ sessionOf: async () => db.session }));
-vi.mock("@/lib/utils/rateLimit", () => ({
+vi.mock("@/lib/server/rateLimit", () => ({
   rateLimit: async () => ({ ok: true }),
   tooManyRequests: () => new Response(null, { status: 429 }),
 }));

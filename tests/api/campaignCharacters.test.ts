@@ -21,7 +21,7 @@ vi.mock("@/lib/server/campaigns/campaignApi", () => ({
       ? { session: { id: DM }, campaign: { _id: CAMPAIGN, owner: DM, members: [DM, PLAYER] }, isDm: true }
       : { error: NextResponse.json({ error: "Solo el DM puede hacer esto." }, { status: 403 }) },
 }));
-vi.mock("@/lib/utils/rateLimit", () => ({
+vi.mock("@/lib/server/rateLimit", () => ({
   rateLimit: async () => ({ ok: true }),
   tooManyRequests: () => new Response(null, { status: 429 }),
 }));

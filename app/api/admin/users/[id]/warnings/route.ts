@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { readReason, requireAdminApi } from "@/lib/server/admin/adminApi";
 import { warnUser } from "@/lib/server/admin/moderation";
 import { failureResponse } from "@/lib/server/result";
-import { rateLimit, tooManyRequests } from "@/lib/utils/rateLimit";
+import { rateLimit, tooManyRequests } from "@/lib/server/rateLimit";
 
 type Ctx = { params: Promise<{ id: string }> };
 

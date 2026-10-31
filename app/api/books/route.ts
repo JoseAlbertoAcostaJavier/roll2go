@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sessionOf } from "@/lib/server/campaigns/campaignApi";
-import { rateLimit, tooManyRequests } from "@/lib/utils/rateLimit";
+import { rateLimit, tooManyRequests } from "@/lib/server/rateLimit";
 import { system } from "@/lib/utils/systems";
 import { MAX_BOOK_DESCRIPTION, MAX_BOOK_NAME } from "@/lib/server/books/bookAccess";
 import { createBook, listMyBooks } from "@/lib/server/books/books";

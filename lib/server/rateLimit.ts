@@ -1,3 +1,4 @@
+import "server-only";
 import mongoose from "mongoose";
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/models/mongodb";

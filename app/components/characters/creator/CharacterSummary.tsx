@@ -9,7 +9,6 @@ import { fmtMod } from "@/lib/rules/dnd2024/sheet/labels";
 
 export type MissingItem = { label: string; href: string };
 
-
 /* Resumen lateral del asistente: valores derivados de lo elegido hasta ahora y lo que falta por completar.
    `entries` son las entradas del catálogo ya cargadas, por "libro:clave". */
 export default function CharacterSummary({

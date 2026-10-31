@@ -30,7 +30,7 @@ const sheet = {
 // personaje sigue en el mismo nivel
 const db = vi.hoisted(() => ({ sameLevel: true, sheet: null as unknown, updates: [] as unknown[] }));
 vi.mock("@/lib/server/campaigns/campaignApi", () => ({ sessionOf: async () => ({ id: "u1" }) }));
-vi.mock("@/lib/utils/rateLimit", () => ({
+vi.mock("@/lib/server/rateLimit", () => ({
   rateLimit: async () => ({ ok: true }),
   tooManyRequests: () => new Response(null, { status: 429 }),
 }));

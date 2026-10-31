@@ -3,7 +3,7 @@ import { COOKIE_NAME } from "@/lib/server/auth/auth";
 import { sessionOf } from "@/lib/server/campaigns/campaignApi";
 import { deleteAccount, updateAccount } from "@/lib/server/account/settings";
 import { failureResponse } from "@/lib/server/result";
-import { rateLimit, tooManyRequests } from "@/lib/utils/rateLimit";
+import { rateLimit, tooManyRequests } from "@/lib/server/rateLimit";
 
 const bad = (error: string, status = 400) =>
   NextResponse.json({ error }, { status });

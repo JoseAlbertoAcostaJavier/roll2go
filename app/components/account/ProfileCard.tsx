@@ -1,5 +1,5 @@
 import Avatar from "@/app/components/ui/Avatar";
-import type { PublicProfile } from "@/lib/server/account/userProfile";
+import type { PublicProfile } from "@/lib/shared/users";
 
 export default function ProfileCard({ profile, children }: { profile: PublicProfile; children?: React.ReactNode }) {
   const meta = [profile.pronouns, profile.location].filter(Boolean).join(" · ");

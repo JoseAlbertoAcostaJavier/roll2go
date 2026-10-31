@@ -5,7 +5,7 @@ const CAMPAIGN = "c00000000000000000000001";
 const created = vi.hoisted(() => [] as Record<string, unknown>[]);
 
 vi.mock("@/lib/server/campaigns/campaignApi", () => ({ sessionOf: async () => ({ id: "a00000000000000000000003" }) }));
-vi.mock("@/lib/utils/rateLimit", () => ({
+vi.mock("@/lib/server/rateLimit", () => ({
   rateLimit: async () => ({ ok: true }),
   tooManyRequests: () => new Response(null, { status: 429 }),
 }));

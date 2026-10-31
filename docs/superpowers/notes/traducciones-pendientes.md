@@ -75,7 +75,7 @@ Fuentes usadas para lo que sí está en `es.json`: el SRD 5.2.1 oficial en espa�
 
 ## Clases de otros libros
 
-Las listas de clases de los conjuros del XPHB nombran clases que no son del XPHB (no se importan y no están en `es.json`). Su nombre en español está en `OTHER_CLASS_NAMES` (`lib/rules/dnd2024/spellText.ts`).
+Las listas de clases de los conjuros del XPHB nombran clases que no son del XPHB (no se importan y no están en `es.json`). Su nombre en español está en `OTHER_CLASS_NAMES` (`lib/rules/dnd2024/spells/spellText.ts`).
 
 | identificador | nombre inglés | nombre en `OTHER_CLASS_NAMES` | duda |
 | --- | --- | --- | --- |
@@ -157,7 +157,7 @@ Los 339 conjuros del SRD 5.2.1 llevan en `es.json` el nombre del SRD oficial en 
 
 ## Propiedades de maestría de las armas
 
-Están en `MASTERY_NAMES` de `lib/rules/dnd2024/labels.ts` (no en `es.json`). Se usan los nombres del plan; no se pudieron comprobar contra el SRD 5.2.1 en español.
+Están en `MASTERY_NAMES` de `lib/rules/dnd2024/sheet/labels.ts` (no en `es.json`). Se usan los nombres del plan; no se pudieron comprobar contra el SRD 5.2.1 en español.
 
 | id | nombre inglés | en uso | duda |
 | --- | --- | --- | --- |

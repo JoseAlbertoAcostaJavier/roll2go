@@ -1,8 +1,9 @@
 import "server-only";
 import { Friendship, pairKey } from "@/lib/models/Friendship";
 import { User } from "@/lib/models/User";
+import type { Relation } from "@/lib/shared/users";
+export type { Relation } from "@/lib/shared/users";
 
-export type Relation = "none" | "friend" | "outgoing" | "incoming";
 const USERNAME_REGEX = /^[A-Za-z0-9_]{3,20}$/;
 
 export function relationOf(

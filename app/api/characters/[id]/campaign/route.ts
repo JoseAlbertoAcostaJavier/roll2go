@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sessionOf } from "@/lib/server/campaigns/campaignApi";
-import { rateLimit, tooManyRequests } from "@/lib/utils/rateLimit";
+import { rateLimit, tooManyRequests } from "@/lib/server/rateLimit";
 import { leaveCampaign, requestJoinCampaign } from "@/lib/server/characters/campaignMembership";
 import { failureResponse } from "@/lib/server/result";
 

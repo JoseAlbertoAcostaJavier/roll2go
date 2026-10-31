@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getClientIp, rateLimit, tooManyRequests } from "@/lib/utils/rateLimit";
+import { getClientIp, rateLimit, tooManyRequests } from "@/lib/server/rateLimit";
 import { registerUser } from "@/lib/server/auth/credentials";
 import { failureResponse } from "@/lib/server/result";
 

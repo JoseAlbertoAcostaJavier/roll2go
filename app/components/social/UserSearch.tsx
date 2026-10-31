@@ -6,7 +6,7 @@ import { Search, UserPlus } from "lucide-react";
 import Avatar from "@/app/components/ui/Avatar";
 import FriendActions from "@/app/components/social/FriendActions";
 import useDismiss from "@/app/components/ui/useDismiss";
-import type { Relation } from "@/lib/server/social/friends";
+import type { Relation } from "@/lib/shared/users";
 
 type Result = { username: string; displayName: string; avatarUrl: string | null; relation: Relation };
 

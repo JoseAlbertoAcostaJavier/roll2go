@@ -24,7 +24,7 @@ const db = vi.hoisted(() => ({ reader: true, limited: false }));
 vi.mock("next/cache", () => ({ unstable_cache: (fn: () => unknown) => fn }));
 vi.mock("@/lib/models/mongodb", () => ({ connectDB: async () => {} }));
 vi.mock("@/lib/server/campaigns/campaignApi", () => ({ sessionOf: async () => ({ id: "u1" }) }));
-vi.mock("@/lib/utils/rateLimit", () => ({
+vi.mock("@/lib/server/rateLimit", () => ({
   rateLimit: async () => (db.limited ? { ok: false, retryAfter: 60 } : { ok: true }),
   tooManyRequests: () => new Response(null, { status: 429 }),
 }));

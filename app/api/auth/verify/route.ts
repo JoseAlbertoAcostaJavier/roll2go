@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAccount } from "@/lib/server/auth/emailTokens";
 import { failureResponse } from "@/lib/server/result";
-import { getClientIp, rateLimit, tooManyRequests } from "@/lib/utils/rateLimit";
+import { getClientIp, rateLimit, tooManyRequests } from "@/lib/server/rateLimit";
 
 export async function POST(req: NextRequest) {
   const limited = await rateLimit("verify", getClientIp(req), 30, 15 * 60);

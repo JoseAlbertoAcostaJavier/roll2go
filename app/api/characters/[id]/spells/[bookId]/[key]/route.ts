@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sessionOf } from "@/lib/server/campaigns/campaignApi";
-import { rateLimit, tooManyRequests } from "@/lib/utils/rateLimit";
+import { rateLimit, tooManyRequests } from "@/lib/server/rateLimit";
 import { loadCharacterFor } from "@/lib/server/characters/characterAccess";
 import { resolveRef } from "@/lib/server/catalog/catalog";
 import { spellClassNames } from "@/lib/rules/dnd2024/spells/spellText";

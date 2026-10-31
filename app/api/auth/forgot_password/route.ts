@@ -1,5 +1,5 @@
 import { after, NextRequest, NextResponse } from "next/server";
-import { getClientIp, rateLimit, tooManyRequests } from "@/lib/utils/rateLimit";
+import { getClientIp, rateLimit, tooManyRequests } from "@/lib/server/rateLimit";
 import { requestPasswordReset } from "@/lib/server/auth/emailTokens";
 import { sendPasswordResetEmail } from "@/lib/server/notifications/mail";
 import { failureResponse } from "@/lib/server/result";

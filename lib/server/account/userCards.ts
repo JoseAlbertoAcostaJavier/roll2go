@@ -1,13 +1,8 @@
 import "server-only";
 import { connectDB } from "@/lib/models/mongodb";
 import { User } from "@/lib/models/User";
-
-export type UserCard = {
-  id: string;
-  username: string;
-  displayName: string;
-  avatarUrl: string | null;
-};
+import type { UserCard } from "@/lib/shared/users";
+export type { UserCard } from "@/lib/shared/users";
 
 // Datos públicos (nombre, usuario y foto) de varios usuarios a la vez. Las cuentas borradas no aparecen.
 export async function loadUserCards(

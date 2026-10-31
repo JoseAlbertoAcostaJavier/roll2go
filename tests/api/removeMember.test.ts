@@ -12,7 +12,7 @@ vi.mock("@/lib/server/campaigns/campaignApi", () => ({
     isDm: true,
   }),
 }));
-vi.mock("@/lib/utils/rateLimit", () => ({
+vi.mock("@/lib/server/rateLimit", () => ({
   rateLimit: async () => ({ ok: true }),
   tooManyRequests: () => new Response(null, { status: 429 }),
 }));

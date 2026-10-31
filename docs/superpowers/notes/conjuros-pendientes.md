@@ -6,7 +6,7 @@ la sustitución de los conjuros de Iniciado en la magia, su dote base con tres l
 la ampliación de conjuros (`docs/superpowers/specs/2026-10-25-ampliacion-conjuros-design.md`).
 
 Si aparece otro rasgo con conjuros sin tratar, se añade aquí con su clave, qué da y qué falta, y a `NOT_A_CHOICE`
-(`lib/rules/dnd2024/featureChoices.ts`) mientras tanto.
+(`lib/rules/dnd2024/levels/featureChoices.ts`) mientras tanto.
 
 ## Listas de conjuros bajo demanda
 

@@ -10,7 +10,6 @@ const OPTIONS = [
   ["30d", "30 días"],
 ] as const;
 
-
 // Dirección de la web: solo existe en el navegador (en el servidor es "" y no hay diferencia al cargar)
 const noop = () => () => {};
 const useOrigin = () => useSyncExternalStore(noop, () => window.location.origin, () => "");

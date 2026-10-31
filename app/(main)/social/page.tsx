@@ -4,7 +4,7 @@ import Avatar from "@/app/components/ui/Avatar";
 import FriendActions from "@/app/components/social/FriendActions";
 import UserSearch from "@/app/components/social/UserSearch";
 import { requireUser } from "@/lib/server/auth/currentUser";
-import type { Relation } from "@/lib/server/social/friends";
+import type { Relation } from "@/lib/shared/users";
 import ConfirmAction from "@/app/components/ui/ConfirmAction";
 import { socialOverview, type SocialPerson } from "@/lib/server/social/queries";
 export const metadata: Metadata = { title: "Social" };

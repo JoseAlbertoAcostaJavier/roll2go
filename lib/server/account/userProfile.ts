@@ -3,18 +3,8 @@ import { connectDB } from "@/lib/models/mongodb";
 import { User } from "@/lib/models/User";
 import { Friendship } from "@/lib/models/Friendship";
 import { Character } from "@/lib/models/Character";
-
-export type PublicProfile = {
-  id: string;
-  username: string;
-  displayName: string;
-  pronouns: string;
-  location: string;
-  bio: string;
-  avatarUrl: string | null;
-  friends: number;
-  characters: number;
-};
+import type { PublicProfile } from "@/lib/shared/users";
+export type { PublicProfile } from "@/lib/shared/users";
 
 export async function getPublicProfile(
   username: string,

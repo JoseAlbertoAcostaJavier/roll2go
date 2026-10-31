@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdminApi } from "@/lib/server/admin/adminApi";
 import { sendAnnouncement } from "@/lib/server/admin/moderation";
 import { failureResponse } from "@/lib/server/result";
-import { rateLimit, tooManyRequests } from "@/lib/utils/rateLimit";
+import { rateLimit, tooManyRequests } from "@/lib/server/rateLimit";
 
 export async function POST(req: NextRequest) {
   // La comprobación del rol se hace en la base de datos, no en el token. A quien no es admin le da 404.

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { rateLimit, tooManyRequests } from "@/lib/utils/rateLimit";
+import { rateLimit, tooManyRequests } from "@/lib/server/rateLimit";
 import { requireMember } from "@/lib/server/campaigns/campaignApi";
 import { parseLogBody } from "@/lib/server/campaigns/logInput";
 import { deleteLogEntry, updateLogEntry } from "@/lib/server/campaigns/logEntries";

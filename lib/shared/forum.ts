@@ -1,4 +1,4 @@
-import type { UserCard } from "@/lib/server/account/userCards";
+import type { UserCard } from "@/lib/shared/users";
 import { cleanText } from "@/lib/utils/utils";
 
 export const REACTIONS = [

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { resendVerification } from "@/lib/server/auth/emailTokens";
 import { failureResponse } from "@/lib/server/result";
-import { getClientIp, rateLimit, tooManyRequests } from "@/lib/utils/rateLimit";
+import { getClientIp, rateLimit, tooManyRequests } from "@/lib/server/rateLimit";
 
 //Permite pedir otro enlace.
 //Espera 1 minuto entre dos envios al mismo correo. Crea un token nuevo y lo guarda encima del anterior

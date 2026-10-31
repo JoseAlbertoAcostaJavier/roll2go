@@ -4,7 +4,7 @@ import { GoogleGenAI } from "@google/genai";
 import { NextRequest, NextResponse } from "next/server";
 import { systemPromptFor } from "@/lib/server/chat/rolAssistant";
 import { system as rpgSystems } from "@/lib/utils/systems";
-import { getClientIp, rateLimit, tooManyRequests } from "@/lib/utils/rateLimit";
+import { getClientIp, rateLimit, tooManyRequests } from "@/lib/server/rateLimit";
 
 export const maxDuration = 30;
 
