@@ -1,6 +1,6 @@
 // Acciones de la ficha (spec de acciones §3): armas, conjuros utilizables, rasgos de clase y subclase con activación y
 // acciones básicas de combate, agrupados por lo que cuesta usarlos. Función pura sobre lo que ya calcula `derive`.
-import type { CatalogEntry } from "@/lib/rules/catalog/types";
+import type { CatalogEntry, SpellOption } from "@/lib/rules/catalog/types";
 import { actionIcon } from "@/lib/rules/dnd2024/sheet/actionIcons";
 import { refKey } from "@/lib/rules/dnd2024/sheet/equipmentRefs";
 import { ABILITY_ABBR, ABILITY_NAMES, DAMAGE_TYPE_NAMES, fmtMod } from "@/lib/rules/dnd2024/sheet/labels";
@@ -102,6 +102,22 @@ function spellItems(spells: SpellsSummary, entries: Map<string, CatalogEntry>): 
   }
   return out.sort((a, b) => (a.kind === "spell" && b.kind === "spell"
     ? a.level - b.level || a.name.localeCompare(b.name, "es") : 0));
+}
+
+/**
+ * El catálogo de la ficha (`loadSheetEntries`) no trae los conjuros: van aparte, en el listado de la pestaña Conjuros
+ * (`SpellOption`, sin descripción). Esta función los añade al mapa para `deriveActions`, que solo usa su nombre y
+ * sus datos; las entradas que ya estaban se conservan.
+ */
+export function withSpellEntries(entries: Map<string, CatalogEntry>, spells: SpellOption[]): Map<string, CatalogEntry> {
+  const out = new Map(entries);
+  for (const s of spells) {
+    const key = refKey(s.ref);
+    if (!out.has(key)) {
+      out.set(key, { ...s, description: "", descriptionEs: "", identifier: "", parent: null, foundry: null });
+    }
+  }
+  return out;
 }
 
 export function deriveActions(input: ActionsInput): ActionsSummary {

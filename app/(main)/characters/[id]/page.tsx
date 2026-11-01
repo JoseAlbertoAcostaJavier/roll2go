@@ -9,7 +9,7 @@ import { system as rpgSystems } from "@/lib/utils/systems";
 import { booksByIds } from "@/lib/server/catalog/books";
 import { listActions, listMasteryWeapons, listSpells } from "@/lib/server/catalog/catalog";
 import { derive } from "@/lib/rules/dnd2024/derive";
-import { deriveActions } from "@/lib/rules/dnd2024/derive/actions";
+import { deriveActions, withSpellEntries } from "@/lib/rules/dnd2024/derive/actions";
 import { ACTION_TIME_LABELS, parseActionFilter } from "@/lib/rules/dnd2024/sheet/actionFilters";
 import { actionIcon } from "@/lib/rules/dnd2024/sheet/actionIcons";
 import { weaponProficient } from "@/lib/rules/dnd2024/derive/attacks";
@@ -140,7 +140,11 @@ export default async function CharacterPage({ params, searchParams }: Props) {
   // Acciones (spec de acciones §3-4): armas, conjuros utilizables, rasgos con activación y las acciones básicas de los
   // libros del personaje; el filtro va en `?filtro=`
   const basicEntries = await listActions(found.books);
-  const actions = deriveActions({ attacks: d.attacks, spells: d.spells, features: d.features, basics: basicEntries, entries });
+  // (los conjuros no están en `entries`: se toman del listado de la pestaña Conjuros)
+  const actions = deriveActions({
+    attacks: d.attacks, spells: d.spells, features: d.features, basics: basicEntries,
+    entries: withSpellEntries(entries, spellOptions),
+  });
   const actionFilter = parseActionFilter(query.filtro);
   const actionSpellKeys = new Set(actions.items.flatMap((i) => (i.kind === "spell" ? [refKey(i.ref)] : [])));
   const actionSpells = spellOptions.filter((s) => actionSpellKeys.has(refKey(s.ref)));

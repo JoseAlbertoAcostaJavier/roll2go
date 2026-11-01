@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { CatalogEntry } from "@/lib/rules/catalog/types";
-import { deriveActions, type ActionItem } from "@/lib/rules/dnd2024/derive/actions";
+import type { CatalogEntry, SpellOption } from "@/lib/rules/catalog/types";
+import { deriveActions, withSpellEntries, type ActionItem } from "@/lib/rules/dnd2024/derive/actions";
 import { unarmedAttack } from "@/lib/rules/dnd2024/derive/attacks";
 import type { FeatureGroup } from "@/lib/rules/dnd2024/derive/features";
 import type { CasterBlock, SpellsSummary } from "@/lib/rules/dnd2024/derive/spells";
@@ -188,5 +188,30 @@ describe("deriveActions: orden", () => {
     })]);
     const names = run(cantrips, [], []).items.flatMap((i) => (i.kind === "spell" ? [i.name] : []));
     expect(names).toEqual(["Descarga de fuego", "Rayo de escarcha"]);
+  });
+});
+
+// Como en la página: el catálogo de la ficha solo trae rasgos (no conjuros) y los conjuros llegan del listado de la
+// pestaña Conjuros (`SpellOption`, sin descripción)
+describe("withSpellEntries: conjuros del listado", () => {
+  const sheetEntries = new Map(FEATURES.map((e) => [`${B}:${e.ref.key}`, e]));
+  const options: SpellOption[] = SPELLS.map((e) => ({
+    ref: e.ref, name: e.name, nameEs: e.nameEs, bookName: e.bookName, srd52: false, data: e.data as SpellData, summary: "",
+  }));
+  const spellNames = (m: Map<string, CatalogEntry>) =>
+    deriveActions({ attacks: [], spells: wizard, features: [], basics: [], entries: m }).items
+      .flatMap((i) => (i.kind === "spell" ? [i.name] : []));
+
+  it("sin los conjuros en el mapa no sale ninguno", () => {
+    expect(spellNames(sheetEntries)).toEqual([]);
+  });
+  it("con el listado añadido salen los trucos, los preparados y los de especie", () => {
+    expect(spellNames(withSpellEntries(sheetEntries, options))).toEqual([
+      "Rayo de escarcha", "Detectar magia", "Manos ardientes", "Paso brumoso", "Escudo", "Identificar",
+    ]);
+  });
+  it("conserva las entradas que ya estaban", () => {
+    const merged = withSpellEntries(sheetEntries, options);
+    for (const [k, e] of sheetEntries) expect(merged.get(k)).toBe(e);
   });
 });
