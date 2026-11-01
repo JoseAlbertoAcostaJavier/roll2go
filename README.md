@@ -31,3 +31,7 @@ Tras desplegar las defensas (resistencias, inmunidades y vulnerabilidades):
 Tras desplegar el alcance de los ataques:
 
 - Vuelve a ejecutar `npm run import:5etools -- --data <carpeta data de 5etools>` y **reinicia el servidor**: hasta reimportar los libros, las armas a distancia y arrojadizas no muestran su alcance.
+
+Tras desplegar las Acciones:
+
+- Vuelve a ejecutar `npm run import:5etools -- --data <carpeta data de 5etools>` y **reinicia el servidor**: hasta reimportar, la pestaña Acciones no muestra los rasgos de clase y subclase que se usan como acción, acción adicional o reacción, ni las acciones básicas (Atacar, Esquivar…). `npx tsx scripts/report-activation.ts --data <carpeta data de 5etools>` lista la activación de cada rasgo para revisarla.

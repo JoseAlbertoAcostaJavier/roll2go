@@ -179,7 +179,7 @@ describe("clase (Bárbaro)", () => {
   test("rasgos de clase con la clase como padre", () => {
     const rage = find("classFeature", "classFeature:rage|barbarian|xphb|1")!;
     expect(rage.parent).toEqual({ key: "class:barbarian|xphb" });
-    expect(rage.data).toEqual({ level: 1, className: "Barbarian" });
+    expect(rage.data).toEqual({ level: 1, className: "Barbarian", activation: "bonus" });
     expect(entries.filter((e) => e.kind === "classFeature")).toHaveLength(3);
   });
   test("subclase", () => {

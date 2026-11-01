@@ -141,6 +141,9 @@ export type SubclassData = {
   spellcasting?: Spellcasting;
 };
 
+/** Cómo se activa un rasgo: acción, acción adicional o reacción (sin valor: pasivo). */
+export type Activation = "action" | "bonus" | "reaction";
+
 export type FeatureData = {
   level: number;
   className: string;
@@ -149,6 +152,8 @@ export type FeatureData = {
   options?: Ref[];
   /** Mejora de característica (o dote general). */
   asi?: true;
+  /** Cómo se usa, deducido del texto al importar (`lib/rules/import/activation.ts`). */
+  activation?: Activation;
 };
 
 /** Invocación, metamagia, maniobra… `pact` y `feature` son claves de otro `optionalFeature`. */

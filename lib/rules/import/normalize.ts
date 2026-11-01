@@ -9,6 +9,7 @@ import type {
   LevelFeature, MulticlassData, NameGender, OptionalFeatureData, Pack, Ref, Spellcasting, SpellcastingProgression, SpellGrant,
 } from "../types";
 import { normalizeName, validateEntryData } from "../schemas";
+import { activationFor } from "./activation";
 import { entriesToBbcode } from "./toBbcode";
 import { ABILITY_NAMES, CHOICE_LABELS, FEAT_CATEGORIES, proficiencyName, skillName, toolName } from "../dnd2024/sheet/labels";
 import { spellComponents, spellDuration, spellRange, spellTags, spellTime } from "../dnd2024/spells/spellText";
@@ -905,17 +906,23 @@ function featureExtras(raw: Rec): Pick<FeatureData, "options" | "asi"> {
   };
 }
 
-const classFeatureKeyOf = (raw: Rec) =>
+export const classFeatureKeyOf = (raw: Rec) =>
   classFeatureKey(str(raw.name), str(raw.className), str(raw.classSource), String(raw.level), str(raw.source));
+
+/** `{ activation }` si el rasgo se activa (corrección manual o texto); nada si es pasivo. */
+function activationOf(key: string, raw: Rec): Pick<FeatureData, "activation"> {
+  const activation = activationFor(key, raw.entries);
+  return activation ? { activation } : {};
+}
 
 export function normalizeClassFeature(raw: Rec): NormalizedEntry {
   const key = classFeatureKeyOf(raw);
   return entry<"classFeature">(header("classFeature", raw, key, {
     parent: { key: keyOf("class", str(raw.className), str(raw.classSource)) },
-  }), { level: raw.level as number, className: str(raw.className), ...featureExtras(raw) });
+  }), { level: raw.level as number, className: str(raw.className), ...featureExtras(raw), ...activationOf(key, raw) });
 }
 
-const subclassFeatureKeyOf = (raw: Rec) => subclassFeatureKey([raw.name, raw.className, raw.classSource,
+export const subclassFeatureKeyOf = (raw: Rec) => subclassFeatureKey([raw.name, raw.className, raw.classSource,
   raw.subclassShortName, raw.subclassSource, raw.level].map(String), str(raw.source));
 
 /**
