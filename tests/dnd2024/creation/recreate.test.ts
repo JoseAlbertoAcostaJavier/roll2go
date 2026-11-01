@@ -118,12 +118,13 @@ describe("creationUpdate", () => {
     const next = sheet();
     const set = creationUpdate(next);
     expect(Object.keys(set).sort()).toEqual([
-      "sheet.abilityMethod", "sheet.background", "sheet.baseAbilities", "sheet.classesSummary", "sheet.hp",
-      "sheet.inventory", "sheet.levels", "sheet.lineage", "sheet.prepared", "sheet.rolls", "sheet.slotsUsed",
+      "sheet.abilityMethod", "sheet.background", "sheet.baseAbilities", "sheet.classesSummary", "sheet.hitDiceUsed",
+      "sheet.hp", "sheet.inventory", "sheet.levels", "sheet.lineage", "sheet.prepared", "sheet.rolls", "sheet.slotsUsed",
       "sheet.species", "sheet.speciesChoices", "sheet.spellbookExtra", "sheet.weaponMasteries",
     ]);
     expect(set["sheet.levels"]).toBe(next.levels);
     expect(set["sheet.inventory"]).toBe(next.inventory);
+    expect(set["sheet.hitDiceUsed"]).toEqual({});
   });
   it("no toca los textos ni la experiencia", () => {
     const set = creationUpdate(sheet());

@@ -120,13 +120,14 @@ export function creationDraft(
 
 /**
  * `$set` que sustituye la creación por la de `next` (la hoja validada): especie, trasfondo, características, el nivel
- * 1, el inventario inicial y los PG. Los conjuros preparados y los espacios gastados dependían de la clase, así que
- * también vuelven a empezar. Los textos y la experiencia no se tocan (se editan en «Editar personaje»).
+ * 1, el inventario inicial y los PG. Los conjuros preparados, los espacios gastados y los dados de golpe gastados
+ * dependían de la creación anterior, así que también vuelven a empezar. Los textos y la experiencia no se tocan (se
+ * editan en «Editar personaje»).
  */
 export function creationUpdate(next: Dnd2024SheetV2): Record<string, unknown> {
   const keys = [
     "species", "lineage", "background", "abilityMethod", "baseAbilities", "rolls", "speciesChoices", "hp",
-    "levels", "classesSummary", "inventory", "weaponMasteries", "prepared", "spellbookExtra", "slotsUsed",
+    "levels", "classesSummary", "inventory", "weaponMasteries", "prepared", "spellbookExtra", "slotsUsed", "hitDiceUsed",
   ] as const;
   return Object.fromEntries(keys.map((k) => [`sheet.${k}`, next[k]]));
 }
