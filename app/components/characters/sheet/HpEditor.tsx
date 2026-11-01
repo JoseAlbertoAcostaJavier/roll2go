@@ -99,10 +99,13 @@ export default function HpEditor({ characterId, max, current, temp }: { characte
         {hp.temp > 0 && <span className="ml-1 text-base text-success">+{hp.temp}</span>}
         {saving && <LoaderCircle size={14} aria-label="Guardando" className="ml-1 inline animate-spin text-muted" />}
       </p>
-      <div className="print:hidden">
+      {/* En horizontal (franja superior): actuales y temporales lado a lado; si no caben, uno debajo del otro */}
+      <div className="flex flex-wrap items-end justify-center gap-x-4 gap-y-2 print:hidden">
         <Stepper label="PG actuales" value={hp.current} max={max} onChange={(v) => update({ current: v })} />
-        <p className="mb-1 mt-2 text-xs uppercase tracking-wide text-muted">Temporales</p>
-        <Stepper label="PG temporales" value={hp.temp} max={MAX_TEMP_HP} onChange={(v) => update({ temp: v })} />
+        <div>
+          <p className="mb-1 text-xs uppercase tracking-wide text-muted">Temporales</p>
+          <Stepper label="PG temporales" value={hp.temp} max={MAX_TEMP_HP} onChange={(v) => update({ temp: v })} />
+        </div>
       </div>
       {error && <p role="alert" className="text-xs text-brand-soft">{error}</p>}
     </div>

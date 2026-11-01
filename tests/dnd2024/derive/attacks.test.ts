@@ -10,6 +10,9 @@ const weapon = (
   name, type, weight: 1, value: 0,
   weapon: { damage, damageType, properties, category, ...(mastery ? { mastery } : {}) },
 });
+const withRange = (w: ItemData & { name: string }, range: string): ItemData & { name: string } => ({
+  ...w, weapon: { ...w.weapon!, range },
+});
 
 const greataxe = weapon("Hacha a dos manos", "M", "1d12", "S", ["H", "2H"], "martial", "cleave");
 const rapier = weapon("Estoque", "M", "1d8", "P", ["F"], "martial", "vex");
@@ -86,6 +89,35 @@ describe("weaponAttack", () => {
   it("maestría solo si el personaje la tiene", () => {
     expect(weaponAttack(greataxe, mods({ str: 3 }), 2, true, true).mastery).toBe("Hendir");
     expect(weaponAttack(greataxe, mods({ str: 3 }), 2, true, false).mastery).toBeNull();
+  });
+});
+
+describe("alcance, tipo y clave del tipo de daño", () => {
+  it("espada larga: cuerpo a cuerpo, 1,5 m, cortante", () => {
+    const a = weaponAttack(longsword, mods({ str: 3 }), 2, true, false);
+    expect([a.kind, a.range, a.damageTypeId]).toEqual(["melee", "1,5 m", "slashing"]);
+  });
+  it("arco largo: a distancia, 150/600 pies → 45/180 m", () => {
+    const a = weaponAttack(withRange(longbow, "150/600"), mods({ dex: 2 }), 2, true, false);
+    expect([a.kind, a.range, a.damageTypeId]).toEqual(["ranged", "45/180 m", "piercing"]);
+  });
+  it("daga arrojadiza: alcance cuerpo a cuerpo y de lanzamiento", () => {
+    const dagger = withRange(weapon("Daga", "M", "1d4", "P", ["F", "L", "T"], "simple", "nick"), "20/60");
+    const a = weaponAttack(dagger, mods({ dex: 2 }), 2, true, false);
+    expect([a.kind, a.range, a.damageTypeId]).toEqual(["melee", "1,5 m · 6/18 m", "piercing"]);
+  });
+  it("alabarda: Alcance → 3 m", () => {
+    const glaive = weapon("Guja", "M", "1d10", "S", ["H", "R", "2H"], "martial", "graze");
+    expect(weaponAttack(glaive, mods({ str: 3 }), 2, true, false).range).toBe("3 m");
+  });
+  it("a distancia sin alcance en el catálogo: «—»", () => {
+    const crossbow = weapon("Ballesta ligera", "R", "1d8", "P", ["A", "LD", "2H"], "simple", "slow");
+    expect(weaponAttack(crossbow, mods({ dex: 2 }), 2, true, false).range).toBe("—");
+  });
+  it("ataque sin armas: cuerpo a cuerpo, 1,5 m, contundente", () => {
+    const a = unarmedAttack(mods({ str: 2 }), 2, null);
+    expect([a.kind, a.range, a.damageTypeId]).toEqual(["melee", "1,5 m", "bludgeoning"]);
+    expect(unarmedAttack(mods({ str: 2 }), 2, "1d6").damageTypeId).toBe("bludgeoning");
   });
 });
 

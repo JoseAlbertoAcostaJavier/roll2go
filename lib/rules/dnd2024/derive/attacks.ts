@@ -1,5 +1,5 @@
 // Ataques de la ficha (spec §4.2): armas equipadas y ataque sin armas. Sin bonificadores mágicos.
-import { damageTypeName, masteryName, weaponPropertyName } from "@/lib/rules/dnd2024/sheet/labels";
+import { damageTypeId, damageTypeName, masteryName, rangeMetersText, weaponPropertyName } from "@/lib/rules/dnd2024/sheet/labels";
 import type { Ability, ItemData } from "@/lib/rules/types";
 
 export type Attack = {
@@ -12,6 +12,11 @@ export type Attack = {
   properties: string[];
   /** Nombre de la maestría si el personaje la tiene con esa arma. */
   mastery: string | null;
+  kind: "melee" | "ranged";
+  /** Alcance en metros: "1,5 m", "3 m" (Alcance), "6/18 m" (distancia) o "1,5 m · 6/18 m" (arrojadiza); "—" si no se sabe. */
+  range: string;
+  /** Clave inglesa en minúsculas del tipo de daño ("slashing"). */
+  damageTypeId: string;
 };
 
 export const UNARMED_NAME = "Ataque sin armas";
@@ -20,7 +25,10 @@ const LIGHT = "L";
 const VERSATILE = "V";
 const RANGED_TYPE = "R";
 const MELEE_TYPE = "M";
+const REACH = "R";
+const THROWN = "T";
 const MARTIAL = "martial";
+const MELEE_REACH = "1,5 m";
 
 // Competencia por propiedad (Pícaro y Monje de 2024): «Martial weapons that have the Finesse or Light property»
 const PROPERTY_PROFICIENCY = /^martial weapons that have the (.+) propert(?:y|ies)$/;
@@ -69,6 +77,14 @@ export function isMonkWeapon(weapon: ItemData): boolean {
   return category === "simple" || (category === MARTIAL && w.properties.includes(LIGHT));
 }
 
+function attackRange(weapon: ItemData, ranged: boolean): string {
+  const properties = weapon.weapon?.properties ?? [];
+  const thrown = weapon.weapon?.range ? rangeMetersText(weapon.weapon.range) : null;
+  if (ranged) return thrown ?? "—";
+  const reach = properties.includes(REACH) ? "3 m" : MELEE_REACH;
+  return properties.includes(THROWN) && thrown ? `${reach} · ${thrown}` : reach;
+}
+
 export function weaponAttack(
   weapon: ItemData & { name: string },
   mods: Record<Ability, number>,
@@ -97,6 +113,9 @@ export function weaponAttack(
     damageType: w ? damageTypeName(w.damageType) : "",
     properties: properties.map(weaponPropertyName),
     mastery: mastery && w?.mastery ? masteryName(w.mastery) : null,
+    kind: weapon.type === RANGED_TYPE ? "ranged" : "melee",
+    range: attackRange(weapon, weapon.type === RANGED_TYPE),
+    damageTypeId: w ? damageTypeId(w.damageType) : "",
   };
 }
 
@@ -110,5 +129,8 @@ export function unarmedAttack(mods: Record<Ability, number>, profBonus: number, 
     damageType: damageTypeName("B"),
     properties: [],
     mastery: null,
+    kind: "melee",
+    range: MELEE_REACH,
+    damageTypeId: damageTypeId("B"),
   };
 }

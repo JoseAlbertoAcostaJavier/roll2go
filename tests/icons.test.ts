@@ -33,3 +33,37 @@ describe("iconos de grupos de rasgos", () => {
     }
   });
 });
+
+describe("iconos oscuros (máscara)", () => {
+  it("rutas públicas", () => {
+    expect(iconSrc("damageType", "fire")).toBe("/assets/icons/dark/damage-types/fire.svg");
+    expect(iconSrc("weaponType", "melee")).toBe("/assets/icons/dark/weapon-types/melee.svg");
+    expect(iconSrc("weaponType", "ranged")).toBe("/assets/icons/dark/weapon-types/ranged.svg");
+    expect(iconSrc("darkSchool", "V")).toBe("/assets/icons/dark/schools/evocation.svg");
+    expect(iconSrc("action", "opportunity-attack")).toBe("/assets/icons/dark/actions/opportunity-attack.svg");
+    expect(iconSrc("condition", "blinded")).toBe("/assets/icons/dark/conditions/blinded.svg");
+    expect(iconSrc("environment", "bright-light")).toBe("/assets/icons/dark/environment/bright-light.svg");
+  });
+
+  it("los archivos existen", () => {
+    const damage = ["acid", "bludgeoning", "cold", "fire", "force", "lightning", "necrotic", "piercing", "poison", "psychic", "radiant", "slashing", "thunder"];
+    const conditions = ["blinded", "charmed", "deafened", "frightened", "grappled", "incapacitated", "invisible", "paralyzed", "petrified", "poisoned", "prone", "restrained", "stunned", "unconscious", "exhaustion"];
+    const actions = ["attack", "cast-spell", "climb", "communicate", "concentration", "dash", "disengage", "dodge", "drop-prone", "escape", "grapple", "help", "hide", "improvise", "move", "offhand-attack", "opportunity-attack", "quick-interaction", "ready-action", "search", "shove", "stand-up", "use-shield"];
+    for (const d of damage) expect(onDisk(iconSrc("damageType", d)), d).toBe(true);
+    for (const s of "ACDEVINT") expect(onDisk(iconSrc("darkSchool", s)), s).toBe(true);
+    for (const w of ["melee", "ranged"]) expect(onDisk(iconSrc("weaponType", w)), w).toBe(true);
+    for (const c of conditions) expect(onDisk(iconSrc("condition", c)), c).toBe(true);
+    for (const a of actions) expect(onDisk(iconSrc("action", a)), a).toBe(true);
+    for (const e of ["bright-light", "darkness"]) expect(onDisk(iconSrc("environment", e)), e).toBe(true);
+  });
+
+  it("ids desconocidos dan null", () => {
+    expect(iconSrc("damageType", "banana")).toBeNull();
+    expect(iconSrc("weaponType", "banana")).toBeNull();
+    expect(iconSrc("darkSchool", "X")).toBeNull();
+    expect(iconSrc("action", "banana")).toBeNull();
+    expect(iconSrc("condition", "banana")).toBeNull();
+    expect(iconSrc("environment", "banana")).toBeNull();
+    expect(iconSrc("damageType", "")).toBeNull();
+  });
+});

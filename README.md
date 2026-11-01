@@ -27,3 +27,7 @@ Tras desplegar la ampliación de conjuros:
 Tras desplegar las defensas (resistencias, inmunidades y vulnerabilidades):
 
 - Vuelve a ejecutar `npm run import:5etools -- --data <carpeta data de 5etools>` y **reinicia el servidor**: hasta reimportar los libros, el catálogo no trae las defensas de especies, linajes, dotes y objetos.
+
+Tras desplegar el alcance de los ataques:
+
+- Vuelve a ejecutar `npm run import:5etools -- --data <carpeta data de 5etools>` y **reinicia el servidor**: hasta reimportar los libros, las armas a distancia y arrojadizas no muestran su alcance.

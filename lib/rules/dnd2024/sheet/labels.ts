@@ -60,7 +60,10 @@ export const ABILITY_ABBR: Record<Ability, string> = {
 export const fmtMod = (m: number) => (m > 0 ? `+${m}` : m < 0 ? `−${-m}` : "+0");
 
 // Distancias en pies con su equivalencia en metros (5 pies = 1,5 m): "30 pies (9 m)"
-export const metersText = (feet: number) => `${(Math.round(feet * 0.3 * 10) / 10).toLocaleString("es-ES")} m`;
+const metersNumber = (feet: number) => (Math.round(feet * 0.3 * 10) / 10).toLocaleString("es-ES");
+export const metersText = (feet: number) => `${metersNumber(feet)} m`;
+/** "20/60" pies → "6/18 m" (cada cifra con la misma conversión que `metersText`). */
+export const rangeMetersText = (range: string) => `${range.split("/").map((n) => metersNumber(Number(n))).join("/")} m`;
 export const distanceText = (feet: number) => `${feet} pies (${metersText(feet)})`;
 
 export const SKILL_NAMES: Record<string, string> = {
@@ -176,6 +179,12 @@ const MASTERY_NAMES: Record<string, string> = {
   cleave: "Hendir", graze: "Rozar", nick: "Mellar", push: "Empujar", sap: "Debilitar", slow: "Ralentizar",
   topple: "Derribar", vex: "Vejar",
 };
+// Clave inglesa del tipo de daño (la de los iconos y los datos de 5etools)
+const DAMAGE_CODE_IDS: Record<string, string> = {
+  A: "acid", B: "bludgeoning", C: "cold", F: "fire", I: "poison", L: "lightning", N: "necrotic", O: "force",
+  P: "piercing", R: "radiant", S: "slashing", T: "thunder", Y: "psychic",
+};
+export const damageTypeId = (code: string) => DAMAGE_CODE_IDS[code] ?? code.toLowerCase();
 export const damageTypeName = (code: string) => DAMAGE_CODE_NAMES[code] ?? code;
 export const weaponPropertyName = (code: string) => WEAPON_PROPERTY_NAMES[code] ?? code;
 export const masteryName = (id: string) => MASTERY_NAMES[id.toLowerCase()] ?? capitalize(id);

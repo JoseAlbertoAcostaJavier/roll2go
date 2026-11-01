@@ -1,17 +1,16 @@
 import Link from "next/link";
-import { Backpack, BookUser, Info, Sparkles, WandSparkles } from "lucide-react";
+import { Backpack, BookUser, Sparkles, Swords, WandSparkles } from "lucide-react";
+import type { SheetTabId } from "@/lib/rules/dnd2024/sheet/sheetTabs";
 
 export const SHEET_TABS = [
-  { id: "info", label: "Información", icon: Info },
-  { id: "trasfondo", label: "Trasfondo", icon: BookUser },
-  { id: "rasgos", label: "Rasgos", icon: Sparkles },
-  { id: "equipo", label: "Equipo", icon: Backpack },
+  { id: "acciones", label: "Acciones", icon: Swords },
   { id: "conjuros", label: "Conjuros", icon: WandSparkles },
-] as const;
+  { id: "inventario", label: "Inventario", icon: Backpack },
+  { id: "rasgos", label: "Rasgos y dotes", icon: Sparkles },
+  { id: "trasfondo", label: "Trasfondo", icon: BookUser },
+] as const satisfies readonly { id: SheetTabId; label: string; icon: unknown }[];
 
-export type SheetTab = (typeof SHEET_TABS)[number]["id"];
-
-export const isSheetTab = (v: unknown): v is SheetTab => SHEET_TABS.some((t) => t.id === v);
+export type SheetTab = SheetTabId;
 
 // Pestañas de la ficha con el estilo de CampaignTabs; la activa va en `?tab=`. `tabs`: las que se muestran.
 export default function SheetTabs({ base, active, tabs }: { base: string; active: SheetTab; tabs: SheetTab[] }) {
@@ -22,7 +21,7 @@ export default function SheetTabs({ base, active, tabs }: { base: string; active
         return (
           <Link
             key={id}
-            href={id === "info" ? base : `${base}?tab=${id}`}
+            href={id === "acciones" ? base : `${base}?tab=${id}`}
             scroll={false}
             aria-current={current ? "page" : undefined}
             className={`group -mb-px flex items-center gap-2 whitespace-nowrap border-b-[3px] px-4 py-3 text-sm font-semibold transition-colors ${
