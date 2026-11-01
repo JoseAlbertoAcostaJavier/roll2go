@@ -36,6 +36,7 @@ const sheet = {
   spellbookExtra: [],
   slotsUsed: {},
   weaponMasteries: [],
+  hitDiceUsed: {},
 } as Dnd2024SheetV2;
 
 describe("booksUsedBy", () => {

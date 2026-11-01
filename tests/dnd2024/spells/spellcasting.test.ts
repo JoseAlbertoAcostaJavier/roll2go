@@ -57,6 +57,7 @@ function sheetOf(path: string[], choices: Record<number, Choice[]> = {}, lineage
     spellbookExtra: [],
     slotsUsed: {},
     weaponMasteries: [],
+    hitDiceUsed: {},
   };
 }
 const times = (id: string, n: number) => Array<string>(n).fill(id);

@@ -109,6 +109,7 @@ function sheetWith(classes: [string, number][], choices: Record<number, Choice[]
     spellbookExtra: [],
     slotsUsed: {},
     weaponMasteries: [],
+    hitDiceUsed: {},
   };
 }
 
