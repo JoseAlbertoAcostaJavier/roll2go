@@ -113,14 +113,13 @@ export async function saveMasteries(
 const MAX_ATTEMPTS = 3;
 const CHANGED_ERROR = "Los conjuros del personaje han cambiado; recarga la página.";
 
-// Campos de la hoja que cambia cada operación (la tierra también quita de los preparados los que pasa a dar; el
-// descanso largo recupera espacios, usos y puntos de golpe; el corto, los de pacto y los de los Conjuros distintivos)
+// Campos de la hoja que cambia cada operación (la tierra también quita de los preparados los que pasa a dar)
 type Field = keyof Pick<
-  Dnd2024SheetV2, "prepared" | "spellbookExtra" | "slotsUsed" | "spellOption" | "limitedUsed" | "spellMastery" | "hp"
+  Dnd2024SheetV2, "prepared" | "spellbookExtra" | "slotsUsed" | "spellOption" | "limitedUsed" | "spellMastery"
 >;
 const FIELDS: Record<string, Field[]> = {
   prepare: ["prepared"], unprepare: ["prepared"], copy: ["spellbookExtra"], slot: ["slotsUsed"],
-  longRest: ["slotsUsed", "limitedUsed", "hp"], shortRest: ["slotsUsed", "limitedUsed"], setOption: ["spellOption", "prepared"],
+  setOption: ["spellOption", "prepared"],
   limited: ["limitedUsed"], setMastery: ["spellMastery"],
 };
 

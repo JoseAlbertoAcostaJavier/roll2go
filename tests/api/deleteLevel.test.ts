@@ -24,6 +24,7 @@ const sheet = {
   spellbookExtra: [],
   slotsUsed: { 1: 1 },
   weaponMasteries: [],
+  hitDiceUsed: {},
 } as Dnd2024SheetV2;
 
 // Sesión, acceso, catálogo y base de datos falsos: la escritura condicional siempre falla y `exists` dice si el

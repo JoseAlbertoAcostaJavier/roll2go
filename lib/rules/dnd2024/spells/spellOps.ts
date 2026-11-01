@@ -1,5 +1,5 @@
 // Cambios de conjuros desde la ficha (spec de conjuros §2.5): preparar y dejar de preparar, copiar al libro del Mago,
-// gastar espacios y usos por descanso largo, descanso corto y largo, elegir la alternativa de conjuros de una
+// gastar espacios y usos por descanso largo, elegir la alternativa de conjuros de una
 // subclase y los conjuros de Dominio de conjuros. Funciones puras: validan la operación del cliente sobre la hoja guardada y
 // devuelven la hoja nueva; la ruta relee el personaje y recalcula los bloques antes de aplicarlas.
 import type { CatalogEntry } from "@/lib/rules/catalog/types";
@@ -13,8 +13,6 @@ export type SpellOp =
   | { op: "prepare" | "unprepare"; class: Ref; ref: Ref }
   | { op: "copy"; ref: Ref }
   | { op: "slot"; level: string; used: number }
-  | { op: "longRest" }
-  | { op: "shortRest" }
   | { op: "setOption"; subclass: Ref; name: string | null }
   | { op: "limited"; key: string; used: number }
   | { op: "setMastery"; level: 1 | 2; ref: Ref | null };
@@ -140,19 +138,6 @@ export function applySpellOp(sheet: Dnd2024SheetV2, op: unknown, ctx: SpellOpCtx
         : `Solo tienes ${available} espacios de nivel ${level}.`);
     }
     return { ok: true, sheet: { ...sheet, slotsUsed: { ...(sheet.slotsUsed ?? {}), [level]: op.used } } };
-  }
-
-  // Descanso largo: espacios y usos, y los puntos de golpe (`current: null` = al máximo) sin temporales
-  if (op.op === "longRest")
-    return { ok: true, sheet: { ...sheet, slotsUsed: {}, limitedUsed: {}, hp: { ...sheet.hp, current: null, temp: 0 } } };
-
-  // Descanso corto: recupera los espacios de Magia de pacto y los usos de los Conjuros distintivos
-  if (op.op === "shortRest") {
-    const slotsUsed = Object.fromEntries(Object.entries(sheet.slotsUsed ?? {}).filter(([k]) => k !== PACT_SLOT));
-    if (!sheet.limitedUsed) return { ok: true, sheet: { ...sheet, slotsUsed } };
-    const limitedUsed = Object.fromEntries(
-      Object.entries(sheet.limitedUsed).filter(([k]) => !recoversOnShortRest(k)));
-    return { ok: true, sheet: { ...sheet, slotsUsed, limitedUsed } };
   }
 
   // Usos gastados de un conjuro por descanso largo (Arcano místico, Conjuros distintivos): solo de los que tiene y

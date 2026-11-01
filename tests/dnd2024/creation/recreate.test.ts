@@ -45,6 +45,7 @@ const sheet = (): Dnd2024SheetV2 => ({
   prepared: { "class:fighter|xphb": [ref("spell:x|xphb")] },
   spellbookExtra: [],
   slotsUsed: { "1": 1 },
+  hitDiceUsed: {},
   weaponMasteries: [ref("item:longsword|xphb")],
 });
 

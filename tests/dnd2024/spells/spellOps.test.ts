@@ -81,6 +81,7 @@ function sheetOf(path: string[], choices: Record<number, Choice[]> = {}): Dnd202
     spellbookExtra: [],
     slotsUsed: {},
     weaponMasteries: [],
+    hitDiceUsed: {},
   };
 }
 const wizard1 = () => sheetOf(["wizard"], {
@@ -191,20 +192,6 @@ describe("espacios", () => {
     expect(ok(apply(s, { op: "slot", level: "pact", used: 2 })).slotsUsed).toEqual({ pact: 2 });
     expect(errorOf(apply(s, { op: "slot", level: "pact", used: 3 }))).toBe("Solo tienes 2 espacios de Magia de pacto.");
     expect(errorOf(apply(s, { op: "slot", level: "1", used: 1 }))).toBe("No tienes espacios de nivel 1.");
-  });
-  it("descanso largo: todo a 0", () => {
-    const s = { ...sheetOf(["cleric", "cleric", "cleric"]), slotsUsed: { 1: 3, 2: 1 } };
-    const after = ok(apply(s, { op: "longRest" }));
-    expect(Object.values(after.slotsUsed).every((v) => v === 0)).toBe(true);
-    expect(derive(after, entries).spells.used).toEqual({});
-  });
-  it("descanso largo: también recupera los puntos de golpe (current null, temporales a 0)", () => {
-    const s = { ...sheetOf(["cleric"]), hp: { max: null, current: 3, temp: 4 } };
-    expect(ok(apply(s, { op: "longRest" })).hp).toEqual({ max: null, current: null, temp: 0 });
-    // Conserva el máximo manual
-    expect(ok(apply({ ...s, hp: { max: 20, current: 3, temp: 4 } }, { op: "longRest" })).hp).toEqual({ max: 20, current: null, temp: 0 });
-    // El descanso corto no toca los puntos de golpe
-    expect(ok(apply(s, { op: "shortRest" })).hp).toEqual({ max: null, current: 3, temp: 4 });
   });
   it("operación desconocida → error", () => {
     expect(errorOf(apply(sheetOf(["cleric"]), { op: "nada" }))).toBe("Operación no válida.");
@@ -327,21 +314,6 @@ describe("usos por descanso largo (Arcano místico)", () => {
     const used = ok(apply(s, { op: "limited", key: KEY, used: 1 }));
     expect(used.limitedUsed).toEqual({ [KEY]: 1 });
     expect(ok(apply(used, { op: "limited", key: KEY, used: 0 })).limitedUsed).toEqual({ [KEY]: 0 });
-  });
-  it("el descanso largo también recupera los usos", () => {
-    const s = { ...warlock11(), limitedUsed: { [KEY]: 1 }, slotsUsed: { pact: 2 } };
-    const after = ok(apply(s, { op: "longRest" }));
-    expect(after.limitedUsed).toEqual({});
-    expect(after.slotsUsed).toEqual({});
-  });
-  it("el descanso corto recupera la Magia de pacto y los Conjuros distintivos, no los arcanos ni otros espacios", () => {
-    const SIGNATURE = `signature:${B}:spell:fireball|xphb`;
-    const s = { ...warlock11(), limitedUsed: { [KEY]: 1, [SIGNATURE]: 1 }, slotsUsed: { pact: 2, 1: 1 } };
-    const after = ok(apply(s, { op: "shortRest" }));
-    expect(after.limitedUsed).toEqual({ [KEY]: 1 });
-    expect(after.slotsUsed).toEqual({ 1: 1 });
-    // Sin usos guardados no los añade
-    expect(ok(apply({ ...warlock11(), slotsUsed: { pact: 1 } }, { op: "shortRest" }))).not.toHaveProperty("limitedUsed");
   });
 });
 

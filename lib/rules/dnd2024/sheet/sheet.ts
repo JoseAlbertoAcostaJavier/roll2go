@@ -130,6 +130,11 @@ export type Dnd2024SheetV2 = Omit<Dnd2024Sheet, "version" | "classes"> & {
   spellbookExtra: Named[];
   slotsUsed: Record<string, number>;
   /**
+   * Dados de golpe gastados por clase (`refKey` de la clase, como `summarizeClasses`). Ausente o `{}` = ninguno; el
+   * descanso largo lo vacía. Ver `hitDicePools`.
+   */
+  hitDiceUsed: Record<string, number>;
+  /**
    * Alternativa de conjuros elegida en la ficha por subclase (`SubclassData.spellOptions`, la tierra del Círculo de la
    * Tierra): `{ [clave de la subclase]: nombre }`. Las hojas sin ninguna no lo tienen.
    */

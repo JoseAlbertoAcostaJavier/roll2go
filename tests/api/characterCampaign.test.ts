@@ -23,6 +23,7 @@ const sheetUsing = (speciesBook: string, backgroundBook: string) =>
     prepared: {},
     spellbookExtra: [],
     weaponMasteries: [],
+    hitDiceUsed: {},
   }) as unknown as Dnd2024SheetV2;
 
 // Sesión, acceso, campaña, libros y base de datos falsos; se registran las escrituras y los avisos

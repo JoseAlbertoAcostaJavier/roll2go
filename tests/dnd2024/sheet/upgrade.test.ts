@@ -62,6 +62,7 @@ describe("upgradeSheet", () => {
     expect(s.prepared).toEqual({});
     expect(s.spellbookExtra).toEqual([]);
     expect(s.slotsUsed).toEqual({});
+    expect(s.hitDiceUsed).toEqual({});
   });
 
   it("con la clase borrada del catálogo pone 0 PG y vuelca solo el trasfondo", () => {

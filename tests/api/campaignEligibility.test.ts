@@ -54,6 +54,7 @@ const v2 = (speciesBook: string) =>
     prepared: {},
     spellbookExtra: [],
     weaponMasteries: [],
+    hitDiceUsed: {},
   }) as unknown as Dnd2024SheetV2;
 
 const campaign = (over: Record<string, unknown> = {}) => ({
