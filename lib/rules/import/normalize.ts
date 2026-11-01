@@ -959,6 +959,7 @@ export function normalizeSubclassFeature(raw: Rec, ctx: NormalizeContext): Norma
     className: str(raw.className),
     subclassName: sub?.name ?? str(raw.subclassShortName),
     ...featureExtras(raw),
+    ...activationOf(key, raw),
   });
 }
 

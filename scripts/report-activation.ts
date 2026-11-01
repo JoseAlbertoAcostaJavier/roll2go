@@ -3,8 +3,9 @@
 // Uso: npx tsx scripts/report-activation.ts --data <carpeta data de 5etools> [--only bonus,reaction,action,pasivo]
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
-import { ACTIVATION_OVERRIDES, activationFor, featureActivation } from "../lib/rules/import/activation";
-import { classFeatureKeyOf, subclassFeatureKeyOf } from "../lib/rules/import/normalize";
+import { ACTIVATION_OVERRIDES, featureActivation } from "../lib/rules/import/activation";
+import { normalizeClassFeature, normalizeSubclassFeature, type NormalizeContext } from "../lib/rules/import/normalize";
+import type { FeatureData } from "../lib/rules/types";
 
 type Raw = Record<string, unknown>;
 
@@ -25,14 +26,19 @@ if (!data) fail("Falta --data <carpeta data de 5etools>.");
 const dir = path.join(data, "class");
 if (!existsSync(dir)) fail(`No existe la carpeta: ${dir}`);
 
-const rows: { key: string; text?: string; final?: string; entries: unknown }[] = [];
+const rows: { key: string; text?: string; final?: string }[] = [];
 for (const f of readdirSync(dir).filter((f) => /^class-.*\.json$/.test(f)).sort()) {
   const file = JSON.parse(readFileSync(path.join(dir, f), "utf8")) as { classFeature?: Raw[]; subclassFeature?: Raw[] };
-  for (const [list, keyOf] of [[file.classFeature, classFeatureKeyOf], [file.subclassFeature, subclassFeatureKeyOf]] as const) {
+  // Se usan los mismos normalizadores que el importador, para que los recuentos sean los de los datos importados
+  const ctx = { subclasses: new Map() } as unknown as NormalizeContext;
+  for (const [list, normalize] of [
+    [file.classFeature, (r: Raw) => normalizeClassFeature(r)],
+    [file.subclassFeature, (r: Raw) => normalizeSubclassFeature(r, ctx)],
+  ] as const) {
     for (const raw of list ?? []) {
       if (raw.source !== "XPHB") continue;
-      const key = keyOf(raw);
-      rows.push({ key, text: featureActivation(raw.entries), final: activationFor(key, raw.entries), entries: raw.entries });
+      const e = normalize(raw);
+      rows.push({ key: e.key, text: featureActivation(raw.entries), final: (e.data as FeatureData).activation });
     }
   }
 }

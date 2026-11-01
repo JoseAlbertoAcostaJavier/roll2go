@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "vitest";
 import { ACTIVATION_OVERRIDES, activationFor, featureActivation } from "@/lib/rules/import/activation";
-import { normalizeClassFeature } from "@/lib/rules/import/normalize";
+import { normalizeClassFeature, normalizeSubclassFeature, type NormalizeContext } from "@/lib/rules/import/normalize";
 import type { FeatureData } from "@/lib/rules/types";
 
 // Entradas reales del XPHB (class-*.json de 5etools), recortadas a lo que importa
@@ -69,5 +69,35 @@ describe("normalización", () => {
     expect((normalizeClassFeature(raw).data as FeatureData).activation).toBe("bonus");
     const passive = { ...raw, name: "Arcane Recovery", entries: arcaneRecovery };
     expect("activation" in (normalizeClassFeature(passive).data as FeatureData)).toBe(false);
+  });
+});
+
+describe("normalización de rasgos de subclase", () => {
+  const berserker = { className: "Barbarian", classSource: "XPHB", subclassShortName: "Berserker", subclassSource: "XPHB", source: "XPHB" };
+  const ctx = { subclasses: new Map() } as unknown as NormalizeContext;
+
+  test("guarda la activación deducida del texto (Presencia intimidante)", () => {
+    const raw = { ...berserker, name: "Intimidating Presence", level: 14,
+      entries: ["As a {@variantrule Bonus Action|XPHB}, you can strike terror into others with your menacing presence and primal power."] };
+    expect((normalizeSubclassFeature(raw, ctx).data as FeatureData).activation).toBe("bonus");
+  });
+
+  test("Frenzy, sin acción, queda pasivo", () => {
+    const raw = { ...berserker, name: "Frenzy", level: 3, entries: ["If you use Reckless Attack while your Rage is active, you deal extra damage."] };
+    expect("activation" in (normalizeSubclassFeature(raw, ctx).data as FeatureData)).toBe(false);
+  });
+
+  test("una corrección de subclase fuerza pasivo (Paso veloz, cita una acción adicional ajena)", () => {
+    const raw = { name: "Fleet Step", source: "XPHB", className: "Monk", classSource: "XPHB", subclassShortName: "Open Hand",
+      subclassSource: "XPHB", level: 11,
+      entries: ["When you take a {@variantrule Bonus Action|XPHB} other than Step of the Wind, you can also use Step of the Wind immediately after that {@variantrule Bonus Action|XPHB}."] };
+    expect(featureActivation(raw.entries)).toBe("bonus"); // el texto solo diría «bonus»
+    const e = normalizeSubclassFeature(raw, ctx);
+    expect(e.key).toBe("subclassFeature:fleet step|monk|xphb|open hand|xphb|11");
+    expect("activation" in (e.data as FeatureData)).toBe(false);
+  });
+
+  test("mención incidental de una acción adicional no activa", () => {
+    expect(featureActivation(["The target can't use Reactions, and its Bonus Actions end while Frightened."])).toBeUndefined();
   });
 });
