@@ -6,6 +6,7 @@ import { ChevronLeft, ChevronsUp, CircleCheck, Pencil, Printer, User as UserIcon
 import DeleteLevel from "../levelup/DeleteLevel";
 import StatusBadge, { type CharacterStatus } from "./StatusBadge";
 import RestButtons from "./RestButtons";
+import type { HitDicePool } from "@/lib/rules/dnd2024/sheet/rest";
 import JoinCampaignDialog, { LeaveCampaignButton, type JoinableCampaign } from "./JoinCampaignDialog";
 import { CharacterNoticeArea, CharacterNotices } from "@/app/components/campaigns/CharacterActions";
 
@@ -27,8 +28,11 @@ export type SheetHeaderProps = {
   /** Campaña del personaje; `pending` mientras el DM no acepte la solicitud, `isDm` si quien mira es su DM. */
   campaign: { id: string; name: string; pending: boolean; isDm: boolean } | null;
   isOwner: boolean;
-  /** Si un descanso corto recuperaría algo ahora (para el aviso del diálogo). */
-  shortRestRestores: boolean;
+  /** Dados de golpe por clase y modificador de Constitución (para el diálogo del descanso corto). */
+  pools: HitDicePool[];
+  conMod: number;
+  /** Si un descanso corto recuperaría algo más ahora (espacios de pacto, usos): para el aviso del diálogo. */
+  recoversOther: boolean;
   /** Para el dueño sin campaña: sus campañas activas del sistema del personaje, con su elegibilidad. */
   joinable: JoinableCampaign[];
   systemName: string;
@@ -162,7 +166,7 @@ export default function SheetHeader(p: SheetHeaderProps) {
           </div>
 
           <div className="flex flex-wrap items-center gap-2 print:hidden">
-            {p.isOwner && <RestButtons characterId={p.id} shortRestRestores={p.shortRestRestores} />}
+            {p.isOwner && <RestButtons characterId={p.id} pools={p.pools} conMod={p.conMod} recoversOther={p.recoversOther} />}
             {p.isOwner && p.level < MAX_LEVEL && (
               <Link
                 href={`/characters/${p.id}/level-up`}

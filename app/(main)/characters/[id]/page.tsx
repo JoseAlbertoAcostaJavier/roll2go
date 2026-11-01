@@ -17,6 +17,7 @@ import {
 } from "@/lib/rules/dnd2024/levels/masteries";
 import { parsePronouns, pronounsText } from "@/lib/rules/dnd2024/creation/names";
 import { spellListOf } from "@/lib/rules/dnd2024/spells/spellcasting";
+import { hitDicePools } from "@/lib/rules/dnd2024/sheet/rest";
 import { shortRestRestores } from "@/lib/rules/dnd2024/spells/spellOps";
 import type { BackgroundData, ItemData } from "@/lib/rules/types";
 import SheetHeader from "@/app/components/characters/sheet/SheetHeader";
@@ -65,6 +66,7 @@ export default async function CharacterPage({ params, searchParams }: Props) {
   const { character: c, sheet, entries } = found;
   const d = derive(sheet, entries);
 
+  const pools = hitDicePools(sheet, entries);
   const isOwner = String(c.owner) === user.id;
   const tabs: SheetTab[] = d.hasSpells ? ["acciones", "conjuros", "inventario", "rasgos", "trasfondo"] : BASE_TABS;
   const tab = normalizeSheetTab(query.tab, tabs);
@@ -164,7 +166,9 @@ export default async function CharacterPage({ params, searchParams }: Props) {
         level={d.level}
         campaign={campaign}
         isOwner={isOwner}
-        shortRestRestores={shortRestRestores(d.spells)}
+        pools={pools}
+        conMod={d.abilities.con.mod}
+        recoversOther={shortRestRestores(d.spells)}
         joinable={joinable}
         systemName={rpgSystems.find((r) => r.id === c.systemId)?.name ?? c.systemId}
         notice={query.saved ? (NOTICES[String(query.saved)] ?? "Cambios guardados") : null}
@@ -184,6 +188,7 @@ export default async function CharacterPage({ params, searchParams }: Props) {
         d={sheetData}
         characterId={id}
         isOwner={isOwner}
+        pools={pools}
         version={new Date(c.updatedAt ?? 0).getTime()}
         tabs={<SheetTabs base={base} active={tab} tabs={tabs} />}
       >

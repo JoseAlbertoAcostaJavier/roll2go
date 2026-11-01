@@ -1,13 +1,14 @@
 import { ABILITY_NAMES, fmtMod } from "@/lib/rules/dnd2024/sheet/labels";
 import { ABILITIES } from "@/lib/rules/types";
+import type { HitDicePool } from "@/lib/rules/dnd2024/sheet/rest";
 import HpEditor from "./HpEditor";
 import { chip, chipLabel, chipValue, statButton } from "./statUi";
 import type { SheetData, ShowStat } from "./types";
 
 // Franja superior (spec §4.1): las 6 características, competencia, velocidad y PG. En móvil, las características en
 // rejilla de 3 y debajo competencia, velocidad y PG; en escritorio, todo en una fila
-export default function AbilityStrip({ d, characterId, isOwner, version, show }: {
-  d: SheetData; characterId: string; isOwner: boolean; version: number; show: ShowStat;
+export default function AbilityStrip({ d, characterId, isOwner, version, pools, show }: {
+  d: SheetData; characterId: string; isOwner: boolean; version: number; pools: HitDicePool[]; show: ShowStat;
 }) {
   return (
     <section aria-label="Características y puntos de golpe" className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_auto]">
@@ -67,6 +68,11 @@ export default function AbilityStrip({ d, characterId, isOwner, version, show }:
               {Math.min(d.hp.current, d.hp.max)}
               <span className="text-base font-bold text-muted"> / {d.hp.max}</span>
               {d.hp.temp > 0 && <span className="ml-1 text-base text-success">+{d.hp.temp}</span>}
+            </p>
+          )}
+          {pools.length > 0 && (
+            <p className="mt-1 text-xs text-muted">
+              Dados de golpe: {pools.map((p) => `${p.total - p.used}d${p.die}`).join(" · ")}
             </p>
           )}
         </div>
