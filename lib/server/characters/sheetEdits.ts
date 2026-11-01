@@ -1,4 +1,5 @@
 import "server-only";
+import { randomInt } from "node:crypto";
 // Cambios en la hoja desde la ficha: PG, inventario, maestrías con armas y conjuros. Solo el dueño (loadCharacterFor
 // en modo "write"). Cada uno escribe solo sus campos, y solo si la hoja sigue en v2, para no pisar otros cambios
 // hechos a la vez.
@@ -15,6 +16,7 @@ import { applyHp, applyInventoryOp } from "@/lib/rules/dnd2024/sheet/edits";
 import { bareName, isRef, refKey } from "@/lib/rules/dnd2024/sheet/equipmentRefs";
 import { LEVEL_CHANGED } from "@/lib/rules/dnd2024/levels/levelOps";
 import { masteryCount, masteryMeleeOnly, validateMasteries } from "@/lib/rules/dnd2024/levels/masteries";
+import { applyRest, hitDicePools } from "@/lib/rules/dnd2024/sheet/rest";
 import { applySpellOp } from "@/lib/rules/dnd2024/spells/spellOps";
 import type { Dnd2024SheetV2 } from "@/lib/rules/dnd2024/sheet/sheet";
 import type { ItemData, Ref } from "@/lib/rules/types";
@@ -160,4 +162,40 @@ export async function applySpellOperation(
     if (res.matchedCount === 1) return { ok: true, spells: derive(result.sheet, entries).spells };
   }
   return fail(409, CHANGED_ERROR);
+}
+
+// Campos que toca un descanso
+const REST_FIELDS = ["slotsUsed", "limitedUsed", "hp", "hitDiceUsed"] as const;
+
+/* Un descanso corto o largo (spec del descanso corto §4). Las tiradas de los dados de golpe las hace el servidor. Se
+   escribe en una sola actualización y solo si esos campos siguen como se leyeron. */
+export async function applyRestOperation(
+  userId: string,
+  id: string,
+  body: unknown,
+): Promise<Result<{ healed: number; rolls: number[] }>> {
+  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+    const { found, failure } = await loadForWrite(userId, id);
+    if (failure) return failure;
+
+    const d = derive(found.sheet, found.entries);
+    const result = applyRest(found.sheet, body, {
+      pools: hitDicePools(found.sheet, found.entries),
+      conMod: d.abilities.con.mod,
+      maxHp: d.hp.max,
+      roll: (die) => randomInt(1, die + 1),
+    });
+    if (!result.ok) return fail(400, result.error);
+
+    const stored = found.character.sheet as Record<string, unknown> | undefined;
+    const res = await Character.updateOne(
+      {
+        _id: id, "sheet.version": 2,
+        ...Object.fromEntries(REST_FIELDS.map((f) => [`sheet.${f}`, unchangedFilter(stored?.[f])])),
+      },
+      { $set: Object.fromEntries(REST_FIELDS.filter((f) => result.sheet[f] !== undefined).map((f) => [`sheet.${f}`, result.sheet[f]])) },
+    );
+    if (res.matchedCount === 1) return { ok: true, healed: result.healed, rolls: result.rolls };
+  }
+  return fail(409, "La ficha ha cambiado; recarga la página.");
 }
