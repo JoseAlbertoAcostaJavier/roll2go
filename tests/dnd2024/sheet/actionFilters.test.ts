@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { ActionItem, ActionsSummary } from "@/lib/rules/dnd2024/derive/actions";
 import type { Attack } from "@/lib/rules/dnd2024/derive";
-import { actionFilterHref, actionSections, parseActionFilter } from "@/lib/rules/dnd2024/sheet/actionFilters";
+import { actionFilterHref, actionSections, parseActionFilter, sectionVisibility } from "@/lib/rules/dnd2024/sheet/actionFilters";
 
 const ref = (key: string) => ({ book: "b", key });
 const attack: Attack = {
@@ -39,6 +39,9 @@ describe("actionFilterHref", () => {
     expect(actionFilterHref({ tab: "info", filtro: "bonus", spell: "x", foo: "1" }, "reaction"))
       .toBe("?tab=acciones&foo=1&filtro=reaction");
   });
+  it("no conserva el aviso de guardado", () => {
+    expect(actionFilterHref({ saved: "1", foo: "1" }, "bonus")).toBe("?tab=acciones&foo=1&filtro=bonus");
+  });
   it("sin filtro con Todo", () => {
     expect(actionFilterHref({ filtro: "bonus" }, "todo")).toBe("?tab=acciones");
   });
@@ -62,5 +65,23 @@ describe("actionSections", () => {
   it("con un grupo, solo su sección; vacía, ninguna", () => {
     expect(actionSections(summary, "reaction").map((x) => x.group)).toEqual(["reaction"]);
     expect(actionSections(summary, "other")).toEqual([]);
+  });
+});
+
+describe("sectionVisibility", () => {
+  const all = actionSections(summary, "todo");
+  const vis = (f: Parameters<typeof sectionVisibility>[1]) => all.map((s) => sectionVisibility(s, f));
+  it("con Todo, todo a la vista", () => {
+    for (const v of vis("todo")) expect(Object.values(v).every(Boolean)).toBe(true);
+  });
+  it("con Ataques, solo las tablas de las secciones que tienen ataques", () => {
+    const v = vis("ataques");
+    expect(v[0]).toEqual({ section: true, attacks: true, spells: false, features: false, basics: false });
+    expect(v[1].section).toBe(false);
+    expect(v[2].section).toBe(false);
+  });
+  it("con un grupo, solo esa sección entera", () => {
+    expect(vis("bonus").map((v) => v.section)).toEqual([false, true, false]);
+    expect(vis("bonus")[1]).toEqual({ section: true, attacks: true, spells: true, features: true, basics: true });
   });
 });

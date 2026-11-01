@@ -2,7 +2,7 @@ import { Fragment } from "react";
 import { ChevronDown } from "lucide-react";
 import type { CatalogEntry, SpellOption } from "@/lib/rules/catalog/types";
 import type { ActionsSummary } from "@/lib/rules/dnd2024/derive/actions";
-import { actionSections, type ActionFilter, type ActionSection } from "@/lib/rules/dnd2024/sheet/actionFilters";
+import { actionSections, sectionVisibility, type ActionFilter, type ActionSection, type SectionVisibility } from "@/lib/rules/dnd2024/sheet/actionFilters";
 import { refKey } from "@/lib/rules/dnd2024/sheet/equipmentRefs";
 import { DAMAGE_TYPE_NAMES, fmtMod } from "@/lib/rules/dnd2024/sheet/labels";
 import { spellLevelLabel } from "@/lib/rules/dnd2024/spells/spellTextClient";
@@ -113,12 +113,15 @@ function AttackTable({ rows }: { rows: ActionSection["attacks"] }) {
   );
 }
 
-function Section({ section, attacksPerAction, entries }: {
-  section: ActionSection; attacksPerAction: number; entries: Map<string, CatalogEntry>;
+// Lo que el filtro oculta en pantalla sigue en el documento y sale al imprimir
+const hide = (visible: boolean) => (visible ? "" : "hidden print:block");
+
+function Section({ section, vis, attacksPerAction, entries }: {
+  section: ActionSection; vis: SectionVisibility; attacksPerAction: number; entries: Map<string, CatalogEntry>;
 }) {
   const { attacks, spells, features, basics } = section;
   return (
-    <section className={`${card} animate-fade-up space-y-4`}>
+    <section className={`${card} animate-fade-up space-y-4 ${hide(vis.section)}`}>
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <h3 className="border-l-4 border-brand pl-3 font-heading text-xl font-bold">{section.title}</h3>
         {section.group === "action" && (
@@ -126,11 +129,15 @@ function Section({ section, attacksPerAction, entries }: {
         )}
       </div>
 
-      {attacks.length > 0 && <AttackTable rows={attacks} />}
+      {attacks.length > 0 && (
+        <div className={hide(vis.attacks)}>
+          <AttackTable rows={attacks} />
+        </div>
+      )}
 
       {/* Conjuros sin tirada: nombre (abre su ficha), nivel, alcance y de dónde salen */}
       {spells.length > 0 && (
-        <ul className="divide-y divide-line border-y border-line">
+        <ul className={`divide-y divide-line border-y border-line ${hide(vis.spells)}`}>
           {spells.map((s) => (
             <li key={refKey(s.ref)} className="flex items-center gap-3 py-2 text-sm">
               <MaskIcon src={SPELL_ICON} size={18} label="Conjuro" className="text-muted" />
@@ -147,7 +154,7 @@ function Section({ section, attacksPerAction, entries }: {
 
       {/* Rasgos: plegables con su descripción, como en Rasgos */}
       {features.length > 0 && (
-        <ul className="divide-y divide-line border-y border-line">
+        <ul className={`divide-y divide-line border-y border-line ${hide(vis.features)}`}>
           {features.map((f, i) => (
             <li key={`${refKey(f.ref)}-${i}`}>
               <details className="group/feat">
@@ -166,7 +173,7 @@ function Section({ section, attacksPerAction, entries }: {
       )}
 
       {basics.length > 0 && (
-        <div className="text-sm">
+        <div className={`text-sm ${hide(vis.basics)}`}>
           <h4 className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted">Acciones en combate</h4>
           <p>
             {basics.map((b, i) => (
@@ -185,7 +192,9 @@ function Section({ section, attacksPerAction, entries }: {
 // Pestaña Acciones (spec de acciones §4): filtros y, por lo que cuesta usarlos, armas, conjuros, rasgos y acciones
 // básicas de combate
 export default function ActionsTab({ characterId, active, summary, filter, base, query, entries, spells, basics }: Props) {
-  const sections = actionSections(summary, filter);
+  // Siempre todas las secciones: el filtro solo decide qué se ve en pantalla, la hoja impresa sale completa
+  const sections = actionSections(summary, "todo");
+  const shown = sections.some((s) => sectionVisibility(s, filter).section);
   return (
     <ActionsDialogs characterId={characterId} active={active} spells={spells} basics={basics}>
       <ActionsFilters base={base} query={query} active={filter} />
@@ -193,8 +202,9 @@ export default function ActionsTab({ characterId, active, summary, filter, base,
         <p className="text-sm text-muted">No hay acciones que mostrar.</p>
       ) : (
         <div className="space-y-6">
+          {!shown && <p className="text-sm text-muted print:hidden">No hay acciones que mostrar.</p>}
           {sections.map((s) => (
-            <Section key={s.group} section={s} attacksPerAction={summary.attacksPerAction} entries={entries} />
+            <Section key={s.group} section={s} vis={sectionVisibility(s, filter)} attacksPerAction={summary.attacksPerAction} entries={entries} />
           ))}
         </div>
       )}
