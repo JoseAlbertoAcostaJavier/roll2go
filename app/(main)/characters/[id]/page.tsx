@@ -7,8 +7,11 @@ import { loadCharacterFor } from "@/lib/server/characters/characterAccess";
 import { loadSheetCampaign } from "@/lib/server/characters/queries";
 import { system as rpgSystems } from "@/lib/utils/systems";
 import { booksByIds } from "@/lib/server/catalog/books";
-import { listMasteryWeapons, listSpells } from "@/lib/server/catalog/catalog";
+import { listActions, listMasteryWeapons, listSpells } from "@/lib/server/catalog/catalog";
 import { derive } from "@/lib/rules/dnd2024/derive";
+import { deriveActions } from "@/lib/rules/dnd2024/derive/actions";
+import { ACTION_TIME_LABELS, parseActionFilter } from "@/lib/rules/dnd2024/sheet/actionFilters";
+import { actionIcon } from "@/lib/rules/dnd2024/sheet/actionIcons";
 import { weaponProficient } from "@/lib/rules/dnd2024/derive/attacks";
 import { normalizeSheetTab } from "@/lib/rules/dnd2024/sheet/sheetTabs";
 import { bareName, refKey } from "@/lib/rules/dnd2024/sheet/equipmentRefs";
@@ -19,12 +22,13 @@ import { parsePronouns, pronounsText } from "@/lib/rules/dnd2024/creation/names"
 import { spellListOf } from "@/lib/rules/dnd2024/spells/spellcasting";
 import { hitDicePools } from "@/lib/rules/dnd2024/sheet/rest";
 import { shortRestRestores } from "@/lib/rules/dnd2024/spells/spellOps";
-import type { BackgroundData, ItemData } from "@/lib/rules/types";
+import type { ActionData, BackgroundData, ItemData } from "@/lib/rules/types";
 import SheetHeader from "@/app/components/characters/sheet/SheetHeader";
 import type { JoinableCampaign } from "@/app/components/characters/sheet/JoinCampaignDialog";
 import SheetTabs, { SHEET_TABS, type SheetTab } from "@/app/components/characters/sheet/SheetTabs";
 import SheetLayout, { type SheetData } from "@/app/components/characters/sheet/SheetLayout";
 import ActionsTab from "@/app/components/characters/sheet/ActionsTab";
+import type { BasicActionInfo } from "@/app/components/characters/sheet/ActionsDialogs";
 import BackgroundTab from "@/app/components/characters/sheet/BackgroundTab";
 import FeaturesTab from "@/app/components/characters/sheet/FeaturesTab";
 import EquipmentTab, { type ItemInfo } from "@/app/components/characters/sheet/EquipmentTab";
@@ -133,6 +137,21 @@ export default async function CharacterPage({ params, searchParams }: Props) {
       .filter((s) => ownSpells.has(refKey(s.ref)) || (withLists && s.data.classes.some((c) => listIds.has(c))))
     : [];
 
+  // Acciones (spec de acciones §3-4): armas, conjuros utilizables, rasgos con activación y las acciones básicas de los
+  // libros del personaje; el filtro va en `?filtro=`
+  const basicEntries = await listActions(found.books);
+  const actions = deriveActions({ attacks: d.attacks, spells: d.spells, features: d.features, basics: basicEntries, entries });
+  const actionFilter = parseActionFilter(query.filtro);
+  const actionSpellKeys = new Set(actions.items.flatMap((i) => (i.kind === "spell" ? [refKey(i.ref)] : [])));
+  const actionSpells = spellOptions.filter((s) => actionSpellKeys.has(refKey(s.ref)));
+  const basics: BasicActionInfo[] = basicEntries.map((e) => ({
+    key: refKey(e.ref),
+    name: e.nameEs ?? e.name,
+    icon: actionIcon(e.ref.key),
+    time: ACTION_TIME_LABELS[(e.data as ActionData).time] ?? "",
+    description: e.descriptionEs || e.description,
+  }));
+
   // Franja superior y cajas de la ficha: solo los valores que muestran (son componentes de cliente)
   const sheetData: SheetData = {
     abilities: d.abilities, proficiencyBonus: d.proficiencyBonus, hp: d.hp, ac: d.ac, armorWarning: d.armorWarning,
@@ -194,7 +213,17 @@ export default async function CharacterPage({ params, searchParams }: Props) {
       >
         <section {...panel("acciones")}>
           {panelTitle("acciones")}
-          <ActionsTab attacks={d.attacks} />
+          <ActionsTab
+            characterId={id}
+            active={tab === "acciones"}
+            summary={actions}
+            filter={actionFilter}
+            base={base}
+            query={query}
+            entries={entries}
+            spells={actionSpells}
+            basics={basics}
+          />
         </section>
         <section {...panel("trasfondo")}>
           {panelTitle("trasfondo")}
