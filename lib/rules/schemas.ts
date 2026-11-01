@@ -199,6 +199,7 @@ const checks: { [K in EntryKind]: Check } = {
     "spells?": arrayOf(spellGrant),
     "spellChoices?": featSpellChoices,
   }),
+  action: shape({ time: oneOf("action", "bonus", "reaction", "free", "varies") }),
   nameTable: shape({
     species: str,
     tables: arrayOf(shape({ option: str, gender: oneOf("male", "female", "family", "other"), names: strings })),

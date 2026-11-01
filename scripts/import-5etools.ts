@@ -88,6 +88,7 @@ function loadRaw(data: string, srdOnly: boolean): RawFiles {
     classFluff: srdOnly ? [] : readAll(path.join(data, "class"), "fluff-class-"),
     optionalFeatures: j("optionalfeatures.json"),
     names: j("names.json"),
+    actions: j("actions.json"),
   };
 }
 

@@ -5,7 +5,7 @@
 // padre siempre está en el mismo libro. Todas las claves llevan el tipo delante (`spell:fireball|xphb`).
 import { ABILITIES } from "../types";
 import type {
-  Ability, ClassTable, Defenses, DefenseList, EntryData, EntryKind, Equipment, FeatSpellChoice, FeatSpellFilter, FeatureData, LevelCounts,
+  Ability, ActionData, ClassTable, Defenses, DefenseList, EntryData, EntryKind, Equipment, FeatSpellChoice, FeatSpellFilter, FeatureData, LevelCounts,
   LevelFeature, MulticlassData, NameGender, OptionalFeatureData, Pack, Ref, Spellcasting, SpellcastingProgression, SpellGrant,
 } from "../types";
 import { normalizeName, validateEntryData } from "../schemas";
@@ -52,6 +52,8 @@ export type RawFiles = {
   classFluff?: { classFluff?: unknown[] }[];
   /** `names.json`: tablas de nombres por especie (Guía de Xanathar para todo). */
   names?: { name?: unknown[] };
+  /** `actions.json`: acciones básicas de combate. */
+  actions?: { action?: unknown[] };
 };
 
 /** Datos de contexto que necesitan algunos normalizadores. */
@@ -592,6 +594,14 @@ export function normalizeLanguage(raw: Rec): NormalizedEntry {
 
 export function normalizeSkill(raw: Rec): NormalizedEntry {
   return entry<"skill">(header("skill", raw, keyOf("skill", str(raw.name), str(raw.source))), { ability: raw.ability as Ability });
+}
+
+// Tiempo de 5etools (`[{ number, unit }]`, `["Free"]`, `["Varies"]`): el primero; `varies` si no se reconoce
+export function normalizeAction(raw: Rec): NormalizedEntry {
+  const t = asArr(raw.time)[0];
+  const unit = isObj(t) ? str(t.unit) : lower(str(t));
+  const time: ActionData["time"] = unit === "action" || unit === "bonus" || unit === "reaction" || unit === "free" ? unit : "varies";
+  return entry<"action">(header("action", raw, keyOf("action", str(raw.name), str(raw.source))), { time });
 }
 
 /** Referencia de rasgo `"Rage|Barbarian|XPHB|1"` (o `{ classFeature: … }`) → clave y nivel. */
@@ -1142,6 +1152,7 @@ export function normalizeAll(files: RawFiles, source: string): {
   for (const i of fromSource("item", itemPool)) run("item", i, () => normalizeItem(i));
   for (const l of fromSource("language", files.languages?.language)) run("language", l, () => normalizeLanguage(l));
   for (const s of skills) run("skill", s, () => normalizeSkill(s));
+  for (const a of fromSource("action", files.actions?.action)) run("action", a, () => normalizeAction(a));
   // Rasgos sin normalizar por clave, para seguir los enlaces de su texto
   const rawFeatures = new Map<string, Rec>();
   for (const f of classFiles) {
