@@ -23,7 +23,7 @@ export type RestCtx = {
   roll: (die: number) => number;
 };
 
-/** `healed`: PG que suman los dados; `rolls`: las tiradas hechas (vacío si el total se dio a mano). */
+/** `healed`: PG recuperados de verdad (sin pasar del máximo); `rolls`: las tiradas hechas (vacío si el total se dio a mano). */
 export type RestResult =
   | { ok: true; sheet: Dnd2024SheetV2; healed: number; rolls: number[] }
   | { ok: false; error: string };
@@ -82,17 +82,17 @@ export function applyRest(sheet: Dnd2024SheetV2, op: unknown, ctx: RestCtx): Res
   const dice = spent.flatMap(({ pool, n }) => Array<number>(n).fill(pool.die));
 
   // Curación: la tirada de Roll2Go o el total de una tirada física
-  let healed = 0;
+  let amount = 0;
   let rolls: number[] = [];
   if (op.healing !== undefined) {
     if (dice.length === 0) return fail("Elige qué dados de golpe gastas.");
     const { min, max } = healingRange(dice, ctx.conMod);
     if (!isInt(op.healing) || op.healing < min || op.healing > max)
       return fail(`Con esos dados recuperas entre ${min} y ${max} puntos de golpe.`);
-    healed = op.healing;
+    amount = op.healing;
   } else {
     rolls = dice.map((die) => ctx.roll(die));
-    healed = rolls.reduce((sum, r) => sum + Math.max(1, r + ctx.conMod), 0);
+    amount = rolls.reduce((sum, r) => sum + Math.max(1, r + ctx.conMod), 0);
   }
 
   // Recupera los espacios de Magia de pacto y los usos de los Conjuros distintivos
@@ -101,8 +101,11 @@ export function applyRest(sheet: Dnd2024SheetV2, op: unknown, ctx: RestCtx): Res
   if (sheet.limitedUsed)
     next.limitedUsed = Object.fromEntries(Object.entries(sheet.limitedUsed).filter(([k]) => !recoversOnShortRest(k)));
 
+  let healed = 0;
   if (dice.length > 0) {
-    const current = Math.min(ctx.maxHp, (sheet.hp.current ?? ctx.maxHp) + healed);
+    const before = sheet.hp.current ?? ctx.maxHp;
+    const current = Math.min(ctx.maxHp, before + amount);
+    healed = Math.max(0, current - before);
     next.hp = { ...sheet.hp, current: current >= ctx.maxHp ? null : current };
     next.hitDiceUsed = { ...sheet.hitDiceUsed };
     for (const { pool, n } of spent) next.hitDiceUsed[pool.classKey] = (sheet.hitDiceUsed?.[pool.classKey] ?? 0) + n;

@@ -119,8 +119,16 @@ describe("descanso corto con dados", () => {
     const s = multi({ hp: { max: null, current: 5, temp: 3 } });
     const r = ok(applyRest(s, { op: "shortRest", spend: { [FIGHTER]: 1 }, healing: 10 }, ctxOf(s, { maxHp: 12 })));
     expect(r.sheet.hp).toEqual({ max: null, current: null, temp: 3 });
+    expect(r.healed).toBe(7);
     const part = ok(applyRest(s, { op: "shortRest", spend: { [FIGHTER]: 1 }, healing: 4 }, ctxOf(s, { maxHp: 12 })));
     expect(part.sheet.hp.current).toBe(9);
+  });
+  it("automático: healed son los PG ganados, no la tirada (11/12 con 8 → 1)", () => {
+    const s = multi({ hp: { max: null, current: 11, temp: 0 } });
+    const r = ok(applyRest(s, { op: "shortRest", spend: { [FIGHTER]: 1 } }, ctxOf(s, { roll: () => 8 })));
+    expect(r.healed).toBe(1);
+    expect(r.rolls).toEqual([8]);
+    expect(r.sheet.hp.current).toBeNull();
   });
   it("manual: acepta un total dentro del rango y no devuelve tiradas", () => {
     const s = hurt();
