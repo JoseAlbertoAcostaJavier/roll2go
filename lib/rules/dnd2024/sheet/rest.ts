@@ -61,12 +61,14 @@ export function healingRange(dice: number[], conMod: number): { min: number; max
 export function applyRest(sheet: Dnd2024SheetV2, op: unknown, ctx: RestCtx): RestResult {
   if (!isObj(op)) return fail("Petición no válida.");
 
-  // Descanso largo: espacios, usos, dados de golpe y PG (`current: null` = al máximo) sin temporales
+  // Descanso largo: espacios, usos, dados de golpe y PG (`current: null` = al máximo) sin temporales; el agotamiento
+  // baja 1 (la inspiración y los estados no cambian)
   if (op.op === "longRest") {
-    return {
-      ok: true, healed: 0, rolls: [],
-      sheet: { ...sheet, slotsUsed: {}, limitedUsed: {}, hitDiceUsed: {}, hp: { ...sheet.hp, current: null, temp: 0 } },
+    const next: Dnd2024SheetV2 = {
+      ...sheet, slotsUsed: {}, limitedUsed: {}, hitDiceUsed: {}, hp: { ...sheet.hp, current: null, temp: 0 },
     };
+    if (sheet.exhaustion !== undefined) next.exhaustion = Math.max(0, sheet.exhaustion - 1);
+    return { ok: true, healed: 0, rolls: [], sheet: next };
   }
   if (op.op !== "shortRest") return fail("Operación no válida.");
 

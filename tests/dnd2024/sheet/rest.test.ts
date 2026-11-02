@@ -202,6 +202,20 @@ describe("descanso largo", () => {
     expect(r.sheet.limitedUsed).toEqual({});
     expect(r.healed).toBe(0);
   });
+  it("baja el agotamiento en 1, sin pasar de 0", () => {
+    const run = (exhaustion: number) => {
+      const s = multi({ exhaustion });
+      return ok(applyRest(s, { op: "longRest" }, ctxOf(s))).sheet.exhaustion;
+    };
+    expect(run(2)).toBe(1);
+    expect(run(0)).toBe(0);
+  });
+  it("no toca la inspiración ni los estados", () => {
+    const s = multi({ heroicInspiration: true, conditions: ["poisoned"], exhaustion: 1 });
+    const r = ok(applyRest(s, { op: "longRest" }, ctxOf(s)));
+    expect(r.sheet.heroicInspiration).toBe(true);
+    expect(r.sheet.conditions).toEqual(["poisoned"]);
+  });
 });
 
 describe("operación no válida", () => {
