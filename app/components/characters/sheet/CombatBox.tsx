@@ -31,7 +31,7 @@ export default function CombatBox({ d, show, className = "" }: {
         style={{ clipPath: SHIELD }}
       >
         <span
-          className="absolute inset-[2px] group-focus-visible:inset-[5px] flex flex-col items-center justify-start bg-panel pt-4 text-center group-hover:bg-surface group-focus-visible:bg-surface"
+          className="absolute inset-[2px] group-focus-visible:inset-[5px] flex flex-col items-center justify-start bg-panel pt-4 text-center group-hover:bg-surface group-focus-visible:bg-surface forced-colors:group-focus-visible:border-4 forced-colors:group-focus-visible:border-[Highlight]"
           style={{ clipPath: SHIELD }}
         >
           <span className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-muted">

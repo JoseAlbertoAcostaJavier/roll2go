@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { LoaderCircle, TriangleAlert, X } from "lucide-react";
 import type { Coins, Inventory } from "@/lib/rules/dnd2024/sheet/sheet";
 import { MAX_COINS, MAX_ITEM_NOTES, MAX_OTHER, MAX_QUANTITY, type InventoryOp } from "@/lib/rules/dnd2024/sheet/edits";
-import { card, cardTitle } from "@/app/components/ui/formStyles";
+import { sheetCard, cardTitle } from "@/app/components/ui/formStyles";
 import AddItemDialog, { type NewItem } from "./AddItemDialog";
 
 /** Datos del catálogo de cada línea (clave: id de la línea). Pesos en libras. */
@@ -104,7 +104,7 @@ export default function EquipmentTab({ characterId, isOwner, inventory, info, ca
         </p>
       )}
 
-      <section className={`${card} animate-fade-up`} aria-labelledby="inventory-title">
+      <section className={`${sheetCard} animate-fade-up`} aria-labelledby="inventory-title">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <h3 id="inventory-title" className={`${cardTitle} mb-0`}>
             Inventario
@@ -212,13 +212,13 @@ export default function EquipmentTab({ characterId, isOwner, inventory, info, ca
         </p>
       </section>
 
-      <section className={`${card} animate-fade-up`} aria-labelledby="coins-title">
+      <section className={`${sheetCard} animate-fade-up`} aria-labelledby="coins-title">
         <h3 id="coins-title" className={cardTitle}>Monedas</h3>
         <CoinsEditor coins={inv.coins} readOnly={readOnly} onCommit={(coins) => send({ op: "coins", coins }, (i) => ({ ...i, coins }))} />
         <p className="mt-3 text-sm text-muted">Total: {fmt(goldValue(inv.coins))} po</p>
       </section>
 
-      <section className={`${card} animate-fade-up`} aria-labelledby="other-title">
+      <section className={`${sheetCard} animate-fade-up`} aria-labelledby="other-title">
         <h3 id="other-title" className={cardTitle}>Otras posesiones</h3>
         {readOnly ? (
           <p className="whitespace-pre-wrap text-sm">{inv.other || <span className="text-muted">Nada.</span>}</p>

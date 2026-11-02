@@ -5,7 +5,7 @@ import { bareName, refKey } from "@/lib/rules/dnd2024/sheet/equipmentRefs";
 import { FEATURE_SECTION_CHIPS, featureSections, parseSection } from "@/lib/rules/dnd2024/sheet/sheetSections";
 import type { Ref } from "@/lib/rules/types";
 import Bbcode from "@/app/components/ui/Bbcode";
-import { card } from "@/app/components/ui/formStyles";
+import { sheetCard } from "@/app/components/ui/formStyles";
 import RoundIcon from "@/app/components/ui/RoundIcon";
 import ClampedText from "./ClampedText";
 import SectionChips from "./SectionChips";
@@ -78,7 +78,7 @@ export default function FeaturesTab({ groups, entries, base, query }: Props) {
                 // La descripción del grupo: la de la especie o el legado completa; la de la clase o subclase, plegada
                 const longIntro = g.source === "class" || g.source === "subclass";
                 return (
-                  <article key={`${g.source}-${g.ref ? refKey(g.ref) : n}`} className={`${card} animate-fade-up`} style={{ animationDelay: `${Math.min(n, 6) * 50}ms` }}>
+                  <article key={`${g.source}-${g.ref ? refKey(g.ref) : n}`} className={`${sheetCard} animate-fade-up`} style={{ animationDelay: `${Math.min(n, 6) * 50}ms` }}>
                     <GroupHeading group={g} entry={entry} />
                     {g.ref && (
                       <div className="mt-4">

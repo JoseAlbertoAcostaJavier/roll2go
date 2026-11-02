@@ -2,6 +2,8 @@ export const field =
   "w-full rounded-md border border-line bg-surface px-3 py-2.5 text-fg placeholder:text-muted focus:border-brand focus:outline-none disabled:opacity-60";
 export const labelClass = "mb-1.5 block text-sm font-semibold";
 export const card = "rounded-lg border border-line bg-panel p-5 sm:p-6";
+/** Caja de la ficha visual: el marco rojo de marca atenuado, como la franja superior. */
+export const sheetCard = "rounded-lg border-2 border-brand/40 bg-panel p-5 sm:p-6";
 export const cardTitle =
   "mb-4 border-l-4 border-brand pl-3 font-heading text-xl font-bold";
 export const primaryButton =

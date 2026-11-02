@@ -7,7 +7,7 @@ import { refKey } from "@/lib/rules/dnd2024/sheet/equipmentRefs";
 import { DAMAGE_TYPE_NAMES, fmtMod } from "@/lib/rules/dnd2024/sheet/labels";
 import { spellLevelLabel } from "@/lib/rules/dnd2024/spells/spellTextClient";
 import { iconSrc } from "@/lib/utils/icons";
-import { card } from "@/app/components/ui/formStyles";
+import { sheetCard } from "@/app/components/ui/formStyles";
 import MaskIcon from "@/app/components/ui/MaskIcon";
 import ActionsDialogs, { BasicActionButton, SpellLink, type BasicActionInfo } from "./ActionsDialogs";
 import ActionsFilters from "./ActionsFilters";
@@ -121,7 +121,7 @@ function Section({ section, vis, attacksPerAction, entries }: {
 }) {
   const { attacks, spells, features, basics } = section;
   return (
-    <section className={`${card} animate-fade-up space-y-4 ${hide(vis.section)}`}>
+    <section className={`${sheetCard} animate-fade-up space-y-4 ${hide(vis.section)}`}>
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <h3 className="border-l-4 border-brand pl-3 font-heading text-xl font-bold">{section.title}</h3>
         {section.group === "action" && (

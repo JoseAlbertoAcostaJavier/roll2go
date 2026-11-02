@@ -65,19 +65,46 @@ function Stepper({ label, value, max, onChange, big = false }: {
 }
 
 // PG actuales y temporales del dueño: actualización optimista y vuelta atrás si el guardado falla
-export default function HpEditor({ characterId, max, current, temp }: { characterId: string; max: number } & Hp) {
+// `version` cambia cuando el personaje cambia en el servidor (descanso, borrar un nivel, otras cajas de la franja):
+// si no hay cambios propios sin guardar, el editor adopta entonces los PG que llegan; si los hay, se quedan los suyos
+export default function HpEditor({ characterId, max, current, temp, version }: { characterId: string; max: number; version: number } & Hp) {
   const [hp, setHp] = useState<Hp>({ current: Math.min(current, max), temp });
   const [saving, setSaving] = useState(false);
+  const [dirty, setDirty] = useState(false);
   const [error, setError] = useState("");
   const [amount, setAmount] = useState("");
   const saved = useRef<Hp>(hp);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Último cambio aún sin enviar: si el editor se desmonta antes de que venza el temporizador, se envía al desmontar
+  const unsent = useRef<Hp | null>(null);
+
+  const [seenVersion, setSeenVersion] = useState(version);
+  if (seenVersion !== version) {
+    setSeenVersion(version);
+    if (!dirty) {
+      setHp({ current: Math.min(current, max), temp });
+    }
+  }
+
+  // Sin cambios propios pendientes, lo mostrado es lo guardado en el servidor: a eso se vuelve si un guardado falla
+  useEffect(() => {
+    if (!dirty) saved.current = hp;
+  }, [dirty, hp]);
 
   useEffect(() => () => {
     if (timer.current) clearTimeout(timer.current);
-  }, []);
+    if (unsent.current) {
+      fetch(`/api/characters/${characterId}/hp`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(unsent.current),
+        keepalive: true,
+      }).catch(() => {});
+    }
+  }, [characterId]);
 
   const save = async (next: Hp) => {
+    unsent.current = null;
     setSaving(true);
     try {
       const res = await fetch(`/api/characters/${characterId}/hp`, {
@@ -94,14 +121,21 @@ export default function HpEditor({ characterId, max, current, temp }: { characte
       setError(e instanceof Error ? e.message : "No se pudieron guardar los PG.");
     } finally {
       setSaving(false);
+      // Si mientras tanto hay otro cambio esperando su temporizador, sigue sucio
+      setDirty(timer.current !== null);
     }
   };
 
   const update = (patch: Partial<Hp>) => {
     const next = { ...hp, ...patch };
     setHp(next);
+    setDirty(true);
+    unsent.current = next;
     if (timer.current) clearTimeout(timer.current);
-    timer.current = setTimeout(() => save(next), SAVE_DELAY);
+    timer.current = setTimeout(() => {
+      timer.current = null;
+      save(next);
+    }, SAVE_DELAY);
   };
 
   // Curar suma hasta el máximo; Daño quita primero los temporales y el resto a los actuales (mínimo 0)

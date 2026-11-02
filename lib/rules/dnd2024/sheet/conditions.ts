@@ -8,7 +8,7 @@ export const CONDITION_RULES: Record<string, string> = {
   deafened: "No oyes nada y fallas automáticamente las pruebas que dependan del oído.",
   frightened: "Tienes desventaja en pruebas y ataques mientras veas la fuente de tu miedo, y no puedes acercarte a ella a propósito.",
   grappled: "Tu velocidad es 0 y no mejora. Tienes desventaja al atacar a cualquiera que no sea quien te agarra. Acaba si te alejan o te sueltas.",
-  incapacitated: "No puedes realizar acciones, acciones adicionales ni reacciones, ni mantener la concentración. Pierdes el habla si estás incapacitado.",
+  incapacitated: "No puedes realizar acciones, acciones adicionales ni reacciones, y pierdes la concentración. No puedes hablar y tienes desventaja en la tirada de iniciativa.",
   invisible: "No te ven sin ayuda mágica o de sentidos especiales. Tus ataques tienen ventaja y los ataques contra ti, desventaja.",
   paralyzed: "Estás incapacitado y no te mueves ni hablas. Fallas las salvaciones de Fuerza y Destreza. Los ataques contra ti tienen ventaja y son críticos desde 1,5 m.",
   petrified: "Te conviertes en una sustancia sólida e inanimada: estás incapacitado, tu velocidad es 0 y los ataques contra ti tienen ventaja. Fallas las salvaciones de Fuerza y Destreza, resistes todo el daño y eres inmune al estado envenenado.",
@@ -16,7 +16,7 @@ export const CONDITION_RULES: Record<string, string> = {
   prone: "Solo puedes arrastrarte o levantarte (cuesta la mitad de tu velocidad). Tus ataques tienen desventaja; los ataques contra ti tienen ventaja desde 1,5 m y desventaja desde más lejos.",
   restrained: "Tu velocidad es 0. Los ataques contra ti tienen ventaja y los tuyos, desventaja. Tienes desventaja en las salvaciones de Destreza.",
   stunned: "Estás incapacitado: no actúas ni reaccionas, pero puedes moverte. Fallas las salvaciones de Fuerza y Destreza y los ataques contra ti tienen ventaja.",
-  unconscious: "Estás incapacitado, caído e inconsciente sin enterarte de nada. Fallas las salvaciones de Fuerza y Destreza. Los ataques contra ti tienen ventaja y son críticos desde 1,5 m.",
+  unconscious: "Estás incapacitado, caído e inconsciente sin enterarte de nada; tu velocidad es 0. Fallas las salvaciones de Fuerza y Destreza. Los ataques contra ti tienen ventaja y son críticos desde 1,5 m.",
 };
 
 const metersText = (m: number) => m.toLocaleString("es-ES");

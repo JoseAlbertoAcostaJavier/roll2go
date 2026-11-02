@@ -40,7 +40,7 @@ export const DAMAGE_TYPE_NAMES: Record<string, string> = {
 
 /** Estados de 5etools (en minúsculas e inglés) → nombre en español, como `condition:*` de `i18n/es.json` (que no se importa aquí para no llevarlo al navegador). */
 export const CONDITION_NAMES: Record<string, string> = {
-  blinded: "Cegado", charmed: "Hechizado", deafened: "Ensordecido", exhaustion: "Cansancio", frightened: "Asustado",
+  blinded: "Cegado", charmed: "Hechizado", deafened: "Ensordecido", exhaustion: "Agotamiento", frightened: "Asustado",
   grappled: "Agarrado", incapacitated: "Incapacitado", invisible: "Invisible", paralyzed: "Paralizado",
   petrified: "Petrificado", poisoned: "Envenenado", prone: "Derribado", restrained: "Apresado", stunned: "Aturdido",
   unconscious: "Inconsciente", disease: "Enfermedad",

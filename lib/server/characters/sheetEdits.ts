@@ -171,7 +171,7 @@ export async function applySpellOperation(
 }
 
 // Campos que toca un descanso
-const REST_FIELDS = ["slotsUsed", "limitedUsed", "hp", "hitDiceUsed"] as const;
+const REST_FIELDS = ["slotsUsed", "limitedUsed", "hp", "hitDiceUsed", "exhaustion"] as const;
 
 /* Un descanso corto o largo (spec del descanso corto §4). Las tiradas de los dados de golpe las hace el servidor. Se
    escribe en una sola actualización y solo si esos campos siguen como se leyeron. */

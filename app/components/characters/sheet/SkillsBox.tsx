@@ -1,5 +1,5 @@
 import { ABILITY_ABBR, fmtMod, skillName } from "@/lib/rules/dnd2024/sheet/labels";
-import { card, cardTitle } from "@/app/components/ui/formStyles";
+import { sheetCard, cardTitle } from "@/app/components/ui/formStyles";
 import { ProficiencyDot, statButton } from "./statUi";
 import type { SheetData, ShowStat } from "./types";
 
@@ -10,7 +10,7 @@ export default function SkillsBox({ skills, show, className = "" }: {
 }) {
   const sorted = [...skills].sort((a, b) => skillName(a.id).localeCompare(skillName(b.id), "es"));
   return (
-    <section className={`${card} ${className}`}>
+    <section className={`${sheetCard} ${className}`}>
       <h3 className={cardTitle}>Habilidades</h3>
       {/* Cabecera de columnas; los anchos coinciden con los de cada fila */}
       <div aria-hidden="true" className="flex items-center gap-3 border-b border-line px-1 pb-1 text-[10px] font-semibold uppercase tracking-wide text-muted">

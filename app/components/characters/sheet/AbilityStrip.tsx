@@ -9,11 +9,13 @@ import type { SheetData, ShowStat, StatusState } from "./types";
 // Marco común de las cajas de la franja: el rojo de marca atenuado sobre el fondo oscuro
 const box = "rounded-lg border-2 border-brand/40 bg-panel";
 const boxLabel = "block break-words text-[10px] font-semibold uppercase leading-tight tracking-normal text-muted";
+// Rótulos de Competencia y Velocidad: palabras enteras, sin partirlas a media palabra
+const statLabel = "block whitespace-nowrap text-[9px] font-semibold uppercase leading-tight tracking-tight text-muted";
 
 // Franja superior (spec de la ficha visual §3.1): las 6 características, competencia, velocidad, inspiración heroica y PG.
-// - ≥ 1280 px: todo en una fila (características ~55 %, competencia/velocidad/inspiración ~18 %, PG ~27 %).
-// - < 1280 px: las características en su propia fila (6 columnas; 3 por debajo de 640 px) y, en la siguiente,
-//   competencia, velocidad e inspiración junto a los PG (apilados en móvil).
+// La franja vive en la columna central de la ficha (a 1280 px mide ~640 px), demasiado estrecha para una sola fila sin
+// partir «Competencia»: en todos los anchos son dos filas. Las características en la primera (6 columnas; 3 por debajo
+// de 640 px) y, en la siguiente, competencia, velocidad e inspiración junto a los PG (apilados en móvil).
 export default function AbilityStrip({ d, characterId, isOwner, version, pools, show, status }: {
   d: SheetData; characterId: string; isOwner: boolean; version: number; pools: HitDicePool[]; show: ShowStat;
   status: StatusState;
@@ -21,7 +23,7 @@ export default function AbilityStrip({ d, characterId, isOwner, version, pools, 
   return (
     <section
       aria-label="Características y puntos de golpe"
-      className="grid gap-3 xl:grid-cols-[minmax(0,55fr)_minmax(0,18fr)_minmax(0,27fr)] xl:items-start"
+      className="grid gap-3"
     >
       {/* Características: modificador grande y puntuación en una píldora sobre el borde inferior; cada una abre su desglose */}
       <div>
@@ -47,13 +49,14 @@ export default function AbilityStrip({ d, characterId, isOwner, version, pools, 
           </ul>
         </div>
 
-      {/* Debajo de 1280 px, la fila siguiente; en escritorio las dos cajas son columnas de la franja (`contents`) */}
-      <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] xl:contents">
+      {/* Segunda fila: competencia, velocidad e inspiración, y los PG */}
+      <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
         {/* Competencia, velocidad e inspiración: del mismo alto que las características */}
         <div className="grid grid-cols-3 gap-2 pb-3">
           <div className={`${box} flex h-24 flex-col items-center justify-center px-1 text-center`}>
             <span className="font-heading text-2xl font-extrabold leading-none">{fmtMod(d.proficiencyBonus)}</span>
-            <span className={`${boxLabel} mt-1 w-full`}>Competencia</span>
+            <span className={`${statLabel} mt-1 w-full`}>Competencia</span>
+            <span className="text-[9px] leading-tight text-muted">Bonificador</span>
           </div>
           <button
             type="button"
@@ -62,8 +65,9 @@ export default function AbilityStrip({ d, characterId, isOwner, version, pools, 
             onClick={show({ kind: "speed" })}
             className={`${statButton} ${box} flex h-24 flex-col items-center justify-center px-1 text-center`}
           >
-            <span className="font-heading text-2xl font-extrabold leading-none">{d.speed}<span className="text-xs font-bold text-muted"> pies</span></span>
-            <span className={`${boxLabel} mt-1 w-full`}>Velocidad</span>
+            <span className="font-heading text-2xl font-extrabold leading-none">{d.speed}</span>
+            <span className={`${statLabel} mt-1 w-full`}>Velocidad</span>
+            <span className="text-[9px] leading-tight text-muted">a pie</span>
           </button>
           <InspirationBox
             characterId={characterId}
@@ -77,11 +81,11 @@ export default function AbilityStrip({ d, characterId, isOwner, version, pools, 
       <div className={`${box} px-3 py-3 text-center`}>
         <p className={`${boxLabel} mb-2`}>Puntos de golpe</p>
         {isOwner ? (
-          // El editor guarda su estado: se monta de nuevo cuando el personaje cambia en el servidor (descanso, borrar un nivel).
-          // La clave lleva `version` y no solo los PG: editar PG no refresca la página y, tras un descanso, los PG vuelven
-          // al valor de la carga, que la clave por valores no distinguiría
+          // El editor guarda su estado y adopta los PG nuevos cuando cambia `version` (descanso, borrar un nivel) sin
+          // remontarse: así un cambio de PG pendiente no se pierde cuando otra caja de la franja refresca la página.
+          // Hace falta `version` y no solo los PG: tras un descanso los PG vuelven al valor de la carga
           <HpEditor
-            key={`${version}:${d.hp.max}:${d.hp.current}:${d.hp.temp}`}
+            version={version}
             characterId={characterId}
             max={d.hp.max}
             current={d.hp.current}
