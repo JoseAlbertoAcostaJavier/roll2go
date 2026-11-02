@@ -14,3 +14,6 @@ export type Stat =
 
 /** Abre el desglose de un valor; el botón se captura al pulsar (Safari no lo enfoca). */
 export type ShowStat = (stat: Stat) => (e: React.MouseEvent<HTMLElement>) => void;
+
+/** Inspiración heroica, estados y agotamiento de la hoja (`statusOf`). */
+export type StatusState = { heroicInspiration: boolean; conditions: string[]; exhaustion: number };

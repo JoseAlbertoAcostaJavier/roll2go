@@ -22,6 +22,7 @@ import { parsePronouns, pronounsText } from "@/lib/rules/dnd2024/creation/names"
 import { spellListOf } from "@/lib/rules/dnd2024/spells/spellcasting";
 import { spellTableRows } from "@/lib/rules/dnd2024/spells/spellTable";
 import { hitDicePools } from "@/lib/rules/dnd2024/sheet/rest";
+import { statusOf } from "@/lib/rules/dnd2024/sheet/status";
 import { shortRestRestores } from "@/lib/rules/dnd2024/spells/spellOps";
 import { sizeName } from "@/lib/rules/dnd2024/sheet/labels";
 import type { ActionData, BackgroundData, ItemData, SpeciesData } from "@/lib/rules/types";
@@ -226,6 +227,7 @@ export default async function CharacterPage({ params, searchParams }: Props) {
         characterId={id}
         isOwner={isOwner}
         pools={pools}
+        status={statusOf(sheet)}
         version={new Date(c.updatedAt ?? 0).getTime()}
         tabs={<SheetTabs base={base} active={tab} tabs={tabs} />}
       >
