@@ -8,8 +8,9 @@ import { MAX_COINS, MAX_ITEM_NOTES, MAX_OTHER, MAX_QUANTITY, type InventoryOp } 
 import { sheetCard, cardTitle } from "@/app/components/ui/formStyles";
 import AddItemDialog, { type NewItem } from "./AddItemDialog";
 
-/** Datos del catálogo de cada línea (clave: id de la línea). Pesos en libras. */
-export type ItemInfo = { weight: number; equippable: boolean };
+import type { ItemInfo } from "@/lib/rules/dnd2024/sheet/inventoryTable";
+
+export type { ItemInfo } from "@/lib/rules/dnd2024/sheet/inventoryTable";
 
 type Props = {
   characterId: string;
