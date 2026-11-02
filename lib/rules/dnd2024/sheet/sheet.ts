@@ -24,6 +24,21 @@ export type Dnd2024Sheet = {
   age: string;
   languages: string;
   notes: string;
+  /** Trasfondo y notas, editables en la ficha. Opcionales: las hojas antiguas los leen como vacíos. */
+  gender?: string;
+  eyes?: string;
+  hair?: string;
+  skin?: string;
+  height?: string;
+  weight?: string;
+  faith?: string;
+  personality?: string;
+  ideals?: string;
+  bonds?: string;
+  flaws?: string;
+  organizations?: string;
+  allies?: string;
+  enemies?: string;
   xp: number;
   hp: { max: number | null; current: number | null; temp: number };
 };
