@@ -2,15 +2,20 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { LoaderCircle, TriangleAlert, X } from "lucide-react";
+import { LoaderCircle, TriangleAlert } from "lucide-react";
 import type { Coins, Inventory } from "@/lib/rules/dnd2024/sheet/sheet";
-import { MAX_COINS, MAX_ITEM_NOTES, MAX_OTHER, MAX_QUANTITY, type InventoryOp } from "@/lib/rules/dnd2024/sheet/edits";
+import { MAX_COINS, MAX_OTHER, type InventoryOp } from "@/lib/rules/dnd2024/sheet/edits";
+import { inventoryWeights } from "@/lib/rules/dnd2024/sheet/inventory";
+import { inventoryChips, inventoryGroups, type ItemInfo } from "@/lib/rules/dnd2024/sheet/inventoryTable";
+import { parseSection } from "@/lib/rules/dnd2024/sheet/sheetSections";
 import { sheetCard, cardTitle } from "@/app/components/ui/formStyles";
 import AddItemDialog, { type NewItem } from "./AddItemDialog";
+import InventoryFilters from "./InventoryFilters";
+import InventoryTable, { clampInt, fmt, smallInput, weightText, type InventoryActions } from "./InventoryTable";
 
-import type { ItemInfo } from "@/lib/rules/dnd2024/sheet/inventoryTable";
+export type { ItemInfo };
 
-export type { ItemInfo } from "@/lib/rules/dnd2024/sheet/inventoryTable";
+type Query = Record<string, string | string[] | undefined>;
 
 type Props = {
   characterId: string;
@@ -22,26 +27,20 @@ type Props = {
   systemId: string;
   /** Libros que puede usar el personaje (calculados en el servidor). */
   books: string[];
+  /** Dirección de la ficha y sus parámetros (`?seccion=`, `?q=`). */
+  base: string;
+  query: Query;
 };
 
 const COINS: { key: keyof Coins; label: string }[] = [
   { key: "pp", label: "PP" }, { key: "gp", label: "PO" }, { key: "ep", label: "PE" }, { key: "sp", label: "PL" }, { key: "cp", label: "PC" },
 ];
-const LB_TO_KG = 0.4536;
-const fmt = (n: number) => n.toLocaleString("es-ES", { maximumFractionDigits: 2 });
-const weightText = (lb: number) => `${fmt(lb)} lb (${fmt(lb * LB_TO_KG)} kg)`;
 const goldValue = (c: Coins) => c.pp * 10 + c.gp + c.ep / 2 + c.sp / 10 + c.cp / 100;
-
-const smallInput =
-  "h-8 rounded-md border border-line bg-surface px-2 text-sm text-fg focus:border-brand focus:outline-none disabled:opacity-60";
-const clampInt = (v: string, max: number, fallback: number) => {
-  const n = Math.trunc(Number(v));
-  return Number.isFinite(n) && v.trim() !== "" ? Math.min(max, Math.max(0, n)) : fallback;
-};
 const toDraft = (c: Coins) => ({ cp: String(c.cp), sp: String(c.sp), ep: String(c.ep), gp: String(c.gp), pp: String(c.pp) });
+const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v) ?? "";
 
 // Pestaña Equipo: inventario, monedas, peso y otras posesiones. Edita el dueño; el resto solo lee.
-export default function EquipmentTab({ characterId, isOwner, inventory, info, capacity, armorWarning, systemId, books }: Props) {
+export default function EquipmentTab({ characterId, isOwner, inventory, info, capacity, armorWarning, systemId, books, base, query }: Props) {
   const router = useRouter();
   const [inv, setInv] = useState(inventory);
   const [error, setError] = useState("");
@@ -89,12 +88,33 @@ export default function EquipmentTab({ characterId, isOwner, inventory, info, ca
     items: i.items.map((l) => (l.id === id ? { ...l, ...patch } : l)),
   });
 
-  // El servidor desequipa la armadura o el escudo anterior; se refleja al llegar la respuesta
-  const toggleEquipped = (id: string, equipped: boolean) => send({ op: "update", id, equipped }, patchLine(id, { equipped }));
+  // El servidor desequipa la armadura o el escudo anterior (se refleja al llegar la respuesta); al equipar saca la línea
+  // de su contenedor, al mover a uno la desequipa y al quitar un contenedor libera lo que llevaba dentro
+  const actions: InventoryActions = {
+    quantity: (id, quantity) => send({ op: "update", id, quantity }, patchLine(id, { quantity })),
+    notes: (id, notes) => send({ op: "update", id, notes }, patchLine(id, { notes })),
+    equip: (id, equipped) => send({ op: "update", id, equipped }, patchLine(id, equipped ? { equipped, container: null } : { equipped })),
+    move: (id, container) => send({ op: "move", id, container }, patchLine(id, { container, equipped: false })),
+    remove: (id) => send({ op: "remove", id }, (i) => ({
+      ...i,
+      items: i.items.filter((x) => x.id !== id).map((x) => (x.container === id ? { ...x, container: null } : x)),
+    })),
+  };
 
-  const totalWeight = Math.round(inv.items.reduce((s, l) => s + (info[l.id]?.weight ?? 0) * l.quantity, 0) * 100) / 100;
-  const over = totalWeight > capacity;
   const readOnly = !isOwner;
+  const carried = inventoryWeights(inv.items, info).carried;
+  const over = carried > capacity;
+
+  const chips = inventoryChips(inv.items, info);
+  const active = parseSection(query.seccion, chips.map((c) => c.id));
+  const q = first(query.q);
+  // Todo el inventario va en el DOM (se imprime entero); el filtro solo oculta en pantalla
+  const all = inventoryGroups(inv.items, info, "todo", "");
+  const shown = new Map(inventoryGroups(inv.items, info, active, q).map((g) => [g.id, g]));
+  const shownLines = [...shown.values()].reduce((n, g) => n + g.lines.length, 0);
+  const nothing = shownLines === 0 && (q.trim() !== "" || active === "equipado" || ![...shown.values()].some((g) => g.container));
+  const containers = inv.items.filter((l) => info[l.id]?.container);
+  const section = (on: boolean) => (on ? "" : "hidden print:block");
 
   return (
     <div className="space-y-6">
@@ -121,105 +141,49 @@ export default function EquipmentTab({ characterId, isOwner, inventory, info, ca
             </div>
           )}
         </div>
+
+        <div className="mb-4 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 text-sm">
+          <p className={over ? "font-semibold text-brand-soft" : "text-muted"}>
+            Peso cargado: {weightText(carried)} de {weightText(capacity)}
+            {over && (
+              <span className="ml-2 inline-flex items-center gap-1" role="status">
+                <TriangleAlert size={14} aria-hidden="true" /> Supera la capacidad de carga
+              </span>
+            )}
+          </p>
+          <p className="text-muted">Monedas: {fmt(goldValue(inv.coins))} po</p>
+        </div>
+
+        <InventoryFilters base={base} query={query} chips={chips} active={active} q={q} />
         {error && <p role="alert" className="mb-3 text-sm text-brand-soft">{error}</p>}
 
-        {inv.items.length === 0 ? (
-          <p className="text-sm text-muted">Sin objetos.</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-176 text-left text-sm">
-              <thead className="text-xs uppercase tracking-wide text-muted">
-                <tr>
-                  <th className="pb-2 pr-3 font-semibold">Objeto</th>
-                  <th className="pb-2 pr-3 font-semibold">Cant.</th>
-                  <th className="pb-2 pr-3 font-semibold">Peso</th>
-                  <th className="pb-2 pr-3 font-semibold">Equipado</th>
-                  <th className="pb-2 pr-3 font-semibold">Notas</th>
-                  {!readOnly && <th className="pb-2 font-semibold print:hidden"><span className="sr-only">Quitar</span></th>}
-                </tr>
-              </thead>
-              <tbody>
-                {inv.items.map((l) => {
-                  const data = info[l.id];
-                  return (
-                    <tr key={l.id} className="border-t border-line align-middle">
-                      <td className="py-2 pr-3 font-semibold">{l.name}</td>
-                      <td className="py-2 pr-3">
-                        {readOnly ? l.quantity : (
-                          <QuantityField
-                            label={`Cantidad de ${l.name}`}
-                            value={l.quantity}
-                            onCommit={(q) => send({ op: "update", id: l.id, quantity: q }, patchLine(l.id, { quantity: q }))}
-                          />
-                        )}
-                      </td>
-                      <td className="whitespace-nowrap py-2 pr-3 text-muted">
-                        {data ? (
-                          <>
-                            {weightText(data.weight)}
-                            {l.quantity > 1 && data.weight > 0 && <span className="block text-xs">total {weightText(data.weight * l.quantity)}</span>}
-                          </>
-                        ) : "-"}
-                      </td>
-                      <td className="py-2 pr-3">
-                        {data?.equippable && readOnly ? (
-                          <span className={l.equipped ? "" : "text-muted"}>{l.equipped ? "Sí" : "—"}</span>
-                        ) : data?.equippable ? (
-                          <input
-                            type="checkbox"
-                            className="h-4 w-4 accent-brand"
-                            checked={l.equipped}
-                            aria-label={`Equipar ${l.name}`}
-                            onChange={(e) => toggleEquipped(l.id, e.target.checked)}
-                          />
-                        ) : <span className="text-muted" aria-hidden="true">-</span>}
-                      </td>
-                      <td className="py-2 pr-3">
-                        {readOnly ? <span className="text-muted">{l.notes}</span> : (
-                          <NotesField
-                            label={`Notas de ${l.name}`}
-                            value={l.notes}
-                            onCommit={(notes) => send({ op: "update", id: l.id, notes }, patchLine(l.id, { notes }))}
-                          />
-                        )}
-                      </td>
-                      {!readOnly && (
-                        <td className="py-2 text-right print:hidden">
-                          <button
-                            type="button"
-                            aria-label={`Quitar ${l.name}`}
-                            onClick={() => send({ op: "remove", id: l.id }, (i) => ({ ...i, items: i.items.filter((x) => x.id !== l.id) }))}
-                            className="rounded-md p-1.5 text-muted transition-colors hover:text-brand-soft"
-                          >
-                            <X size={16} aria-hidden="true" />
-                          </button>
-                        </td>
-                      )}
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        <p className={`mt-4 text-sm ${over ? "font-semibold text-brand-soft" : "text-muted"}`}>
-          Peso: {weightText(totalWeight)} de {weightText(capacity)}
-          {over && (
-            <span className="ml-2 inline-flex items-center gap-1" role="status">
-              <TriangleAlert size={14} aria-hidden="true" /> Supera la capacidad de carga
-            </span>
-          )}
-        </p>
+        <div className={`space-y-6 ${section(active !== "otras")}`}>
+          {nothing && active !== "otras" && <p className="text-sm text-muted print:hidden">Sin objetos.</p>}
+          {all.map((g) => {
+            const s = nothing ? undefined : shown.get(g.id);
+            return (
+              <InventoryTable
+                key={g.id}
+                group={g}
+                shown={s ? new Set(s.lines.map((l) => l.id)) : null}
+                info={info}
+                items={inv.items}
+                readOnly={readOnly}
+                containers={containers}
+                actions={actions}
+              />
+            );
+          })}
+        </div>
       </section>
 
-      <section className={`${sheetCard} animate-fade-up`} aria-labelledby="coins-title">
+      <section className={`${sheetCard} animate-fade-up ${section(active === "todo")}`} aria-labelledby="coins-title">
         <h3 id="coins-title" className={cardTitle}>Monedas</h3>
         <CoinsEditor coins={inv.coins} readOnly={readOnly} onCommit={(coins) => send({ op: "coins", coins }, (i) => ({ ...i, coins }))} />
         <p className="mt-3 text-sm text-muted">Total: {fmt(goldValue(inv.coins))} po</p>
       </section>
 
-      <section className={`${sheetCard} animate-fade-up`} aria-labelledby="other-title">
+      <section className={`${sheetCard} animate-fade-up ${section(active === "todo" || active === "otras")}`} aria-labelledby="other-title">
         <h3 id="other-title" className={cardTitle}>Otras posesiones</h3>
         {readOnly ? (
           <p className="whitespace-pre-wrap text-sm">{inv.other || <span className="text-muted">Nada.</span>}</p>
@@ -228,45 +192,6 @@ export default function EquipmentTab({ characterId, isOwner, inventory, info, ca
         )}
       </section>
     </div>
-  );
-}
-
-// Campos con borrador propio: se guardan al salir del campo o con Intro
-function QuantityField({ label, value, onCommit }: { label: string; value: number; onCommit: (v: number) => void }) {
-  const [draft, setDraft] = useState(String(value));
-  const [shown, setShown] = useState(value);
-  if (shown !== value) {
-    setShown(value);
-    setDraft(String(value));
-  }
-  const commit = () => {
-    const v = clampInt(draft, MAX_QUANTITY, value);
-    setDraft(String(v));
-    if (v !== value) onCommit(v);
-  };
-  return (
-    <input
-      type="number" inputMode="numeric" min={0} max={MAX_QUANTITY} aria-label={label}
-      className={`${smallInput} w-20`} value={draft}
-      onChange={(e) => setDraft(e.target.value)} onBlur={commit} onKeyDown={(e) => e.key === "Enter" && commit()}
-    />
-  );
-}
-
-function NotesField({ label, value, onCommit }: { label: string; value: string; onCommit: (v: string) => void }) {
-  const [draft, setDraft] = useState(value);
-  const [shown, setShown] = useState(value);
-  if (shown !== value) {
-    setShown(value);
-    setDraft(value);
-  }
-  return (
-    <input
-      type="text" aria-label={label} maxLength={MAX_ITEM_NOTES} className={`${smallInput} w-full`} value={draft}
-      onChange={(e) => setDraft(e.target.value)}
-      onBlur={() => draft !== value && onCommit(draft)}
-      onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
-    />
   );
 }
 
