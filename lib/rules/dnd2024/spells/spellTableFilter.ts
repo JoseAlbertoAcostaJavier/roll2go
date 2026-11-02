@@ -84,3 +84,15 @@ export function groupByLevel(rows: SpellRow[]): { level: number; rows: SpellRow[
     .sort(([a], [b]) => a - b)
     .map(([level, rs]) => ({ level, rows: [...rs].sort((a, b) => a.name.localeCompare(b.name, "es")) }));
 }
+
+/** Dirección de la pestaña Conjuros con la vista de gestión (`?vista=gestionar`) o sin ella (la tabla); conserva el resto, menos la ficha abierta y el aviso de guardado. */
+export function spellViewHref(query: Query, manage: boolean): string {
+  const params = new URLSearchParams();
+  params.set("tab", "conjuros");
+  for (const [k, v] of Object.entries(query)) {
+    if (k === "tab" || k === "vista" || k === "spell" || k === "saved" || v === undefined) continue;
+    for (const x of Array.isArray(v) ? v : [v]) params.append(k, x);
+  }
+  if (manage) params.set("vista", "gestionar");
+  return `?${params.toString()}`;
+}

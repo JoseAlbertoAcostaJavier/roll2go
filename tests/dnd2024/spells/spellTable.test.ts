@@ -68,7 +68,7 @@ describe("spellTableRows", () => {
     expect(row("Escudo").casterClass).toEqual(block.class);
     expect(row("Paso brumoso").casterClass).toBeNull();
     expect(row("Escudo")).toMatchObject({
-      nameEn: "spell:shield|xphb", key: `${B}:spell:shield|xphb`, level: 1, school: "Evocación", timeShort: "1R",
+      nameEn: "spell:shield|xphb", key: `${B}:spell:shield|xphb`, level: 1, school: "Evocación", schoolId: "V", timeShort: "1R",
     });
     expect(row("Amigos")).toMatchObject({ concentration: true, ritual: false });
   });

@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
-  EMPTY_SPELL_TABLE_FILTER, groupByLevel, matchesSpellTable, parseSpellTableFilter, spellTableHref,
+  EMPTY_SPELL_TABLE_FILTER, groupByLevel, matchesSpellTable, parseSpellTableFilter, spellTableHref, spellViewHref,
 } from "@/lib/rules/dnd2024/spells/spellTableFilter";
 import type { SpellRow } from "@/lib/rules/dnd2024/spells/spellTable";
 
 const row = (name: string, nameEn: string, level: number, over: Partial<SpellRow> = {}): SpellRow => ({
-  ref: { book: "b", key: `spell:${nameEn}|xphb` }, key: `b:spell:${nameEn}|xphb`, name, nameEn, level, school: "V",
+  ref: { book: "b", key: `spell:${nameEn}|xphb` }, key: `b:spell:${nameEn}|xphb`, name, nameEn, level, school: "V", schoolId: "V",
   time: "1 acción", timeShort: "1 A", range: "18 m", duration: "Instantáneo", components: "V, S",
   concentration: false, ritual: false, hit: null, effect: null, origin: "Mago", limited: null, casterClass: null,
   tags: [], ...over,
@@ -75,5 +75,13 @@ describe("groupByLevel", () => {
     const g = groupByLevel([fear, shield, fireBolt, alarm]);
     expect(g.map((x) => x.level)).toEqual([0, 1, 3]);
     expect(g[1].rows.map((r) => r.name)).toEqual(["Alarma", "Escudo"]);
+  });
+});
+
+describe("spellViewHref", () => {
+  it("añade o quita la vista de gestión y conserva filtros y pestaña", () => {
+    expect(spellViewHref({ tab: "conjuros", q: "fuego", spell: "x", saved: "1" }, true))
+      .toBe("?tab=conjuros&q=fuego&vista=gestionar");
+    expect(spellViewHref({ tab: "conjuros", vista: "gestionar", q: "fuego" }, false)).toBe("?tab=conjuros&q=fuego");
   });
 });

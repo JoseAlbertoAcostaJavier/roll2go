@@ -22,7 +22,7 @@ type Props = {
 
 // Casillas de usos de un conjuro, como las de los espacios: rellenas las disponibles, huecas las gastadas. Pulsar una
 // disponible la gasta; una gastada, la recupera
-function Uses({ item, onSet, busy }: { item: Limited; onSet: Props["onSet"]; busy: boolean }) {
+export function Uses({ item, onSet, busy }: { item: Limited; onSet: Props["onSet"]; busy: boolean }) {
   const spent = Math.min(item.used, item.max);
   const name = item.spell.name || bareName(item.spell.ref.key);
   return (

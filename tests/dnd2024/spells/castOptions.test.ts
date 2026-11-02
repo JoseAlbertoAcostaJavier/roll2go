@@ -3,7 +3,7 @@ import { castOptions } from "@/lib/rules/dnd2024/spells/castOptions";
 import type { SpellRow } from "@/lib/rules/dnd2024/spells/spellTable";
 
 const row = (level: number, over: Partial<SpellRow> = {}): SpellRow => ({
-  ref: { book: "b", key: "spell:x|xphb" }, key: "b:spell:x|xphb", name: "X", nameEn: "X", level, school: "V",
+  ref: { book: "b", key: "spell:x|xphb" }, key: "b:spell:x|xphb", name: "X", nameEn: "X", level, school: "V", schoolId: "V",
   time: "1 acción", timeShort: "1 A", range: "", duration: "", components: "", concentration: false, ritual: false,
   hit: null, effect: null, origin: "Mago", limited: null, casterClass: null, tags: [], ...over,
 });

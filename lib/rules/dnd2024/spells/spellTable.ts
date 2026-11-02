@@ -9,6 +9,8 @@ import type { Ability, Ref, SpellData } from "@/lib/rules/types";
 
 export type SpellRow = {
   ref: Ref; key: string; name: string; nameEn: string; level: number; school: string;
+  /** Letra de escuela de 5etools (`V`), para su icono. */
+  schoolId: string;
   time: string; timeShort: string; range: string; duration: string; components: string;
   concentration: boolean; ritual: boolean;
   /** «+N» con ataque de conjuro, «CD N {Car}» con salvación; null sin tirada. */
@@ -110,7 +112,7 @@ function effectOf(tags: string[]): SpellRow["effect"] {
 export function spellTableRows(spells: SpellsSummary, entries: Map<string, CatalogEntry>): SpellRow[] {
   return usableSpells(spells, entries).map(({ ref, block, origin, entry, data, limited }) => ({
     ref, key: refKey(ref), name: entry.nameEs ?? entry.name, nameEn: entry.name, level: data.level,
-    school: spellSchoolName(data.school), time: data.time, timeShort: timeShort(data.time), range: data.range,
+    school: spellSchoolName(data.school), schoolId: data.school, time: data.time, timeShort: timeShort(data.time), range: data.range,
     duration: data.duration, components: data.components, concentration: data.concentration, ritual: data.ritual,
     hit: hitOf(data.tags, block), effect: effectOf(data.tags), origin, limited,
     casterClass: block?.class ?? null, tags: data.tags,

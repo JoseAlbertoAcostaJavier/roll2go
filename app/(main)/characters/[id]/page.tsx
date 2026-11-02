@@ -20,6 +20,7 @@ import {
 } from "@/lib/rules/dnd2024/levels/masteries";
 import { parsePronouns, pronounsText } from "@/lib/rules/dnd2024/creation/names";
 import { spellListOf } from "@/lib/rules/dnd2024/spells/spellcasting";
+import { spellTableRows } from "@/lib/rules/dnd2024/spells/spellTable";
 import { hitDicePools } from "@/lib/rules/dnd2024/sheet/rest";
 import { shortRestRestores } from "@/lib/rules/dnd2024/spells/spellOps";
 import type { ActionData, BackgroundData, ItemData } from "@/lib/rules/types";
@@ -141,9 +142,9 @@ export default async function CharacterPage({ params, searchParams }: Props) {
   // libros del personaje; el filtro va en `?filtro=`
   const basicEntries = await listActions(found.books);
   // (los conjuros no están en `entries`: se toman del listado de la pestaña Conjuros)
+  const spellEntries = withSpellEntries(entries, spellOptions);
   const actions = deriveActions({
-    attacks: d.attacks, spells: d.spells, features: d.features, basics: basicEntries,
-    entries: withSpellEntries(entries, spellOptions),
+    attacks: d.attacks, spells: d.spells, features: d.features, basics: basicEntries, entries: spellEntries,
   });
   const actionFilter = parseActionFilter(query.filtro);
   const actionSpellKeys = new Set(actions.items.flatMap((i) => (i.kind === "spell" ? [refKey(i.ref)] : [])));
@@ -276,6 +277,9 @@ export default async function CharacterPage({ params, searchParams }: Props) {
               initial={d.spells}
               lists={spellLists}
               spells={spellOptions}
+              rows={spellTableRows(d.spells, spellEntries)}
+              query={query}
+              proficiencyBonus={d.proficiencyBonus}
             />
           </section>
         )}
