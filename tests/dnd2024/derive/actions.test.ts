@@ -52,7 +52,7 @@ const block = (b: Partial<CasterBlock>): CasterBlock => ({
   always: [], limited: [], ...b,
 });
 const summary = (blocks: CasterBlock[], other: SpellsSummary["other"] = []): SpellsSummary =>
-  ({ blocks, slots: { levels: {}, pact: null }, other, used: {} });
+  ({ blocks, slots: { levels: {}, pact: null }, other, used: {}, limitedUsed: {} });
 const named = (key: string, name = key) => ({ ref: ref(key), name });
 
 const wizard = summary([block({

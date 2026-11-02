@@ -246,7 +246,7 @@ describe("otros conjuros", () => {
     const high: Named = { ref: ref("lineage:high elf|xphb"), name: "Alto elfo" };
     expect(otherSpells(sheetOf(["barbarian"], {}, high), entries)).toEqual([]);
     const other = otherSpells(sheetOf(times("barbarian", 3), {}, high), entries);
-    expect(other).toEqual([{ spell: { ref: ref("spell:detect magic|xphb"), name: "Detect magic" }, origin: "Legado: Alto elfo" }]);
+    expect(other).toEqual([{ spell: { ref: ref("spell:detect magic|xphb"), name: "Detect magic" }, origin: "Legado: Alto elfo", innate: true }]);
   });
   it("sin lanzador con Iniciado en la magia: tiene conjuros y ningún bloque", () => {
     const s = sheetOf(["barbarian"]);
@@ -266,6 +266,8 @@ describe("otros conjuros", () => {
     expect(otherSpells(s, entries).map((o) => [o.spell.name, o.origin])).toEqual([
       ["light", "Dote: Magic Initiate; Cleric"], ["guidance", "Dote: Magic Initiate; Cleric"], ["bless", "Dote: Magic Initiate; Cleric"],
     ]);
+    // (los de especie, legado y dotes tienen un uso gratis por descanso largo; los trucos lo descartan en la tabla)
+    expect(otherSpells(s, entries).every((o) => o.innate)).toBe(true);
     // Si ya no tiene la dote, no los conserva
     s.background = { ref: ref("background:none|xphb"), name: "Ninguno", abilities: {}, equipment: "A" };
     expect(otherSpells(s, entries)).toEqual([]);
@@ -302,7 +304,7 @@ describe("otros conjuros", () => {
     const fey: Named = { ref: ref("feat:fey-touched|xphb"), name: "Tocado por los feéricos" };
     const s = sheetOf(times("barbarian", 4), { 4: [{ type: "asi", source: "x", value: { feat: fey } }] });
     expect(otherSpells(s, entries)).toEqual([
-      { spell: { ref: ref("spell:misty step|xphb"), name: "Misty step" }, origin: "Dote: Tocado por los feéricos" },
+      { spell: { ref: ref("spell:misty step|xphb"), name: "Misty step" }, origin: "Dote: Tocado por los feéricos", innate: true },
     ]);
     expect(derive(s, entries).hasSpells).toBe(true);
   });

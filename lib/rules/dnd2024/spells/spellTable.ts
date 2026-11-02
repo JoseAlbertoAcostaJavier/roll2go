@@ -1,7 +1,7 @@
 // Tabla de conjuros de la ficha (spec de la tabla de conjuros §2.1): una fila por conjuro que el personaje puede
 // lanzar. Lo común con las Acciones (conjuros utilizables, tirada y tipo de daño) vive aquí.
 import type { CatalogEntry } from "@/lib/rules/catalog/types";
-import type { CasterBlock, SpellsSummary } from "@/lib/rules/dnd2024/derive/spells";
+import { innateKey, type CasterBlock, type SpellsSummary } from "@/lib/rules/dnd2024/derive/spells";
 import { refKey } from "@/lib/rules/dnd2024/sheet/equipmentRefs";
 import { ABILITY_ABBR, ABILITY_NAMES, DAMAGE_TYPE_NAMES, fmtMod } from "@/lib/rules/dnd2024/sheet/labels";
 import { spellSchoolName } from "@/lib/rules/dnd2024/spells/spellTextClient";
@@ -66,13 +66,19 @@ export function usableSpells(spells: SpellsSummary, entries: Map<string, Catalog
         ref: l.spell.ref, block: b, origin: l.origin, limited: { key: l.key, max: l.max, used: l.used },
       })),
     ]),
-    ...spells.other.map((o) => ({ ref: o.spell.ref, block: null, origin: o.origin, limited: null })),
+    // (los de especie, legado y dotes de nivel 1+: un uso gratis por descanso largo; los trucos se lanzan a voluntad)
+    ...spells.other.map((o) => {
+      const key = innateKey(o.spell.ref);
+      const limited = o.innate ? { key, max: 1, used: Math.min(spells.limitedUsed[key] ?? 0, 1) } : null;
+      return { ref: o.spell.ref, block: null, origin: o.origin, limited };
+    }),
   ];
   const out = new Map<string, UsableSpell>();
   for (const s of sources) {
     const key = refKey(s.ref);
     const entry = entries.get(key);
     if (!entry) continue;
+    if (s.limited && (entry.data as SpellData).level === 0) s.limited = null;
     const seen = out.get(key);
     // Si ya estaba, solo se le añaden los usos (un conjuro preparado que también es un arcano conserva sus casillas)
     if (seen) {

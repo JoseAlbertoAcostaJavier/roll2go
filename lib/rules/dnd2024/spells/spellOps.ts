@@ -4,7 +4,7 @@
 // devuelven la hoja nueva; la ruta relee el personaje y recalcula los bloques antes de aplicarlas.
 import type { CatalogEntry } from "@/lib/rules/catalog/types";
 import type { Ref, SpellData } from "@/lib/rules/types";
-import type { CasterBlock, Slots, SpellsSummary } from "../derive/spells";
+import { innateKey, type CasterBlock, type OtherSpell, type Slots, type SpellsSummary } from "../derive/spells";
 import { refKey } from "../sheet/equipmentRefs";
 import type { Dnd2024SheetV2, Named } from "../sheet/sheet";
 import { preparedKey, spellListOf } from "./spellcasting";
@@ -21,6 +21,8 @@ export type SpellOpCtx = {
   /** Bloques de lanzador de la hoja guardada (`derive(...).spells.blocks`). */
   blocks: CasterBlock[];
   slots: Slots;
+  /** Conjuros de especie, legado, dotes… (`derive(...).spells.other`): los `innate` de nivel 1+ tienen un uso gratis. */
+  other: OtherSpell[];
   /** Entradas del catálogo de los libros utilizables (el conjuro de la operación y las clases de la hoja). */
   resolve: (ref: Ref) => CatalogEntry | null;
 };
@@ -33,6 +35,8 @@ export const PACT_SLOT = "pact";
 export const ACTION_TIME = "1 acción";
 // Usos que también se recuperan con un descanso corto (Conjuros distintivos: `signatureKey`)
 const SIGNATURE_PREFIX = "signature:";
+// Usos gratis de los conjuros de especie, legado y dotes (`innateKey`)
+const INNATE_PREFIX = "innate:";
 /** Si los usos de esta clave de `limitedUsed` se recuperan también con un descanso corto (Conjuros distintivos). */
 export const recoversOnShortRest = (key: string) => key.startsWith(SIGNATURE_PREFIX);
 
@@ -53,6 +57,13 @@ const fail = (error: string): { ok: false; error: string } => ({ ok: false, erro
 const nameOf = (e: CatalogEntry) => e.nameEs || e.name;
 const has = (list: { ref: Ref }[] | Ref[], ref: Ref) =>
   list.some((x) => refKey("ref" in x ? x.ref : x) === refKey(ref));
+
+// Usos gratis de los conjuros de especie, legado y dotes de nivel 1+ (un uso por descanso largo; los trucos, a voluntad)
+const innateUses = (ctx: SpellOpCtx): { key: string; spell: Named; max: number }[] =>
+  ctx.other.flatMap((o) => {
+    const level = (ctx.resolve(o.spell.ref)?.data as SpellData | undefined)?.level ?? 0;
+    return o.innate && level > 0 ? [{ key: innateKey(o.spell.ref), spell: o.spell, max: 1 }] : [];
+  });
 
 /** Error al preparar con el límite lleno (también lo muestra la ficha). */
 export const preparedFullError = (count: number, limit: number) => `Ya tienes ${count} de ${limit} conjuros preparados.`;
@@ -143,7 +154,7 @@ export function applySpellOp(sheet: Dnd2024SheetV2, op: unknown, ctx: SpellOpCtx
   // Usos gastados de un conjuro por descanso largo (Arcano místico, Conjuros distintivos): solo de los que tiene y
   // entre 0 y su máximo
   if (op.op === "limited") {
-    const limited = ctx.blocks.flatMap((b) => b.limited).find((l) => l.key === op.key);
+    const limited = [...ctx.blocks.flatMap((b) => b.limited), ...innateUses(ctx)].find((l) => l.key === op.key);
     if (!limited) return fail("No tienes ese uso.");
     if (!isInt(op.used) || op.used < 0 || op.used > limited.max)
       return fail(`${limited.spell.name} solo tiene ${limited.max} ${limited.max === 1 ? "uso" : "usos"} por descanso largo.`);
@@ -220,7 +231,9 @@ export function trimSpells(
     if (Math.min(used, available) > 0) slotsUsed[level] = Math.min(used, available);
   }
   if (!sheet.limitedUsed) return { prepared, slotsUsed };
+  // (los usos de especie, legado y dotes no dependen del nivel de clase: se conservan hasta el descanso largo)
   const keys = new Set(after.blocks.flatMap((b) => b.limited.map((l) => l.key)));
-  const limitedUsed = Object.fromEntries(Object.entries(sheet.limitedUsed).filter(([k]) => keys.has(k)));
+  const limitedUsed = Object.fromEntries(
+    Object.entries(sheet.limitedUsed).filter(([k]) => keys.has(k) || k.startsWith(INNATE_PREFIX)));
   return { prepared, slotsUsed, limitedUsed };
 }

@@ -52,8 +52,9 @@ function Flag({ letter, title }: { letter: string; title: string }) {
 
 function Row({ row, visible, props, search }: { row: SpellRow; visible: boolean; props: Props; search: string }) {
   const { slots, used, isOwner, busy } = props;
-  const options = castOptions(row, slots, used);
   const limitedUsed = row.limited ? (props.limitedUsed[row.limited.key] ?? row.limited.used) : 0;
+  // (con los usos gastados al momento, no los de la carga de la página)
+  const options = castOptions(row.limited ? { ...row, limited: { ...row.limited, used: limitedUsed } } : row, slots, used);
   const uses = row.limited && (
     <Uses
       item={{
@@ -69,10 +70,12 @@ function Row({ row, visible, props, search }: { row: SpellRow; visible: boolean;
       {/* Quien no es el dueño no lanza: sin columna, y los usos (solo lectura) van bajo el nombre */}
       {isOwner && (
         <td className={`${td} print:hidden`}>
-          {uses}
-          {!row.limited && row.level > 0 && (
-            <CastButton options={options} disabled={busy} name={row.name} onCast={(o) => props.onCast(row, o)} />
-          )}
+          <span className="flex flex-wrap items-center gap-2">
+            {row.level > 0 && (
+              <CastButton options={options} disabled={busy} name={row.name} onCast={(o) => props.onCast(row, o)} />
+            )}
+            {uses}
+          </span>
         </td>
       )}
       <th scope="row" className={`${td} text-left`}>

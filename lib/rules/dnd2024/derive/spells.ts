@@ -22,7 +22,8 @@ import { characterFeats } from "./features";
 
 export { chosenSpells };
 
-export type OtherSpell = { spell: Named; origin: string };
+/** `innate`: de especie, legado o dote; si es de nivel 1+, se lanza una vez sin espacio por descanso largo. */
+export type OtherSpell = { spell: Named; origin: string; innate?: true };
 
 /**
  * Conjuro que se lanza sin espacio un número de veces por descanso largo (Arcano místico, Conjuros distintivos), con
@@ -34,6 +35,8 @@ export type LimitedSpell = { key: string; spell: Named; origin: string; max: num
 export const arcanumKey = (ref: Ref) => `arcanum:${refKey(ref)}`;
 /** Clave de los usos de un conjuro distintivo en `sheet.limitedUsed`. */
 export const signatureKey = (ref: Ref) => `signature:${refKey(ref)}`;
+/** Clave del uso gratis de un conjuro de especie, legado o dote en `sheet.limitedUsed`. */
+export const innateKey = (ref: Ref) => `innate:${refKey(ref)}`;
 
 /** Origen de los conjuros de Dominio de conjuros. */
 export const SPELL_MASTERY_ORIGIN = "Dominio de conjuros";
@@ -81,7 +84,11 @@ export type CasterBlock = {
 
 export type Slots = { levels: Record<string, number>; pact: { count: number; level: number } | null };
 
-export type SpellsSummary = { blocks: CasterBlock[]; slots: Slots; other: OtherSpell[]; used: Record<string, number> };
+export type SpellsSummary = {
+  blocks: CasterBlock[]; slots: Slots; other: OtherSpell[]; used: Record<string, number>;
+  /** Usos gastados por descanso (`sheet.limitedUsed`): los de `other` no tienen otra fuente. */
+  limitedUsed: Record<string, number>;
+};
 
 const capitalize = (s: string) => (s ? s[0].toUpperCase() + s.slice(1) : s);
 // "spell:detect magic|xphb" → "Detect magic"
@@ -251,13 +258,14 @@ export function spellSlots(sheet: Dnd2024SheetV2, entries: Map<string, CatalogEn
 export function otherSpells(sheet: Dnd2024SheetV2, entries: Map<string, CatalogEntry>): OtherSpell[] {
   const level = sheet.levels.length;
   const out: OtherSpell[] = [];
-  const add = (refs: Ref[], origin: string) => out.push(...refs.map((r) => ({ spell: named(r, entries), origin })));
+  const add = (refs: Ref[], origin: string, innate = false) =>
+    out.push(...refs.map((r) => ({ spell: named(r, entries), origin, ...(innate ? { innate: true as const } : {}) })));
 
   const species = entries.get(refKey(sheet.species.ref))?.data as SpeciesData | undefined;
-  add(upTo(species?.spells, level), `Especie: ${sheet.species.name}`);
+  add(upTo(species?.spells, level), `Especie: ${sheet.species.name}`, true);
   if (sheet.lineage) {
     const lineage = entries.get(refKey(sheet.lineage.ref))?.data as LineageData | undefined;
-    add(upTo(lineage?.spells, level), `Legado: ${sheet.lineage.name}`);
+    add(upTo(lineage?.spells, level), `Legado: ${sheet.lineage.name}`, true);
   }
   const casterRefs = new Set(casters(sheet, entries).map((c) => refKey(c.ref)));
   for (const c of summarizeClasses(sheet.levels)) {
@@ -271,8 +279,8 @@ export function otherSpells(sheet: Dnd2024SheetV2, entries: Map<string, CatalogE
   const chosen = chosenFeatSpells(sheet.levels);
   for (const f of characterFeats(sheet, background(sheet, entries))) {
     const origin = `Dote: ${f.name ?? named(f.ref, entries).name}`;
-    add(upTo(featData(f.ref, entries)?.spells, level), origin);
-    out.push(...(chosen.get(refKey(f.ref)) ?? []).map((spell) => ({ spell, origin })));
+    add(upTo(featData(f.ref, entries)?.spells, level), origin, true);
+    out.push(...(chosen.get(refKey(f.ref)) ?? []).map((spell) => ({ spell, origin, innate: true as const })));
   }
   // Invocaciones (y demás rasgos opcionales) con conjuros fijos o elegidos (Pacto del tomo, con su nombre de origen)
   for (const o of heldOptionalFeatures(sheet.levels)) {
@@ -304,7 +312,7 @@ export function spellsSummary(
   const other = otherSpells(sheet, entries);
   const spellFeat = characterFeats(sheet, background(sheet, entries)).some((f) => featData(f.ref, entries)?.grantsSpells);
   return {
-    spells: { blocks, slots: spellSlots(sheet, entries), other, used: sheet.slotsUsed ?? {} },
+    spells: { blocks, slots: spellSlots(sheet, entries), other, used: sheet.slotsUsed ?? {}, limitedUsed: sheet.limitedUsed ?? {} },
     hasSpells: blocks.length > 0 || other.length > 0 || spellFeat,
   };
 }
