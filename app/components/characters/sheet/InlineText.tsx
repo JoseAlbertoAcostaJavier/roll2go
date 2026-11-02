@@ -64,21 +64,24 @@ export function InlineText({ characterId, field, label, value, multiline, editab
     requestAnimationFrame(() => button.current?.focus());
   };
 
-  async function commit() {
+  async function commit(focusBack = false) {
     if (saving) return;
-    if (draft === shown) {
+    const next = draft.trim();
+    if (next === shown.trim()) {
       setEditing(false);
+      if (focusBack) close();
       return;
     }
     setSaving(true);
-    const message = await saveField(characterId, field, draft);
+    const message = await saveField(characterId, field, next);
     setSaving(false);
     if (message) {
       setError(message);
       return;
     }
-    setShown(draft);
+    setShown(next);
     setEditing(false);
+    if (focusBack) close();
     router.refresh();
   }
 
@@ -111,7 +114,7 @@ export function InlineText({ characterId, field, label, value, multiline, editab
                 close();
               } else if (e.key === "Enter" && (!multiline || e.ctrlKey || e.metaKey)) {
                 e.preventDefault();
-                void commit();
+                void commit(true);
               }
             }}
           />
@@ -128,10 +131,16 @@ export function InlineText({ characterId, field, label, value, multiline, editab
               ref={button}
               type="button"
               onClick={open}
-              aria-label={`Editar ${label}`}
+              data-print="text"
               className={`${valueButton} ${multiline ? "whitespace-pre-wrap" : ""} ${shown ? "" : "text-muted"}`}
             >
-              {shown || `+ Añadir ${label.toLowerCase()}`}
+              <span className="sr-only print:hidden">Editar {label}: </span>
+              {shown || (
+                <>
+                  <span className="print:hidden">+ Añadir {label.toLowerCase()}</span>
+                  <span className="hidden print:inline">—</span>
+                </>
+              )}
             </button>
           ) : (
             <p className={`text-sm ${shown ? "text-fg" : "text-muted"} ${multiline ? "whitespace-pre-wrap" : ""}`}>{shown || "—"}</p>
@@ -145,7 +154,7 @@ export function InlineText({ characterId, field, label, value, multiline, editab
 // Selector editable en el sitio (el alineamiento): guarda al elegir
 export function InlineSelect({ characterId, field, label, value, options, editable }: Common & {
   value: string;
-  options: { id: string; name: string }[];
+  options: { id: string; name: string; description?: string }[];
 }) {
   const router = useRouter();
   const [shown, setShown] = useShown(value);
@@ -162,6 +171,7 @@ export function InlineSelect({ characterId, field, label, value, options, editab
   const inputId = `inline-${characterId}-${field}`;
   // Un valor guardado que no es de la lista se conserva como opción
   const known = options.some((o) => o.id === shown);
+  const description = options.find((o) => o.id === shown)?.description;
   const nameOf = (id: string) => options.find((o) => o.id === id)?.name ?? id;
 
   async function commit(next: string) {
@@ -181,7 +191,9 @@ export function InlineSelect({ characterId, field, label, value, options, editab
 
   return (
     <div className="min-w-0">
-      <label htmlFor={editable ? inputId : undefined} className={`mb-1 block ${labelText}`}>{label}</label>
+      {editable
+        ? <label htmlFor={inputId} className={`mb-1 block ${labelText}`}>{label}</label>
+        : <div className={`mb-1 ${labelText}`}>{label}</div>}
       {editable ? (
         <>
           <select
@@ -205,18 +217,21 @@ export function InlineSelect({ characterId, field, label, value, options, editab
               setDraft(e.target.value);
               if (!keyboard.current) void commit(e.target.value);
             }}
+            aria-invalid={error ? true : undefined}
             aria-describedby={error ? `${inputId}-error` : undefined}
-            className={`${fieldClass} py-1.5 text-sm`}
+            className={`${fieldClass} py-1.5 text-sm print:hidden`}
           >
             <option value="">—</option>
             {!known && shown && <option value={shown}>{shown}</option>}
             {options.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
           </select>
           <p id={`${inputId}-error`} role="alert" className={error ? "mt-1 text-xs text-brand-soft" : ""}>{error}</p>
+          <p className="hidden text-sm text-fg print:block">{shown ? nameOf(shown) : "—"}</p>
         </>
       ) : (
         <p className={`text-sm ${shown ? "text-fg" : "text-muted"}`}>{shown ? nameOf(shown) : "—"}</p>
       )}
+      {description && <p className="mt-1 text-xs text-muted">{description}</p>}
     </div>
   );
 }

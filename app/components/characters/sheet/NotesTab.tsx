@@ -1,5 +1,5 @@
 import type { Dnd2024SheetV2 } from "@/lib/rules/dnd2024/sheet/sheet";
-import { card, cardTitle } from "@/app/components/ui/formStyles";
+import { card } from "@/app/components/ui/formStyles";
 import { InlineText } from "./InlineText";
 
 // Pestaña Notas (spec de rasgos §5): organizaciones, aliados, enemigos y otras notas, editables en el sitio por el dueño
@@ -13,7 +13,6 @@ export default function NotesTab({ characterId, isOwner, sheet }: { characterId:
 
   return (
     <section className={`${card} animate-fade-up`}>
-      <h3 className={cardTitle}>Notas</h3>
       <div className="space-y-5">
         {fields.map((f) => (
           <InlineText

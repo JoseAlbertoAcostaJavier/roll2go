@@ -62,7 +62,7 @@ export default function BackgroundTab({ characterId, isOwner, sheet, backstory, 
           <dl className="mt-4 grid gap-x-4 gap-y-2 text-sm sm:grid-cols-[auto_1fr]">
             {bonuses.length > 0 && (
               <>
-                <dt className="font-semibold">Características</dt>
+                <dt className="font-semibold">Mejoras de característica</dt>
                 <dd className="text-muted">{bonuses.join(", ")}</dd>
               </>
             )}
