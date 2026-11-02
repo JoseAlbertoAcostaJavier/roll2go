@@ -9,6 +9,10 @@ type Hp = { current: number; temp: number };
 // Espera entre pulsaciones antes de guardar, para enviar una sola petición por ráfaga de clics
 const SAVE_DELAY = 600;
 const clamp = (v: number, max: number) => Math.min(max, Math.max(0, Math.trunc(v) || 0));
+const sameHp = (a: Hp, b: Hp) => a.current === b.current && a.temp === b.temp;
+
+/** Evento de ventana que lanza un descanso hecho: el editor descarta los PG que aún no ha enviado. */
+export const REST_EVENT = "roll2go:rest";
 
 const stepButton =
   "flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-line bg-surface transition-colors enabled:hover:border-brand enabled:hover:text-white disabled:opacity-40";
@@ -66,7 +70,8 @@ function Stepper({ label, value, max, onChange, big = false }: {
 
 // PG actuales y temporales del dueño: actualización optimista y vuelta atrás si el guardado falla
 // `version` cambia cuando el personaje cambia en el servidor (descanso, borrar un nivel, otras cajas de la franja):
-// si no hay cambios propios sin guardar, el editor adopta entonces los PG que llegan; si los hay, se quedan los suyos
+// si no hay cambios propios sin guardar, el editor adopta entonces los PG que llegan; si los hay, se quedan los suyos,
+// salvo que los PG del servidor hayan cambiado por otra vía (un descanso): entonces ganan y el cambio pendiente se descarta
 export default function HpEditor({ characterId, max, current, temp, version }: { characterId: string; max: number; version: number } & Hp) {
   const [hp, setHp] = useState<Hp>({ current: Math.min(current, max), temp });
   const [saving, setSaving] = useState(false);
@@ -78,13 +83,44 @@ export default function HpEditor({ characterId, max, current, temp, version }: {
   // Último cambio aún sin enviar: si el editor se desmonta antes de que venza el temporizador, se envía al desmontar
   const unsent = useRef<Hp | null>(null);
 
+  // PG del servidor vistos por última vez y los últimos que envió este editor, para saber si un cambio es ajeno
   const [seenVersion, setSeenVersion] = useState(version);
+  const [seenHp, setSeenHp] = useState<Hp>({ current: Math.min(current, max), temp });
+  const [sentHp, setSentHp] = useState<Hp | null>(null);
+  // Cada vez que un cambio ajeno anula el propio pendiente, sube: el efecto de abajo cancela el envío
+  const [discarded, setDiscarded] = useState(0);
   if (seenVersion !== version) {
     setSeenVersion(version);
-    if (!dirty) {
-      setHp({ current: Math.min(current, max), temp });
+    const incoming = { current: Math.min(current, max), temp };
+    setSeenHp(incoming);
+    // Un descanso (u otro cambio ajeno a este editor) gana a lo que el editor aún no ha enviado
+    const external = !sameHp(incoming, seenHp) && !(sentHp && sameHp(incoming, sentHp));
+    if (!dirty || external) {
+      setHp(incoming);
+      if (dirty) {
+        setDirty(false);
+        setDiscarded((n) => n + 1);
+      }
     }
   }
+  useEffect(() => {
+    if (discarded === 0) return;
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = null;
+    unsent.current = null;
+  }, [discarded]);
+  // Un descanso no siempre cambia los PG guardados (si el cambio propio aún no se había enviado, el servidor ya estaba
+  // al máximo), así que lo avisa con un evento: se descarta lo pendiente y el refresco trae los PG del descanso
+  useEffect(() => {
+    const onRest = () => {
+      if (timer.current) clearTimeout(timer.current);
+      timer.current = null;
+      unsent.current = null;
+      setDirty(false);
+    };
+    window.addEventListener(REST_EVENT, onRest);
+    return () => window.removeEventListener(REST_EVENT, onRest);
+  }, []);
 
   // Sin cambios propios pendientes, lo mostrado es lo guardado en el servidor: a eso se vuelve si un guardado falla
   useEffect(() => {
@@ -105,6 +141,7 @@ export default function HpEditor({ characterId, max, current, temp, version }: {
 
   const save = async (next: Hp) => {
     unsent.current = null;
+    setSentHp(next);
     setSaving(true);
     try {
       const res = await fetch(`/api/characters/${characterId}/hp`, {
