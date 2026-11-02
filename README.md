@@ -38,4 +38,4 @@ Tras desplegar las Acciones:
 
 Tras desplegar el inventario:
 
-- Vuelve a ejecutar `npm run import:5etools -- --data <carpeta data de 5etools>` para tener la capacidad de mochilas, bolsas y cofres, y reinicia el servidor.
+- Vuelve a ejecutar `npm run import:5etools -- --data <carpeta data de 5etools>` para tener la capacidad de mochilas, bolsas y cofres, y **reinicia el servidor** tras borrar la caché de datos de Next (`.next/cache` en producción, `.next/dev/cache` en desarrollo; si no, los contenedores no aparecen hasta 1 hora después).

@@ -30,11 +30,6 @@ export default function InventoryFilters({ base, query, chips, active, q: urlQ }
     if (!typing && urlQ !== q.trim()) setQ(urlQ);
   }
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
-  // Lo último que dijo la URL, para que la espera no pise un chip pulsado entretanto
-  const latest = useRef(query);
-  useEffect(() => {
-    latest.current = query;
-  });
   useEffect(() => () => clearTimeout(timer.current), []);
 
   function onSearch(value: string) {
@@ -43,7 +38,13 @@ export default function InventoryFilters({ base, query, chips, active, q: urlQ }
     clearTimeout(timer.current);
     timer.current = setTimeout(() => {
       setTyping(false);
-      router.replace(`${base}${inventoryHref(latest.current, { q: value })}`, { scroll: false });
+      // Parte de la URL del momento (no de la del render), para no pisar un chip pulsado durante la espera
+      const current: Query = {};
+      new URLSearchParams(window.location.search).forEach((v, k) => {
+        const prev = current[k];
+        current[k] = prev === undefined ? v : [...(Array.isArray(prev) ? prev : [prev]), v];
+      });
+      router.replace(`${base}${inventoryHref(current, { q: value })}`, { scroll: false });
     }, 300);
   }
 
