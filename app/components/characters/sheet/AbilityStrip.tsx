@@ -8,12 +8,12 @@ import type { SheetData, ShowStat, StatusState } from "./types";
 
 // Marco común de las cajas de la franja: el rojo de marca atenuado sobre el fondo oscuro
 const box = "rounded-lg border-2 border-brand/40 bg-panel";
-const boxLabel = "block truncate text-[11px] font-semibold uppercase tracking-wide text-muted";
+const boxLabel = "block break-words text-[10px] font-semibold uppercase leading-tight tracking-normal text-muted";
 
 // Franja superior (spec de la ficha visual §3.1): las 6 características, competencia, velocidad, inspiración heroica y PG.
-// - ≥ 1280 px: todo en una fila.
-// - 768–1279 px: características en una fila de 6; debajo, competencia, velocidad e inspiración y los PG.
-// - < 768 px: características en rejilla de 3; debajo, competencia, velocidad e inspiración en una fila y los PG a todo el ancho.
+// - ≥ 1280 px: todo en una fila (características ~55 %, competencia/velocidad/inspiración ~18 %, PG ~27 %).
+// - < 1280 px: las características en su propia fila (6 columnas; 3 por debajo de 640 px) y, en la siguiente,
+//   competencia, velocidad e inspiración junto a los PG (apilados en móvil).
 export default function AbilityStrip({ d, characterId, isOwner, version, pools, show, status }: {
   d: SheetData; characterId: string; isOwner: boolean; version: number; pools: HitDicePool[]; show: ShowStat;
   status: StatusState;
@@ -21,12 +21,11 @@ export default function AbilityStrip({ d, characterId, isOwner, version, pools, 
   return (
     <section
       aria-label="Características y puntos de golpe"
-      className="grid gap-3 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] xl:items-stretch"
+      className="grid gap-3 xl:grid-cols-[minmax(0,55fr)_minmax(0,18fr)_minmax(0,27fr)] xl:items-start"
     >
-      <div className="grid gap-3 sm:grid-cols-[minmax(0,6fr)_minmax(0,3fr)]">
-        {/* Características: modificador grande y puntuación en una píldora sobre el borde inferior; cada una abre su desglose */}
-        <div>
-          <h3 className="sr-only">Características</h3>
+      {/* Características: modificador grande y puntuación en una píldora sobre el borde inferior; cada una abre su desglose */}
+      <div>
+        <h3 className="sr-only">Características</h3>
           <ul className="grid grid-cols-3 gap-x-2 gap-y-5 pb-3 sm:grid-cols-6">
             {ABILITIES.map((a) => (
               <li key={a}>
@@ -48,8 +47,10 @@ export default function AbilityStrip({ d, characterId, isOwner, version, pools, 
           </ul>
         </div>
 
+      {/* Debajo de 1280 px, la fila siguiente; en escritorio las dos cajas son columnas de la franja (`contents`) */}
+      <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] xl:contents">
         {/* Competencia, velocidad e inspiración: del mismo alto que las características */}
-        <div className="grid grid-cols-3 gap-2 pb-3 sm:pt-0">
+        <div className="grid grid-cols-3 gap-2 pb-3">
           <div className={`${box} flex h-24 flex-col items-center justify-center px-1 text-center`}>
             <span className="font-heading text-2xl font-extrabold leading-none">{fmtMod(d.proficiencyBonus)}</span>
             <span className={`${boxLabel} mt-1 w-full`}>Competencia</span>
@@ -65,14 +66,12 @@ export default function AbilityStrip({ d, characterId, isOwner, version, pools, 
             <span className={`${boxLabel} mt-1 w-full`}>Velocidad</span>
           </button>
           <InspirationBox
-            key={String(status.heroicInspiration)}
             characterId={characterId}
             initial={status.heroicInspiration}
             isOwner={isOwner}
             className="h-24 !py-1"
           />
         </div>
-      </div>
 
       {/* Puntos de golpe, con los dados de golpe debajo */}
       <div className={`${box} px-3 py-3 text-center`}>
@@ -100,6 +99,7 @@ export default function AbilityStrip({ d, characterId, isOwner, version, pools, 
             Dados de golpe: {pools.map((p) => `${p.total - p.used}d${p.die}`).join(" · ")}
           </p>
         )}
+        </div>
       </div>
     </section>
   );

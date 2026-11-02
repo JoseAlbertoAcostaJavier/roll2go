@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Check } from "lucide-react";
 
@@ -11,8 +11,12 @@ export default function InspirationBox({ characterId, initial, isOwner, classNam
   const router = useRouter();
   const [on, setOn] = useState(initial);
   const [error, setError] = useState("");
+  // Una sola petición a la vez: los clics mientras hay una pendiente se ignoran
+  const pending = useRef(false);
 
   const toggle = async () => {
+    if (pending.current) return;
+    pending.current = true;
     const next = !on;
     setOn(next);
     setError("");
@@ -24,11 +28,12 @@ export default function InspirationBox({ characterId, initial, isOwner, classNam
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "No se pudo guardar la inspiración.");
+      router.refresh();
     } catch (e) {
       setOn(!next);
       setError(e instanceof Error ? e.message : "No se pudo guardar la inspiración.");
     } finally {
-      router.refresh();
+      pending.current = false;
     }
   };
 
