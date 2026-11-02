@@ -11,11 +11,11 @@ export const CONDITION_RULES: Record<string, string> = {
   incapacitated: "No puedes realizar acciones, acciones adicionales ni reacciones, ni mantener la concentración. Pierdes el habla si estás incapacitado.",
   invisible: "No te ven sin ayuda mágica o de sentidos especiales. Tus ataques tienen ventaja y los ataques contra ti, desventaja.",
   paralyzed: "Estás incapacitado y no te mueves ni hablas. Fallas las salvaciones de Fuerza y Destreza. Los ataques contra ti tienen ventaja y son críticos desde 1,5 m.",
-  petrified: "Eres una sustancia inerte e inconsciente de la que no tienes percepción. Resistes todo el daño y eres inmune a veneno y enfermedad.",
+  petrified: "Te conviertes en una sustancia sólida e inanimada: estás incapacitado, tu velocidad es 0 y los ataques contra ti tienen ventaja. Fallas las salvaciones de Fuerza y Destreza, resistes todo el daño y eres inmune al estado envenenado.",
   poisoned: "Tienes desventaja en las tiradas de ataque y en las pruebas de característica.",
   prone: "Solo puedes arrastrarte o levantarte (cuesta la mitad de tu velocidad). Tus ataques tienen desventaja; los ataques contra ti tienen ventaja desde 1,5 m y desventaja desde más lejos.",
   restrained: "Tu velocidad es 0. Los ataques contra ti tienen ventaja y los tuyos, desventaja. Tienes desventaja en las salvaciones de Destreza.",
-  stunned: "Estás incapacitado y no te mueves, y apenas hablas. Fallas las salvaciones de Fuerza y Destreza. Los ataques contra ti tienen ventaja.",
+  stunned: "Estás incapacitado: no actúas ni reaccionas, pero puedes moverte. Fallas las salvaciones de Fuerza y Destreza y los ataques contra ti tienen ventaja.",
   unconscious: "Estás incapacitado, caído e inconsciente sin enterarte de nada. Fallas las salvaciones de Fuerza y Destreza. Los ataques contra ti tienen ventaja y son críticos desde 1,5 m.",
 };
 
