@@ -182,6 +182,40 @@ describe("alta y edición", () => {
     notes.set("notes", "hola");
     expect(await updateCharacter(OWNER, CHAR, notes)).toEqual({ ok: false, status: 409, error: "antigua" });
   });
+
+  describe("campos de trasfondo y notas", () => {
+    const sheetSetOf = () => (db.callsOf("Character", "updateOne")[0][1] as { $set: Record<string, unknown> }).$set;
+
+    it("guarda el texto limpio en la hoja, aunque no lo tuviera", async () => {
+      state.found = { character: character(), outdated: false };
+      db.results["Character.updateOne"] = { matchedCount: 1 };
+      const form = new FormData();
+      form.set("gender", " Mujer ");
+      form.set("personality", "   ");
+      expect(await updateCharacter(OWNER, CHAR, form)).toEqual({ ok: true });
+      expect(sheetSetOf()).toEqual({ "sheet.gender": "Mujer", "sheet.personality": "" });
+    });
+
+    it("rechaza lo que pasa el límite de cada grupo y no guarda nada", async () => {
+      state.found = { character: character(), outdated: false };
+      const form = new FormData();
+      form.set("allies", "a".repeat(5001));
+      form.set("eyes", "a".repeat(101));
+      form.set("ideals", "a".repeat(2001));
+      expect(await updateCharacter(OWNER, CHAR, form)).toEqual({
+        ok: false, status: 400,
+        errors: { eyes: "Máximo 100 caracteres.", ideals: "Máximo 2000 caracteres.", allies: "Máximo 5000 caracteres." },
+      });
+      expect(db.callsOf("Character", "updateOne")).toEqual([]);
+    });
+
+    it("el creador no los pide: TEXT_LIMITS no los incluye", async () => {
+      const { SHEET_TEXT_LIMITS } = await import("@/lib/rules/dnd2024/sheet/textFields");
+      const { TEXT_LIMITS } = await import("@/lib/rules/dnd2024/creation/validateSheet");
+      expect(Object.keys(TEXT_LIMITS)).toEqual(["alignment", "appearance", "age", "languages", "notes"]);
+      expect(Object.keys(SHEET_TEXT_LIMITS)).toEqual(expect.arrayContaining(["notes", "gender", "faith", "enemies"]));
+    });
+  });
 });
 
 describe("campaña del personaje", () => {

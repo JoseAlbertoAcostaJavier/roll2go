@@ -23,7 +23,8 @@ import { spellListOf } from "@/lib/rules/dnd2024/spells/spellcasting";
 import { spellTableRows } from "@/lib/rules/dnd2024/spells/spellTable";
 import { hitDicePools } from "@/lib/rules/dnd2024/sheet/rest";
 import { shortRestRestores } from "@/lib/rules/dnd2024/spells/spellOps";
-import type { ActionData, BackgroundData, ItemData } from "@/lib/rules/types";
+import { sizeName } from "@/lib/rules/dnd2024/sheet/labels";
+import type { ActionData, BackgroundData, ItemData, SpeciesData } from "@/lib/rules/types";
 import SheetHeader from "@/app/components/characters/sheet/SheetHeader";
 import type { JoinableCampaign } from "@/app/components/characters/sheet/JoinCampaignDialog";
 import SheetTabs, { SHEET_TABS, type SheetTab } from "@/app/components/characters/sheet/SheetTabs";
@@ -31,6 +32,7 @@ import SheetLayout, { type SheetData } from "@/app/components/characters/sheet/S
 import ActionsTab from "@/app/components/characters/sheet/ActionsTab";
 import type { BasicActionInfo } from "@/app/components/characters/sheet/ActionsDialogs";
 import BackgroundTab from "@/app/components/characters/sheet/BackgroundTab";
+import NotesTab from "@/app/components/characters/sheet/NotesTab";
 import FeaturesTab from "@/app/components/characters/sheet/FeaturesTab";
 import EquipmentTab, { type ItemInfo } from "@/app/components/characters/sheet/EquipmentTab";
 import MasteriesEditor from "@/app/components/characters/sheet/MasteriesEditor";
@@ -73,7 +75,13 @@ export default async function CharacterPage({ params, searchParams }: Props) {
 
   const pools = hitDicePools(sheet, entries);
   const isOwner = String(c.owner) === user.id;
-  const tabs: SheetTab[] = d.hasSpells ? ["acciones", "conjuros", "inventario", "rasgos", "trasfondo"] : BASE_TABS;
+  // Notas: siempre para el dueño; para los demás, solo si alguna tiene texto
+  const hasNotes = [sheet.organizations, sheet.allies, sheet.enemies, sheet.notes].some((n) => n?.trim());
+  const withNotes: SheetTab[] = isOwner || hasNotes ? ["notas"] : [];
+  const tabs: SheetTab[] = [
+    ...(d.hasSpells ? (["acciones", "conjuros", "inventario", "rasgos", "trasfondo"] as SheetTab[]) : BASE_TABS),
+    ...withNotes,
+  ];
   const tab = normalizeSheetTab(query.tab, tabs);
 
   // Su campaña o, si no tiene y eres su dueño, las campañas a las que puedes unirlo («Unir a una campaña»)
@@ -86,6 +94,11 @@ export default async function CharacterPage({ params, searchParams }: Props) {
   const background = entries.get(refKey(sheet.background.ref)) ?? null;
   const featRef = (background?.data as BackgroundData | undefined)?.feat;
   const feat = featRef ? (entries.get(refKey(featRef)) ?? null) : null;
+
+  // Tamaño: el elegido o, si la especie solo tiene uno, ese
+  const speciesSizes = (entries.get(refKey(sheet.species.ref))?.data as SpeciesData | undefined)?.size ?? [];
+  const sizeId = sheet.speciesChoices.size ?? (speciesSizes.length === 1 ? speciesSizes[0] : null);
+  const size = sizeId ? sizeName(sizeId) : "—";
 
   // Atribución del SRD si se usa contenido de un libro con esa licencia
   const usedBooks = [...new Set([...entries.values()].map((e) => e.ref.book))];
@@ -233,6 +246,11 @@ export default async function CharacterPage({ params, searchParams }: Props) {
         <section {...panel("trasfondo")}>
           {panelTitle("trasfondo")}
           <BackgroundTab
+            characterId={id}
+            isOwner={isOwner}
+            size={size}
+            base={base}
+            query={query}
             sheet={sheet}
             backstory={c.backstory ?? ""}
             imageUrl={c.imageId ? `/api/images/${c.imageId}` : null}
@@ -240,6 +258,12 @@ export default async function CharacterPage({ params, searchParams }: Props) {
             feat={feat}
           />
         </section>
+        {withNotes.length > 0 && (
+          <section {...panel("notas")}>
+            {panelTitle("notas")}
+            <NotesTab characterId={id} isOwner={isOwner} sheet={sheet} />
+          </section>
+        )}
         <section {...panel("rasgos")}>
           {panelTitle("rasgos")}
           <MasteriesEditor
@@ -250,7 +274,7 @@ export default async function CharacterPage({ params, searchParams }: Props) {
             current={masteryCurrent}
             options={masteryOptions}
           />
-          <FeaturesTab groups={d.features} entries={entries} />
+          <FeaturesTab groups={d.features} entries={entries} base={base} query={query} />
         </section>
         <section {...panel("inventario")}>
           {panelTitle("inventario")}

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Backpack, BookUser, Sparkles, Swords, WandSparkles } from "lucide-react";
+import { Backpack, BookUser, NotebookPen, Sparkles, Swords, WandSparkles } from "lucide-react";
 import type { SheetTabId } from "@/lib/rules/dnd2024/sheet/sheetTabs";
 
 export const SHEET_TABS = [
@@ -8,6 +8,7 @@ export const SHEET_TABS = [
   { id: "inventario", label: "Inventario", icon: Backpack },
   { id: "rasgos", label: "Rasgos y dotes", icon: Sparkles },
   { id: "trasfondo", label: "Trasfondo", icon: BookUser },
+  { id: "notas", label: "Notas", icon: NotebookPen },
 ] as const satisfies readonly { id: SheetTabId; label: string; icon: unknown }[];
 
 export type SheetTab = SheetTabId;

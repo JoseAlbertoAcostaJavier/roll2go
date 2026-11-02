@@ -9,7 +9,8 @@ import { fail, invalid, type Result } from "@/lib/server/result";
 import { cleanText } from "@/lib/utils/utils";
 import { ALIGNMENTS } from "@/lib/rules/dnd2024/sheet/alignments";
 import { parsePronouns } from "@/lib/rules/dnd2024/creation/names";
-import { MAX_XP, TEXT_LIMITS } from "@/lib/rules/dnd2024/creation/validateSheet";
+import { MAX_XP } from "@/lib/rules/dnd2024/creation/validateSheet";
+import { SHEET_TEXT_LIMITS } from "@/lib/rules/dnd2024/sheet/textFields";
 
 const STATUSES = ["active", "retired", "dead", "npc"] as const;
 const MAX_NAME = 80;
@@ -19,7 +20,7 @@ const text = (v: FormDataEntryValue | null) => (typeof v === "string" ? v : "");
 const notFound = () => fail(404, "Personaje no encontrado.");
 
 /* Cambia lo que llega en el formulario: `name`, `pronouns`, `status`, `alignment`, `age`, `appearance`, `languages`,
-   `backstory`, `notes`, `xp`, `portrait`, `image`, y las marcas `removePortrait` / `removeImage`. Mismos límites que
+   `backstory`, `notes`, los campos de trasfondo y notas (`SHEET_TEXT_LIMITS`), `xp`, `portrait`, `image`, y las marcas `removePortrait` / `removeImage`. Mismos límites que
    el alta. */
 export async function updateCharacter(userId: string, id: string, form: FormData): Promise<Result> {
   const found = await loadCharacterFor(userId, id, "write");
@@ -52,7 +53,7 @@ export async function updateCharacter(userId: string, id: string, form: FormData
     if (backstory.length > MAX_BACKSTORY) errors.backstory = "La historia es demasiado larga.";
     else set.backstory = backstory;
   }
-  for (const [field, max] of Object.entries(TEXT_LIMITS)) {
+  for (const [field, max] of Object.entries(SHEET_TEXT_LIMITS)) {
     if (!form.has(field)) continue;
     const raw = form.get(field);
     if (typeof raw !== "string") errors[field] = "Texto no válido.";

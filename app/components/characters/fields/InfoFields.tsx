@@ -75,7 +75,7 @@ export default function InfoFields({
         <FieldError errors={errors} keys={["languages"]} />
       </div>
       <div>
-        <label htmlFor="notes" className={labelClass}>Notas</label>
+        <label htmlFor="notes" className={labelClass}>Otras notas</label>
         <textarea id="notes" rows={4} className={field} maxLength={LIMITS.notes} value={values.notes} onChange={(e) => onChange({ notes: e.target.value }, "notes")} />
         <FieldError errors={errors} keys={["notes"]} />
       </div>

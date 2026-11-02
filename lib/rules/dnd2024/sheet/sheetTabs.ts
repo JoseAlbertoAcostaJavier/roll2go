@@ -1,4 +1,4 @@
-export type SheetTabId = "acciones" | "conjuros" | "inventario" | "rasgos" | "trasfondo";
+export type SheetTabId = "acciones" | "conjuros" | "inventario" | "rasgos" | "trasfondo" | "notas";
 
 // Ids de pestañas anteriores, para que los enlaces viejos (`?tab=info`, `?tab=equipo`) sigan funcionando
 const LEGACY: Record<string, SheetTabId> = { info: "acciones", equipo: "inventario" };
