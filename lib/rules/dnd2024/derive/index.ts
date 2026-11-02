@@ -102,7 +102,9 @@ const martialArtsFallback = (level: number) => (level <= 4 ? "1d6" : level <= 10
 
 export function derive(input: AnySheet, entries: Map<string, CatalogEntry>): Derived {
   // Los ids de las líneas del inventario no influyen en el cálculo
-  const sheet = upgradeSheet(input, entries, () => "tmp");
+  // Ids únicos: el peso de los contenedores se calcula por id de línea
+  let tmp = 0;
+  const sheet = upgradeSheet(input, entries, () => `tmp${++tmp}`);
   const missing: string[] = [];
   const lookup = (n: Named): CatalogEntry | null => {
     const e = entries.get(refKey(n.ref)) ?? null;

@@ -317,6 +317,20 @@ describe("derive", () => {
       s.inventory.items[1].quantity = 2;
       expect(derive(s, build()).weight.total).toBe(55 + 14);
     });
+    it("una bolsa de contención llena no suma su contenido", () => {
+      const entries = build();
+      const base = entries.get(`${ref("item:greataxe|xphb").book}:item:greataxe|xphb`)!;
+      entries.set(`${base.ref.book}:item:holding|xphb`, {
+        ...base, ref: ref("item:holding|xphb"),
+        data: { weight: 15, container: { weight: null, volume: null, items: [], weightless: true } },
+      });
+      const s = v2(entries);
+      s.inventory.items = [
+        line("item:holding|xphb", "Bolsa"),
+        { ...line("item:greataxe|xphb", "Hacha"), id: "axe", container: "item:holding|xphb" },
+      ];
+      expect(derive(s, entries).weight.total).toBe(15);
+    });
     it("capacidad FUE × 15, doble si es Grande; aviso al superarla", () => {
       const s = withPack(build());
       s.speciesChoices.size = "L";

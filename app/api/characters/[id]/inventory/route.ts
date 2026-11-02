@@ -6,7 +6,7 @@ import { failureResponse } from "@/lib/server/result";
 
 type Ctx = { params: Promise<{ id: string }> };
 
-// Una operación por petición: add, update, remove, coins u other. Solo el dueño; responde { inventory } completo.
+// Una operación por petición: add, update, remove, move, coins u other. Solo el dueño; responde { inventory } completo.
 export async function PATCH(req: NextRequest, { params }: Ctx) {
   const { id } = await params;
   const session = await sessionOf(req);
