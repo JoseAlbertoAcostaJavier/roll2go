@@ -2,11 +2,12 @@
 
 import { useState, type ReactNode } from "react";
 import type { Breakdown } from "@/lib/rules/dnd2024/derive";
-import { ABILITY_NAMES, skillName } from "@/lib/rules/dnd2024/sheet/labels";
+import { ABILITY_NAMES, CONDITION_NAMES, skillName } from "@/lib/rules/dnd2024/sheet/labels";
+import { CONDITION_RULES } from "@/lib/rules/dnd2024/sheet/conditions";
 import {
   ABILITY_TEXTS, AC_TEXT, DEFENSES_TEXT, INITIATIVE_TEXT, saveText, SKILL_TEXTS, SPEED_TEXT, type BreakdownUnit,
 } from "@/lib/rules/dnd2024/sheet/statTexts";
-import { DEFENSE_GROUPS, defenseLabel } from "./DefensesBox";
+import { DEFENSE_GROUPS, defenseLabel } from "./StatusBox";
 import { abbr } from "./statUi";
 import type { SheetData, ShowStat, Stat } from "./types";
 
@@ -52,6 +53,8 @@ export function useStatDialog(d: SheetData) {
         return { title: "Iniciativa", subject: "la iniciativa", description: INITIATIVE_TEXT, breakdown: b.initiative };
       case "speed":
         return { title: "Velocidad", subject: "la velocidad", description: SPEED_TEXT, breakdown: b.speed, unit: "feet" };
+      case "condition":
+        return { title: CONDITION_NAMES[stat.key] ?? stat.key, description: CONDITION_RULES[stat.key] ?? "" };
       case "defenses":
         return {
           title: "Defensas", description: DEFENSES_TEXT,

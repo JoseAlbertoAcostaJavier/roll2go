@@ -18,7 +18,7 @@ const step =
   "flex size-8 items-center justify-center rounded-md border border-line text-muted transition-colors enabled:hover:border-brand enabled:hover:text-white disabled:opacity-40";
 
 const TITLE: Record<Rest, string> = { long: "Descanso largo", short: "Descanso corto" };
-const LONG_QUESTION = "¿Hacer un descanso largo? Recuperas todos los puntos de golpe, los dados de golpe y los espacios de conjuro.";
+const LONG_QUESTION = "¿Hacer un descanso largo? Recuperas todos los puntos de golpe, los dados de golpe y los espacios de conjuro, y tu agotamiento baja en 1.";
 const SHORT_INTRO = "Un descanso corto dura al menos 1 hora. Puedes gastar dados de golpe para recuperar puntos de golpe.";
 const ALSO = "También recuperas los espacios de Magia de pacto y los usos que vuelven con un descanso corto.";
 

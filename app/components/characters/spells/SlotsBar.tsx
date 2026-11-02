@@ -1,7 +1,7 @@
 "use client";
 
 import type { Slots } from "@/lib/rules/dnd2024/derive";
-import { card } from "@/app/components/ui/formStyles";
+import { sheetCard } from "@/app/components/ui/formStyles";
 import SpellSlotBoxes from "./SpellSlotBoxes";
 
 type Props = {
@@ -35,7 +35,7 @@ export default function SlotsBar({ slots, used, onSet, busy }: Props) {
   if (levels.length === 0 && !slots.pact) return null;
 
   return (
-    <section className={`${card} animate-fade-up`} aria-labelledby="slots-title">
+    <section className={`${sheetCard} animate-fade-up`} aria-labelledby="slots-title">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <h3 id="slots-title" className="font-heading text-xl font-bold">Espacios de conjuro</h3>
       </div>

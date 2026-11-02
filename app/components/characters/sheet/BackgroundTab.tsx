@@ -6,7 +6,7 @@ import { BACKGROUND_SECTION_CHIPS, parseSection, type BackgroundSection } from "
 import type { SheetTextField } from "@/lib/rules/dnd2024/sheet/textFields";
 import type { Ability, BackgroundData } from "@/lib/rules/types";
 import Bbcode from "@/app/components/ui/Bbcode";
-import { card, cardTitle } from "@/app/components/ui/formStyles";
+import { sheetCard, cardTitle } from "@/app/components/ui/formStyles";
 import { InlineSelect, InlineText } from "./InlineText";
 import SectionChips from "./SectionChips";
 
@@ -52,7 +52,7 @@ export default function BackgroundTab({ characterId, isOwner, sheet, backstory, 
     <div>
       <SectionChips chips={BACKGROUND_SECTION_CHIPS} active={active} base={base} query={query} label="Filtrar trasfondo" />
       <div className="space-y-6">
-        <section aria-label="Trasfondo" className={`${card} animate-fade-up ${hide("trasfondo")}`}>
+        <section aria-label="Trasfondo" className={`${sheetCard} animate-fade-up ${hide("trasfondo")}`}>
           <h3 className={cardTitle}>Trasfondo: {background ? entryName(background) : sheet.background.name}</h3>
           {background ? (
             entryText(background) ? <Bbcode source={entryText(background)} className="text-sm" /> : null
@@ -75,7 +75,7 @@ export default function BackgroundTab({ characterId, isOwner, sheet, backstory, 
           </dl>
         </section>
 
-        <section aria-label="Características" className={`${card} animate-fade-up ${hide("caracteristicas")}`} style={{ animationDelay: "50ms" }}>
+        <section aria-label="Características" className={`${sheetCard} animate-fade-up ${hide("caracteristicas")}`} style={{ animationDelay: "50ms" }}>
           <h3 className={cardTitle}>Características</h3>
           <div className="grid grid-cols-2 gap-x-4 gap-y-4 lg:grid-cols-5">
             <InlineSelect
@@ -107,7 +107,7 @@ export default function BackgroundTab({ characterId, isOwner, sheet, backstory, 
           </div>
         </section>
 
-        <section aria-label="Aspecto" className={`${card} animate-fade-up ${hide("aspecto")}`} style={{ animationDelay: "100ms" }}>
+        <section aria-label="Aspecto" className={`${sheetCard} animate-fade-up ${hide("aspecto")}`} style={{ animationDelay: "100ms" }}>
           <h3 className={cardTitle}>Aspecto</h3>
           <div className={imageUrl ? "grid gap-6 lg:grid-cols-[1fr_20rem]" : ""}>
             {imageUrl && (

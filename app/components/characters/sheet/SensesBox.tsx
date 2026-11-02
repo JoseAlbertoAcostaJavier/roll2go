@@ -1,6 +1,6 @@
 import { PASSIVE_SKILLS } from "@/lib/rules/dnd2024/derive/abilities";
 import { distanceText, skillName } from "@/lib/rules/dnd2024/sheet/labels";
-import { card, cardTitle } from "@/app/components/ui/formStyles";
+import { sheetCard, cardTitle } from "@/app/components/ui/formStyles";
 import type { SheetData } from "./types";
 
 // Sentidos: Percepción, Investigación y Perspicacia pasivas (10 + bonificador) y visión en la oscuridad si la hay
@@ -12,7 +12,7 @@ export default function SensesBox({ d, className = "" }: {
     return s ? [{ id, value: 10 + s.total }] : [];
   });
   return (
-    <section className={`${card} ${className}`}>
+    <section className={`${sheetCard} ${className}`}>
       <h3 className={cardTitle}>Sentidos</h3>
       <ul className="divide-y divide-line text-sm">
         {passives.map((p) => (

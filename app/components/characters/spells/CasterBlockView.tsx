@@ -9,7 +9,7 @@ import { ABILITY_NAMES, spellOptionName, spellOptionTitle } from "@/lib/rules/dn
 import { EMPTY_SPELL_FILTER, matchesSpellFilter, type SpellFilter } from "@/lib/rules/dnd2024/spells/spellFilters";
 import { recoversOnShortRest, type SpellOp } from "@/lib/rules/dnd2024/spells/spellOps";
 import type { Ref } from "@/lib/rules/types";
-import { card, field, labelClass, primaryButton } from "@/app/components/ui/formStyles";
+import { sheetCard, field, labelClass, primaryButton } from "@/app/components/ui/formStyles";
 import RoundIcon from "@/app/components/ui/RoundIcon";
 import RuleSelect from "../creator/RuleSelect";
 import LimitedUses from "./LimitedUses";
@@ -173,7 +173,7 @@ export default function CasterBlockView({ block, listId, iconId, spells, isOwner
   const tabId = (t: ListTab) => `${refKey(block.class)}-${t}`.replace(/[^\w-]/g, "_");
 
   return (
-    <section className={`${card} animate-fade-up`} aria-labelledby={`${tabId("preparados")}-title`}>
+    <section className={`${sheetCard} animate-fade-up`} aria-labelledby={`${tabId("preparados")}-title`}>
       <div className="mb-4 flex items-center gap-3">
         <RoundIcon kind="class" id={iconId} label={block.name} size={48} />
         <h3 id={`${tabId("preparados")}-title`} className="font-heading text-xl font-bold">{block.name}</h3>

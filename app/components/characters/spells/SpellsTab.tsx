@@ -14,7 +14,7 @@ import type { SpellRow } from "@/lib/rules/dnd2024/spells/spellTable";
 import {
   EMPTY_SPELL_TABLE_FILTER, parseSpellTableFilter, spellTableHref, spellViewHref,
 } from "@/lib/rules/dnd2024/spells/spellTableFilter";
-import { card } from "@/app/components/ui/formStyles";
+import { sheetCard } from "@/app/components/ui/formStyles";
 import CasterBlockView from "./CasterBlockView";
 import SlotsBar from "./SlotsBar";
 import SpellDialog from "./SpellDialog";
@@ -227,7 +227,7 @@ export default function SpellsTab({ characterId, isOwner, initial, lists, spells
       ))}
 
       {other.length > 0 && (
-        <section className={`${card} animate-fade-up`} aria-labelledby="other-spells-title">
+        <section className={`${sheetCard} animate-fade-up`} aria-labelledby="other-spells-title">
           <div className="mb-2 flex items-center gap-3">
             <RoundIcon kind="feature" id="others" label="Otros" size={40} />
             <h3 id="other-spells-title" className="font-heading text-xl font-bold">Otros</h3>

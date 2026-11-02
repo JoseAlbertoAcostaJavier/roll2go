@@ -3,15 +3,15 @@
 import type { ReactNode } from "react";
 import AbilityStrip from "./AbilityStrip";
 import CombatBox from "./CombatBox";
-import DefensesBox from "./DefensesBox";
 import ProficienciesBox from "./ProficienciesBox";
 import SavesBox from "./SavesBox";
 import SensesBox from "./SensesBox";
 import SkillsBox from "./SkillsBox";
 import StatDialog from "./StatDialog";
+import StatusBox from "./StatusBox";
 import { useStatDialog } from "./useStatDialog";
 import type { HitDicePool } from "@/lib/rules/dnd2024/sheet/rest";
-import type { SheetData } from "./types";
+import type { SheetData, StatusState } from "./types";
 
 export type { SheetData } from "./types";
 
@@ -22,7 +22,7 @@ export type { SheetData } from "./types";
 //   queden entre las salvaciones y los sentidos (`order-*`). Cada caja se pinta una sola vez.
 // En escritorio la columna izquierda y la central ocupan las dos filas; la segunda es flexible (`1fr`), así que la
 // primera mide lo que combate y defensas, y el panel de pestañas empieza justo debajo de ellas.
-export default function SheetLayout({ d, characterId, isOwner, version, pools, tabs, children }: {
+export default function SheetLayout({ d, characterId, isOwner, version, pools, status, tabs, children }: {
   d: SheetData;
   characterId: string;
   isOwner: boolean;
@@ -30,6 +30,8 @@ export default function SheetLayout({ d, characterId, isOwner, version, pools, t
   version: number;
   /** Dados de golpe por clase (línea bajo los PG). */
   pools: HitDicePool[];
+  /** Inspiración heroica, estados y agotamiento (`statusOf`). */
+  status: StatusState;
   /** Navegación de pestañas (`SheetTabs`). */
   tabs: ReactNode;
   /** Paneles de las pestañas, pintados por la página. */
@@ -40,7 +42,7 @@ export default function SheetLayout({ d, characterId, isOwner, version, pools, t
   return (
     <div className="space-y-6">
       <div className="animate-fade-up">
-        <AbilityStrip d={d} characterId={characterId} isOwner={isOwner} version={version} pools={pools} show={show} />
+        <AbilityStrip d={d} characterId={characterId} isOwner={isOwner} version={version} pools={pools} show={show} status={status} />
       </div>
 
       <div
@@ -50,7 +52,7 @@ export default function SheetLayout({ d, characterId, isOwner, version, pools, t
         {/* Combate y defensas: arriba a todo el ancho; en escritorio, en la columna derecha */}
         <div className="order-1 flex min-w-0 flex-col gap-6 md:col-span-2 xl:col-[3] xl:row-[1]">
           <CombatBox d={d} show={show} />
-          <DefensesBox defenses={d.defenses} show={show} />
+          <StatusBox characterId={characterId} isOwner={isOwner} defenses={d.defenses} status={status} show={show} />
         </div>
 
         {/* Columna izquierda: salvaciones, sentidos y competencias */}

@@ -83,6 +83,18 @@ describe("applyRestOperation", () => {
     expect(set()["sheet.hitDiceUsed"]).toEqual({});
   });
 
+  it("descanso largo: baja en 1 el agotamiento guardado", async () => {
+    load(sheetOf({ exhaustion: 2 }));
+    expect(await applyRestOperation(OWNER, CHAR, { op: "longRest" })).toEqual({ ok: true, healed: 0, rolls: [] });
+    expect(set()["sheet.exhaustion"]).toBe(1);
+  });
+
+  it("descanso largo: una hoja sin agotamiento no gana el campo", async () => {
+    load(sheetOf());
+    await applyRestOperation(OWNER, CHAR, { op: "longRest" });
+    expect(Object.keys(set())).not.toContain("sheet.exhaustion");
+  });
+
   it("operación no válida: 400", async () => {
     load(sheetOf());
     expect(await applyRestOperation(OWNER, CHAR, { op: "volar" })).toEqual({ ok: false, status: 400, error: "Operación no válida." });

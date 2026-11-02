@@ -170,6 +170,12 @@ export type Dnd2024SheetV2 = Omit<Dnd2024Sheet, "version" | "classes"> & {
    * ficha. Las hojas guardadas antes no lo tienen: ver `currentMasteries`.
    */
   weaponMasteries: Ref[];
+  /** Inspiración heroica. Las hojas guardadas antes no lo tienen: ver `statusOf`. */
+  heroicInspiration?: boolean;
+  /** Estados activos (claves de `CONDITION_NAMES` sin `exhaustion`), en el orden de `CONDITION_NAMES`. */
+  conditions?: string[];
+  /** Nivel de agotamiento (0–6). */
+  exhaustion?: number;
 };
 
 export type AnySheet = Dnd2024Sheet | Dnd2024SheetV2;
