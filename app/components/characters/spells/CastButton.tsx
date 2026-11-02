@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { ChevronDown } from "lucide-react";
 import type { CastOption } from "@/lib/rules/dnd2024/spells/castOptions";
 
@@ -108,7 +109,9 @@ export default function CastButton({ options, onCast, disabled = false, name }: 
       >
         Lanzar <ChevronDown size={12} aria-hidden="true" />
       </button>
-      {open && (
+      {/* En un portal: un antecesor con `transform` (las animaciones de entrada lo dejan puesto) haría de bloque
+          contenedor del `fixed` y lo desplazaría */}
+      {open && createPortal(
         <div
           ref={menu}
           id={id}
@@ -132,7 +135,8 @@ export default function CastButton({ options, onCast, disabled = false, name }: 
               {o.label}
             </button>
           ))}
-        </div>
+        </div>,
+        document.body,
       )}
     </>
   );
