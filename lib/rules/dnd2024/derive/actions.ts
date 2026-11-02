@@ -3,11 +3,11 @@
 import type { CatalogEntry, SpellOption } from "@/lib/rules/catalog/types";
 import { actionIcon } from "@/lib/rules/dnd2024/sheet/actionIcons";
 import { refKey } from "@/lib/rules/dnd2024/sheet/equipmentRefs";
-import { ABILITY_ABBR, ABILITY_NAMES, DAMAGE_TYPE_NAMES, fmtMod } from "@/lib/rules/dnd2024/sheet/labels";
-import type { Ability, ActionData, FeatureData, Ref, SpellData } from "@/lib/rules/types";
+import { damageIdOf, hitOf, usableSpells } from "@/lib/rules/dnd2024/spells/spellTable";
+import type { ActionData, FeatureData, Ref } from "@/lib/rules/types";
 import type { Attack } from "./attacks";
 import type { FeatureGroup } from "./features";
-import type { CasterBlock, SpellsSummary } from "./spells";
+import type { SpellsSummary } from "./spells";
 
 export type ActionGroup = "action" | "bonus" | "reaction" | "other";
 export type ActionItem =
@@ -47,59 +47,18 @@ const BASIC_GROUPS: Record<ActionData["time"], ActionGroup> = {
   action: "action", bonus: "bonus", reaction: "reaction", free: "other", varies: "other",
 };
 
-// «Daño de fuego» / «Daño necrótico» → "fire" / "necrotic" (etiquetas de `spellTags`)
-const DAMAGE_IDS = new Map(Object.entries(DAMAGE_TYPE_NAMES).map(([id, name]) => [name.toLowerCase(), id]));
-const damageIdOf = (tag: string) => {
-  const m = /^Daño (?:de )?(.+)$/.exec(tag);
-  return m ? (DAMAGE_IDS.get(m[1].toLowerCase()) ?? null) : null;
-};
-// «Salvación de Destreza» → "dex"
-const SAVE_ABILITIES = new Map(Object.entries(ABILITY_NAMES).map(([a, name]) => [`Salvación de ${name}`, a as Ability]));
-const SPELL_ATTACK_TAG = "Ataque de conjuro";
-
 // Ataque adicional (de cualquier clase o subclase) y los del Guerrero, por el nombre en la clave del rasgo
 const featureName = (ref: Ref) => ref.key.replace(/^[^:]*:/, "");
 const EXTRA_ATTACKS: [string, number][] = [["three extra attacks|", 3], ["two extra attacks|", 2], ["extra attack|", 1]];
 
-// «+N» con ataque de conjuro, «CD N {Car}» con salvación; null sin tirada o sin bloque lanzador (especie, dotes: no
-// se guarda con qué característica los lanza)
-function hitOf(tags: string[], block: CasterBlock | null): string | null {
-  if (!block) return null;
-  if (tags.includes(SPELL_ATTACK_TAG)) return fmtMod(block.attack);
-  const save = tags.map((t) => SAVE_ABILITIES.get(t)).find((a) => a);
-  return save ? `CD ${block.dc} ${ABILITY_ABBR[save]}` : null;
-}
-
-// Conjuros que se pueden lanzar, como en la pestaña Conjuros: trucos, preparados (en modo `levelUp`, los aprendidos;
-// en el Mago, los preparados de su libro), siempre preparados y con usos de cada bloque, y los de especie, legado y
-// dotes; cada uno una vez (el primero que aparece)
+// Conjuros que se pueden lanzar (los mismos que en la tabla de conjuros), con su tirada y tipo de daño
 function spellItems(spells: SpellsSummary, entries: Map<string, CatalogEntry>): ActionItem[] {
-  const sources: { ref: Ref; block: CasterBlock | null; origin: string }[] = [
-    ...spells.blocks.flatMap((b) => [
-      ...b.cantrips.map((n) => ({ ref: n.ref, block: b, origin: b.name })),
-      ...b.prepared.map((r) => ({ ref: r, block: b, origin: b.name })),
-      ...b.always.map((a) => ({ ref: a.spell.ref, block: b, origin: a.origin })),
-      ...b.limited.map((l) => ({ ref: l.spell.ref, block: b, origin: l.origin })),
-    ]),
-    ...spells.other.map((o) => ({ ref: o.spell.ref, block: null, origin: o.origin })),
-  ];
-  const seen = new Set<string>();
-  const out: ActionItem[] = [];
-  for (const s of sources) {
-    const key = refKey(s.ref);
-    const entry = entries.get(key);
-    // Sin entrada en el catálogo no se sabe cuánto cuesta lanzarlo (derive ya lo avisa en `missing`)
-    if (seen.has(key) || !entry) continue;
-    seen.add(key);
-    const data = entry.data as SpellData;
-    const damageTypeId = data.tags.map(damageIdOf).find((d) => d) ?? null;
-    out.push({
-      kind: "spell", group: spellGroup(data.time), ref: s.ref, name: entry.nameEs ?? entry.name,
-      level: data.level, range: data.range, hit: hitOf(data.tags, s.block),
-      // El catálogo no guarda los dados de daño de los conjuros
-      damage: null, damageTypeId, notes: s.origin,
-    });
-  }
+  const out: ActionItem[] = usableSpells(spells, entries).map(({ ref, block, origin, entry, data }) => ({
+    kind: "spell", group: spellGroup(data.time), ref, name: entry.nameEs ?? entry.name,
+    level: data.level, range: data.range, hit: hitOf(data.tags, block),
+    // El catálogo no guarda los dados de daño de los conjuros
+    damage: null, damageTypeId: data.tags.map(damageIdOf).find((d) => d) ?? null, notes: origin,
+  }));
   return out.sort((a, b) => (a.kind === "spell" && b.kind === "spell"
     ? a.level - b.level || a.name.localeCompare(b.name, "es") : 0));
 }
