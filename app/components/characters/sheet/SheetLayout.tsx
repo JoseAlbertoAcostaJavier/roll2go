@@ -3,12 +3,12 @@
 import type { ReactNode } from "react";
 import AbilityStrip from "./AbilityStrip";
 import CombatBox from "./CombatBox";
-import DefensesBox from "./DefensesBox";
 import ProficienciesBox from "./ProficienciesBox";
 import SavesBox from "./SavesBox";
 import SensesBox from "./SensesBox";
 import SkillsBox from "./SkillsBox";
 import StatDialog from "./StatDialog";
+import StatusBox from "./StatusBox";
 import { useStatDialog } from "./useStatDialog";
 import type { HitDicePool } from "@/lib/rules/dnd2024/sheet/rest";
 import type { SheetData, StatusState } from "./types";
@@ -52,7 +52,7 @@ export default function SheetLayout({ d, characterId, isOwner, version, pools, s
         {/* Combate y defensas: arriba a todo el ancho; en escritorio, en la columna derecha */}
         <div className="order-1 flex min-w-0 flex-col gap-6 md:col-span-2 xl:col-[3] xl:row-[1]">
           <CombatBox d={d} show={show} />
-          <DefensesBox defenses={d.defenses} show={show} />
+          <StatusBox characterId={characterId} isOwner={isOwner} defenses={d.defenses} status={status} show={show} />
         </div>
 
         {/* Columna izquierda: salvaciones, sentidos y competencias */}

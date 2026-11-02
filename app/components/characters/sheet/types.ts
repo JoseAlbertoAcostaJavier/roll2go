@@ -10,6 +10,7 @@ export type SheetData = Pick<Derived,
 export type Stat =
   | { kind: "ability" | "save"; ability: Ability }
   | { kind: "skill"; id: string; ability: Ability }
+  | { kind: "condition"; key: string }
   | { kind: "ac" | "initiative" | "speed" | "defenses" };
 
 /** Abre el desglose de un valor; el botón se captura al pulsar (Safari no lo enfoca). */
