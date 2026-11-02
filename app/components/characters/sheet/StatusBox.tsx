@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { DefenseKind, DefenseRow } from "@/lib/rules/dnd2024/derive";
 import MaskIcon from "@/app/components/ui/MaskIcon";
@@ -35,9 +35,13 @@ export default function StatusBox({ characterId, isOwner, defenses, status, show
   const [error, setError] = useState("");
   // Una sola petición a la vez: los cambios mientras hay una pendiente se ignoran
   const pending = useRef(false);
+  const [saving, setSaving] = useState(false);
+  const [refreshing, startRefresh] = useTransition();
+  // Ocupado: petición en curso o refresco de la página pendiente; no se adoptan props ni se aceptan cambios nuevos
+  const busy = saving || refreshing;
 
   // Si el servidor trae otro estado (tras refrescar), se adopta
-  if (seen !== status) {
+  if (seen !== status && !busy) {
     setSeen(status);
     if (seen.conditions.join() !== status.conditions.join() || seen.exhaustion !== status.exhaustion) {
       setConditions(status.conditions);
@@ -48,6 +52,7 @@ export default function StatusBox({ characterId, isOwner, defenses, status, show
   async function save(body: object, apply: () => void, undo: () => void) {
     if (pending.current) return;
     pending.current = true;
+    setSaving(true);
     apply();
     setError("");
     try {
@@ -58,12 +63,18 @@ export default function StatusBox({ characterId, isOwner, defenses, status, show
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "No se pudo guardar el estado.");
-      router.refresh();
+      // La respuesta es el estado guardado: se adopta tal cual y el refresco solo sincroniza el resto de la página
+      if (Array.isArray(data.status?.conditions) && typeof data.status?.exhaustion === "number") {
+        setConditions(data.status.conditions);
+        setExhaustion(data.status.exhaustion);
+      }
+      startRefresh(() => router.refresh());
     } catch (e) {
       undo();
       setError(e instanceof Error ? e.message : "No se pudo guardar el estado.");
     } finally {
       pending.current = false;
+      setSaving(false);
     }
   }
 
@@ -158,6 +169,7 @@ export default function StatusBox({ characterId, isOwner, defenses, status, show
           onCondition={setCondition}
           onExhaustion={setLevel}
           error={error}
+          busy={busy}
           onClose={() => setManaging(null)}
           opener={managing}
         />

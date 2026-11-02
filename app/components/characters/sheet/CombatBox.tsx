@@ -27,11 +27,11 @@ export default function CombatBox({ d, show, className = "" }: {
         aria-haspopup="dialog"
         data-print="text"
         onClick={show({ kind: "ac" })}
-        className="group relative h-28 w-28 cursor-pointer bg-brand/50 transition-colors hover:bg-brand focus-visible:outline-2 focus-visible:outline-brand"
+        className="group relative h-28 w-28 cursor-pointer bg-brand/50 outline-none transition-colors hover:bg-brand focus-visible:bg-brand"
         style={{ clipPath: SHIELD }}
       >
         <span
-          className="absolute inset-[2px] flex flex-col items-center justify-start bg-panel pt-4 text-center group-hover:bg-surface"
+          className="absolute inset-[2px] group-focus-visible:inset-[5px] flex flex-col items-center justify-start bg-panel pt-4 text-center group-hover:bg-surface group-focus-visible:bg-surface"
           style={{ clipPath: SHIELD }}
         >
           <span className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-muted">

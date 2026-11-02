@@ -11,12 +11,14 @@ import { iconSrc } from "@/lib/utils/icons";
 // Gestión de estados del dueño: una casilla por estado y el nivel de agotamiento (0–6). Cada cambio se guarda al
 // momento (lo hace quien lo abre). Mismo comportamiento que StatDialog: foco atrapado, Escape cierra y el foco vuelve
 // a «Gestionar estados».
-export default function ConditionsDialog({ conditions, exhaustion, onCondition, onExhaustion, error, onClose, opener }: {
+export default function ConditionsDialog({ conditions, exhaustion, onCondition, onExhaustion, error, busy, onClose, opener }: {
   conditions: string[];
   exhaustion: number;
   onCondition: (key: string, active: boolean) => void;
   onExhaustion: (level: number) => void;
   error: string;
+  /** Guardando: los controles quedan en `aria-disabled` (sin perder el foco) y no aceptan cambios. */
+  busy: boolean;
   onClose: () => void;
   /** Botón que abrió el diálogo; recibe el foco al cerrar. */
   opener: HTMLElement | null;
@@ -59,6 +61,7 @@ export default function ConditionsDialog({ conditions, exhaustion, onCondition, 
     >
       <div
         ref={box}
+        aria-busy={busy}
         role="dialog"
         aria-modal="true"
         aria-labelledby={`${uid}-title`}
@@ -86,7 +89,8 @@ export default function ConditionsDialog({ conditions, exhaustion, onCondition, 
                 <input
                   type="checkbox"
                   checked={conditions.includes(k)}
-                  onChange={(e) => onCondition(k, e.target.checked)}
+                  aria-disabled={busy}
+                  onChange={(e) => !busy && onCondition(k, e.target.checked)}
                   className="h-4 w-4 shrink-0 accent-brand"
                 />
                 <MaskIcon src={iconSrc("condition", k)} size={18} className="text-muted" />
@@ -104,7 +108,8 @@ export default function ConditionsDialog({ conditions, exhaustion, onCondition, 
           <select
             id={`${uid}-exh`}
             value={exhaustion}
-            onChange={(e) => onExhaustion(Number(e.target.value))}
+            aria-disabled={busy}
+            onChange={(e) => !busy && onExhaustion(Number(e.target.value))}
             className="w-full rounded-md border border-line bg-surface px-3 py-2 text-fg focus:border-brand focus:outline-none"
           >
             {[0, 1, 2, 3, 4, 5, 6].map((n) => <option key={n} value={n}>{n}</option>)}
