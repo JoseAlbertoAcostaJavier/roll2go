@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { BedDouble, Coffee, LoaderCircle, Minus, Plus } from "lucide-react";
 import { CampaignDialog } from "@/app/components/campaigns/CharacterActions";
 import { healingRange, type HitDicePool } from "@/lib/rules/dnd2024/sheet/rest";
+import { REST_EVENT } from "./HpEditor";
 
 type Rest = "short" | "long";
 
@@ -75,6 +76,8 @@ export default function RestButtons({ characterId, pools, conMod, recoversOther 
         setError(data?.error ?? `El servidor ha respondido con un error (${res.status}).`);
         return;
       }
+      // Los PG que el editor aún no ha enviado se calcularon antes del descanso: el descanso gana
+      window.dispatchEvent(new Event(REST_EVENT));
       router.refresh();
       const rolls: number[] = Array.isArray(data?.rolls) ? data.rolls : [];
       if (rest === "short" && rolls.length > 0) {

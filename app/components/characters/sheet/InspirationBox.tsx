@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Check } from "lucide-react";
 
@@ -11,9 +11,12 @@ export default function InspirationBox({ characterId, initial, isOwner, classNam
   const router = useRouter();
   const [on, setOn] = useState(initial);
   const [error, setError] = useState("");
-  // Una sola petición a la vez: los clics mientras hay una pendiente se ignoran
+  // Una sola petición a la vez: los clics mientras hay una pendiente o mientras llega su refresco se ignoran (si no, el
+  // refresco de la primera traería el valor anterior al segundo cambio)
   const pending = useRef(false);
-  const [busy, setBusy] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [refreshing, startRefresh] = useTransition();
+  const busy = saving || refreshing;
   // Tras un refresco (otra pestaña o dispositivo) adopta el valor nuevo, salvo que haya una petición en curso
   const [shown, setShown] = useState(initial);
   if (shown !== initial && !busy) {
@@ -22,9 +25,9 @@ export default function InspirationBox({ characterId, initial, isOwner, classNam
   }
 
   const toggle = async () => {
-    if (pending.current) return;
+    if (pending.current || refreshing) return;
     pending.current = true;
-    setBusy(true);
+    setSaving(true);
     const next = !on;
     setOn(next);
     setError("");
@@ -36,13 +39,13 @@ export default function InspirationBox({ characterId, initial, isOwner, classNam
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "No se pudo guardar la inspiración.");
-      router.refresh();
+      startRefresh(() => router.refresh());
     } catch (e) {
       setOn(!next);
       setError(e instanceof Error ? e.message : "No se pudo guardar la inspiración.");
     } finally {
       pending.current = false;
-      setBusy(false);
+      setSaving(false);
     }
   };
 
