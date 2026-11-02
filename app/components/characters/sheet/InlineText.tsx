@@ -93,12 +93,13 @@ export function InlineText({ characterId, field, label, value, multiline, editab
             id={inputId}
             autoFocus
             value={draft}
-            disabled={saving}
+            readOnly={saving}
+            aria-busy={saving || undefined}
             rows={multiline ? 4 : undefined}
             aria-invalid={error ? true : undefined}
             aria-describedby={error ? `${inputId}-error` : undefined}
             className={`${fieldClass} ${multiline ? "min-h-24 resize-y" : ""}`}
-            onChange={(e) => setDraft(e.target.value)}
+            onChange={(e) => { if (!saving) setDraft(e.target.value); }}
             onBlur={() => {
               if (cancelled.current) return;
               void commit();
@@ -148,14 +149,24 @@ export function InlineSelect({ characterId, field, label, value, options, editab
 }) {
   const router = useRouter();
   const [shown, setShown] = useShown(value);
+  const [draft, setDraft] = useState(value);
+  const [seenValue, setSeenValue] = useState(value);
+  if (seenValue !== value) {
+    setSeenValue(value);
+    setDraft(value);
+  }
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  // Con el teclado, las flechas cambian el valor sin guardar: se guarda al confirmar (Enter o salir del campo)
+  const keyboard = useRef(false);
   const inputId = `inline-${characterId}-${field}`;
   // Un valor guardado que no es de la lista se conserva como opción
   const known = options.some((o) => o.id === shown);
   const nameOf = (id: string) => options.find((o) => o.id === id)?.name ?? id;
 
-  async function change(next: string) {
+  async function commit(next: string) {
+    if (saving) return;
+    if (next === shown) return;
     setSaving(true);
     setError("");
     const message = await saveField(characterId, field, next);
@@ -175,9 +186,25 @@ export function InlineSelect({ characterId, field, label, value, options, editab
         <>
           <select
             id={inputId}
-            value={shown}
-            disabled={saving}
-            onChange={(e) => void change(e.target.value)}
+            value={draft}
+            aria-busy={saving || undefined}
+            onPointerDown={() => { keyboard.current = false; }}
+            onKeyDown={(e) => {
+              if (saving) {
+                e.preventDefault();
+              } else if (e.key === "Enter") {
+                e.preventDefault();
+                void commit(draft);
+              } else if (e.key !== "Tab") {
+                keyboard.current = true;
+              }
+            }}
+            onBlur={() => { keyboard.current = false; void commit(draft); }}
+            onChange={(e) => {
+              if (saving) return;
+              setDraft(e.target.value);
+              if (!keyboard.current) void commit(e.target.value);
+            }}
             aria-describedby={error ? `${inputId}-error` : undefined}
             className={`${fieldClass} py-1.5 text-sm`}
           >
