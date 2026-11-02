@@ -250,7 +250,7 @@ export default async function CharacterPage({ params, searchParams }: Props) {
             current={masteryCurrent}
             options={masteryOptions}
           />
-          <FeaturesTab groups={d.features} entries={entries} />
+          <FeaturesTab groups={d.features} entries={entries} base={base} query={query} />
         </section>
         <section {...panel("inventario")}>
           {panelTitle("inventario")}
