@@ -8,6 +8,7 @@ import type { Ref } from "@/lib/rules/types";
 import Bbcode from "@/app/components/ui/Bbcode";
 import MaskIcon from "@/app/components/ui/MaskIcon";
 import SpellDialog from "@/app/components/characters/spells/SpellDialog";
+import { spellHrefFrom } from "@/app/components/characters/spells/SpellList";
 import StatDialog from "./StatDialog";
 
 /** Acción básica de combate para su diálogo: icono, nombre, cuánto cuesta y texto. */
@@ -67,13 +68,6 @@ export default function ActionsDialogs({ characterId, active, spells, basics, ch
       )}
     </ActionsContext.Provider>
   );
-}
-
-// La dirección actual con `?spell=` (conserva la pestaña y el filtro)
-function spellHrefFrom(search: string, ref: Ref) {
-  const params = new URLSearchParams(search);
-  params.set("spell", refKey(ref));
-  return `?${params.toString()}`;
 }
 
 /** Nombre de un conjuro que abre su ficha (enlace propio: con Ctrl o en otra pestaña, la abre por la dirección). */

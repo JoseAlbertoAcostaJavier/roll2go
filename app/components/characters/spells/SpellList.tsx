@@ -32,6 +32,13 @@ export type SpellOpener = (ref: Ref, from: HTMLElement) => void;
 /** Enlace propio de la ficha de un conjuro. */
 export const spellHref = (ref: Ref) => `?tab=conjuros&spell=${encodeURIComponent(refKey(ref))}`;
 
+/** La dirección actual con `?spell=` (conserva la pestaña y los filtros). */
+export function spellHrefFrom(search: string, ref: Ref) {
+  const params = new URLSearchParams(search);
+  params.set("spell", refKey(ref));
+  return `?${params.toString()}`;
+}
+
 function Meta({ label, value, icon: Icon }: { label: string; value: string; icon: LucideIcon }) {
   if (!value) return null;
   return (
