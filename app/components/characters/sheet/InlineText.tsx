@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { SHEET_TEXT_LIMITS, type SheetTextField } from "@/lib/rules/dnd2024/sheet/textFields";
 import { errorClass, field as fieldClass } from "@/app/components/ui/formStyles";
@@ -49,6 +49,7 @@ export function InlineText({ characterId, field, label, value, multiline, editab
   const [error, setError] = useState("");
   const button = useRef<HTMLButtonElement>(null);
   const cancelled = useRef(false);
+  const returnFocus = useRef(false);
   const inputId = `inline-${characterId}-${field}`;
 
   const open = () => {
@@ -58,18 +59,27 @@ export function InlineText({ characterId, field, label, value, multiline, editab
     setEditing(true);
   };
 
+  // Cierra la edición y pide devolver el foco al botón; el efecto de abajo lo hace cuando el botón ya está montado.
+  // `cancelled` hace que el blur del input que se desmonta no vuelva a guardar.
   const close = () => {
+    cancelled.current = true;
+    returnFocus.current = true;
     setEditing(false);
-    // El botón se monta de nuevo al cerrar: el foco vuelve en el siguiente ciclo
-    requestAnimationFrame(() => button.current?.focus());
   };
+
+  useEffect(() => {
+    if (!editing && returnFocus.current) {
+      returnFocus.current = false;
+      button.current?.focus();
+    }
+  }, [editing]);
 
   async function commit(focusBack = false) {
     if (saving) return;
     const next = draft.trim();
     if (next === shown.trim()) {
-      setEditing(false);
       if (focusBack) close();
+      else setEditing(false);
       return;
     }
     setSaving(true);
@@ -80,8 +90,8 @@ export function InlineText({ characterId, field, label, value, multiline, editab
       return;
     }
     setShown(next);
-    setEditing(false);
     if (focusBack) close();
+    else setEditing(false);
     router.refresh();
   }
 
