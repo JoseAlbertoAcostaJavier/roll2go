@@ -17,6 +17,7 @@ import { bareName, isRef, refKey } from "@/lib/rules/dnd2024/sheet/equipmentRefs
 import { LEVEL_CHANGED } from "@/lib/rules/dnd2024/levels/levelOps";
 import { masteryCount, masteryMeleeOnly, validateMasteries } from "@/lib/rules/dnd2024/levels/masteries";
 import { applyRest, hitDicePools } from "@/lib/rules/dnd2024/sheet/rest";
+import { applyStatus, statusOf } from "@/lib/rules/dnd2024/sheet/status";
 import { applySpellOp } from "@/lib/rules/dnd2024/spells/spellOps";
 import type { Dnd2024SheetV2 } from "@/lib/rules/dnd2024/sheet/sheet";
 import type { ItemData, Ref } from "@/lib/rules/types";
@@ -201,6 +202,36 @@ export async function applyRestOperation(
       { $set: Object.fromEntries(REST_FIELDS.filter((f) => result.sheet[f] !== undefined).map((f) => [`sheet.${f}`, result.sheet[f]])) },
     );
     if (res.matchedCount === 1) return { ok: true, healed: result.healed, rolls: result.rolls };
+  }
+  return fail(409, "La ficha ha cambiado; recarga la página.");
+}
+
+// Campo de la hoja que cambia cada operación de estado
+const STATUS_FIELDS = { inspiration: "heroicInspiration", condition: "conditions", exhaustion: "exhaustion" } as const;
+
+/* Inspiración heroica, estados y agotamiento (spec de la ficha visual §2). Solo se escribe el campo que cambia, y solo
+   si sigue como se leyó. */
+export async function applyStatusOperation(
+  userId: string,
+  id: string,
+  body: unknown,
+): Promise<Result<{ status: ReturnType<typeof statusOf> }>> {
+  const name = typeof body === "object" && body !== null ? (body as { op?: unknown }).op : undefined;
+  const field = typeof name === "string" && Object.hasOwn(STATUS_FIELDS, name) ? STATUS_FIELDS[name as keyof typeof STATUS_FIELDS] : null;
+
+  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+    const { found, failure } = await loadForWrite(userId, id);
+    if (failure) return failure;
+
+    const result = applyStatus(found.sheet, body);
+    if (!result.ok || !field) return fail(400, result.ok ? "Petición no válida." : result.error);
+
+    const stored = found.character.sheet as Record<string, unknown> | undefined;
+    const res = await Character.updateOne(
+      { _id: id, "sheet.version": 2, [`sheet.${field}`]: unchangedFilter(stored?.[field]) },
+      { $set: { [`sheet.${field}`]: result.sheet[field] } },
+    );
+    if (res.matchedCount === 1) return { ok: true, status: statusOf(result.sheet) };
   }
   return fail(409, "La ficha ha cambiado; recarga la página.");
 }
