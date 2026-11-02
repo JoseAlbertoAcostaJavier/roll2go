@@ -34,4 +34,11 @@ describe("castOptions", () => {
     expect(castOptions(row(0), slots, {})).toEqual([]);
     expect(castOptions(row(1, { limited: { key: "k", max: 1, used: 0 } }), slots, {})).toEqual([]);
   });
+  it("brujo multiclase: espacios normales y pacto a la vez", () => {
+    const mixed = { levels: { "1": 2, "2": 1 }, pact: { count: 2, level: 2 } };
+    expect(labels(castOptions(row(1), mixed, { "1": 2 }))).toEqual(["Nivel 2", "Magia de pacto (nivel 2)"]);
+    expect(labels(castOptions(row(1, { ritual: true }), mixed, { "1": 2 }))).toEqual([
+      "Nivel 2", "Magia de pacto (nivel 2)", "Lanzar como ritual",
+    ]);
+  });
 });
