@@ -2,12 +2,13 @@ import { describe, expect, test } from "vitest";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { inlineTags } from "@/lib/rules/import/toBbcode";
+import es from "@/lib/rules/i18n/es.json";
 import {
   normalizeAll, normalizeBackground, normalizeDefenses, normalizeFeat, normalizeItem, normalizeLineage, normalizeOptionalFeature, expandVersions, resolveCopy, textChoiceFeatures, toIdentifier, unreachableFeatures,
   type NormalizedEntry, type RawFiles,
 } from "@/lib/rules/import/normalize";
 import type {
-  BackgroundData, ClassData, FeatData, FeatureData, ItemData, LineageData, NameTableData, OptionalFeatureData, SpeciesData, SpellData,
+  ActionData, BackgroundData, ClassData, FeatData, FeatureData, ItemData, LineageData, NameTableData, OptionalFeatureData, SpeciesData, SpellData,
   SubclassData,
 } from "@/lib/rules/types";
 
@@ -179,7 +180,7 @@ describe("clase (Bárbaro)", () => {
   test("rasgos de clase con la clase como padre", () => {
     const rage = find("classFeature", "classFeature:rage|barbarian|xphb|1")!;
     expect(rage.parent).toEqual({ key: "class:barbarian|xphb" });
-    expect(rage.data).toEqual({ level: 1, className: "Barbarian" });
+    expect(rage.data).toEqual({ level: 1, className: "Barbarian", activation: "bonus" });
     expect(entries.filter((e) => e.kind === "classFeature")).toHaveLength(3);
   });
   test("subclase", () => {
@@ -789,5 +790,43 @@ describe("normalizeDefenses", () => {
       { name: "Tiefling", source: "XPHB" },
     );
     expect((e.data as LineageData).defenses?.resist).toEqual(["fire"]);
+  });
+});
+
+describe("acciones básicas (actions.json)", () => {
+  const act = (name: string, time: unknown, source = "XPHB") => ({ name, source, srd52: true, time, entries: ["Texto."] });
+  const raw = {
+    actions: {
+      action: [
+        act("Dash", [{ number: 1, unit: "action" }]),
+        act("Opportunity Attack", [{ number: 1, unit: "reaction" }]),
+        act("Two-Weapon Fighting", [{ number: 1, unit: "bonus" }]),
+        act("End Concentration", ["Free"]),
+        act("Improvising an Action", ["Varies"]),
+        act("Dash", [{ number: 1, unit: "action" }], "PHB"),
+      ],
+    },
+  };
+  const { entries: acts, errors: errs } = normalizeAll(raw, "XPHB");
+  const time = (key: string) => (acts.find((e) => e.key === key)!.data as ActionData).time;
+
+  test("clave, tipo y tiempo de cada acción; solo la fuente pedida", () => {
+    expect(errs).toEqual([]);
+    expect(acts.map((e) => e.key)).toEqual([
+      "action:dash|xphb", "action:opportunity attack|xphb", "action:two-weapon fighting|xphb",
+      "action:end concentration|xphb", "action:improvising an action|xphb",
+    ]);
+    expect(acts[0]).toMatchObject({ kind: "action", name: "Dash", identifier: "dash", srd52: true });
+    expect(time("action:dash|xphb")).toBe("action");
+    expect(time("action:opportunity attack|xphb")).toBe("reaction");
+    expect(time("action:two-weapon fighting|xphb")).toBe("bonus");
+    expect(time("action:end concentration|xphb")).toBe("free");
+    expect(time("action:improvising an action|xphb")).toBe("varies");
+  });
+  test("nombre en español de Correr", () => {
+    expect((es as Record<string, string>)["action:dash|xphb"]).toBe("Correr");
+  });
+  test("el diccionario traduce las 18 acciones del Manual", () => {
+    expect(Object.keys(es).filter((k) => k.startsWith("action:"))).toHaveLength(18);
   });
 });

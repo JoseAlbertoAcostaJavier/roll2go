@@ -5,10 +5,11 @@
 // padre siempre está en el mismo libro. Todas las claves llevan el tipo delante (`spell:fireball|xphb`).
 import { ABILITIES } from "../types";
 import type {
-  Ability, ClassTable, Defenses, DefenseList, EntryData, EntryKind, Equipment, FeatSpellChoice, FeatSpellFilter, FeatureData, LevelCounts,
+  Ability, ActionData, ClassTable, Defenses, DefenseList, EntryData, EntryKind, Equipment, FeatSpellChoice, FeatSpellFilter, FeatureData, LevelCounts,
   LevelFeature, MulticlassData, NameGender, OptionalFeatureData, Pack, Ref, Spellcasting, SpellcastingProgression, SpellGrant,
 } from "../types";
 import { normalizeName, validateEntryData } from "../schemas";
+import { activationFor } from "./activation";
 import { entriesToBbcode } from "./toBbcode";
 import { ABILITY_NAMES, CHOICE_LABELS, FEAT_CATEGORIES, proficiencyName, skillName, toolName } from "../dnd2024/sheet/labels";
 import { spellComponents, spellDuration, spellRange, spellTags, spellTime } from "../dnd2024/spells/spellText";
@@ -51,6 +52,8 @@ export type RawFiles = {
   classFluff?: { classFluff?: unknown[] }[];
   /** `names.json`: tablas de nombres por especie (Guía de Xanathar para todo). */
   names?: { name?: unknown[] };
+  /** `actions.json`: acciones básicas de combate. */
+  actions?: { action?: unknown[] };
 };
 
 /** Datos de contexto que necesitan algunos normalizadores. */
@@ -593,6 +596,14 @@ export function normalizeSkill(raw: Rec): NormalizedEntry {
   return entry<"skill">(header("skill", raw, keyOf("skill", str(raw.name), str(raw.source))), { ability: raw.ability as Ability });
 }
 
+// Tiempo de 5etools (`[{ number, unit }]`, `["Free"]`, `["Varies"]`): el primero; `varies` si no se reconoce
+export function normalizeAction(raw: Rec): NormalizedEntry {
+  const t = asArr(raw.time)[0];
+  const unit = isObj(t) ? str(t.unit) : lower(str(t));
+  const time: ActionData["time"] = unit === "action" || unit === "bonus" || unit === "reaction" || unit === "free" ? unit : "varies";
+  return entry<"action">(header("action", raw, keyOf("action", str(raw.name), str(raw.source))), { time });
+}
+
 /** Referencia de rasgo `"Rage|Barbarian|XPHB|1"` (o `{ classFeature: … }`) → clave y nivel. */
 function featureRef(f: unknown, field: "classFeature" | "subclassFeature"): LevelFeature | null {
   const s = typeof f === "string" ? f : isObj(f) ? str(f[field]) : "";
@@ -905,17 +916,23 @@ function featureExtras(raw: Rec): Pick<FeatureData, "options" | "asi"> {
   };
 }
 
-const classFeatureKeyOf = (raw: Rec) =>
+export const classFeatureKeyOf = (raw: Rec) =>
   classFeatureKey(str(raw.name), str(raw.className), str(raw.classSource), String(raw.level), str(raw.source));
+
+/** `{ activation }` si el rasgo se activa (corrección manual o texto); nada si es pasivo. */
+function activationOf(key: string, raw: Rec): Pick<FeatureData, "activation"> {
+  const activation = activationFor(key, raw.entries);
+  return activation ? { activation } : {};
+}
 
 export function normalizeClassFeature(raw: Rec): NormalizedEntry {
   const key = classFeatureKeyOf(raw);
   return entry<"classFeature">(header("classFeature", raw, key, {
     parent: { key: keyOf("class", str(raw.className), str(raw.classSource)) },
-  }), { level: raw.level as number, className: str(raw.className), ...featureExtras(raw) });
+  }), { level: raw.level as number, className: str(raw.className), ...featureExtras(raw), ...activationOf(key, raw) });
 }
 
-const subclassFeatureKeyOf = (raw: Rec) => subclassFeatureKey([raw.name, raw.className, raw.classSource,
+export const subclassFeatureKeyOf = (raw: Rec) => subclassFeatureKey([raw.name, raw.className, raw.classSource,
   raw.subclassShortName, raw.subclassSource, raw.level].map(String), str(raw.source));
 
 /**
@@ -952,6 +969,7 @@ export function normalizeSubclassFeature(raw: Rec, ctx: NormalizeContext): Norma
     className: str(raw.className),
     subclassName: sub?.name ?? str(raw.subclassShortName),
     ...featureExtras(raw),
+    ...activationOf(key, raw),
   });
 }
 
@@ -1134,6 +1152,7 @@ export function normalizeAll(files: RawFiles, source: string): {
   for (const i of fromSource("item", itemPool)) run("item", i, () => normalizeItem(i));
   for (const l of fromSource("language", files.languages?.language)) run("language", l, () => normalizeLanguage(l));
   for (const s of skills) run("skill", s, () => normalizeSkill(s));
+  for (const a of fromSource("action", files.actions?.action)) run("action", a, () => normalizeAction(a));
   // Rasgos sin normalizar por clave, para seguir los enlaces de su texto
   const rawFeatures = new Map<string, Rec>();
   for (const f of classFiles) {

@@ -196,6 +196,41 @@ export async function listSpells(books: string[]): Promise<SpellOption[]> {
     .map((e) => e.option);
 }
 
+type CachedEntries = { entries: { sort: string; entry: CatalogEntry }[] };
+
+/* Acciones básicas de combate de un libro, completas (con descripción), para la pestaña Acciones. Misma caché que el
+   listado. */
+function listBookActions(bookId: string) {
+  return unstable_cache(
+    async (): Promise<CachedEntries> => {
+      await connectDB();
+      const book = await Book.findById(bookId).select("name").lean();
+      if (!book) return { entries: [] };
+      const docs = (await BookEntry.find({ book: bookId, kind: "action" })
+        .select("-foundry")
+        .sort({ nameLower: 1 })
+        .lean()) as unknown as FullEntryDoc[];
+      return {
+        entries: docs
+          .filter((d) => validateEntryData("action", d.data).ok)
+          .map((d) => ({ sort: d.nameLower, entry: toEntry(d, book.name) })),
+      };
+    },
+    ["rules-actions", bookId],
+    { tags: [`book:${bookId}`], revalidate: CACHE_SECONDS },
+  )();
+}
+
+/** Acciones básicas de combate (entradas `action`) de los libros dados, ordenadas por nombre. */
+export async function listActions(books: string[]): Promise<CatalogEntry[]> {
+  const ids = [...new Set(books)].filter((id) => mongoose.isValidObjectId(id)).sort();
+  const lists = await Promise.all(ids.map(listBookActions));
+  return lists
+    .flatMap((l) => l.entries)
+    .sort((a, b) => (a.sort < b.sort ? -1 : a.sort > b.sort ? 1 : 0))
+    .map((e) => e.entry);
+}
+
 /** Filas ligeras de una lista de clase (`ALL_LISTS`: de todas) en los libros dados, ordenadas por nombre. */
 export async function listSpellRows(books: string[], list: string): Promise<SpellRow[]> {
   return (await listSpells(books)).filter((s) => inSpellList(s.data.classes, list)).map(spellRowOf);

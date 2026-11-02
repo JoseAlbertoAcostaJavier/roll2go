@@ -11,7 +11,7 @@ type Props = { groups: FeatureGroup[]; entries: Map<string, CatalogEntry> };
 
 const descriptionOf = (e: CatalogEntry | undefined) => (e ? e.descriptionEs || e.description : "");
 
-function Description({ entry, missing }: { entry: CatalogEntry | undefined; missing?: string }) {
+export function Description({ entry, missing }: { entry: CatalogEntry | undefined; missing?: string }) {
   if (!entry) return <p className="text-sm text-muted">{missing ?? "Contenido no disponible."}</p>;
   const text = descriptionOf(entry);
   return text ? <Bbcode source={text} className="text-sm" /> : <p className="text-sm text-muted">Sin descripción.</p>;

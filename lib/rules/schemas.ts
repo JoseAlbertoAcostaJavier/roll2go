@@ -67,6 +67,7 @@ const exactly = (n: number, c: Check): Check => (v, p, e) => {
 
 const feature = shape({
   level: int(1, 20), className: str, "subclassName?": str, "options?": arrayOf(ref), "asi?": oneOf(true),
+  "activation?": oneOf("action", "bonus", "reaction"),
 });
 
 /** Número acumulado por nivel de clase: claves de 1 a 20 y valores enteros. */
@@ -198,6 +199,7 @@ const checks: { [K in EntryKind]: Check } = {
     "spells?": arrayOf(spellGrant),
     "spellChoices?": featSpellChoices,
   }),
+  action: shape({ time: oneOf("action", "bonus", "reaction", "free", "varies") }),
   nameTable: shape({
     species: str,
     tables: arrayOf(shape({ option: str, gender: oneOf("male", "female", "family", "other"), names: strings })),

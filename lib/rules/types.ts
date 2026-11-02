@@ -12,7 +12,7 @@ export type Ref = { book: string; key: string };
 
 export type EntryKind =
   | "species" | "lineage" | "class" | "subclass" | "classFeature" | "subclassFeature"
-  | "background" | "feat" | "spell" | "item" | "language" | "skill" | "optionalFeature" | "nameTable";
+  | "background" | "feat" | "spell" | "item" | "language" | "skill" | "optionalFeature" | "nameTable" | "action";
 // Todos los tipos de entrada, en el orden de EntryKind
 export const ENTRY_KINDS: readonly EntryKind[] = [
   "species",
@@ -29,6 +29,7 @@ export const ENTRY_KINDS: readonly EntryKind[] = [
   "skill",
   "optionalFeature",
   "nameTable",
+  "action",
 ];
 
 /** Elemento de equipo: una entrada del catálogo, monedas (pc) o un texto libre. */
@@ -141,6 +142,9 @@ export type SubclassData = {
   spellcasting?: Spellcasting;
 };
 
+/** Cómo se activa un rasgo: acción, acción adicional o reacción (sin valor: pasivo). */
+export type Activation = "action" | "bonus" | "reaction";
+
 export type FeatureData = {
   level: number;
   className: string;
@@ -149,6 +153,8 @@ export type FeatureData = {
   options?: Ref[];
   /** Mejora de característica (o dote general). */
   asi?: true;
+  /** Cómo se usa, deducido del texto al importar (`lib/rules/import/activation.ts`). */
+  activation?: Activation;
 };
 
 /** Invocación, metamagia, maniobra… `pact` y `feature` son claves de otro `optionalFeature`. */
@@ -233,6 +239,8 @@ export type NameGender = "male" | "female" | "family" | "other";
 /** Tablas de nombres de una especie (`species` es su identificador: `dwarf`, `half-orc`…). */
 export type NameTableData = { species: string; tables: { option: string; gender: NameGender; names: string[] }[] };
 export type SkillData = { ability: Ability };
+/** Acción básica de combate (Atacar, Correr…); `time` es lo que cuesta usarla. */
+export type ActionData = { time: "action" | "bonus" | "reaction" | "free" | "varies" };
 
 export type EntryData = {
   species: SpeciesData;
@@ -249,4 +257,5 @@ export type EntryData = {
   skill: SkillData;
   optionalFeature: OptionalFeatureData;
   nameTable: NameTableData;
+  action: ActionData;
 };
