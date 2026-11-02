@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { CONDITION_RULES, exhaustionEffect } from "@/lib/rules/dnd2024/sheet/conditions";
-import { CONDITION_NAMES } from "@/lib/rules/dnd2024/sheet/labels";
 import type { Dnd2024SheetV2 } from "@/lib/rules/dnd2024/sheet/sheet";
 import { applyStatus, CONDITION_KEYS, statusOf } from "@/lib/rules/dnd2024/sheet/status";
 
@@ -24,12 +23,14 @@ describe("statusOf", () => {
 });
 
 describe("CONDITION_KEYS", () => {
-  it("sigue el orden de CONDITION_NAMES sin el agotamiento", () => {
-    expect(CONDITION_KEYS).toEqual(Object.keys(CONDITION_NAMES).filter((k) => k !== "exhaustion"));
-    expect(CONDITION_KEYS).not.toContain("exhaustion");
+  it("son los 14 estados de 2024, en el orden de CONDITION_NAMES, sin agotamiento ni enfermedad", () => {
+    expect(CONDITION_KEYS).toEqual([
+      "blinded", "charmed", "deafened", "frightened", "grappled", "incapacitated", "invisible",
+      "paralyzed", "petrified", "poisoned", "prone", "restrained", "stunned", "unconscious",
+    ]);
   });
   it("cada estado tiene su resumen", () => {
-    for (const key of CONDITION_KEYS.filter((k) => k !== "disease")) expect(CONDITION_RULES[key]?.length).toBeGreaterThan(10);
+    for (const key of CONDITION_KEYS) expect(CONDITION_RULES[key]?.length).toBeGreaterThan(10);
   });
 });
 
@@ -61,7 +62,7 @@ describe("estados", () => {
     expect(statusOf(ok(applyStatus(s, { op: "condition", key: "stunned", active: false }))).conditions).toEqual(["blinded", "prone"]);
   });
   it("rechaza estados desconocidos y el agotamiento", () => {
-    for (const key of ["zzz", "exhaustion"])
+    for (const key of ["zzz", "exhaustion", "disease"])
       expect(errorOf(applyStatus(base, { op: "condition", key, active: true }))).toBe("Estado desconocido.");
   });
   it("rechaza un active que no es booleano", () => {

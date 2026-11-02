@@ -10,8 +10,8 @@ export type StatusOp =
 
 export type StatusResult = { ok: true; sheet: Dnd2024SheetV2 } | { ok: false; error: string };
 
-/** Estados que se marcan en la ficha, en el orden de `CONDITION_NAMES` (el agotamiento tiene niveles aparte). */
-export const CONDITION_KEYS: string[] = Object.keys(CONDITION_NAMES).filter((k) => k !== "exhaustion");
+/** Los 14 estados de 2024 que se marcan en la ficha, en el orden de `CONDITION_NAMES` (el agotamiento tiene niveles aparte y la enfermedad no es un estado). */
+export const CONDITION_KEYS: string[] = Object.keys(CONDITION_NAMES).filter((k) => k !== "exhaustion" && k !== "disease");
 
 type Obj = Record<string, unknown>;
 const isObj = (v: unknown): v is Obj => typeof v === "object" && v !== null && !Array.isArray(v);
