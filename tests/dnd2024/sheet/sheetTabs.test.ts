@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { normalizeSheetTab, type SheetTabId } from "@/lib/rules/dnd2024/sheet/sheetTabs";
 
-const all: SheetTabId[] = ["acciones", "conjuros", "inventario", "rasgos", "trasfondo"];
+const all: SheetTabId[] = ["acciones", "conjuros", "inventario", "rasgos", "trasfondo", "notas"];
 
 describe("normalizeSheetTab", () => {
   it("conserva una pestaña disponible", () => {
@@ -17,5 +17,9 @@ describe("normalizeSheetTab", () => {
   });
   it("cae en acciones con una pestaña no disponible", () => {
     expect(normalizeSheetTab("conjuros", ["acciones", "inventario", "rasgos", "trasfondo"])).toBe("acciones");
+  });
+  it("conserva notas si está disponible y cae en acciones si no", () => {
+    expect(normalizeSheetTab("notas", all)).toBe("notas");
+    expect(normalizeSheetTab("notas", ["acciones", "inventario", "rasgos", "trasfondo"])).toBe("acciones");
   });
 });
