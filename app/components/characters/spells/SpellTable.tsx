@@ -9,7 +9,7 @@ import { castOptions } from "@/lib/rules/dnd2024/spells/castOptions";
 import type { SpellRow } from "@/lib/rules/dnd2024/spells/spellTable";
 import { groupByLevel, matchesSpellTable, type SpellTableFilter } from "@/lib/rules/dnd2024/spells/spellTableFilter";
 import { iconSrc } from "@/lib/utils/icons";
-import { card } from "@/app/components/ui/formStyles";
+import { sheetCard } from "@/app/components/ui/formStyles";
 import MaskIcon from "@/app/components/ui/MaskIcon";
 import CastButton from "./CastButton";
 import { Uses } from "./LimitedUses";
@@ -159,7 +159,7 @@ export default function SpellTable(props: Props) {
           <Link href={clearHref} scroll={false} className="font-semibold text-brand-soft hover:underline">Quitar filtros</Link>
         </p>
       )}
-      <div className={`${card} animate-fade-up overflow-x-auto !p-0 ${anyVisible || rows.length === 0 ? "" : "hidden print:block"}`}>
+      <div className={`${sheetCard} animate-fade-up overflow-x-auto !p-0 ${anyVisible || rows.length === 0 ? "" : "hidden print:block"}`}>
         <table className="w-full min-w-[46rem] text-left text-sm">
           <caption className="sr-only">Conjuros</caption>
           <thead className="text-xs uppercase tracking-wide text-muted">

@@ -92,7 +92,7 @@ describe("applyRestOperation", () => {
   it("descanso largo: una hoja sin agotamiento no gana el campo", async () => {
     load(sheetOf());
     await applyRestOperation(OWNER, CHAR, { op: "longRest" });
-    expect(set()).not.toHaveProperty("sheet.exhaustion");
+    expect(Object.keys(set())).not.toContain("sheet.exhaustion");
   });
 
   it("operación no válida: 400", async () => {

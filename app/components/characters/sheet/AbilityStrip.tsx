@@ -10,12 +10,13 @@ import type { SheetData, ShowStat, StatusState } from "./types";
 const box = "rounded-lg border-2 border-brand/40 bg-panel";
 const boxLabel = "block break-words text-[10px] font-semibold uppercase leading-tight tracking-normal text-muted";
 // Rótulos de Competencia y Velocidad: palabras enteras, sin partirlas a media palabra
-const statLabel = "block whitespace-nowrap text-[9px] font-semibold uppercase leading-tight tracking-tight text-muted";
+const statLabel = "block whitespace-nowrap text-[9px] 2xl:text-[8px] font-semibold uppercase leading-tight tracking-tight text-muted";
 
 // Franja superior (spec de la ficha visual §3.1): las 6 características, competencia, velocidad, inspiración heroica y PG.
-// La franja vive en la columna central de la ficha (a 1280 px mide ~640 px), demasiado estrecha para una sola fila sin
-// partir «Competencia»: en todos los anchos son dos filas. Las características en la primera (6 columnas; 3 por debajo
-// de 640 px) y, en la siguiente, competencia, velocidad e inspiración junto a los PG (apilados en móvil).
+// La franja vive en la columna central de la ficha (a 1280 px mide ~640 px), demasiado estrecha para una sola fila:
+// - ≥ 1536 px: todo en una fila (características ~48 %, competencia/velocidad/inspiración ~27 %, PG ~25 %).
+// - < 1536 px: las características en su propia fila (6 columnas; 3 por debajo de 640 px) y, en la siguiente,
+//   competencia, velocidad e inspiración junto a los PG (apilados en móvil).
 export default function AbilityStrip({ d, characterId, isOwner, version, pools, show, status }: {
   d: SheetData; characterId: string; isOwner: boolean; version: number; pools: HitDicePool[]; show: ShowStat;
   status: StatusState;
@@ -23,7 +24,7 @@ export default function AbilityStrip({ d, characterId, isOwner, version, pools, 
   return (
     <section
       aria-label="Características y puntos de golpe"
-      className="grid gap-3"
+      className="grid gap-3 2xl:grid-cols-[minmax(0,48fr)_minmax(0,27fr)_minmax(0,25fr)] 2xl:items-start"
     >
       {/* Características: modificador grande y puntuación en una píldora sobre el borde inferior; cada una abre su desglose */}
       <div>
@@ -49,8 +50,8 @@ export default function AbilityStrip({ d, characterId, isOwner, version, pools, 
           </ul>
         </div>
 
-      {/* Segunda fila: competencia, velocidad e inspiración, y los PG */}
-      <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
+      {/* Segunda fila (< 1536 px); en pantallas anchas las dos cajas son columnas de la franja (`contents`) */}
+      <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] 2xl:contents">
         {/* Competencia, velocidad e inspiración: del mismo alto que las características */}
         <div className="grid grid-cols-3 gap-2 pb-3">
           <div className={`${box} flex h-24 flex-col items-center justify-center px-1 text-center`}>
@@ -65,7 +66,7 @@ export default function AbilityStrip({ d, characterId, isOwner, version, pools, 
             onClick={show({ kind: "speed" })}
             className={`${statButton} ${box} flex h-24 flex-col items-center justify-center px-1 text-center`}
           >
-            <span className="font-heading text-2xl font-extrabold leading-none">{d.speed}</span>
+            <span className="font-heading text-2xl font-extrabold leading-none">{d.speed}<span className="text-xs font-bold text-muted"> pies</span></span>
             <span className={`${statLabel} mt-1 w-full`}>Velocidad</span>
             <span className="text-[9px] leading-tight text-muted">a pie</span>
           </button>
