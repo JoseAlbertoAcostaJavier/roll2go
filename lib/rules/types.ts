@@ -219,6 +219,15 @@ export type SpellData = {
   higherLevels?: string;
 };
 
+/** Capacidad de un contenedor (mochila, bolsa, cofre…): peso en lb, volumen en pies cúbicos y objetos concretos que admite. */
+export type ContainerData = {
+  weight: number | null;
+  volume: number | null;
+  items: { ref: Ref; count: number }[];
+  /** Lo que lleva dentro no pesa (bolsa de contención). */
+  weightless: boolean;
+};
+
 export type ItemData = {
   type: string;
   weight: number;
@@ -229,6 +238,7 @@ export type ItemData = {
   weapon?: { damage: string; damageType: string; properties: string[]; mastery?: string; category: string;
     /** Alcance de 5etools en pies, tal cual ("20/60"); solo en armas arrojadizas o de distancia. */ range?: string };
   contents?: { ref: Ref; quantity: number }[];
+  container?: ContainerData;
   defenses?: Defenses;
 };
 
