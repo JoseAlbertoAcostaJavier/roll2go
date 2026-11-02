@@ -21,25 +21,29 @@ export default function InventoryFilters({ base, query, chips, active, q: urlQ }
 }) {
   const router = useRouter();
   const [q, setQ] = useState(urlQ);
-  // Si la URL trae otra búsqueda que la ya enviada (p. ej. al navegar atrás), se adopta; la propia no pisa lo que se escribe
-  const [sent, setSent] = useState(urlQ);
+  // Hay una búsqueda tecleada que aún no se ha enviado a la URL
+  const [typing, setTyping] = useState(false);
+  // Si la URL trae otra búsqueda (p. ej. al navegar atrás), se adopta, salvo mientras se está escribiendo
   const [seen, setSeen] = useState(urlQ);
   if (seen !== urlQ) {
     setSeen(urlQ);
-    if (urlQ !== sent) {
-      setQ(urlQ);
-      setSent(urlQ);
-    }
+    if (!typing && urlQ !== q.trim()) setQ(urlQ);
   }
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  // Lo último que dijo la URL, para que la espera no pise un chip pulsado entretanto
+  const latest = useRef(query);
+  useEffect(() => {
+    latest.current = query;
+  });
   useEffect(() => () => clearTimeout(timer.current), []);
 
   function onSearch(value: string) {
     setQ(value);
+    setTyping(true);
     clearTimeout(timer.current);
     timer.current = setTimeout(() => {
-      setSent(value.trim());
-      router.replace(`${base}${inventoryHref(query, { q: value })}`, { scroll: false });
+      setTyping(false);
+      router.replace(`${base}${inventoryHref(latest.current, { q: value })}`, { scroll: false });
     }, 300);
   }
 

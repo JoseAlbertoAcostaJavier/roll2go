@@ -54,7 +54,7 @@ export default function InventoryTable({ group, shown, info, items, readOnly, co
       <h4 className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 font-heading text-sm font-bold text-brand-soft">
         {c ? containerTitle(group) : group.title}
         {c?.over && (
-          <span className="inline-flex items-center gap-1 text-xs font-semibold text-brand-soft" role="status">
+          <span className="inline-flex items-center gap-1 text-xs font-semibold text-brand-soft">
             <TriangleAlert size={14} aria-hidden="true" /> Sobrecargado
           </span>
         )}
