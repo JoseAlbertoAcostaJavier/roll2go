@@ -145,9 +145,14 @@ export async function applySpellOperation(
     if (isRef(op.ref) && found.books.includes(op.ref.book) && op.ref.key.startsWith("spell:")) {
       for (const e of await getEntries([{ book: op.ref.book, key: op.ref.key }])) entries.set(refKey(e.ref), e);
     }
-    const { blocks, slots } = derive(found.sheet, entries).spells;
+    const { blocks, slots, other } = derive(found.sheet, entries).spells;
+    // Usos gratis de los conjuros de especie, legado y dotes: hace falta su nivel (los trucos no tienen)
+    if (op.op === "limited") {
+      const refs = other.filter((o) => o.innate && found.books.includes(o.spell.ref.book)).map((o) => o.spell.ref);
+      if (refs.length) for (const e of await getEntries(refs)) entries.set(refKey(e.ref), e);
+    }
     const resolve = (r: Ref) => (found.books.includes(r.book) ? (entries.get(refKey(r)) ?? null) : null);
-    const result = applySpellOp(found.sheet, body, { blocks, slots, resolve });
+    const result = applySpellOp(found.sheet, body, { blocks, slots, other, resolve });
     if (!result.ok) return fail(400, result.error);
 
     // Solo los campos que cambian, si siguen como se leyeron y en el mismo nivel (los límites dependen de él)

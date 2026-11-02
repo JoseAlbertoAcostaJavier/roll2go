@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { derive } from "@/lib/rules/dnd2024/derive";
+import { innateKey } from "@/lib/rules/dnd2024/derive/spells";
 import { refKey } from "@/lib/rules/dnd2024/sheet/equipmentRefs";
 import type { Choice, Dnd2024SheetV2, LevelEntry, Named } from "@/lib/rules/dnd2024/sheet/sheet";
 import { removeLastLevel } from "@/lib/rules/dnd2024/levels/levelOps";
-import { applySpellOp, shortRestRestores, trimSpells } from "@/lib/rules/dnd2024/spells/spellOps";
-import type { Ref, SpellData } from "@/lib/rules/types";
+import { applySpellOp, recoversOnShortRest, shortRestRestores, trimSpells } from "@/lib/rules/dnd2024/spells/spellOps";
+import type { Ref, SpeciesData, SpellData } from "@/lib/rules/types";
 import { B, buildCatalog, ref } from "../fixtureCatalog";
 
 const entries = buildCatalog(["class-cleric.json", "class-wizard.json", "class-sorcerer.json", "class-warlock.json", "class-druid.json", "class-bard.json"]);
@@ -90,8 +91,8 @@ const wizard1 = () => sheetOf(["wizard"], {
 
 // Como la ruta: bloques y espacios de la hoja guardada, y solo entradas del catálogo
 const apply = (sheet: Dnd2024SheetV2, op: unknown) => {
-  const { blocks, slots } = derive(sheet, entries).spells;
-  return applySpellOp(sheet, op, { blocks, slots, resolve: (r: Ref) => entries.get(refKey(r)) ?? null });
+  const { blocks, slots, other } = derive(sheet, entries).spells;
+  return applySpellOp(sheet, op, { blocks, slots, other, resolve: (r: Ref) => entries.get(refKey(r)) ?? null });
 };
 const prepare = (cls: Named, name: string) => ({ op: "prepare", class: cls.ref, ref: spell(name).ref });
 const ok = (r: ReturnType<typeof apply>) => {
@@ -314,6 +315,35 @@ describe("usos por descanso largo (Arcano místico)", () => {
     const used = ok(apply(s, { op: "limited", key: KEY, used: 1 }));
     expect(used.limitedUsed).toEqual({ [KEY]: 1 });
     expect(ok(apply(used, { op: "limited", key: KEY, used: 0 })).limitedUsed).toEqual({ [KEY]: 0 });
+  });
+});
+
+describe("usos gratis de los conjuros de especie, legado y dotes", () => {
+  // Una especie que da un truco y un conjuro de nivel 1 desde el nivel 1
+  const TIEFLING = ref("species:tiefling|xphb");
+  entries.set(refKey(TIEFLING), {
+    ref: TIEFLING, name: "Tiefling", nameEs: "Tiefling", bookName: "Libro", srd52: true, description: "", descriptionEs: "",
+    identifier: "", parent: null, foundry: null,
+    data: {
+      size: ["M"], speed: 30, darkvision: 60, creatureType: "humanoid", skills: { fixed: [] }, hasLineages: false,
+      spells: [{ level: 1, ref: spell("light").ref }, { level: 1, ref: spell("detect magic").ref }],
+    } satisfies SpeciesData,
+  });
+  const tiefling = () => ({ ...sheetOf(["wizard"]), species: { ref: TIEFLING, name: "Tiefling" } });
+  const KEY = innateKey(spell("detect magic").ref);
+
+  it("op limited: el de nivel 1 tiene 1 uso; el truco y los que no tiene, ninguno", () => {
+    const s = tiefling();
+    expect(ok(apply(s, { op: "limited", key: KEY, used: 1 })).limitedUsed).toEqual({ [KEY]: 1 });
+    expect(errorOf(apply(s, { op: "limited", key: KEY, used: 2 }))).toBe("detect magic solo tiene 1 uso por descanso largo.");
+    expect(errorOf(apply(s, { op: "limited", key: innateKey(spell("light").ref), used: 1 }))).toBe("No tienes ese uso.");
+    expect(errorOf(apply(sheetOf(["wizard"]), { op: "limited", key: KEY, used: 1 }))).toBe("No tienes ese uso.");
+  });
+  it("el descanso corto no lo recupera; borrar un nivel lo conserva", () => {
+    expect(recoversOnShortRest(KEY)).toBe(false);
+    const s = { ...tiefling(), limitedUsed: { [KEY]: 1, "arcanum:otra": 1 } };
+    const after = { ...derive(s, entries).spells, spellLevel: () => 1 };
+    expect(trimSpells(s, after).limitedUsed).toEqual({ [KEY]: 1 });
   });
 });
 

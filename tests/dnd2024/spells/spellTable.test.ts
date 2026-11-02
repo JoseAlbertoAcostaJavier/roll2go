@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { CatalogEntry } from "@/lib/rules/catalog/types";
-import type { CasterBlock, SpellsSummary } from "@/lib/rules/dnd2024/derive/spells";
+import { innateKey, type CasterBlock, type SpellsSummary } from "@/lib/rules/dnd2024/derive/spells";
 import { spellTableRows, timeShort } from "@/lib/rules/dnd2024/spells/spellTable";
 import type { Ref, SpellData } from "@/lib/rules/types";
 
@@ -23,6 +23,7 @@ const ENTRIES = [
   spell("spell:misty step|xphb", "Paso brumoso", 2, "1 acción adicional"),
   spell("spell:fly|xphb", "Volar", 3, "1 acción"),
   spell("spell:arcane gate|xphb", "Puerta arcana", 6, "1 acción", ["Teletransporte"]),
+  spell("spell:thaumaturgy|xphb", "Taumaturgia", 0, "1 acción"),
 ];
 const entries = new Map(ENTRIES.map((e) => [`${B}:${e.ref.key}`, e]));
 const named = (key: string) => ({ ref: ref(key), name: key });
@@ -37,8 +38,12 @@ const block: CasterBlock = {
   limited: [{ key: "arcanum:x", spell: named("spell:arcane gate|xphb"), origin: "Arcano místico", max: 1, used: 1 }],
 };
 const summary: SpellsSummary = {
-  blocks: [block], slots: { levels: {}, pact: null }, used: {},
-  other: [{ spell: named("spell:misty step|xphb"), origin: "Especie: Tiefling" }],
+  blocks: [block], slots: { levels: {}, pact: null }, used: {}, limitedUsed: {},
+  other: [
+    { spell: named("spell:misty step|xphb"), origin: "Especie: Tiefling", innate: true },
+    { spell: named("spell:thaumaturgy|xphb"), origin: "Especie: Tiefling", innate: true },
+    { spell: named("spell:fly|xphb"), origin: "Invocación: Ascendent Step" },
+  ],
 };
 const rows = spellTableRows(summary, entries);
 const row = (name: string) => rows.find((r) => r.name === name)!;
@@ -46,7 +51,7 @@ const row = (name: string) => rows.find((r) => r.name === name)!;
 describe("spellTableRows", () => {
   it("incluye trucos, preparados, limitados y otros; no el libro sin preparar", () => {
     expect(rows.map((r) => r.name).sort()).toEqual(
-      ["Amigos", "Descarga de fuego", "Escudo", "Paso brumoso", "Puerta arcana"]);
+      ["Amigos", "Descarga de fuego", "Escudo", "Paso brumoso", "Puerta arcana", "Taumaturgia", "Volar"]);
     expect(rows.find((r) => r.name === "Dormir")).toBeUndefined();
   });
   it("calcula hit como en Acciones", () => {
@@ -71,6 +76,14 @@ describe("spellTableRows", () => {
       nameEn: "spell:shield|xphb", key: `${B}:spell:shield|xphb`, level: 1, school: "Evocación", schoolId: "V", timeShort: "1R",
     });
     expect(row("Amigos")).toMatchObject({ concentration: true, ritual: false });
+  });
+  it("especie, legado y dotes: un uso gratis por descanso largo en los de nivel 1+, no en trucos ni invocaciones", () => {
+    const key = innateKey(ref("spell:misty step|xphb"));
+    expect(row("Paso brumoso").limited).toEqual({ key, max: 1, used: 0 });
+    expect(row("Taumaturgia").limited).toBeNull();
+    expect(row("Volar").limited).toBeNull();
+    const spent = spellTableRows({ ...summary, limitedUsed: { [key]: 1 } }, entries);
+    expect(spent.find((r) => r.name === "Paso brumoso")!.limited).toEqual({ key, max: 1, used: 1 });
   });
 });
 

@@ -107,7 +107,8 @@ export default function SpellsTab({ characterId, isOwner, initial, lists, spells
       return;
     }
     setNotice((p) => ({ ...p, text: "" }));
-    void send({ op: "slot", level: option.level, used: (state.used[option.level] ?? 0) + 1 });
+    if (option.kind === "free") void send({ op: "limited", key: option.key, used: (limitedUsed[option.key] ?? 0) + 1 });
+    else void send({ op: "slot", level: option.level, used: (state.used[option.level] ?? 0) + 1 });
   }
 
   const other = state.other.map((o) => {
@@ -118,7 +119,11 @@ export default function SpellsTab({ characterId, isOwner, initial, lists, spells
   const manage = (Array.isArray(query.vista) ? query.vista[0] : query.vista) === "gestionar";
   const base = `/characters/${characterId}`;
   const filter = parseSpellTableFilter(query);
-  const limitedUsed = Object.fromEntries(state.blocks.flatMap((b) => b.limited.map((l) => [l.key, l.used])));
+  // (los de especie, legado y dotes solo están en `limitedUsed`)
+  const limitedUsed: Record<string, number> = {
+    ...state.limitedUsed,
+    ...Object.fromEntries(state.blocks.flatMap((b) => b.limited.map((l) => [l.key, l.used]))),
+  };
   const hasSlots = Object.values(state.slots.levels).some((n) => n > 0) || !!state.slots.pact;
   const levels = [...new Set(rows.map((r) => r.level).filter((l) => l > 0))].sort((a, b) => a - b);
   const errorBox = error && (

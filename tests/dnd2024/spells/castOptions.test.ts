@@ -30,9 +30,23 @@ describe("castOptions", () => {
     expect(o).toEqual([{ kind: "ritual", label: "Lanzar como ritual" }]);
     expect(labels(castOptions(row(2, { ritual: true }), slots, {}))).toEqual(["Nivel 2", "Nivel 3", "Lanzar como ritual"]);
   });
-  it("trucos y limitados no tienen opciones", () => {
+  it("los trucos no tienen opciones", () => {
     expect(castOptions(row(0), slots, {})).toEqual([]);
-    expect(castOptions(row(1, { limited: { key: "k", max: 1, used: 0 } }), slots, {})).toEqual([]);
+  });
+  it("con usos gratis: primero el uso sin espacio y después los espacios", () => {
+    const signature = row(1, { limited: { key: "signature:x", max: 1, used: 0 } });
+    const o = castOptions(signature, slots, { "1": 2 });
+    expect(o[0]).toEqual({ kind: "free", key: "signature:x", label: "Sin espacio (1/1)" });
+    expect(labels(o)).toEqual(["Sin espacio (1/1)", "Nivel 2", "Nivel 3"]);
+    const innate = row(1, { limited: { key: "innate:x", max: 1, used: 1 }, ritual: true });
+    expect(labels(castOptions(innate, slots, {}))).toEqual(["Nivel 1", "Nivel 2", "Nivel 3", "Lanzar como ritual"]);
+    expect(castOptions(row(1, { limited: { key: "innate:x", max: 1, used: 1 } }), { levels: {}, pact: null }, {})).toEqual([]);
+  });
+  it("el Arcano místico solo se lanza con su uso, sin espacios", () => {
+    const arcanum = (used: number) => row(6, { limited: { key: "arcanum:x", max: 1, used } });
+    const big = { levels: { "6": 1 }, pact: { count: 2, level: 5 } };
+    expect(labels(castOptions(arcanum(0), big, {}))).toEqual(["Sin espacio (1/1)"]);
+    expect(castOptions(arcanum(1), big, {})).toEqual([]);
   });
   it("brujo multiclase: espacios normales y pacto a la vez", () => {
     const mixed = { levels: { "1": 2, "2": 1 }, pact: { count: 2, level: 2 } };
