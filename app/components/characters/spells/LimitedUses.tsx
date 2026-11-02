@@ -46,7 +46,7 @@ export function Uses({ item, onSet, busy }: { item: Limited; onSet: Props["onSet
       })}
       <span className="ml-1 text-xs text-muted">
         {item.max - spent}/{item.max}
-        {!onSet && <span className="sr-only"> disponibles</span>}
+        {!onSet && <span className="sr-only"> usos disponibles de {name}</span>}
       </span>
     </span>
   );

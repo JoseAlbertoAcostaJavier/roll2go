@@ -39,19 +39,33 @@ export default function SpellTableFilters({ base, query, filter, levels }: {
   const [seen, setSeen] = useState(filter.q);
   if (seen !== filter.q) {
     setSeen(filter.q);
-    if (filter.q !== sent) setQ(filter.q);
+    if (filter.q !== sent) {
+      setQ(filter.q);
+      setSent(filter.q);
+    }
   }
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
   useEffect(() => () => clearTimeout(timer.current), []);
 
-  const go = (patch: Partial<SpellTableFilter>) => router.replace(`${base}${spellTableHref(query, patch)}`, { scroll: false });
+  // Los enlaces y selectores llevan también lo tecleado y anulan la espera pendiente, para que ni uno ni otro deshagan
+  // el cambio del otro
+  const withQ = (patch: Partial<SpellTableFilter>): Partial<SpellTableFilter> => ({ q, ...patch });
+  const href = (patch: Partial<SpellTableFilter>) => `${base}${spellTableHref(query, withQ(patch))}`;
+  const flush = () => {
+    clearTimeout(timer.current);
+    setSent(q.trim());
+  };
+  const go = (patch: Partial<SpellTableFilter>) => {
+    flush();
+    router.replace(href(patch), { scroll: false });
+  };
 
   function onSearch(value: string) {
     setQ(value);
     clearTimeout(timer.current);
     timer.current = setTimeout(() => {
       setSent(value.trim());
-      go({ q: value });
+      router.replace(`${base}${spellTableHref(query, { q: value })}`, { scroll: false });
     }, 300);
   }
 
@@ -78,8 +92,9 @@ export default function SpellTableFilters({ base, query, filter, levels }: {
             {KINDS.map((k) => (
               <Link
                 key={k.id}
-                href={`${base}${spellTableHref(query, { kind: k.id })}`}
+                href={href({ kind: k.id })}
                 scroll={false}
+                onClick={flush}
                 aria-current={k.id === filter.kind ? "page" : undefined}
                 className={chip(k.id === filter.kind)}
               >
@@ -94,8 +109,9 @@ export default function SpellTableFilters({ base, query, filter, levels }: {
                 return (
                   <Link
                     key={n}
-                    href={`${base}${spellTableHref(query, { levels: toggleLevel(n) })}`}
+                    href={href({ levels: toggleLevel(n) })}
                     scroll={false}
+                    onClick={flush}
                     aria-current={on ? "page" : undefined}
                     aria-label={`Nivel ${n}`}
                     title={`Nivel ${n}`}

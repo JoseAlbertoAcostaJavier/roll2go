@@ -118,6 +118,7 @@ export default function SpellsTab({ characterId, isOwner, initial, lists, spells
   const base = `/characters/${characterId}`;
   const filter = parseSpellTableFilter(query);
   const limitedUsed = Object.fromEntries(state.blocks.flatMap((b) => b.limited.map((l) => [l.key, l.used])));
+  const hasSlots = Object.values(state.slots.levels).some((n) => n > 0) || !!state.slots.pact;
   const levels = [...new Set(rows.map((r) => r.level).filter((l) => l > 0))].sort((a, b) => a - b);
   const errorBox = error && (
     <p role="alert" className="animate-fade-in rounded-md border border-brand-soft/50 bg-surface p-3 text-sm text-brand-soft">{error}</p>
@@ -152,11 +153,13 @@ export default function SpellsTab({ characterId, isOwner, initial, lists, spells
         )}
 
         <SpellTableFilters base={base} query={query} filter={filter} levels={levels} />
-        {rows.length === 0 ? (
+        {rows.length === 0 && (
           <p className="text-sm text-muted">
             Este personaje aún no tiene conjuros que lanzar{isOwner ? ". Prepáralos en «Gestionar conjuros»." : "."}
           </p>
-        ) : (
+        )}
+        {/* Sin conjuros pero con espacios, la tabla muestra solo las casillas de cada nivel */}
+        {(rows.length > 0 || hasSlots) && (
           <SpellTable
             rows={rows}
             filter={filter}

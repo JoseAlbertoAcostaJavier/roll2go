@@ -19,7 +19,7 @@ export default function CastButton({ options, onCast, disabled = false, name }: 
   name: string;
 }) {
   const [open, setOpen] = useState(false);
-  const [pos, setPos] = useState({ top: 0, left: 0 });
+  const [pos, setPos] = useState<{ top?: number; bottom?: number; left: number }>({ left: 0 });
   const trigger = useRef<HTMLButtonElement>(null);
   const menu = useRef<HTMLDivElement>(null);
   const id = useId();
@@ -27,7 +27,7 @@ export default function CastButton({ options, onCast, disabled = false, name }: 
   // El menú es `fixed` para no quedar recortado por el desplazamiento horizontal de la tabla: se cierra si algo se mueve
   useEffect(() => {
     if (!open) return;
-    menu.current?.querySelector<HTMLElement>('[role="menuitem"]')?.focus();
+    menu.current?.querySelector<HTMLElement>('[role="menuitem"]')?.focus({ preventScroll: true });
     const close = () => setOpen(false);
     const outside = (e: PointerEvent) => {
       if (!menu.current?.contains(e.target as Node) && !trigger.current?.contains(e.target as Node)) close();
@@ -49,10 +49,13 @@ export default function CastButton({ options, onCast, disabled = false, name }: 
     return (
       <button
         type="button"
-        disabled={disabled}
+        aria-disabled={disabled || undefined}
         aria-label={`Lanzar ${name}`}
         title={options[0].label}
-        onClick={() => onCast(options[0])}
+        onClick={() => {
+          // aria-disabled en vez de disabled: el botón no pierde el foco mientras se espera al servidor
+          if (!disabled) onCast(options[0]);
+        }}
         className={button}
       >
         Lanzar
@@ -62,7 +65,11 @@ export default function CastButton({ options, onCast, disabled = false, name }: 
 
   function toggle() {
     const r = trigger.current?.getBoundingClientRect();
-    if (r) setPos({ top: r.bottom + 4, left: r.left });
+    // Hacia arriba si el menú (alto aproximado por opción) no cabe bajo el botón
+    if (r) {
+      const fits = r.bottom + 4 + options.length * 36 + 8 <= window.innerHeight;
+      setPos(fits ? { top: r.bottom + 4, left: r.left } : { bottom: window.innerHeight - r.top + 4, left: r.left });
+    }
     setOpen((o) => !o);
   }
   function close() {
@@ -108,7 +115,7 @@ export default function CastButton({ options, onCast, disabled = false, name }: 
           role="menu"
           aria-label={`Lanzar ${name}`}
           onKeyDown={onKeyDown}
-          style={{ top: pos.top, left: pos.left }}
+          style={pos}
           className="fixed z-30 min-w-44 animate-fade-in rounded-md border border-line bg-panel p-1 shadow-lg"
         >
           {options.map((o) => (
