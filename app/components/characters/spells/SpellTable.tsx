@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import type { Slots } from "@/lib/rules/dnd2024/derive";
 import { PACT_SLOT } from "@/lib/rules/dnd2024/spells/spellOps";
 import type { CastOption } from "@/lib/rules/dnd2024/spells/castOptions";
@@ -13,7 +14,7 @@ import MaskIcon from "@/app/components/ui/MaskIcon";
 import CastButton from "./CastButton";
 import { Uses } from "./LimitedUses";
 import SpellSlotBoxes from "./SpellSlotBoxes";
-import { spellHref, type SpellOpener } from "./SpellList";
+import { spellHrefFrom, type SpellOpener } from "./SpellList";
 
 type Props = {
   /** Todas las filas: el filtro solo decide qué se ve en pantalla, la hoja impresa sale completa. */
@@ -49,34 +50,38 @@ function Flag({ letter, title }: { letter: string; title: string }) {
   );
 }
 
-function Row({ row, visible, props }: { row: SpellRow; visible: boolean; props: Props }) {
+function Row({ row, visible, props, search }: { row: SpellRow; visible: boolean; props: Props; search: string }) {
   const { slots, used, isOwner, busy } = props;
   const options = castOptions(row, slots, used);
   const limitedUsed = row.limited ? (props.limitedUsed[row.limited.key] ?? row.limited.used) : 0;
+  const uses = row.limited && (
+    <Uses
+      item={{
+        key: row.limited.key, spell: { ref: row.ref, name: row.name }, origin: row.origin,
+        max: row.limited.max, used: limitedUsed,
+      }}
+      onSet={isOwner ? props.onSetLimited : null}
+      busy={busy}
+    />
+  );
   return (
     <tr className={hideRow(visible)}>
-      <td className={`${td} print:hidden`}>
-        {row.limited && (
-          <Uses
-            item={{
-              key: row.limited.key, spell: { ref: row.ref, name: row.name }, origin: row.origin,
-              max: row.limited.max, used: limitedUsed,
-            }}
-            onSet={isOwner ? props.onSetLimited : null}
-            busy={busy}
-          />
-        )}
-        {isOwner && !row.limited && row.level > 0 && (
-          <CastButton options={options} disabled={busy} name={row.name} onCast={(o) => props.onCast(row, o)} />
-        )}
-      </td>
+      {/* Quien no es el dueño no lanza: sin columna, y los usos (solo lectura) van bajo el nombre */}
+      {isOwner && (
+        <td className={`${td} print:hidden`}>
+          {uses}
+          {!row.limited && row.level > 0 && (
+            <CastButton options={options} disabled={busy} name={row.name} onCast={(o) => props.onCast(row, o)} />
+          )}
+        </td>
+      )}
       <th scope="row" className={`${td} text-left`}>
         <span className="flex items-start gap-2">
           <MaskIcon src={iconSrc("darkSchool", row.schoolId)} size={18} label={row.school} className="mt-0.5 text-muted" />
           <span className="min-w-0">
             <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
               <a
-                href={spellHref(row.ref)}
+                href={spellHrefFrom(search, row.ref)}
                 onClick={(e) => {
                   if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
                   e.preventDefault();
@@ -90,6 +95,15 @@ function Row({ row, visible, props }: { row: SpellRow; visible: boolean; props: 
               {row.ritual && <Flag letter="R" title="Ritual" />}
             </span>
             <span className="block text-xs font-normal text-muted">{row.origin}</span>
+            {row.limited && (
+              <>
+                {!isOwner && <span className="mt-1 block print:hidden">{uses}</span>}
+                {/* Las casillas no salen al imprimir: los usos quedan en texto */}
+                <span className="hidden text-xs font-normal text-muted print:block">
+                  Usos disponibles: {row.limited.max - Math.min(limitedUsed, row.limited.max)}/{row.limited.max}
+                </span>
+              </>
+            )}
           </span>
         </span>
       </th>
@@ -117,6 +131,7 @@ function Row({ row, visible, props }: { row: SpellRow; visible: boolean; props: 
 // de conjuro y cada fila su botón Lanzar. Se desplaza dentro de su caja en móvil.
 export default function SpellTable(props: Props) {
   const { rows, filter, slots, used, isOwner, busy, onSetSlot, clearHref } = props;
+  const search = useSearchParams().toString();
   const visible = new Set(rows.filter((r) => matchesSpellTable(r, filter)).map((r) => r.key));
   const filtering = filter.q !== "" || filter.kind !== "all" || filter.levels.length > 0
     || filter.concentration !== "any" || filter.ritual !== "any";
@@ -143,9 +158,10 @@ export default function SpellTable(props: Props) {
       )}
       <div className={`${card} animate-fade-up overflow-x-auto !p-0 ${anyVisible || rows.length === 0 ? "" : "hidden print:block"}`}>
         <table className="w-full min-w-[46rem] text-left text-sm">
+          <caption className="sr-only">Conjuros</caption>
           <thead className="text-xs uppercase tracking-wide text-muted">
             <tr className="border-b border-line">
-              <th scope="col" className={`${th} w-28 print:hidden`}>Lanzar</th>
+              {isOwner && <th scope="col" className={`${th} w-28 print:hidden`}>Lanzar</th>}
               <th scope="col" className={th}>Nombre</th>
               <th scope="col" className={th}>Tiempo</th>
               <th scope="col" className={th}>Alcance</th>
@@ -163,7 +179,7 @@ export default function SpellTable(props: Props) {
             return (
               <tbody key={g.level} className={`divide-y divide-line ${show ? "" : "hidden print:table-row-group"}`}>
                 <tr className="bg-surface">
-                  <th scope="colgroup" colSpan={7} className="px-3 py-2 text-left">
+                  <th scope="rowgroup" colSpan={isOwner ? 7 : 6} className="px-3 py-2 text-left">
                     <span className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
                       <span className="border-l-4 border-brand pl-3 font-heading text-base font-bold">
                         {g.level === 0 ? "Trucos" : `Nivel ${g.level}`}
@@ -185,7 +201,7 @@ export default function SpellTable(props: Props) {
                     </span>
                   </th>
                 </tr>
-                {g.rows.map((r) => <Row key={r.key} row={r} visible={visible.has(r.key)} props={props} />)}
+                {g.rows.map((r) => <Row key={r.key} row={r} visible={visible.has(r.key)} props={props} search={search} />)}
               </tbody>
             );
           })}

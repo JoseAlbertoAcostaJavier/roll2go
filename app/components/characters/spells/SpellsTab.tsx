@@ -94,18 +94,19 @@ export default function SpellsTab({ characterId, isOwner, initial, lists, spells
   };
 
   // Aviso de un conjuro lanzado como ritual (no gasta nada, así que no pasa por el servidor)
-  const [notice, setNotice] = useState("");
+  // `n` cuenta los avisos: otro ritual seguido cambia el estado, reanuncia el texto y reinicia el temporizador
+  const [notice, setNotice] = useState({ text: "", n: 0 });
   useEffect(() => {
-    if (!notice) return;
-    const t = setTimeout(() => setNotice(""), 4000);
+    if (!notice.text) return;
+    const t = setTimeout(() => setNotice((p) => ({ ...p, text: "" })), 4000);
     return () => clearTimeout(t);
   }, [notice]);
   function cast(row: SpellRow, option: CastOption) {
     if (option.kind === "ritual") {
-      setNotice("Lanzado como ritual");
+      setNotice((p) => ({ text: `${row.name} lanzado como ritual`, n: p.n + 1 }));
       return;
     }
-    setNotice("");
+    setNotice((p) => ({ ...p, text: "" }));
     void send({ op: "slot", level: option.level, used: (state.used[option.level] ?? 0) + 1 });
   }
 
@@ -148,11 +149,16 @@ export default function SpellsTab({ characterId, isOwner, initial, lists, spells
           </Link>
         </header>
 
-        {notice && (
-          <p role="status" className="animate-fade-in rounded-md border border-line bg-surface px-3 py-2 text-sm print:hidden">{notice}</p>
-        )}
+        {/* Siempre montado (vacío): los lectores de pantalla no anuncian una región viva recién insertada. El carácter
+            invisible alterno hace que se reanuncie el mismo texto */}
+        <p
+          role="status"
+          className={notice.text ? "animate-fade-in rounded-md border border-line bg-surface px-3 py-2 text-sm print:hidden" : "sr-only"}
+        >
+          {notice.text}{notice.text && notice.n % 2 === 0 ? "\u200b" : ""}
+        </p>
 
-        <SpellTableFilters base={base} query={query} filter={filter} levels={levels} />
+        {rows.length > 0 && <SpellTableFilters base={base} query={query} filter={filter} levels={levels} />}
         {rows.length === 0 && (
           <p className="text-sm text-muted">
             Este personaje aún no tiene conjuros que lanzar{isOwner ? ". Prepáralos en «Gestionar conjuros»." : "."}
