@@ -107,7 +107,9 @@ describe("validateEntryData", () => {
   test("class: progresiones, tabla y multiclase", () => {
     const withData = (extra: Record<string, unknown>) => validateEntryData("class", { ...barbarianData, ...extra });
     expect(withData({ table: { columns: [{ id: "rages", label: "Furias", values: ["2"] }] } }).ok).toBe(false);
-    expect(withData({ table: { columns: [{ label: "Furias", values: Array(20).fill("2") }] } }).ok).toBe(false);
+    // Sin `id` (catálogos importados antes de los usos de rasgos) sigue siendo válida; con un `id` que no es texto, no
+    expect(withData({ table: { columns: [{ label: "Furias", values: Array(20).fill("2") }] } }).ok).toBe(true);
+    expect(withData({ table: { columns: [{ id: 3, label: "Furias", values: Array(20).fill("2") }] } }).ok).toBe(false);
     expect(withData({ progressions: { ...barbarianData.progressions, weaponMastery: { 21: 2 } } }).ok).toBe(false);
     expect(withData({ progressions: { ...barbarianData.progressions, cantrips: Array(20).fill(3) } }).ok).toBe(true);
     expect(withData({ progressions: { ...barbarianData.progressions, optionalFeatures: [{ name: "Metamagic", levels: { 2: 2 } }] } }).ok)

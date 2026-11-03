@@ -91,7 +91,8 @@ export type ClassProgressions = {
 
 /** Tabla de la clase: columnas con nombre en español y un valor de texto por nivel (20). */
 /** `id` sale de la etiqueta inglesa del libro (`Channel Divinity` → `channel-divinity`; espacios de conjuro: `slots-<n>`). */
-export type ClassTable = { columns: { id: string; label: string; values: string[] }[] };
+/** `id`: etiqueta inglesa normalizada (`rages`); falta en catálogos importados antes de los usos de rasgos. */
+export type ClassTable = { columns: { id?: string; label: string; values: string[] }[] };
 
 export type MulticlassData = {
   /** 13 o más en estas características; con `any`, basta una de ellas. */
