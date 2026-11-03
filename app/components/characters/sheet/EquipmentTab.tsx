@@ -6,12 +6,15 @@ import { LoaderCircle, TriangleAlert } from "lucide-react";
 import type { Coins, Inventory } from "@/lib/rules/dnd2024/sheet/sheet";
 import { MAX_COINS, MAX_OTHER, type InventoryOp } from "@/lib/rules/dnd2024/sheet/edits";
 import { inventoryWeights } from "@/lib/rules/dnd2024/sheet/inventory";
+import type { ItemDetails } from "@/lib/rules/dnd2024/sheet/itemDetails";
 import { inventoryChips, inventoryGroups, type ItemInfo } from "@/lib/rules/dnd2024/sheet/inventoryTable";
 import { parseSection } from "@/lib/rules/dnd2024/sheet/sheetSections";
 import { sheetCard, cardTitle } from "@/app/components/ui/formStyles";
 import AddItemDialog, { type NewItem } from "./AddItemDialog";
 import InventoryFilters from "./InventoryFilters";
-import InventoryTable, { clampInt, fmt, smallInput, weightText, type InventoryActions } from "./InventoryTable";
+import { clampInt, smallInput } from "./InventoryFields";
+import ItemDialog from "./ItemDialog";
+import InventoryTable, { fmt, weightText, type InventoryActions } from "./InventoryTable";
 
 export type { ItemInfo };
 
@@ -30,6 +33,9 @@ type Props = {
   /** Dirección de la ficha y sus parámetros (`?seccion=`, `?q=`). */
   base: string;
   query: Query;
+  /** Datos y descripción de cada línea (clave: id de la línea) para su ficha. */
+  details: Record<string, ItemDetails>;
+  descriptions: Record<string, string>;
 };
 
 const COINS: { key: keyof Coins; label: string }[] = [
@@ -40,11 +46,12 @@ const toDraft = (c: Coins) => ({ cp: String(c.cp), sp: String(c.sp), ep: String(
 const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v) ?? "";
 
 // Pestaña Equipo: inventario, monedas, peso y otras posesiones. Edita el dueño; el resto solo lee.
-export default function EquipmentTab({ characterId, isOwner, inventory, info, capacity, armorWarning, systemId, books, base, query }: Props) {
+export default function EquipmentTab({ characterId, isOwner, inventory, info, capacity, armorWarning, systemId, books, base, query, details, descriptions }: Props) {
   const router = useRouter();
   const [inv, setInv] = useState(inventory);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(0);
+  const [open, setOpen] = useState<{ id: string; opener: HTMLElement } | null>(null);
   const saved = useRef(inventory);
   const queue = useRef<Promise<unknown>>(Promise.resolve());
   const pending = useRef(0);
@@ -113,7 +120,6 @@ export default function EquipmentTab({ characterId, isOwner, inventory, info, ca
   const shown = new Map(inventoryGroups(inv.items, info, active, q).map((g) => [g.id, g]));
   const shownLines = [...shown.values()].reduce((n, g) => n + g.lines.length, 0);
   const nothing = shownLines === 0 && (q.trim() !== "" || active === "equipado" || ![...shown.values()].some((g) => g.container));
-  const containers = inv.items.filter((l) => info[l.id]?.container);
   const section = (on: boolean) => (on ? "" : "hidden print:block");
 
   return (
@@ -169,13 +175,22 @@ export default function EquipmentTab({ characterId, isOwner, inventory, info, ca
                 info={info}
                 items={inv.items}
                 readOnly={readOnly}
-                containers={containers}
                 actions={actions}
+                onOpen={(id, opener) => setOpen({ id, opener })}
               />
             );
           })}
         </div>
       </section>
+
+      {open && details[open.id] && (
+        <ItemDialog
+          details={details[open.id]}
+          description={descriptions[open.id] ?? ""}
+          onClose={() => setOpen(null)}
+          opener={open.opener}
+        />
+      )}
 
       <section className={`${sheetCard} animate-fade-up ${section(active === "todo")}`} aria-labelledby="coins-title">
         <h3 id="coins-title" className={cardTitle}>Monedas</h3>
