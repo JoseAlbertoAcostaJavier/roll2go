@@ -58,7 +58,8 @@ export default function UseBoxes({ count, used, onSet, busy, label, itemLabel, s
       {Array.from({ length: count }, (_, i) => {
         const isSpent = i < spent;
         const box = `flex ${side} shrink-0 items-center justify-center rounded-sm border-2 text-white transition-colors ${
-          isSpent ? "border-brand bg-brand" : "border-brand/60 bg-transparent"
+          // Al imprimir sin fondos, la marca sale en negro para que se distinga de los libres
+          isSpent ? "border-brand bg-brand print:text-black" : "border-brand/60 bg-transparent"
         }`;
         const mark = isSpent ? <Check size={iconSize} strokeWidth={3} aria-hidden="true" /> : null;
         if (!onSet) return <span key={i} className={box} aria-hidden="true">{mark}</span>;

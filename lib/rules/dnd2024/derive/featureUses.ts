@@ -42,6 +42,9 @@ export const USES: Record<string, UsesRule> = {
   "species:orc|xphb": { name: "Aguante incansable", max: "1", recovery: LONG },
   "classFeature:arcane recovery|wizard|xphb|1": { max: "1", recovery: LONG },
   "classFeature:bardic inspiration|bard|xphb|1": { max: "max(1,@abilities.cha.mod)", recovery: LONG, shortFrom: { level: 5 } },
+  // Foundry no trae los puntos de concentración ni los de hechicería como usos del rasgo: salen de la tabla de clase
+  "classFeature:monk's focus|monk|xphb|2": { name: "Puntos de concentración", max: "@scale.monk.focus-points", recovery: { long: "all", short: "all" } },
+  "classFeature:font of magic|sorcerer|xphb|2": { name: "Puntos de hechicería", max: "@scale.sorcerer.sorcery-points", recovery: LONG },
 };
 
 /** Nombres de columna de Foundry que difieren del id de la tabla de clase (`clase.columna` → id de la columna). */

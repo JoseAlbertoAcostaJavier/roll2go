@@ -21,7 +21,7 @@ const v1 = (): Dnd2024Sheet => ({
   hp: { max: null, current: null, temp: 0 },
 });
 
-const entries = buildCatalog(["class-barbarian.json", "class-fighter.json", "class-bard.json", "class-wizard.json"]);
+const entries = buildCatalog(["class-barbarian.json", "class-fighter.json", "class-bard.json", "class-wizard.json", "class-monk.json", "class-sorcerer.json"]);
 const RAGE = `${B}:classFeature:rage|barbarian|xphb|1`;
 
 // Hoja con los niveles dados: `[clase, niveles]` en orden
@@ -77,6 +77,13 @@ describe("featureUses", () => {
     expect(find(usesOf(sheetOf([["wizard", 1]])), `${B}:classFeature:arcane recovery|wizard|xphb|1`))
       .toMatchObject({ max: 1, recovery: { long: "all", short: "none" } });
   });
+  it("Monje 2: puntos de concentración de la tabla, vuelven con el corto; Hechicero 2: puntos de hechicería", () => {
+    expect(find(usesOf(sheetOf([["monk", 2]])), `${B}:classFeature:monk's focus|monk|xphb|2`))
+      .toMatchObject({ name: "Puntos de concentración", max: 2, recovery: { long: "all", short: "all" } });
+    expect(find(usesOf(sheetOf([["sorcerer", 2]])), `${B}:classFeature:font of magic|sorcerer|xphb|2`))
+      .toMatchObject({ name: "Puntos de hechicería", max: 2, recovery: { long: "all", short: "none" } });
+  });
+
   it("Bardo: Inspiración bárdica sin corto hasta el nivel 5", () => {
     const key = `${B}:classFeature:bardic inspiration|bard|xphb|1`;
     expect(find(usesOf(sheetOf([["bard", 1]])), key)).toMatchObject({ max: 1, recovery: { long: "all", short: "none" } });
