@@ -200,6 +200,8 @@ export default function EquipmentTab({ characterId, isOwner, inventory, info, ca
           books={books}
           onAdd={(item: NewItem) => send({ op: "add", ...item })}
           onClose={() => setManage(null)}
+          error={error}
+          saving={saving > 0}
           opener={manage}
         />
       )}

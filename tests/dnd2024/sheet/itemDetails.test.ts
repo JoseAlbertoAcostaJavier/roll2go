@@ -65,6 +65,20 @@ describe("itemDetails", () => {
       .toBe("12 pies cúbicos");
   });
 
+  it("contenedor sin peso del contenido: fila tras la capacidad", () => {
+    const container = { weight: 500, volume: 64, items: [], weightless: true };
+    const d = itemDetails(line("Bolsa de contención"), entry({ type: "G", container }), null);
+    expect(labels(d).slice(-3)).toEqual(["Capacidad", "Peso del contenido", "Cantidad"]);
+    expect(row(d, "Peso del contenido")).toBe("No cuenta para el peso cargado");
+  });
+
+  it("arma sin dados (red): sin fila de daño", () => {
+    const d = itemDetails(line("Red"), entry({
+      type: "R", weapon: { damage: "", damageType: "B", properties: [], mastery: null, category: "martial" },
+    } as unknown as Partial<ItemData> & { type: string }), null);
+    expect(labels(d)).not.toContain("Daño");
+  });
+
   it("poción rara: subtítulo con rareza", () => {
     const d = itemDetails(line("Poción"), entry({ type: "P", rarity: "rare" }), null);
     expect(d.subtitle).toBe("Poción · Raro");

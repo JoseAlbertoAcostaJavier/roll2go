@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { ChevronDown, ChevronRight, TriangleAlert, X } from "lucide-react";
+import { ChevronDown, ChevronRight, LoaderCircle, TriangleAlert, X } from "lucide-react";
 import type { Inventory, InventoryItem } from "@/lib/rules/dnd2024/sheet/sheet";
 import { effectiveContainer } from "@/lib/rules/dnd2024/sheet/inventory";
 import { inventoryGroups, type InventoryGroup, type ItemInfo } from "@/lib/rules/dnd2024/sheet/inventoryTable";
@@ -23,13 +23,17 @@ type Props = {
   books: string[];
   onAdd: (item: NewItem) => Promise<string | null>;
   onClose: () => void;
+  /** Mensaje de error del último guardado (vacío si no hay). */
+  error: string;
+  /** Hay cambios sin confirmar por el servidor. */
+  saving: boolean;
   /** Botón que abrió el panel (capturado al pulsar); recibe el foco al cerrar. */
   opener: HTMLElement | null;
 };
 
 // Panel «Gestionar inventario» (spec §4): a la derecha desde `sm` y a pantalla completa por debajo. Todo se guarda al
 // momento con la cola de envíos de la pestaña. Foco atrapado, Escape cierra y el foco vuelve al botón que lo abrió.
-export default function ManageInventory({ inv, info, actions, systemId, books, onAdd, onClose, opener }: Props) {
+export default function ManageInventory({ inv, info, actions, systemId, books, onAdd, onClose, error, saving, opener }: Props) {
   const uid = useId();
   const box = useRef<HTMLDivElement>(null);
   const closeButton = useRef<HTMLButtonElement>(null);
@@ -39,7 +43,14 @@ export default function ManageInventory({ inv, info, actions, systemId, books, o
     closeButton.current?.focus();
     const overflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
+    // Al imprimir la página debe poder salir entera
+    const beforePrint = () => { document.body.style.overflow = overflow; };
+    const afterPrint = () => { document.body.style.overflow = "hidden"; };
+    window.addEventListener("beforeprint", beforePrint);
+    window.addEventListener("afterprint", afterPrint);
     return () => {
+      window.removeEventListener("beforeprint", beforePrint);
+      window.removeEventListener("afterprint", afterPrint);
       document.body.style.overflow = overflow;
       if (opener?.isConnected) opener.focus();
     };
@@ -67,6 +78,8 @@ export default function ManageInventory({ inv, info, actions, systemId, books, o
     if (e.defaultPrevented) return;
     if (e.key === "Escape") {
       e.preventDefault();
+      // Al salir del campo que se está editando se guarda lo escrito
+      if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
       onClose();
     } else if (e.key === "Tab" && box.current) {
       if ((e.target as HTMLElement).closest('[role="dialog"]') !== box.current) return;
@@ -110,6 +123,17 @@ export default function ManageInventory({ inv, info, actions, systemId, books, o
             <X size={20} aria-hidden="true" />
           </button>
         </div>
+
+        {(error || saving) && (
+          <div className="flex items-center gap-2 border-b border-line px-4 py-2 text-sm sm:px-6">
+            {error && <p role="alert" className="min-w-0 flex-1 text-brand-soft">{error}</p>}
+            {saving && (
+              <span className="ml-auto inline-flex items-center gap-1 text-muted" role="status">
+                <LoaderCircle size={14} className="animate-spin" aria-hidden="true" /> Guardando
+              </span>
+            )}
+          </div>
+        )}
 
         <div className="space-y-6 p-4 sm:p-6">
           <AddItemDialog systemId={systemId} books={books} onAdd={onAdd} />
@@ -206,7 +230,8 @@ function Row({ line: l, data, where, containers, actions }: {
     ...(where !== null ? [{ id: null, name: "Equipo" }] : []),
     ...containers.filter((x) => x.id !== where && x.id !== l.id),
   ];
-  const movable = !data?.container && containers.length > 0 && targets.length > 0;
+  // Una línea recién añadida, sin sus datos todavía, no se mueve hasta saber si es un contenedor
+  const movable = !!data && !data.container && containers.length > 0 && targets.length > 0;
 
   return (
     <li className="px-3 py-2">
@@ -251,7 +276,7 @@ function Row({ line: l, data, where, containers, actions }: {
   );
 }
 
-// Botón «Mover» con menú de destinos. El menú va en un portal con posición fija: el panel se desplaza y lo recortaría.
+// Botón «Mover» con menú de destinos. El menú es `fixed` (dentro del panel) y se cierra si algo se desplaza.
 function MoveMenu({ name, targets, onMove }: {
   name: string;
   targets: { id: string | null; name: string }[];

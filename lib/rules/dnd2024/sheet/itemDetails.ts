@@ -21,7 +21,7 @@ export function itemDetails(line: InventoryItem, entry: CatalogEntry | undefined
     if (data.value > 0) add("Coste", `${fmt(data.value / 100)} po`);
     const w = data.weapon;
     if (w) {
-      add("Daño", `${w.damage} ${damageTypeName(w.damageType)}`);
+      if (w.damage) add("Daño", `${w.damage} ${damageTypeName(w.damageType)}`);
       if (w.properties.length) add("Propiedades", w.properties.map(weaponPropertyName).join(", "));
       if (w.mastery) add("Maestría", masteryName(w.mastery));
       if (w.range) add("Alcance", `${w.range} pies`);
@@ -33,6 +33,7 @@ export function itemDetails(line: InventoryItem, entry: CatalogEntry | undefined
     }
     const capacity = capacityText ?? (data.container?.weight ? `${fmt(data.container.weight)} lb` : null);
     if (capacity) add("Capacidad", capacity);
+    if (data.container?.weightless) add("Peso del contenido", "No cuenta para el peso cargado");
   }
 
   add("Cantidad", String(line.quantity));
