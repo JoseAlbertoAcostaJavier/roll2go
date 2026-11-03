@@ -14,11 +14,14 @@ const errorOf = (r: ReturnType<typeof applyStatus>) => (r.ok ? null : r.error);
 
 describe("statusOf", () => {
   it("una hoja antigua no tiene inspiración, estados ni agotamiento", () => {
-    expect(statusOf(base)).toEqual({ heroicInspiration: false, conditions: [], exhaustion: 0 });
+    expect(statusOf(base)).toEqual({ heroicInspiration: false, conditions: [], exhaustion: 0, featureUses: {} });
   });
   it("devuelve lo guardado", () => {
     const s = withStatus({ heroicInspiration: true, conditions: ["prone"], exhaustion: 2 });
-    expect(statusOf(s)).toEqual({ heroicInspiration: true, conditions: ["prone"], exhaustion: 2 });
+    expect(statusOf(s)).toEqual({ heroicInspiration: true, conditions: ["prone"], exhaustion: 2, featureUses: {} });
+  });
+  it("incluye los usos de rasgos guardados", () => {
+    expect(statusOf(withStatus({ featureUses: { rage: 1 } })).featureUses).toEqual({ rage: 1 });
   });
 });
 
@@ -77,6 +80,29 @@ describe("agotamiento", () => {
   it("rechaza lo que sale de 0 a 6", () => {
     for (const level of [-1, 7, 2.5])
       expect(errorOf(applyStatus(base, { op: "exhaustion", level }))).toBe("El agotamiento va de 0 a 6.");
+  });
+});
+
+describe("usos de rasgos", () => {
+  const RAGE = "xphb:classFeature:rage|barbarian|xphb|1";
+  const ctx = { useMax: (key: string) => (key === RAGE ? 2 : null) };
+  const use = (used: unknown, c?: typeof ctx) => applyStatus(base, { op: "featureUse", key: RAGE, used }, c);
+
+  it("guarda los usos gastados", () => {
+    expect(statusOf(ok(use(1, ctx))).featureUses).toEqual({ [RAGE]: 1 });
+  });
+  it("con 0 quita la clave y deja el resto", () => {
+    const s = withStatus({ featureUses: { [RAGE]: 2, otro: 1 } });
+    const r = ok(applyStatus(s, { op: "featureUse", key: RAGE, used: 0 }, ctx));
+    expect(r.featureUses).toEqual({ otro: 1 });
+  });
+  it("fuera de rango o no entero: error con el máximo", () => {
+    for (const used of [3, -1, 1.5, "1"]) expect(errorOf(use(used, ctx))).toBe("Los usos van de 0 a 2.");
+  });
+  it("un rasgo sin usos, o sin contexto, da error", () => {
+    expect(errorOf(applyStatus(base, { op: "featureUse", key: "nada", used: 1 }, ctx))).toBe("Ese rasgo no tiene usos.");
+    expect(errorOf(use(1, undefined))).toBe("Ese rasgo no tiene usos.");
+    expect(errorOf(applyStatus(base, { op: "featureUse", key: 3, used: 1 }, ctx))).toBe("Petición no válida.");
   });
 });
 
