@@ -33,7 +33,9 @@ export const ENTRY_KINDS: readonly EntryKind[] = [
 ];
 
 /** Elemento de equipo: una entrada del catálogo, monedas (pc) o un texto libre. */
-export type Pack = { ref?: Ref; quantity?: number; value?: number; displayName?: string };
+export type Pack = { ref?: Ref; quantity?: number; value?: number; displayName?: string; choose?: { kinds: ChoiceKind[]; label: string } };
+/** Clase de objeto que el jugador elige del catálogo (juego, instrumento, herramientas de artesano o arma). */
+export type ChoiceKind = "gaming" | "instrument" | "artisan" | "simple" | "simpleMelee" | "martial" | "martialMelee";
 
 /** Conjuro concedido; `level` es el nivel de personaje o de clase en que se obtiene (1-20). */
 export type SpellGrant = { level: number; ref: Ref; ability?: Ability };

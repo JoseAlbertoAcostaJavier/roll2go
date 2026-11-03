@@ -1,7 +1,7 @@
 // Referencias del catálogo que hacen falta para mostrar el equipo inicial: las de las opciones y, de los paquetes
 // ya cargados, las de su contenido. Quien llama repite hasta que no aparezcan referencias nuevas.
 import type { CatalogEntry } from "@/lib/rules/catalog/types";
-import type { ItemData, Pack, Ref } from "@/lib/rules/types";
+import type { ChoiceKind, ItemData, Pack, Ref } from "@/lib/rules/types";
 
 export const refKey = (ref: Ref) => `${ref.book}:${ref.key}`;
 
@@ -11,6 +11,18 @@ export const bareName = (key: string) => key.replace(/^[^:]*:/, "").split("|")[0
 /** Si `v` tiene la forma de una referencia `{ book, key }`. */
 export const isRef = (v: unknown): v is Ref =>
   typeof v === "object" && v !== null && typeof (v as Ref).book === "string" && typeof (v as Ref).key === "string";
+
+/** Si un objeto del catálogo vale para una elección de equipo (`Pack.choose`). */
+export function choiceMatches(kind: ChoiceKind, data: ItemData): boolean {
+  switch (kind) {
+    case "gaming": return data.type === "GS";
+    case "instrument": return data.type === "INS";
+    case "artisan": return data.type === "AT";
+    case "simple": case "martial": return data.weapon?.category === kind;
+    case "simpleMelee": return data.weapon?.category === "simple" && data.type === "M";
+    case "martialMelee": return data.weapon?.category === "martial" && data.type === "M";
+  }
+}
 
 export function equipmentRefs(options: Pack[][], lookup: (key: string) => CatalogEntry | null | undefined): Ref[] {
   const found = new Map<string, Ref>();

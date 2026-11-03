@@ -458,6 +458,38 @@ describe("tipos de equipo a elegir", () => {
   });
 });
 
+describe("objetos a elegir (choose)", () => {
+  const packs = (equipment: unknown[]) => (normalizeBackground({
+    name: "X", source: "XPHB", startingEquipment: [{ A: equipment }],
+  }).data as BackgroundData).equipment.A;
+
+  test("juego, instrumento y herramientas llevan sus tipos", () => {
+    const [a] = packs([{ equipmentType: "setGaming" }]);
+    expect(a).toEqual({ choose: { kinds: ["gaming"], label: "Un juego (a elegir)" }, displayName: "Un juego (a elegir)" });
+    const [b] = packs([{ equipmentTypes: ["instrumentMusical", "toolArtisan"] }]);
+    expect(b.choose?.kinds).toEqual(["instrument", "artisan"]);
+    expect(b.choose?.label).toBe(b.displayName);
+    expect(b.displayName).toBe("Un instrumento musical (a elegir) o unas herramientas de artesano (a elegir)");
+  });
+  test("armas por categoría", () => {
+    const kinds = (code: string) => packs([{ equipmentType: code }])[0].choose?.kinds;
+    expect(kinds("weaponSimple")).toEqual(["simple"]);
+    expect(kinds("weaponSimpleMelee")).toEqual(["simpleMelee"]);
+    expect(kinds("weaponMartial")).toEqual(["martial"]);
+    expect(kinds("weaponMartialMelee")).toEqual(["martialMelee"]);
+    expect(kinds("anyGamingSet")).toEqual(["gaming"]);
+    expect(kinds("anyArtisansTool")).toEqual(["artisan"]);
+    expect(kinds("anyMusicalInstrument")).toEqual(["instrument"]);
+  });
+  test("canalizadores, códigos desconocidos y listas mixtas quedan como texto", () => {
+    const [f] = packs([{ equipmentType: "focusSpellcastingArcane" }]);
+    expect(f).toEqual({ displayName: "Un canalizador arcano (a elegir)" });
+    const [m] = packs([{ equipmentTypes: ["focusSpellcastingArcane", "toolArtisan"] }]);
+    expect(m.choose).toBeUndefined();
+    expect(m.displayName).toBeTruthy();
+  });
+});
+
 test("competencias de armas con {@filter}: queda el texto visible", () => {
   const rogue = {
     name: "Rogue", source: "XPHB", hd: { number: 1, faces: 8 }, proficiency: ["dex", "int"],
