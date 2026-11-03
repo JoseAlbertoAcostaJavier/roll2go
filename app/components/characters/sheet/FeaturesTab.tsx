@@ -1,6 +1,7 @@
 import { ChevronDown } from "lucide-react";
 import type { CatalogEntry } from "@/lib/rules/catalog/types";
 import type { FeatureGroup } from "@/lib/rules/dnd2024/derive";
+import type { FeatureUse } from "@/lib/rules/dnd2024/derive/featureUses";
 import { bareName, refKey } from "@/lib/rules/dnd2024/sheet/equipmentRefs";
 import { FEATURE_SECTION_CHIPS, featureSections, parseSection } from "@/lib/rules/dnd2024/sheet/sheetSections";
 import type { Ref } from "@/lib/rules/types";
@@ -8,10 +9,14 @@ import Bbcode from "@/app/components/ui/Bbcode";
 import { sheetCard } from "@/app/components/ui/formStyles";
 import RoundIcon from "@/app/components/ui/RoundIcon";
 import ClampedText from "./ClampedText";
+import FeatureUsesControl from "./FeatureUsesControl";
 import SectionChips from "./SectionChips";
 
 type Query = Record<string, string | string[] | undefined>;
-type Props = { groups: FeatureGroup[]; entries: Map<string, CatalogEntry>; base: string; query: Query };
+type Props = {
+  groups: FeatureGroup[]; entries: Map<string, CatalogEntry>; base: string; query: Query;
+  featureUses: FeatureUse[]; characterId: string; isOwner: boolean;
+};
 
 const descriptionOf = (e: CatalogEntry | undefined) => (e ? e.descriptionEs || e.description : "");
 
@@ -55,7 +60,9 @@ function GroupHeading({ group, entry }: { group: FeatureGroup; entry: CatalogEnt
 // Rasgos por origen en tres secciones (clase, especie, dotes) con chips de filtro. Lo que el filtro oculta sigue en el
 // DOM (`hidden print:block`) para que la impresión lo saque todo. Cada rasgo lleva su descripción abierta, recortada
 // si es larga.
-export default function FeaturesTab({ groups, entries, base, query }: Props) {
+export default function FeaturesTab({ groups, entries, base, query, featureUses, characterId, isOwner }: Props) {
+  const usesByKey = new Map(featureUses.map((u) => [u.key, u]));
+  const usesOf = (ref: Ref | null) => (ref ? usesByKey.get(refKey(ref)) : undefined);
   const get = (ref: Ref | null) => (ref ? entries.get(refKey(ref)) : undefined);
 
   if (groups.length === 0) return <p className="text-sm text-muted">Este personaje no tiene rasgos.</p>;
@@ -80,6 +87,9 @@ export default function FeaturesTab({ groups, entries, base, query }: Props) {
                 return (
                   <article key={`${g.source}-${g.ref ? refKey(g.ref) : n}`} className={`${sheetCard} animate-fade-up`} style={{ animationDelay: `${Math.min(n, 6) * 50}ms` }}>
                     <GroupHeading group={g} entry={entry} />
+                    {g.features.length === 0 && usesOf(g.ref) && (
+                      <FeatureUsesControl characterId={characterId} use={usesOf(g.ref)!} isOwner={isOwner} className="mt-3" />
+                    )}
                     {g.ref && (
                       <div className="mt-4">
                         {longIntro ? (
@@ -110,6 +120,9 @@ export default function FeaturesTab({ groups, entries, base, query }: Props) {
                               {f.value && <span className="text-sm text-success">{f.value}</span>}
                               <span className="shrink-0 text-xs uppercase tracking-wide text-muted">· Nivel {f.level}</span>
                             </div>
+                            {usesOf(f.ref) && (
+                              <FeatureUsesControl characterId={characterId} use={usesOf(f.ref)!} isOwner={isOwner} className="mt-2" />
+                            )}
                             <div className="mt-2">
                               <ClampedText><Description entry={get(f.ref)} /></ClampedText>
                             </div>

@@ -6,7 +6,7 @@
 import { ABILITIES } from "../types";
 import type {
   Ability, ActionData, ContainerData, ClassTable, Defenses, DefenseList, EntryData, EntryKind, Equipment, FeatSpellChoice, FeatSpellFilter, FeatureData, LevelCounts,
-  LevelFeature, MulticlassData, NameGender, OptionalFeatureData, Pack, Ref, Spellcasting, SpellcastingProgression, SpellGrant,
+  LevelFeature, MulticlassData, NameGender, OptionalFeatureData, Pack, Ref, Spellcasting, SpellcastingProgression, SpellData, SpellGrant,
 } from "../types";
 import { normalizeName, validateEntryData } from "../schemas";
 import { activationFor } from "./activation";
@@ -525,6 +525,19 @@ export function normalizeFeat(raw: Rec): NormalizedEntry {
   return entry<"feat">(header("feat", raw, keyOf("feat", str(raw.name), str(raw.source))), data);
 }
 
+/** Daño del conjuro: la tabla `scalingLevelDice` (trucos) o, si no la hay, el primer `{@damage …}` del texto. */
+function spellDamage(raw: Rec): SpellData["damage"] {
+  const sld = asArr(raw.scalingLevelDice).length ? asArr(raw.scalingLevelDice)[0] : raw.scalingLevelDice;
+  if (isObj(sld) && isObj(sld.scaling)) {
+    const scaling = Object.entries(sld.scaling)
+      .flatMap(([level, dice]) => (typeof dice === "string" ? [{ level: Number(level), dice }] : []))
+      .sort((a, b) => a.level - b.level);
+    if (scaling.length) return { dice: scaling[0].dice, scaling };
+  }
+  const m = /\{@damage\s+([^}|]+)/.exec(JSON.stringify([raw.entries]));
+  return m ? { dice: m[1].trim() } : undefined;
+}
+
 export function normalizeSpell(raw: Rec, ctx: NormalizeContext): NormalizedEntry {
   const key = keyOf("spell", str(raw.name), str(raw.source));
   const head = header("spell", raw, key);
@@ -532,6 +545,7 @@ export function normalizeSpell(raw: Rec, ctx: NormalizeContext): NormalizedEntry
   const meta = isObj(raw.meta) ? raw.meta : {};
   // La mejora va sin su título («Using a Higher-Level Spell Slot»)
   const higherLevels = entriesToBbcode(asArr(raw.entriesHigherLevel).flatMap((e) => (isObj(e) ? asArr(e.entries) : [e])));
+  const damage = spellDamage(raw);
   return entry<"spell">(head, {
     level: raw.level as number,
     school: str(raw.school),
@@ -544,6 +558,7 @@ export function normalizeSpell(raw: Rec, ctx: NormalizeContext): NormalizedEntry
     classes: ctx.spellClasses.get(key) ?? [],
     tags: spellTags(raw),
     ...(higherLevels ? { higherLevels } : {}),
+    ...(damage ? { damage } : {}),
   });
 }
 
@@ -760,6 +775,7 @@ function classTable(groups: unknown): ClassTable {
     asArr(g.colLabels).forEach((l, i) => {
       const label = plainText(str(l));
       columns.push({
+        id: slots ? `slots-${i + 1}` : label.trim().toLowerCase().replace(/\s+/g, "-"),
         label: slots ? `Espacios de nivel ${i + 1}` : TABLE_LABELS[label] ?? label,
         values: Array.from({ length: 20 }, (_, level) => {
           const row = rows[level];

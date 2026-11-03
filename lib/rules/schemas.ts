@@ -96,7 +96,7 @@ const spellcasting = shape({
   progression: oneOf("full", "half", "third", "pact"),
   mode: oneOf("list", "levelUp", "spellbook"),
 });
-const classTable = shape({ columns: arrayOf(shape({ label: str, values: perLevel(str) })) });
+const classTable = shape({ columns: arrayOf(shape({ "id?": str, label: str, values: perLevel(str) })) });
 const multiclass = shape({
   requirements: shape({ abilities, any: bool }),
   proficiencies: shape({
@@ -181,6 +181,7 @@ const checks: { [K in EntryKind]: Check } = {
     classes: strings,
     tags: strings,
     "higherLevels?": str,
+    "damage?": shape({ dice: str, "scaling?": arrayOf(shape({ level: int(1, 20), dice: str })) }),
   }),
   item: shape({
     type: str,

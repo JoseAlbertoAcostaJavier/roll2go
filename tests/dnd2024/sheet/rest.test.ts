@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { refKey } from "@/lib/rules/dnd2024/sheet/equipmentRefs";
+import type { FeatureUse } from "@/lib/rules/dnd2024/derive/featureUses";
 import { applyRest, healingRange, hitDicePools, type RestCtx } from "@/lib/rules/dnd2024/sheet/rest";
 import type { Dnd2024SheetV2, LevelEntry, Named } from "@/lib/rules/dnd2024/sheet/sheet";
 import { B, buildCatalog, ref } from "../fixtureCatalog";
@@ -50,7 +51,7 @@ function sheetOf(path: string[], extra: Partial<Dnd2024SheetV2> = {}): Dnd2024Sh
 const multi = (extra: Partial<Dnd2024SheetV2> = {}) => sheetOf(["fighter", "fighter", "fighter", "wizard"], extra);
 const poolsOf = (s: Dnd2024SheetV2) => hitDicePools(s, entries);
 const ctxOf = (s: Dnd2024SheetV2, over: Partial<RestCtx> = {}): RestCtx => ({
-  pools: poolsOf(s), conMod: 0, maxHp: 12, roll: () => 1, ...over,
+  pools: poolsOf(s), conMod: 0, maxHp: 12, roll: () => 1, featureUses: [], ...over,
 });
 const ok = (r: ReturnType<typeof applyRest>) => {
   if (!r.ok) throw new Error(r.error);
@@ -215,6 +216,35 @@ describe("descanso largo", () => {
     const r = ok(applyRest(s, { op: "longRest" }, ctxOf(s)));
     expect(r.sheet.heroicInspiration).toBe(true);
     expect(r.sheet.conditions).toEqual(["poisoned"]);
+  });
+});
+
+// Furia (2 usos, largo y 1 en corto), Recuperación arcana (1, solo largo) y Oleada de acción (1, todo en corto)
+const usage = (key: string, max: number, used: number, short: FeatureUse["recovery"]["short"]): FeatureUse => ({
+  key, name: key, max, used, recovery: { long: "all", short },
+});
+const uses = [usage("rage", 2, 2, 1), usage("arcane", 1, 1, "none"), usage("surge", 1, 1, "all")];
+const usedOf = { rage: 2, arcane: 1, surge: 1 };
+
+describe("usos de los rasgos", () => {
+  it("el descanso largo los recupera todos", () => {
+    const s = multi({ featureUses: usedOf });
+    expect(ok(applyRest(s, { op: "longRest" }, ctxOf(s, { featureUses: uses }))).sheet.featureUses).toEqual({});
+  });
+  it("el corto recupera lo que dice cada rasgo", () => {
+    const s = multi({ featureUses: usedOf });
+    const r = ok(applyRest(s, { op: "shortRest" }, ctxOf(s, { featureUses: uses })));
+    expect(r.sheet.featureUses).toEqual({ rage: 1, arcane: 1 });
+  });
+  it("un corto con 1 uso por recuperar y 1 gastado lo deja en 0 sin guardar la clave", () => {
+    const s = multi({ featureUses: { rage: 1 } });
+    const r = ok(applyRest(s, { op: "shortRest" }, ctxOf(s, { featureUses: [usage("rage", 2, 1, 1)] })));
+    expect(r.sheet.featureUses).toEqual({});
+  });
+  it("una hoja sin featureUses no lo crea al descansar", () => {
+    const s = multi();
+    expect(ok(applyRest(s, { op: "longRest" }, ctxOf(s, { featureUses: uses }))).sheet).not.toHaveProperty("featureUses");
+    expect(ok(applyRest(s, { op: "shortRest" }, ctxOf(s, { featureUses: uses }))).sheet).not.toHaveProperty("featureUses");
   });
 });
 

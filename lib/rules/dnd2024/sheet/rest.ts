@@ -4,6 +4,7 @@
 import type { CatalogEntry } from "@/lib/rules/catalog/types";
 import type { ClassData } from "@/lib/rules/types";
 import { PACT_SLOT, recoversOnShortRest } from "../spells/spellOps";
+import type { FeatureUse } from "../derive/featureUses";
 import { refKey } from "./equipmentRefs";
 import type { Dnd2024SheetV2 } from "./sheet";
 import { summarizeClasses } from "./upgrade";
@@ -21,6 +22,8 @@ export type RestCtx = {
   maxHp: number;
   /** Tirada de un dado de `die` caras (1..die). */
   roll: (die: number) => number;
+  /** Usos de los rasgos con contador (con los gastados) y cómo se recuperan. */
+  featureUses: FeatureUse[];
 };
 
 /** `healed`: PG recuperados de verdad (sin pasar del máximo); `rolls`: las tiradas hechas (vacío si el total se dio a mano). */
@@ -67,6 +70,7 @@ export function applyRest(sheet: Dnd2024SheetV2, op: unknown, ctx: RestCtx): Res
     const next: Dnd2024SheetV2 = {
       ...sheet, slotsUsed: {}, limitedUsed: {}, hitDiceUsed: {}, hp: { ...sheet.hp, current: null, temp: 0 },
     };
+    if (sheet.featureUses) next.featureUses = {};
     if (sheet.exhaustion !== undefined) next.exhaustion = Math.max(0, sheet.exhaustion - 1);
     return { ok: true, healed: 0, rolls: [], sheet: next };
   }
@@ -102,6 +106,18 @@ export function applyRest(sheet: Dnd2024SheetV2, op: unknown, ctx: RestCtx): Res
   const next: Dnd2024SheetV2 = { ...sheet, slotsUsed };
   if (sheet.limitedUsed)
     next.limitedUsed = Object.fromEntries(Object.entries(sheet.limitedUsed).filter(([k]) => !recoversOnShortRest(k)));
+
+  // Usos de los rasgos: todos o los que diga cada uno; solo se guardan los gastados
+  if (sheet.featureUses) {
+    const left = { ...sheet.featureUses };
+    for (const u of ctx.featureUses) {
+      if (u.used === 0 || u.recovery.short === "none") continue;
+      const used = u.recovery.short === "all" ? 0 : Math.max(0, u.used - u.recovery.short);
+      if (used > 0) left[u.key] = used;
+      else delete left[u.key];
+    }
+    next.featureUses = left;
+  }
 
   let healed = 0;
   if (dice.length > 0) {

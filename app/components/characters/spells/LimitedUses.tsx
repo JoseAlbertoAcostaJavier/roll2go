@@ -1,5 +1,6 @@
 "use client";
 
+import UseBoxes from "@/app/components/characters/sheet/UseBoxes";
 import type { SpellOption } from "@/lib/rules/catalog/types";
 import type { CasterBlock } from "@/lib/rules/dnd2024/derive";
 import { bareName, refKey } from "@/lib/rules/dnd2024/sheet/equipmentRefs";
@@ -20,35 +21,15 @@ type Props = {
   onOpen: SpellOpener;
 };
 
-// Casillas de usos de un conjuro, como las de los espacios: rellenas las disponibles, huecas las gastadas. Pulsar una
-// disponible la gasta; una gastada, la recupera
+// Cuadrados de usos de un conjuro, como los de los espacios: hueco = disponible, marcado = gastado. Pulsar uno
+// disponible lo gasta; uno gastado, lo recupera
 export function Uses({ item, onSet, busy }: { item: Limited; onSet: Props["onSet"]; busy: boolean }) {
-  const spent = Math.min(item.used, item.max);
   const name = item.spell.name || bareName(item.spell.ref.key);
   return (
-    <span className="flex items-center gap-1.5" role={onSet ? "group" : undefined} aria-label={onSet ? `Usos de ${name}` : undefined}>
-      {Array.from({ length: item.max }, (_, i) => {
-        const isSpent = i < spent;
-        const dot = `block h-5 w-5 rounded-full border-2 transition-colors ${isSpent ? "border-muted bg-transparent" : "border-brand bg-brand"}`;
-        if (!onSet) return <span key={i} className={dot} aria-hidden="true" />;
-        return (
-          <button
-            key={i}
-            type="button"
-            disabled={busy}
-            aria-pressed={isSpent}
-            aria-label={`Uso ${i + 1} de ${item.max} de ${name}${isSpent ? " (gastado)" : ""}`}
-            title={isSpent ? "Recuperar" : "Gastar"}
-            onClick={() => onSet(item.key, isSpent ? i : i + 1)}
-            className={`${dot} enabled:hover:scale-110 disabled:opacity-60`}
-          />
-        );
-      })}
-      <span className="ml-1 text-xs text-muted">
-        {item.max - spent}/{item.max}
-        {!onSet && <span className="sr-only"> usos disponibles de {name}</span>}
-      </span>
-    </span>
+    <UseBoxes
+      count={item.max} used={item.used} busy={busy} label={`Usos de ${name}`} itemLabel={`Uso de ${name}`}
+      onSet={onSet ? (n) => onSet(item.key, n) : null}
+    />
   );
 }
 

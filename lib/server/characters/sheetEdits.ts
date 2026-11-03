@@ -171,7 +171,7 @@ export async function applySpellOperation(
 }
 
 // Campos que toca un descanso
-const REST_FIELDS = ["slotsUsed", "limitedUsed", "hp", "hitDiceUsed", "exhaustion"] as const;
+const REST_FIELDS = ["slotsUsed", "limitedUsed", "hp", "hitDiceUsed", "exhaustion", "featureUses"] as const;
 
 /* Un descanso corto o largo (spec del descanso corto §4). Las tiradas de los dados de golpe las hace el servidor. Se
    escribe en una sola actualización y solo si esos campos siguen como se leyeron. */
@@ -189,6 +189,7 @@ export async function applyRestOperation(
       pools: hitDicePools(found.sheet, found.entries),
       conMod: d.abilities.con.mod,
       maxHp: d.hp.max,
+      featureUses: d.featureUses,
       roll: (die) => randomInt(1, die + 1),
     });
     if (!result.ok) return fail(400, result.error);
@@ -207,7 +208,7 @@ export async function applyRestOperation(
 }
 
 // Campo de la hoja que cambia cada operación de estado
-const STATUS_FIELDS = { inspiration: "heroicInspiration", condition: "conditions", exhaustion: "exhaustion" } as const;
+const STATUS_FIELDS = { inspiration: "heroicInspiration", condition: "conditions", exhaustion: "exhaustion", featureUse: "featureUses" } as const;
 
 /* Inspiración heroica, estados y agotamiento (spec de la ficha visual §2). Solo se escribe el campo que cambia, y solo
    si sigue como se leyó. */
@@ -223,7 +224,8 @@ export async function applyStatusOperation(
     const { found, failure } = await loadForWrite(userId, id);
     if (failure) return failure;
 
-    const result = applyStatus(found.sheet, body);
+    const max = new Map(derive(found.sheet, found.entries).featureUses.map((u) => [u.key, u.max]));
+    const result = applyStatus(found.sheet, body, { useMax: (key) => max.get(key) ?? null });
     if (!result.ok || !field) return fail(400, result.ok ? "Petición no válida." : result.error);
 
     const stored = found.character.sheet as Record<string, unknown> | undefined;

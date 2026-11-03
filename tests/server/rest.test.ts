@@ -95,6 +95,17 @@ describe("applyRestOperation", () => {
     expect(Object.keys(set())).not.toContain("sheet.exhaustion");
   });
 
+  it("descanso largo: recupera los usos de rasgos guardados; sin ellos no crea el campo", async () => {
+    load(sheetOf({ featureUses: { [`${B}:classFeature:second wind|fighter|xphb|1`]: 1 } }));
+    await applyRestOperation(OWNER, CHAR, { op: "longRest" });
+    expect(set()["sheet.featureUses"]).toEqual({});
+    db.reset();
+    db.results["Character.updateOne"] = { matchedCount: 1 };
+    load(sheetOf());
+    await applyRestOperation(OWNER, CHAR, { op: "longRest" });
+    expect(Object.keys(set())).not.toContain("sheet.featureUses");
+  });
+
   it("operación no válida: 400", async () => {
     load(sheetOf());
     expect(await applyRestOperation(OWNER, CHAR, { op: "volar" })).toEqual({ ok: false, status: 400, error: "Operación no válida." });

@@ -9,7 +9,7 @@ const attack: Attack = {
   kind: "melee", range: "1,5 m", damageTypeId: "slashing",
 };
 const spell = (name: string, group: ActionItem["group"], hit: string | null): ActionItem => ({
-  kind: "spell", group, ref: ref(`spell:${name}`), name, level: 0, range: "18 m", hit, damage: null, damageTypeId: null, notes: "",
+  kind: "spell", group, ref: ref(`spell:${name}`), name, level: 0, school: "V", range: "18 m", hit, damage: null, damageTypeId: null, notes: "",
 });
 const summary: ActionsSummary = {
   attacksPerAction: 2,
@@ -18,7 +18,7 @@ const summary: ActionsSummary = {
     spell("Rayo de escarcha", "action", "+5"),
     spell("Luz", "action", null),
     { kind: "basic", group: "action", ref: ref("action:dash|xphb"), name: "Correr", icon: null },
-    { kind: "feature", group: "bonus", ref: ref("classFeature:second wind"), name: "Recuperar el aliento", source: "Guerrero" },
+    { kind: "feature", group: "bonus", ref: ref("classFeature:second wind"), name: "Recuperar el aliento", source: "Guerrero", special: false },
     { kind: "basic", group: "reaction", ref: ref("action:opportunity attack|xphb"), name: "Ataque de oportunidad", icon: null },
   ],
 };
