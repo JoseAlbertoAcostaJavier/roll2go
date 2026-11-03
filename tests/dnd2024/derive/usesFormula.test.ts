@@ -28,9 +28,15 @@ describe("evalUses", () => {
     expect(evalUses("min(floor(@classes.wizard.levels / 2), 5)", vars())).toBe(1);
     expect(evalUses("7 / 2", vars())).toBe(3);
     expect(evalUses("@prof-1", vars())).toBe(2);
+    expect(evalUses("@prof-min(1,2)", vars())).toBe(2);
+  });
+  it("anidamiento excesivo da null en vez de lanzar", () => {
+    expect(evalUses(`${"(".repeat(100)}1${")".repeat(100)}`, vars())).toBeNull();
+    expect(evalUses(`${"-".repeat(100)}1`, vars())).toBeNull();
+    expect(evalUses(`${"(".repeat(10)}1${")".repeat(10)}`, vars())).toBe(1);
   });
   it("lo desconocido o mal formado da null", () => {
-    for (const f of ["1; drop table", "", "foo(1)", "@nope", "@abilities.xyz.mod", "(1", "1 +", "1 / 0", "max()", "constructor(1)", "1 2"]) {
+    for (const f of ["1; drop table", "", "foo(1)", "@nope", "@abilities.xyz.mod", "(1", "1 +", "1 / 0", "max()", "constructor(1)", "1 2", "floor(1,2)", "floor()"]) {
       expect(evalUses(f, vars()), f).toBeNull();
     }
   });

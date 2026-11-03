@@ -11,12 +11,15 @@ export type UsesVars = {
   scale: (cls: string, column: string) => number | null;
 };
 
-const TOKEN = /\s*(?:(\d+(?:\.\d+)?)|(@\w+(?:\.\w+|-[A-Za-z]\w*)*)|([A-Za-z]+)|([-+*/(),]))/y;
-const FUNCTIONS: Record<string, (args: number[]) => number> = {
-  max: (a) => Math.max(...a),
-  min: (a) => Math.min(...a),
-  floor: (a) => Math.floor(a[0]),
+const TOKEN = /\s*(?:(\d+(?:\.\d+)?)|(@\w+(?:\.\w+|-(?![A-Za-z]\w*\()[A-Za-z]\w*)*)|([A-Za-z]+)|([-+*/(),]))/y;
+// `arity`: número exacto de argumentos; sin él, uno o más
+const FUNCTIONS: Record<string, { arity?: number; run: (args: number[]) => number }> = {
+  max: { run: (a) => Math.max(...a) },
+  min: { run: (a) => Math.min(...a) },
+  floor: { arity: 1, run: (a) => Math.floor(a[0]) },
 };
+// Anidamiento máximo de paréntesis, signos y funciones
+const MAX_DEPTH = 32;
 const ABILITIES = new Set<string>(["str", "dex", "con", "int", "wis", "cha"]);
 
 type Token = { kind: "num" | "var" | "name" | "op"; text: string };
@@ -72,7 +75,16 @@ export function evalUses(formula: string, vars: UsesVars): number | null {
     }
     return v;
   };
+  let depth = 0;
   const factor = (): number => {
+    if (++depth > MAX_DEPTH) fail();
+    try {
+      return atom();
+    } finally {
+      depth--;
+    }
+  };
+  const atom = (): number => {
     const t = tokens[pos++];
     if (!t) return fail();
     if (t.kind === "num") return Number(t.text);
@@ -88,7 +100,9 @@ export function evalUses(formula: string, vars: UsesVars): number | null {
       const args = [expr()];
       while (isOp(peek(), ",")) { pos++; args.push(expr()); }
       if (!isOp(tokens[pos++], ")")) fail();
-      return FUNCTIONS[t.text](args);
+      const fn = FUNCTIONS[t.text];
+      if (fn.arity !== undefined && args.length !== fn.arity) fail();
+      return fn.run(args);
     }
     return fail();
   };

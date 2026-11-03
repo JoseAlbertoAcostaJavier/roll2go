@@ -112,7 +112,7 @@ describe("featureUses", () => {
     const vars = usesVars({ prof: 2, mods: { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 } }, []);
     const groups = [{ title: "Orco", source: "species" as const, ref: ref("species:orc|xphb"), features: [] }];
     expect(featureUses(sheetOf([["barbarian", 1]]), entries, groups, vars)).toEqual([{
-      key: `${B}:species:orc|xphb`, name: "Orco", max: 1, used: 0, recovery: { long: "all", short: "none" },
+      key: `${B}:species:orc|xphb`, name: "Aguante incansable", max: 1, used: 0, recovery: { long: "all", short: "none" },
     }]);
   });
 });

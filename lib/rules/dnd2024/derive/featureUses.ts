@@ -15,6 +15,8 @@ export type Recovery = { long: "all"; short: "all" | "none" | number };
 export type FeatureUse = { key: string; name: string; max: number; used: number; recovery: Recovery };
 
 type UsesRule = {
+  /** Nombre del contador cuando el rasgo no tiene entrada propia (especie): el grupo se llamaría como la especie. */
+  name?: string;
   /** Fórmula del máximo; si falta, la de Foundry. */
   max?: string;
   /** Si falta, la de Foundry (y sin ella, solo descanso largo). */
@@ -37,7 +39,7 @@ export const USES: Record<string, UsesRule> = {
   "classFeature:indomitable|fighter|xphb|9": {
     max: "1 + min(floor(@classes.fighter.levels / 13), 1) + min(floor(@classes.fighter.levels / 17), 1)", recovery: LONG,
   },
-  "species:orc|xphb": { max: "1", recovery: LONG },
+  "species:orc|xphb": { name: "Aguante incansable", max: "1", recovery: LONG },
   "classFeature:arcane recovery|wizard|xphb|1": { max: "1", recovery: LONG },
   "classFeature:bardic inspiration|bard|xphb|1": { max: "max(1,@abilities.cha.mod)", recovery: LONG, shortFrom: { level: 5 } },
 };
@@ -139,7 +141,7 @@ export function featureUses(
       if ((vars.classLevels[cls] ?? 0) >= rule.shortFrom.level) recovery = { long: "all", short: "all" };
     }
     const key = refKey(f.ref);
-    out.push({ key, name: f.name, max, used: Math.min(sheet.featureUses?.[key] ?? 0, max), recovery });
+    out.push({ key, name: rule?.name ?? f.name, max, used: Math.min(sheet.featureUses?.[key] ?? 0, max), recovery });
   }
   return out;
 }
