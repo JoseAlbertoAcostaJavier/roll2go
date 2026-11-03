@@ -26,7 +26,7 @@ const barbarianData: ClassData = {
     prepared: null,
     spellbook: null,
   },
-  table: { columns: [{ label: "Furias", values: Array(20).fill("2") }] },
+  table: { columns: [{ id: "rages", label: "Furias", values: Array(20).fill("2") }] },
   multiclass: {
     requirements: { abilities: ["str"], any: false },
     proficiencies: { armor: ["shield"], weapons: ["martial"], tools: [], skills: null },
@@ -88,6 +88,14 @@ describe("validateEntryData", () => {
     expect(validateEntryData("spell", base).ok).toBe(true);
     expect(validateEntryData("spell", { ...base, level: 10 }).ok).toBe(false);
   });
+  test("spell valida el daño", () => {
+    const base = { level: 0, school: "V", time: "1 acción", range: "60 pies", components: "V,S",
+      duration: "Instantáneo", concentration: false, ritual: false, classes: [], tags: [] };
+    expect(validateEntryData("spell", { ...base, damage: { dice: "1d10", scaling: [{ level: 5, dice: "2d10" }] } }).ok).toBe(true);
+    expect(validateEntryData("spell", { ...base, damage: { dice: "3d6" } }).ok).toBe(true);
+    expect(validateEntryData("spell", { ...base, damage: { dice: 3 } }).ok).toBe(false);
+    expect(validateEntryData("spell", { ...base, damage: { dice: "1d10", scaling: [{ level: "5", dice: "2d10" }] } }).ok).toBe(false);
+  });
   test("feat rechaza categoría desconocida", () => {
     expect(validateEntryData("feat", { category: "origin", repeatable: false }).ok).toBe(true);
     expect(validateEntryData("feat", { category: "otra", repeatable: false }).ok).toBe(false);
@@ -98,7 +106,8 @@ describe("validateEntryData", () => {
   });
   test("class: progresiones, tabla y multiclase", () => {
     const withData = (extra: Record<string, unknown>) => validateEntryData("class", { ...barbarianData, ...extra });
-    expect(withData({ table: { columns: [{ label: "Furias", values: ["2"] }] } }).ok).toBe(false);
+    expect(withData({ table: { columns: [{ id: "rages", label: "Furias", values: ["2"] }] } }).ok).toBe(false);
+    expect(withData({ table: { columns: [{ label: "Furias", values: Array(20).fill("2") }] } }).ok).toBe(false);
     expect(withData({ progressions: { ...barbarianData.progressions, weaponMastery: { 21: 2 } } }).ok).toBe(false);
     expect(withData({ progressions: { ...barbarianData.progressions, cantrips: Array(20).fill(3) } }).ok).toBe(true);
     expect(withData({ progressions: { ...barbarianData.progressions, optionalFeatures: [{ name: "Metamagic", levels: { 2: 2 } }] } }).ok)

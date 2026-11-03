@@ -36,6 +36,10 @@ Tras desplegar las Acciones:
 
 - Vuelve a ejecutar `npm run import:5etools -- --data <carpeta data de 5etools>` y **reinicia el servidor** tras borrar la caché de datos de Next (`.next/cache` en producción, `.next/dev/cache` en desarrollo; si no, los datos de antes de reimportar se ven hasta 1 hora): hasta reimportar, la pestaña Acciones no muestra los rasgos de clase y subclase que se usan como acción, acción adicional o reacción, ni las acciones básicas (Atacar, Esquivar…). `npx tsx scripts/report-activation.ts --data <carpeta data de 5etools>` lista la activación de cada rasgo para revisarla.
 
+Tras desplegar los usos y acciones:
+
+- Vuelve a ejecutar `npm run import:5etools -- --data <carpeta data de 5etools>` y reinicia el servidor tras borrar la caché de datos de Next (`.next/cache` en producción, `.next/dev/cache` en desarrollo).
+
 Tras desplegar el inventario:
 
 - Vuelve a ejecutar `npm run import:5etools -- --data <carpeta data de 5etools>` para tener la capacidad de mochilas, bolsas y cofres, y **reinicia el servidor** tras borrar la caché de datos de Next (`.next/cache` en producción, `.next/dev/cache` en desarrollo; si no, los contenedores no aparecen hasta 1 hora después).

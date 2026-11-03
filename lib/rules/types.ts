@@ -90,7 +90,8 @@ export type ClassProgressions = {
 };
 
 /** Tabla de la clase: columnas con nombre en español y un valor de texto por nivel (20). */
-export type ClassTable = { columns: { label: string; values: string[] }[] };
+/** `id` sale de la etiqueta inglesa del libro (`Channel Divinity` → `channel-divinity`; espacios de conjuro: `slots-<n>`). */
+export type ClassTable = { columns: { id: string; label: string; values: string[] }[] };
 
 export type MulticlassData = {
   /** 13 o más en estas características; con `any`, basta una de ellas. */
@@ -217,6 +218,8 @@ export type SpellData = {
   tags: string[];
   /** Mejora con un espacio de nivel superior (BBCode); también va al final de la descripción. */
   higherLevels?: string;
+  /** Dados de daño: los del conjuro y, en los trucos, los que gana según el nivel del personaje. */
+  damage?: { dice: string; scaling?: { level: number; dice: string }[] };
 };
 
 /** Capacidad de un contenedor (mochila, bolsa, cofre…): peso en lb, volumen en pies cúbicos y objetos concretos que admite. */

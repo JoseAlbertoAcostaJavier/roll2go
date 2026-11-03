@@ -861,3 +861,44 @@ describe("capacidad de contenedores", () => {
     expect((replaced as ItemData).container?.items[0].ref).toEqual({ book: "book1", key: "item:bolt|xphb" });
   });
 });
+
+describe("ids de columna y daño de conjuros", () => {
+  test("las columnas de la tabla llevan el id de su etiqueta inglesa", () => {
+    const cls = { ...fixture("class-barbarian.json").class[0],
+      classTableGroups: [
+        { colLabels: ["Rages", "Rage Damage", "Weapon Mastery"], rows: [] },
+        { colLabels: ["{@filter Channel Divinity|spells|x=y}"], rows: [] },
+        { title: "Spell Slots per Spell Level", colLabels: ["1st", "2nd"], rowsSpellProgression: [] },
+      ] };
+    const { entries: es, errors: errs } = normalizeAll({ classes: [{ class: [cls] }] }, "XPHB");
+    expect(errs).toEqual([]);
+    const cols = (es[0].data as ClassData).table.columns;
+    expect(cols.map((c) => c.id)).toEqual(["rages", "rage-damage", "weapon-mastery", "channel-divinity", "slots-1", "slots-2"]);
+    expect(cols.slice(0, 3).map((c) => c.label)).toEqual(["Furias", "Daño de furia", "Maestría con armas"]);
+  });
+
+  const spellData = (extra: Record<string, unknown>) => {
+    const spell = { ...fixture("spells.json").spell[0], name: "Test", ...extra };
+    delete (spell as Record<string, unknown>).scalingLevelDice;
+    Object.assign(spell, extra);
+    const r = normalizeAll({ spells: [{ spell: [spell] }] }, "XPHB");
+    expect(r.errors).toEqual([]);
+    return r.entries[0].data as SpellData;
+  };
+  const bolt = { label: "damage", scaling: { "1": "1d10", "5": "2d10", "11": "3d10", "17": "4d10" } };
+  const boltScaling = [{ level: 1, dice: "1d10" }, { level: 5, dice: "2d10" }, { level: 11, dice: "3d10" }, { level: 17, dice: "4d10" }];
+
+  test("truco con scalingLevelDice: dados por nivel de personaje", () => {
+    expect(spellData({ level: 0, entries: ["Hit."], scalingLevelDice: bolt }).damage).toEqual({ dice: "1d10", scaling: boltScaling });
+  });
+  test("scalingLevelDice como array: se usa el primero", () => {
+    expect(spellData({ level: 0, entries: ["Hit."], scalingLevelDice: [bolt, { label: "x", scaling: { "1": "9d9" } }] }).damage)
+      .toEqual({ dice: "1d10", scaling: boltScaling });
+  });
+  test("sin scalingLevelDice: el primer {@damage} del texto", () => {
+    expect(spellData({ level: 1, entries: ["Takes {@damage 3d6} Fire damage."] }).damage).toEqual({ dice: "3d6" });
+  });
+  test("sin {@damage} ni scalingLevelDice: sin daño", () => {
+    expect(spellData({ level: 1, entries: ["Nothing."] })).not.toHaveProperty("damage");
+  });
+});
