@@ -34,9 +34,13 @@ export default function ManageInventory({ inv, info, actions, systemId, books, o
   const box = useRef<HTMLDivElement>(null);
   const closeButton = useRef<HTMLButtonElement>(null);
 
+  // Con el panel abierto, la página de detrás no se desplaza
   useEffect(() => {
     closeButton.current?.focus();
+    const overflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
     return () => {
+      document.body.style.overflow = overflow;
       if (opener?.isConnected) opener.focus();
     };
   }, [opener]);
@@ -84,7 +88,9 @@ export default function ManageInventory({ inv, info, actions, systemId, books, o
   const groups = inventoryGroups(inv.items, info, "todo", "");
   const containers = groups.filter((g) => g.container).map((g) => ({ id: g.id, name: g.title }));
 
-  return (
+  // En `document.body`: un antepasado con `transform` (la animación de entrada de la ficha) haría que `fixed` se
+  // colocara respecto a él y no a la ventana
+  return createPortal(
     <div
       className="fixed inset-0 z-50 flex animate-fade-in justify-end bg-black/70 print:hidden"
       onClick={(e) => e.target === e.currentTarget && onClose()}
@@ -112,7 +118,8 @@ export default function ManageInventory({ inv, info, actions, systemId, books, o
           ))}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
@@ -321,7 +328,8 @@ function MoveMenu({ name, targets, onMove }: {
       >
         Mover <ChevronDown size={12} aria-hidden="true" />
       </button>
-      {open && createPortal(
+      {/* Dentro del panel (que ya está en `document.body`, sin `transform` encima), para que quede en el diálogo modal */}
+      {open && (
         <div
           ref={menu}
           id={id}
@@ -345,8 +353,7 @@ function MoveMenu({ name, targets, onMove }: {
               {t.name}
             </button>
           ))}
-        </div>,
-        document.body,
+        </div>
       )}
     </>
   );
