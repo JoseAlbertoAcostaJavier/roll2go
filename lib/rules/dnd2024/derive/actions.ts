@@ -6,6 +6,7 @@ import { refKey } from "@/lib/rules/dnd2024/sheet/equipmentRefs";
 import { damageIdOf, hitOf, usableSpells } from "@/lib/rules/dnd2024/spells/spellTable";
 import type { ActionData, FeatureData, Ref } from "@/lib/rules/types";
 import type { Attack } from "./attacks";
+import type { FeatureUse } from "./featureUses";
 import type { FeatureGroup } from "./features";
 import type { SpellsSummary } from "./spells";
 
@@ -16,7 +17,12 @@ export type ActionItem =
     kind: "spell"; group: ActionGroup; ref: Ref; name: string; level: number;
     range: string; hit: string | null; damage: string | null; damageTypeId: string | null; notes: string;
   }
-  | { kind: "feature"; group: Exclude<ActionGroup, "other">; ref: Ref; name: string; source: string }
+  | {
+    kind: "feature"; group: ActionGroup; ref: Ref; name: string; source: string;
+    /** Sin acción, acción adicional ni reacción propias (se usa de otra forma): «(Especial)». */
+    special: boolean;
+    uses?: FeatureUse;
+  }
   | { kind: "basic"; group: ActionGroup; ref: Ref; name: string; icon: string | null };
 export type ActionsSummary = { attacksPerAction: number; items: ActionItem[] };
 
@@ -29,6 +35,8 @@ export type ActionsInput = {
   features: FeatureGroup[];
   /** Entradas `action` del catálogo de los libros del personaje. */
   basics: CatalogEntry[];
+  /** `Derived.featureUses`: los rasgos con contador salen también aunque no tengan activación (en «Otras»). */
+  featureUses: FeatureUse[];
   /** Catálogo con los conjuros y los rasgos del personaje (por `refKey`). */
   entries: Map<string, CatalogEntry>;
 };
@@ -80,20 +88,33 @@ export function withSpellEntries(entries: Map<string, CatalogEntry>, spells: Spe
 }
 
 export function deriveActions(input: ActionsInput): ActionsSummary {
-  const { attacks, spells, features, basics, entries } = input;
+  const { attacks, spells, features, featureUses, basics, entries } = input;
   const classFeatures = features.filter((g) => g.source === "class" || g.source === "subclass")
-    .flatMap((g) => g.features.map((f) => ({ ...f, source: g.title })));
+    .flatMap((g) => g.features);
 
   const extra = Math.max(0, ...classFeatures.map((f) =>
     EXTRA_ATTACKS.find(([prefix]) => featureName(f.ref).startsWith(prefix))?.[1] ?? 0));
 
-  const featureItems: ActionItem[] = classFeatures
+  const usesByKey = new Map(featureUses.map((u) => [u.key, u]));
+  // Rasgos de clase y subclase con activación y cualquier rasgo con usos (la especie y el legado sin rasgos propios
+  // cuentan como un solo rasgo, como en `featureUses`)
+  const candidates = features.flatMap((g) => {
+    const own = g.source === "class" || g.source === "subclass";
+    const list = g.features.length === 0 && g.ref && (g.source === "species" || g.source === "lineage")
+      ? [{ ref: g.ref, name: g.title, level: 0 }] : g.features;
+    return list.map((f) => ({ ...f, source: g.title, own }));
+  });
+  const featureItems: ActionItem[] = candidates
     .flatMap((f) => {
-      const activation = (entries.get(refKey(f.ref))?.data as FeatureData | undefined)?.activation;
-      return activation ? [{ ...f, activation }] : [];
+      const activation = f.own ? (entries.get(refKey(f.ref))?.data as FeatureData | undefined)?.activation : undefined;
+      const uses = usesByKey.get(refKey(f.ref));
+      return activation || uses ? [{ ...f, activation, uses }] : [];
     })
     .sort((a, b) => a.level - b.level)
-    .map((f) => ({ kind: "feature", group: f.activation, ref: f.ref, name: f.name, source: f.source }));
+    .map((f): ActionItem => ({
+      kind: "feature", group: f.activation ?? "other", ref: f.ref, name: f.uses?.name ?? f.name, source: f.source,
+      special: !f.activation, ...(f.uses ? { uses: f.uses } : {}),
+    }));
 
   const basicItems: ActionItem[] = basics
     .map((e): ActionItem => ({

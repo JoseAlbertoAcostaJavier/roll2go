@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { CatalogEntry, SpellOption } from "@/lib/rules/catalog/types";
 import { deriveActions, withSpellEntries, type ActionItem } from "@/lib/rules/dnd2024/derive/actions";
+import type { FeatureUse } from "@/lib/rules/dnd2024/derive/featureUses";
 import { unarmedAttack } from "@/lib/rules/dnd2024/derive/attacks";
 import type { FeatureGroup } from "@/lib/rules/dnd2024/derive/features";
 import type { CasterBlock, SpellsSummary } from "@/lib/rules/dnd2024/derive/spells";
@@ -81,8 +82,8 @@ const fighterGroups = (extra: string[] = []): FeatureGroup[] => [
 ];
 
 const fist = unarmedAttack({ str: 3, dex: 0, con: 0, int: 0, wis: 0, cha: 0 }, 2, null);
-const run = (spells = summary([]), features: FeatureGroup[] = [], attacks = [fist]) =>
-  deriveActions({ attacks, spells, features, basics: BASICS, entries });
+const run = (spells = summary([]), features: FeatureGroup[] = [], attacks = [fist], featureUses: FeatureUse[] = [],
+  ents = entries) => deriveActions({ attacks, spells, features, featureUses, basics: BASICS, entries: ents });
 const spellItem = (items: ActionItem[], name: string) =>
   items.find((i): i is Extract<ActionItem, { kind: "spell" }> => i.kind === "spell" && i.name === name);
 
@@ -129,8 +130,8 @@ describe("deriveActions: rasgos y básicas", () => {
   const features = items.filter((i) => i.kind === "feature");
   it("rasgos con activación en su grupo, con la clase o subclase de origen; los pasivos no salen", () => {
     expect(features).toEqual([
-      { kind: "feature", group: "bonus", ref: ref("classFeature:second wind|fighter|xphb|1"), name: "Nuevas energías", source: "Guerrero" },
-      { kind: "feature", group: "reaction", ref: ref("subclassFeature:parry|fighter|xphb|3"), name: "Parada", source: "Campeón" },
+      { kind: "feature", group: "bonus", ref: ref("classFeature:second wind|fighter|xphb|1"), name: "Nuevas energías", source: "Guerrero", special: false },
+      { kind: "feature", group: "reaction", ref: ref("subclassFeature:parry|fighter|xphb|3"), name: "Parada", source: "Campeón", special: false },
     ]);
   });
   it("básicas por su tiempo (gratuitas y variables en Otras), con icono", () => {
@@ -140,6 +141,39 @@ describe("deriveActions: rasgos y básicas", () => {
     expect(byName("Correr")?.group).toBe("action");
     expect(byName("Terminar la concentración")?.group).toBe("other");
     expect(byName("Combate con dos armas")?.group).toBe("bonus");
+  });
+});
+
+describe("deriveActions: rasgos con usos", () => {
+  const rageKey = "classFeature:rage|barbarian|xphb|1";
+  const rage: FeatureUse = { key: `${B}:${rageKey}`, name: "Furia", max: 2, used: 1, recovery: { long: "all", short: 1 } };
+  const relentlessKey = "species:dwarf|xphb";
+  const relentless: FeatureUse = {
+    key: `${B}:${relentlessKey}`, name: "Aguante incansable", max: 1, used: 0, recovery: { long: "all", short: "none" },
+  };
+  const ents = new Map([...entries, ...[feature(rageKey, 1, "bonus")].map((e) => [`${B}:${e.ref.key}`, e] as const)]);
+  const groups: FeatureGroup[] = [
+    { title: "Enano", source: "species", ref: ref(relentlessKey), features: [] },
+    {
+      title: "Bárbaro", source: "class", ref: ref("class:barbarian|xphb"), level: 1,
+      features: [
+        { ref: ref(rageKey), name: "Furia", level: 1 },
+        { ref: ref("classFeature:unarmored defense|barbarian|xphb|1"), name: "Defensa sin armadura", level: 1 },
+      ],
+    },
+  ];
+  const { items } = run(summary([]), groups, [], [rage, relentless], ents);
+  const features = items.filter((i) => i.kind === "feature");
+  it("Furia en acción adicional con sus usos", () => {
+    expect(features.find((f) => f.name === "Furia")).toMatchObject({ group: "bonus", special: false, uses: { max: 2, used: 1 } });
+  });
+  it("rasgo de especie con usos en Otras, con su nombre de contador y «especial»", () => {
+    expect(features.find((f) => f.name === "Aguante incansable")).toMatchObject({
+      group: "other", source: "Enano", special: true, uses: { max: 1 },
+    });
+  });
+  it("un rasgo sin usos ni activación no aparece", () => {
+    expect(features.map((f) => f.name)).toEqual(["Furia", "Aguante incansable"]);
   });
 });
 
@@ -199,7 +233,7 @@ describe("withSpellEntries: conjuros del listado", () => {
     ref: e.ref, name: e.name, nameEs: e.nameEs, bookName: e.bookName, srd52: false, data: e.data as SpellData, summary: "",
   }));
   const spellNames = (m: Map<string, CatalogEntry>) =>
-    deriveActions({ attacks: [], spells: wizard, features: [], basics: [], entries: m }).items
+    deriveActions({ attacks: [], spells: wizard, features: [], featureUses: [], basics: [], entries: m }).items
       .flatMap((i) => (i.kind === "spell" ? [i.name] : []));
 
   it("sin los conjuros en el mapa no sale ninguno", () => {

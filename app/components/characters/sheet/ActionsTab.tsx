@@ -1,5 +1,4 @@
 import { Fragment } from "react";
-import { ChevronDown } from "lucide-react";
 import type { CatalogEntry, SpellOption } from "@/lib/rules/catalog/types";
 import type { ActionsSummary } from "@/lib/rules/dnd2024/derive/actions";
 import { actionSections, sectionVisibility, type ActionFilter, type ActionSection, type SectionVisibility } from "@/lib/rules/dnd2024/sheet/actionFilters";
@@ -9,12 +8,14 @@ import { spellLevelLabel } from "@/lib/rules/dnd2024/spells/spellTextClient";
 import { iconSrc } from "@/lib/utils/icons";
 import { sheetCard } from "@/app/components/ui/formStyles";
 import MaskIcon from "@/app/components/ui/MaskIcon";
-import ActionsDialogs, { BasicActionButton, SpellLink, type BasicActionInfo } from "./ActionsDialogs";
+import ActionsDialogs, { BasicActionButton, FeatureButton, SpellLink, type BasicActionInfo, type FeatureInfo } from "./ActionsDialogs";
 import ActionsFilters from "./ActionsFilters";
-import { Description } from "./FeaturesTab";
+import FeatureUsesControl from "./FeatureUsesControl";
 
 type Props = {
   characterId: string;
+  /** Solo el dueño marca los usos de los rasgos. */
+  isOwner: boolean;
   /** La pestaña está a la vista (monta la ficha de conjuro). */
   active: boolean;
   summary: ActionsSummary;
@@ -116,8 +117,8 @@ function AttackTable({ rows }: { rows: ActionSection["attacks"] }) {
 // Lo que el filtro oculta en pantalla sigue en el documento y sale al imprimir
 const hide = (visible: boolean) => (visible ? "" : "hidden print:block");
 
-function Section({ section, vis, attacksPerAction, entries }: {
-  section: ActionSection; vis: SectionVisibility; attacksPerAction: number; entries: Map<string, CatalogEntry>;
+function Section({ section, vis, attacksPerAction, characterId, isOwner }: {
+  section: ActionSection; vis: SectionVisibility; attacksPerAction: number; characterId: string; isOwner: boolean;
 }) {
   const { attacks, spells, features, basics } = section;
   return (
@@ -152,21 +153,19 @@ function Section({ section, vis, attacksPerAction, entries }: {
         </ul>
       )}
 
-      {/* Rasgos: plegables con su descripción, como en Rasgos */}
+      {/* Rasgos: el nombre abre su descripción; con usos, los cuadrados debajo */}
       {features.length > 0 && (
         <ul className={`divide-y divide-line border-y border-line ${hide(vis.features)}`}>
           {features.map((f, i) => (
-            <li key={`${refKey(f.ref)}-${i}`}>
-              <details className="group/feat">
-                <summary className="flex cursor-pointer list-none items-center gap-3 py-3 hover:text-white">
-                  <ChevronDown size={16} aria-hidden="true" className="shrink-0 text-muted transition-transform group-open/feat:rotate-180" />
-                  <span className="flex-1 font-semibold">{f.name}</span>
-                  <span className="shrink-0 text-xs uppercase tracking-wide text-muted">{f.source}</span>
-                </summary>
-                <div className="pb-4 pl-7">
-                  <Description entry={entries.get(refKey(f.ref))} />
-                </div>
-              </details>
+            <li key={`${refKey(f.ref)}-${i}`} className="py-3">
+              <div className="flex items-baseline gap-3">
+                <span className="min-w-0 flex-1">
+                  <FeatureButton featureKey={refKey(f.ref)} name={f.name} />
+                  {f.special && <span className="ml-2 text-sm text-muted">(Especial)</span>}
+                </span>
+                <span className="shrink-0 text-xs uppercase tracking-wide text-muted">{f.source}</span>
+              </div>
+              {f.uses && <FeatureUsesControl characterId={characterId} use={f.uses} isOwner={isOwner} className="mt-2" />}
             </li>
           ))}
         </ul>
@@ -191,12 +190,16 @@ function Section({ section, vis, attacksPerAction, entries }: {
 
 // Pestaña Acciones (spec de acciones §4): filtros y, por lo que cuesta usarlos, armas, conjuros, rasgos y acciones
 // básicas de combate
-export default function ActionsTab({ characterId, active, summary, filter, base, query, entries, spells, basics }: Props) {
+export default function ActionsTab({ characterId, isOwner, active, summary, filter, base, query, entries, spells, basics }: Props) {
   // Siempre todas las secciones: el filtro solo decide qué se ve en pantalla, la hoja impresa sale completa
   const sections = actionSections(summary, "todo");
   const shown = sections.some((s) => sectionVisibility(s, filter).section);
+  const features: FeatureInfo[] = sections.flatMap((s) => s.features).map((f) => {
+    const e = entries.get(refKey(f.ref));
+    return { key: refKey(f.ref), name: f.name, source: f.source, description: e ? e.descriptionEs || e.description : "" };
+  });
   return (
-    <ActionsDialogs characterId={characterId} active={active} spells={spells} basics={basics}>
+    <ActionsDialogs characterId={characterId} active={active} spells={spells} basics={basics} features={features}>
       <ActionsFilters base={base} query={query} active={filter} />
       {sections.length === 0 ? (
         <p className="text-sm text-muted">No hay acciones que mostrar.</p>
@@ -204,7 +207,7 @@ export default function ActionsTab({ characterId, active, summary, filter, base,
         <div className="space-y-6">
           {!shown && <p className="text-sm text-muted print:hidden">No hay acciones que mostrar.</p>}
           {sections.map((s) => (
-            <Section key={s.group} section={s} vis={sectionVisibility(s, filter)} attacksPerAction={summary.attacksPerAction} entries={entries} />
+            <Section key={s.group} section={s} vis={sectionVisibility(s, filter)} attacksPerAction={summary.attacksPerAction} characterId={characterId} isOwner={isOwner} />
           ))}
         </div>
       )}

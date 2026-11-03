@@ -18,7 +18,7 @@ const summary: ActionsSummary = {
     spell("Rayo de escarcha", "action", "+5"),
     spell("Luz", "action", null),
     { kind: "basic", group: "action", ref: ref("action:dash|xphb"), name: "Correr", icon: null },
-    { kind: "feature", group: "bonus", ref: ref("classFeature:second wind"), name: "Recuperar el aliento", source: "Guerrero" },
+    { kind: "feature", group: "bonus", ref: ref("classFeature:second wind"), name: "Recuperar el aliento", source: "Guerrero", special: false },
     { kind: "basic", group: "reaction", ref: ref("action:opportunity attack|xphb"), name: "Ataque de oportunidad", icon: null },
   ],
 };

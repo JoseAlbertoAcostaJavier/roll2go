@@ -179,7 +179,7 @@ export default async function CharacterPage({ params, searchParams }: Props) {
   // (los conjuros no están en `entries`: se toman del listado de la pestaña Conjuros)
   const spellEntries = withSpellEntries(entries, spellOptions);
   const actions = deriveActions({
-    attacks: d.attacks, spells: d.spells, features: d.features, basics: basicEntries, entries: spellEntries,
+    attacks: d.attacks, spells: d.spells, features: d.features, featureUses: d.featureUses, basics: basicEntries, entries: spellEntries,
   });
   const actionFilter = parseActionFilter(query.filtro);
   const actionSpellKeys = new Set(actions.items.flatMap((i) => (i.kind === "spell" ? [refKey(i.ref)] : [])));
@@ -256,6 +256,7 @@ export default async function CharacterPage({ params, searchParams }: Props) {
           {panelTitle("acciones")}
           <ActionsTab
             characterId={id}
+            isOwner={isOwner}
             active={tab === "acciones"}
             summary={actions}
             filter={actionFilter}
@@ -297,7 +298,10 @@ export default async function CharacterPage({ params, searchParams }: Props) {
             current={masteryCurrent}
             options={masteryOptions}
           />
-          <FeaturesTab groups={d.features} entries={entries} base={base} query={query} />
+          <FeaturesTab
+            groups={d.features} entries={entries} base={base} query={query}
+            featureUses={d.featureUses} characterId={id} isOwner={isOwner}
+          />
         </section>
         <section {...panel("inventario")}>
           {panelTitle("inventario")}
