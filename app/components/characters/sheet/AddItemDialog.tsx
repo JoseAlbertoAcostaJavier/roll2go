@@ -103,7 +103,7 @@ export default function AddItemDialog({ systemId, books, onAdd }: Props) {
         onClick={() => setOpen(true)}
         className="flex items-center gap-2 rounded-md bg-brand px-4 py-2 font-heading text-sm font-bold text-white transition-colors hover:bg-brand-hover"
       >
-        <Plus size={16} aria-hidden="true" /> Añadir
+        <Plus size={16} aria-hidden="true" /> Añadir objeto
       </button>
 
       {open && (

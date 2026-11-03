@@ -21,7 +21,7 @@ export type InventoryActions = {
 const goldText = (copper: number) => `${fmt(copper / 100)} po`;
 
 // Texto del encabezado de un contenedor: «Mochila (3) — 12 lb (12/30 lb)»; sin capacidad en peso, la que trae el catálogo
-function containerTitle(g: InventoryGroup) {
+export function containerTitle(g: InventoryGroup) {
   const c = g.container!;
   const used = `${fmt(c.weight)} lb`;
   const capacity = c.capacity.weight !== null ? ` (${fmt(c.weight)}/${fmt(c.capacity.weight)} lb)` : c.capacity.text ? ` (${c.capacity.text})` : "";
