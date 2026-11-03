@@ -7,7 +7,7 @@ import { loadCharacterFor } from "@/lib/server/characters/characterAccess";
 import { loadSheetCampaign } from "@/lib/server/characters/queries";
 import { system as rpgSystems } from "@/lib/utils/systems";
 import { booksByIds } from "@/lib/server/catalog/books";
-import { listActions, listMasteryWeapons, listSpells } from "@/lib/server/catalog/catalog";
+import { getEntries, listActions, listMasteryWeapons, listSpells } from "@/lib/server/catalog/catalog";
 import { derive } from "@/lib/rules/dnd2024/derive";
 import { deriveActions, withSpellEntries } from "@/lib/rules/dnd2024/derive/actions";
 import { ACTION_TIME_LABELS, parseActionFilter } from "@/lib/rules/dnd2024/sheet/actionFilters";
@@ -105,11 +105,32 @@ export default async function CharacterPage({ params, searchParams }: Props) {
   const usedBooks = [...new Set([...entries.values()].map((e) => e.ref.book))];
   const attributions = [...new Set((await booksByIds(usedBooks)).filter((b) => b.license === "srd" && b.attribution).map((b) => b.attribution))];
 
-  // Datos del catálogo de cada línea del inventario: peso y si se puede equipar (armadura, escudo o arma)
+  // Datos del catálogo de cada línea del inventario: peso, si se puede equipar, lo que se busca y la capacidad de los
+  // contenedores. Los objetos concretos que admite un contenedor («20 × Virote») se nombran con una consulta al catálogo
+  const lineData = (ref: (typeof sheet.inventory.items)[number]["ref"]) =>
+    ref ? (entries.get(refKey(ref))?.data as ItemData | undefined) : undefined;
+  const admitted = sheet.inventory.items.flatMap((line) => lineData(line.ref)?.container?.items.map((i) => i.ref) ?? []);
+  const admittedNames = new Map((await getEntries(admitted)).map((e) => [refKey(e.ref), e.nameEs ?? e.name]));
   const itemInfo: Record<string, ItemInfo> = {};
   for (const line of sheet.inventory.items) {
-    const data = line.ref ? (entries.get(refKey(line.ref))?.data as ItemData | undefined) : undefined;
-    itemInfo[line.id] = { weight: data?.weight ?? 0, equippable: !!(data?.armor || data?.weapon || data?.defenses) };
+    const data = lineData(line.ref);
+    const entry = line.ref ? entries.get(refKey(line.ref)) : undefined;
+    const cap = data?.container;
+    // Sin capacidad en peso, la de volumen o la de objetos concretos
+    const capacityText = !cap || cap.weight !== null ? null : [
+      ...(cap.volume !== null ? [`${cap.volume.toLocaleString("es-ES")} pies cúbicos`] : []),
+      ...cap.items.map((i) => `${i.count} × ${admittedNames.get(refKey(i.ref)) ?? bareName(i.ref.key)}`),
+    ].join(", ") || null;
+    itemInfo[line.id] = {
+      weight: data?.weight ?? 0,
+      equippable: !!(data?.armor || data?.weapon || data?.defenses),
+      nameEn: entry?.name ?? null,
+      type: data?.type ?? null,
+      rarity: data?.rarity ?? null,
+      properties: data?.weapon?.properties ?? [],
+      value: data?.value ?? 0,
+      container: cap ? { weight: cap.weight, text: capacityText, weightless: cap.weightless } : null,
+    };
   }
 
   // Maestrías con armas: las actuales y, para cambiarlas, las armas con maestría y competencia (del Bárbaro, solo
@@ -289,6 +310,8 @@ export default async function CharacterPage({ params, searchParams }: Props) {
             armorWarning={d.armorWarning}
             systemId={c.systemId as string}
             books={found.books}
+            base={base}
+            query={query}
           />
         </section>
 

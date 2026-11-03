@@ -136,6 +136,12 @@ describe("validateEntryData", () => {
       weapon: { damage: "1d12", damageType: "slashing", properties: ["heavy"], mastery: "cleave", category: "martial" } });
     expect(r.ok).toBe(true);
   });
+  test("item con capacidad de contenedor", () => {
+    const base = { type: "G", weight: 5, value: 200 };
+    const ref = { book: "b", key: "item:bolt|xphb" };
+    expect(validateEntryData("item", { ...base, container: { weight: 30, volume: null, items: [{ ref, count: 20 }], weightless: false } }).ok).toBe(true);
+    expect(validateEntryData("item", { ...base, container: { weight: "30", volume: null, items: [], weightless: false } }).ok).toBe(false);
+  });
   test("equipo: opciones por letra mayúscula, al menos una", () => {
     const withEquipment = (equipment: unknown) => validateEntryData("class", { ...barbarianData, equipment });
     expect(withEquipment({ A: [], B: [], C: [{ value: 15500 }] }).ok).toBe(true);

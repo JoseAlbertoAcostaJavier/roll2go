@@ -5,7 +5,7 @@
 // padre siempre está en el mismo libro. Todas las claves llevan el tipo delante (`spell:fireball|xphb`).
 import { ABILITIES } from "../types";
 import type {
-  Ability, ActionData, ClassTable, Defenses, DefenseList, EntryData, EntryKind, Equipment, FeatSpellChoice, FeatSpellFilter, FeatureData, LevelCounts,
+  Ability, ActionData, ContainerData, ClassTable, Defenses, DefenseList, EntryData, EntryKind, Equipment, FeatSpellChoice, FeatSpellFilter, FeatureData, LevelCounts,
   LevelFeature, MulticlassData, NameGender, OptionalFeatureData, Pack, Ref, Spellcasting, SpellcastingProgression, SpellGrant,
 } from "../types";
 import { normalizeName, validateEntryData } from "../schemas";
@@ -555,6 +555,20 @@ const ARMOR: Record<string, { category: string; dexCap: number | null }> = {
   S: { category: "shield", dexCap: null },
 };
 
+/** `containerCapacity` de 5etools → capacidad; sin peso, sin objetos y con volumen < 1 pie cúbico (frascos) no es un contenedor. */
+function containerOf(raw: unknown): ContainerData | null {
+  if (!isObj(raw)) return null;
+  const sum = (v: unknown) => asArr(v).reduce<number>((t, n) => t + (typeof n === "number" ? n : 0), 0);
+  const weight = sum(raw.weight) || null;
+  const volumeSum = sum(raw.volume);
+  const volume = volumeSum >= 1 ? volumeSum : null;
+  const items = asArr(raw.item).flatMap((o) => isObj(o)
+    ? Object.entries(o).flatMap(([key, count]) => typeof count === "number" ? [{ ref: ref("item", cleanRefKey(key)), count }] : [])
+    : []);
+  if (weight === null && volume === null && !items.length) return null;
+  return { weight, volume, items, weightless: raw.weightless === true };
+}
+
 export function normalizeItem(raw: Rec): NormalizedEntry {
   const type = stripSource(str(raw.type)) || "OTH";
   const data: EntryData["item"] = {
@@ -584,6 +598,8 @@ export function normalizeItem(raw: Rec): NormalizedEntry {
       return p?.ref ? [{ ref: p.ref, quantity: p.quantity ?? 1 }] : [];
     });
   }
+  const container = containerOf(raw.containerCapacity);
+  if (container) data.container = container;
   return entry<"item">(header("item", raw, keyOf("item", str(raw.name), str(raw.source))), data);
 }
 

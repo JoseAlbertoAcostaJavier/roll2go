@@ -18,6 +18,17 @@ const sheetWith = (items: InventoryItem[]) =>
     hp: { max: null, current: 10, temp: 0 },
     inventory: { items, coins: { cp: 0, sp: 0, ep: 0, gp: 5, pp: 0 }, other: "" },
   }) as unknown as Dnd2024SheetV2;
+// Catálogo con mochila (contenedor) y bolsa de contención (contenedor sin peso del contenido)
+const withContainers = new Map(catalog);
+{
+  const base = catalog.get(`${ref("item:explorer's pack|xphb").book}:item:explorer's pack|xphb`)!;
+  for (const [key, weightless] of [["item:bag|xphb", false], ["item:holding|xphb", true]] as const)
+    withContainers.set(`${base.ref.book}:${key}`, {
+      ...base, ref: ref(key), data: { weight: 5, container: { weight: 30, volume: null, items: [], weightless } },
+    });
+}
+const opC = (sheet: Dnd2024SheetV2, o: unknown) =>
+  applyInventoryOp(sheet, o, (x) => withContainers.get(`${x.book}:${x.key}`) ?? null, makeId);
 const op = (sheet: Dnd2024SheetV2, o: unknown) => applyInventoryOp(sheet, o, resolveItem, makeId);
 
 describe("applyHp", () => {
@@ -106,5 +117,49 @@ describe("applyInventoryOp", () => {
     expect(op(s, "x").ok).toBe(false);
     op(s, { op: "remove", id: "a" });
     expect(s.inventory.items).toHaveLength(1);
+  });
+
+  describe("contenedores", () => {
+    const fixtureSheet = () => sheetWith([
+      line("bag", "item:bag|xphb"), line("bag2", "item:holding|xphb"),
+      line("sword", "item:greataxe|xphb", true), line("rope", null),
+    ]);
+    const items = (r: ReturnType<typeof op>) => (r.ok ? r.sheet.inventory.items : []);
+    it("move a una mochila fija el contenedor y desequipa", () => {
+      const r = opC(fixtureSheet(), { op: "move", id: "sword", container: "bag" });
+      expect(items(r).find((i) => i.id === "sword")).toMatchObject({ container: "bag", equipped: false });
+    });
+    it("move con null deja la línea sin campo container", () => {
+      const s = fixtureSheet();
+      s.inventory.items[3].container = "bag";
+      const r = opC(s, { op: "move", id: "rope", container: null });
+      expect("container" in items(r)[3]).toBe(false);
+    });
+    it("move valida el destino y la petición", () => {
+      const s = fixtureSheet();
+      const err = (o: unknown) => { const r = opC(s, o); return !r.ok && r.error; };
+      expect(err({ op: "move", id: "rope", container: "sword" })).toBe("Ese objeto no es un contenedor.");
+      expect(err({ op: "move", id: "rope", container: "nada" })).toBe("Ese objeto no está en el inventario.");
+      expect(err({ op: "move", id: "nada", container: "bag" })).toBe("Ese objeto no está en el inventario.");
+      expect(err({ op: "move", id: "rope", container: 5 })).toBe("Petición no válida.");
+      expect(err({ op: "move", id: "bag", container: "bag2" })).toBe("Un contenedor no puede ir dentro de otro.");
+      expect(err({ op: "move", id: "bag", container: "bag" })).toBe("Un contenedor no puede ir dentro de otro.");
+    });
+    it("remove de un contenedor suelta su contenido", () => {
+      const s = fixtureSheet();
+      s.inventory.items[2].container = "bag";
+      s.inventory.items[3].container = "bag";
+      const r = opC(s, { op: "remove", id: "bag" });
+      expect(items(r).map((i) => i.id)).toEqual(["bag2", "sword", "rope"]);
+      expect(items(r).every((i) => !("container" in i))).toBe(true);
+    });
+    it("equipar una línea guardada la equipa y la saca del contenedor", () => {
+      const s = fixtureSheet();
+      s.inventory.items[2] = { ...s.inventory.items[2], equipped: false, container: "bag" };
+      const r = opC(s, { op: "update", id: "sword", equipped: true });
+      const sword = items(r).find((i) => i.id === "sword")!;
+      expect(sword.equipped).toBe(true);
+      expect("container" in sword).toBe(false);
+    });
   });
 });

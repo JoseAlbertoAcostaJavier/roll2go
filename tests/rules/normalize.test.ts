@@ -830,3 +830,34 @@ describe("acciones básicas (actions.json)", () => {
     expect(Object.keys(es).filter((k) => k.startsWith("action:"))).toHaveLength(18);
   });
 });
+
+describe("capacidad de contenedores", () => {
+  const container = (containerCapacity?: unknown) =>
+    (normalizeItem({ name: "Thing", source: "XPHB", type: "G", containerCapacity }).data as ItemData).container;
+
+  test("mochila: peso", () => {
+    expect(container({ weight: [30] })).toEqual({ weight: 30, volume: null, items: [], weightless: false });
+  });
+  test("bolsa de contención: sin peso propio", () => {
+    expect(container({ weight: [500], weightless: true })).toMatchObject({ weight: 500, weightless: true });
+  });
+  test("mochila práctica de Heward: suma los compartimentos", () => {
+    expect(container({ weight: [200, 200, 500], weightless: true })?.weight).toBe(900);
+  });
+  test("cofre: volumen", () => {
+    expect(container({ volume: [12] })).toEqual({ weight: null, volume: 12, items: [], weightless: false });
+  });
+  test("estuche de virotes: objetos concretos con ref al libro", () => {
+    expect(container({ item: [{ "bolt|xphb": 20 }] })?.items)
+      .toEqual([{ ref: { book: "__BOOK__", key: "item:bolt|xphb" }, count: 20 }]);
+  });
+  test("frasco (volumen < 1) y objetos sin capacidad no son contenedores", () => {
+    expect(container({ volume: [0.0625] })).toBeUndefined();
+    expect(container(undefined)).toBeUndefined();
+  });
+  test("la importación sustituye el libro en container.items igual que en contents", () => {
+    const e = normalizeItem({ name: "Bolt Case", source: "XPHB", type: "G", containerCapacity: { item: [{ "bolt|xphb": 20 }] } });
+    const replaced = JSON.parse(JSON.stringify(e.data).replaceAll(JSON.stringify("__BOOK__"), JSON.stringify("book1")));
+    expect((replaced as ItemData).container?.items[0].ref).toEqual({ book: "book1", key: "item:bolt|xphb" });
+  });
+});

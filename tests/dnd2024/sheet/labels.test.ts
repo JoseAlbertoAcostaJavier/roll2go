@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { defenseTypeName, distanceText, fmtMod, toolName } from "@/lib/rules/dnd2024/sheet/labels";
+import { defenseTypeName, distanceText, fmtMod, itemTypeName, rarityName, toolName } from "@/lib/rules/dnd2024/sheet/labels";
 
 describe("toolName", () => {
   it("traduce herramientas y elecciones genéricas", () => {
@@ -37,5 +37,18 @@ describe("defenseTypeName", () => {
     expect(defenseTypeName("conditionImmune", "frightened")).toBe("Asustado");
     expect(defenseTypeName("conditionImmune", "disease")).toBe("Enfermedad");
     expect(defenseTypeName("conditionImmune", "nonexistent")).toBe("nonexistent");
+  });
+});
+
+describe("itemTypeName y rarityName", () => {
+  it("traducen los códigos de tipo de 5etools", () => {
+    expect(itemTypeName("M")).toBe("Arma cuerpo a cuerpo");
+    expect(itemTypeName("$G")).toBe("Gema");
+    expect(itemTypeName("XYZ")).toBe("Objeto");
+    expect(itemTypeName("OTH")).toBe("Objeto");
+  });
+  it("traducen la rareza y dejan igual la desconocida", () => {
+    expect(rarityName("very rare")).toBe("Muy raro");
+    expect(rarityName("none")).toBe("none");
   });
 });

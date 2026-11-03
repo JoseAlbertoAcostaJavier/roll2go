@@ -190,6 +190,7 @@ const checks: { [K in EntryKind]: Check } = {
     "armor?": shape({ ac: num, dexCap: nullable(num), stealthDisadvantage: bool, category: str }),
     "weapon?": shape({ damage: str, damageType: str, properties: strings, "mastery?": str, category: str }),
     "contents?": arrayOf(shape({ ref, quantity: num })),
+    "container?": shape({ weight: nullable(num), volume: nullable(num), items: arrayOf(shape({ ref, count: num })), weightless: bool }),
   }),
   language: shape({ type: oneOf("standard", "rare") }),
   skill: shape({ ability }),

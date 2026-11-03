@@ -130,6 +130,8 @@ export type InventoryItem = {
   /** Solo para armaduras, escudos, armas y objetos con resistencias o inmunidades. */
   equipped: boolean;
   notes: string;
+  /** Id de la línea contenedora donde va guardado; sin campo = suelto. */
+  container?: string | null;
 };
 
 export type Inventory = { items: InventoryItem[]; coins: Coins; other: string };

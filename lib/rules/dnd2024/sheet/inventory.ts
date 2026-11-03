@@ -70,3 +70,41 @@ export function startingInventory(
     other: "",
   };
 }
+
+/** Peso de una línea (por unidad) y, si es un contenedor, si su contenido no pesa. `null` = no es un contenedor. */
+export type WeightInfo = { weight: number; container: { weightless: boolean } | null };
+
+/** Id del contenedor donde está la línea, solo si esa línea existe y es un contenedor; si no, `null` (suelta). */
+export function effectiveContainer(
+  line: InventoryItem,
+  items: InventoryItem[],
+  info: Record<string, WeightInfo | undefined>,
+): string | null {
+  const id = line.container;
+  if (!id || id === line.id) return null;
+  return items.some((i) => i.id === id) && info[id]?.container ? id : null;
+}
+
+/**
+ * Peso cargado y peso del contenido de cada contenedor (`info` por id de línea). Lo suelto y el propio contenedor
+ * cuentan; el contenido solo si el contenedor no es `weightless`.
+ */
+export function inventoryWeights(
+  items: InventoryItem[],
+  info: Record<string, WeightInfo | undefined>,
+): { carried: number; byContainer: Record<string, number> } {
+  const byContainer: Record<string, number> = {};
+  for (const i of items) if (info[i.id]?.container) byContainer[i.id] = 0;
+  let carried = 0;
+  for (const i of items) {
+    const w = (info[i.id]?.weight ?? 0) * i.quantity;
+    const c = effectiveContainer(i, items, info);
+    if (c === null) carried += w;
+    else {
+      byContainer[c] += w;
+      if (!info[c]!.container!.weightless) carried += w;
+    }
+  }
+  for (const id of Object.keys(byContainer)) byContainer[id] = Math.round(byContainer[id] * 100) / 100;
+  return { carried: Math.round(carried * 100) / 100, byContainer };
+}

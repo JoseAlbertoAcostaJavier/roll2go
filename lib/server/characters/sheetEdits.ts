@@ -40,7 +40,7 @@ export async function saveHp(userId: string, id: string, body: unknown): Promise
   return { ok: true, hp: derive(result.sheet, found.entries).hp };
 }
 
-// Una operación de inventario: add, update, remove, coins u other. Devuelve el inventario completo.
+// Una operación de inventario: add, update, remove, move, coins u other. Devuelve el inventario completo.
 export async function saveInventory(
   userId: string,
   id: string,

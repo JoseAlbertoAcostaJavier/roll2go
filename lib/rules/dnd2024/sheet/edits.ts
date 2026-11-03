@@ -20,6 +20,7 @@ export type InventoryOp =
   | { op: "add"; ref?: Ref; name?: string; quantity?: number; notes?: string }
   | { op: "update"; id: string; quantity?: number; notes?: string; equipped?: boolean }
   | { op: "remove"; id: string }
+  | { op: "move"; id: string; container: string | null }
   | { op: "coins"; coins: Coins }
   | { op: "other"; text: string };
 
@@ -78,6 +79,13 @@ export function applyInventoryOp(
     );
   };
 
+  const isContainer = (l: InventoryItem) => !!l.ref && !!itemData(resolveItem(l.ref))?.container;
+  const withoutContainer = (l: InventoryItem): InventoryItem => {
+    const rest = { ...l };
+    delete rest.container;
+    return rest;
+  };
+
   switch (op.op) {
     case "add": {
       if (inv.items.length >= MAX_ITEMS) return fail(`El inventario admite ${MAX_ITEMS} líneas como máximo.`);
@@ -123,13 +131,36 @@ export function applyInventoryOp(
           items = unequipSameKind(items, line, data);
         }
         next.equipped = op.equipped;
+        // «Activo» solo aplica fuera de los contenedores: equipar saca la línea de su contenedor
+        if (op.equipped) delete next.container;
       }
       return save({ ...inv, items: items.map((i) => (i.id === line.id ? next : i)) });
     }
     case "remove": {
       if (typeof op.id !== "string" || !inv.items.some((i) => i.id === op.id))
         return fail("Ese objeto no está en el inventario.");
-      return save({ ...inv, items: inv.items.filter((i) => i.id !== op.id) });
+      // El contenido de un contenedor eliminado queda suelto
+      return save({
+        ...inv,
+        items: inv.items.filter((i) => i.id !== op.id).map((i) => (i.container === op.id ? withoutContainer(i) : i)),
+      });
+    }
+    case "move": {
+      const line = typeof op.id === "string" ? inv.items.find((i) => i.id === op.id) : undefined;
+      if (!line) return fail("Ese objeto no está en el inventario.");
+      if (op.container !== null && typeof op.container !== "string") return fail("Petición no válida.");
+      if (op.container === null) {
+        return save({ ...inv, items: inv.items.map((i) => (i.id === line.id ? withoutContainer(i) : i)) });
+      }
+      const target = inv.items.find((i) => i.id === op.container);
+      if (!target) return fail("Ese objeto no está en el inventario.");
+      if (!isContainer(target)) return fail("Ese objeto no es un contenedor.");
+      if (isContainer(line) || target.id === line.id) return fail("Un contenedor no puede ir dentro de otro.");
+      // Lo guardado deja de estar equipado
+      return save({
+        ...inv,
+        items: inv.items.map((i) => (i.id === line.id ? { ...i, container: target.id, equipped: false } : i)),
+      });
     }
     case "coins": {
       if (!isObj(op.coins)) return fail("Petición no válida.");

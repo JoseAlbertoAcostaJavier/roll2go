@@ -189,6 +189,22 @@ export const damageTypeName = (code: string) => DAMAGE_CODE_NAMES[code] ?? code;
 export const weaponPropertyName = (code: string) => WEAPON_PROPERTY_NAMES[code] ?? code;
 export const masteryName = (id: string) => MASTERY_NAMES[id.toLowerCase()] ?? capitalize(id);
 
+const ITEM_TYPE_NAMES: Record<string, string> = {
+  M: "Arma cuerpo a cuerpo", R: "Arma a distancia", A: "Munición", LA: "Armadura ligera", MA: "Armadura intermedia",
+  HA: "Armadura pesada", S: "Escudo", G: "Equipo de aventurero", AT: "Herramientas de artesano", T: "Herramienta",
+  GS: "Juego", INS: "Instrumento musical", SCF: "Canalizador mágico", P: "Poción", SC: "Pergamino", RD: "Vara",
+  RG: "Anillo", WD: "Varita", FD: "Comida y bebida", TG: "Bien comercial", MNT: "Montura", TAH: "Arreos",
+  VEH: "Vehículo", EXP: "Explosivo", $G: "Gema", $A: "Objeto de arte",
+};
+const RARITY_NAMES: Record<string, string> = {
+  common: "Común", uncommon: "Poco común", rare: "Raro", "very rare": "Muy raro", legendary: "Legendario",
+  artifact: "Artefacto", varies: "Variable",
+};
+/** Código de tipo de objeto de 5etools → nombre en español; desconocido u `OTH` → «Objeto». */
+export const itemTypeName = (code: string) => ITEM_TYPE_NAMES[code] ?? "Objeto";
+/** Rareza de 5etools (`very rare`) → nombre en español; la desconocida, tal cual. */
+export const rarityName = (id: string) => RARITY_NAMES[id] ?? id;
+
 // Alternativas de conjuros de una subclase (`SubclassData.spellOptions`): título de la elección y nombre de cada una
 const SPELL_OPTION_TITLES: Record<string, string> = { "subclass:circle of the land|druid|xphb": "Tierra" };
 const SPELL_OPTION_NAMES: Record<string, string> = {
