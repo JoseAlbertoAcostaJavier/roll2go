@@ -163,6 +163,11 @@ export type Dnd2024SheetV2 = Omit<Dnd2024Sheet, "version" | "classes"> & {
    */
   limitedUsed?: Record<string, number>;
   /**
+   * Usos gastados de los rasgos con contador (`FeatureUse`), por `refKey` del rasgo. Los gastados por encima del máximo
+   * actual se recortan al mostrarlos. Las hojas sin ninguno tienen todo disponible.
+   */
+  featureUses?: Record<string, number>;
+  /**
    * Dominio de conjuros (Mago 18): el conjuro de nivel 1 y el de nivel 2 del libro elegidos en la ficha. Si uno deja
    * de estar en el libro, se ignora. Las hojas sin ninguno no lo tienen.
    */

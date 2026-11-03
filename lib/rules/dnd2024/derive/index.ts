@@ -18,6 +18,7 @@ import { armorClassBreakdown, UNARMORED_CLASSES, type ArmorData, type UnarmoredC
 import { unarmedAttack, weaponAttack, weaponProficient, type Attack } from "./attacks";
 import { defensesOf, type DefenseRow } from "./defenses";
 import { characterFeats, featureGroups, type FeatureGroup } from "./features";
+import { featureUses, usesVars, type FeatureUse } from "./featureUses";
 import { hitPoints } from "./hp";
 import { speedBreakdown } from "./speed";
 import { spellsSummary, type SpellsSummary } from "./spells";
@@ -27,6 +28,7 @@ export type { Attack } from "./attacks";
 export type { Breakdown, Part } from "./breakdown";
 export type { DefenseKind, DefenseRow } from "./defenses";
 export type { FeatureGroup } from "./features";
+export type { FeatureUse, Recovery } from "./featureUses";
 export type { CasterBlock, OtherSpell, Slots, SpellsSummary } from "./spells";
 export { armorClass, armorClassBreakdown } from "./ac";
 export { weaponAttack } from "./attacks";
@@ -57,6 +59,8 @@ export type Derived = {
   /** En libras. */
   weight: { total: number; capacity: number; over: boolean };
   features: FeatureGroup[];
+  /** Rasgos con contador de usos (máximo, gastados y recuperación), en el orden de `features`. */
+  featureUses: FeatureUse[];
   /** Conjuros: un bloque por clase lanzadora, espacios, conjuros de especie, legado y dotes, y espacios gastados. */
   spells: SpellsSummary;
   /** Si tiene conjuros de alguna fuente (la ficha muestra la pestaña Conjuros). */
@@ -234,6 +238,12 @@ export function derive(input: AnySheet, entries: Map<string, CatalogEntry>): Der
   ]);
   const size = sheet.speciesChoices.size ?? (speciesData?.size.length === 1 ? speciesData.size[0] : null);
 
+  const features = featureGroups(sheet, summary, feats, entries);
+  const uses = featureUses(sheet, entries, features, usesVars(
+    { prof: proficiencyBonus, mods },
+    summary.map((c, i) => ({ name: bareName(c.class.ref.key), level: c.level, data: classData[i] })),
+  ));
+
   return {
     level,
     classes: summary.map((c) => ({ name: c.class.name, level: c.level, subclass: c.subclass?.name ?? null, ref: c.class.ref })),
@@ -253,7 +263,8 @@ export function derive(input: AnySheet, entries: Map<string, CatalogEntry>): Der
     languages: sheet.languages.split(/[,;\n]/).map((l) => l.trim()).filter(Boolean),
     attacks,
     weight: carriedWeight(sheet.inventory, entries, abilities.str.score, size),
-    features: featureGroups(sheet, summary, feats, entries),
+    features,
+    featureUses: uses,
     ...spellsSummary(sheet, { abilities, proficiencyBonus }, entries),
     defenses,
     missing: uniq(missing),
