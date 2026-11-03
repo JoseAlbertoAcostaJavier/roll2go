@@ -1,9 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { TriangleAlert, X } from "lucide-react";
+import { TriangleAlert } from "lucide-react";
 import type { InventoryItem } from "@/lib/rules/dnd2024/sheet/sheet";
-import { MAX_ITEM_NOTES, MAX_QUANTITY } from "@/lib/rules/dnd2024/sheet/edits";
 import { effectiveContainer } from "@/lib/rules/dnd2024/sheet/inventory";
 import type { InventoryGroup, ItemInfo } from "@/lib/rules/dnd2024/sheet/inventoryTable";
 import { itemTypeName, rarityName, weaponPropertyName } from "@/lib/rules/dnd2024/sheet/labels";
@@ -11,12 +9,6 @@ import { itemTypeName, rarityName, weaponPropertyName } from "@/lib/rules/dnd202
 const LB_TO_KG = 0.4536;
 export const fmt = (n: number) => n.toLocaleString("es-ES", { maximumFractionDigits: 2 });
 export const weightText = (lb: number) => `${fmt(lb)} lb (${fmt(lb * LB_TO_KG)} kg)`;
-export const smallInput =
-  "h-8 rounded-md border border-line bg-surface px-2 text-sm text-fg focus:border-brand focus:outline-none disabled:opacity-60";
-export const clampInt = (v: string, max: number, fallback: number) => {
-  const n = Math.trunc(Number(v));
-  return Number.isFinite(n) && v.trim() !== "" ? Math.min(max, Math.max(0, n)) : fallback;
-};
 
 export type InventoryActions = {
   quantity: (id: string, quantity: number) => void;
@@ -29,7 +21,7 @@ export type InventoryActions = {
 const goldText = (copper: number) => `${fmt(copper / 100)} po`;
 
 // Texto del encabezado de un contenedor: «Mochila (3) — 12 lb (12/30 lb)»; sin capacidad en peso, la que trae el catálogo
-function containerTitle(g: InventoryGroup) {
+export function containerTitle(g: InventoryGroup) {
   const c = g.container!;
   const used = `${fmt(c.weight)} lb`;
   const capacity = c.capacity.weight !== null ? ` (${fmt(c.weight)}/${fmt(c.capacity.weight)} lb)` : c.capacity.text ? ` (${c.capacity.text})` : "";
@@ -37,16 +29,16 @@ function containerTitle(g: InventoryGroup) {
 }
 
 // Un grupo de la tabla: «Equipo» o un contenedor. Lo que el filtro oculta sigue en el DOM (`hidden print:…`) para imprimir.
-export default function InventoryTable({ group, shown, info, items, readOnly, containers, actions }: {
+export default function InventoryTable({ group, shown, info, items, readOnly, actions, onOpen }: {
   group: InventoryGroup;
   /** Si el grupo pasa el filtro y los ids de sus líneas visibles. */
   shown: Set<string> | null;
   info: Record<string, ItemInfo | undefined>;
   items: InventoryItem[];
   readOnly: boolean;
-  /** Líneas contenedoras (destinos de «Mover a…»). */
-  containers: InventoryItem[];
-  actions: InventoryActions;
+  actions: Pick<InventoryActions, "equip">;
+  /** Abre la ficha del objeto; `from` es el botón del nombre (recibe el foco al cerrarla). */
+  onOpen: (id: string, from: HTMLElement) => void;
 }) {
   const c = group.container;
   return (
@@ -75,7 +67,6 @@ export default function InventoryTable({ group, shown, info, items, readOnly, co
                 <th className="pb-2 pr-3 font-semibold">Cant.</th>
                 <th className="pb-2 pr-3 font-semibold">Coste</th>
                 <th className="pb-2 pr-3 font-semibold">Notas</th>
-                {!readOnly && <th className="pb-2 font-semibold print:hidden"><span className="sr-only">Mover y quitar</span></th>}
               </tr>
             </thead>
             <tbody>
@@ -87,8 +78,8 @@ export default function InventoryTable({ group, shown, info, items, readOnly, co
                   where={effectiveContainer(l, items, info)}
                   visible={shown?.has(l.id) ?? false}
                   readOnly={readOnly}
-                  containers={containers}
                   actions={actions}
+                  onOpen={onOpen}
                 />
               ))}
             </tbody>
@@ -99,20 +90,19 @@ export default function InventoryTable({ group, shown, info, items, readOnly, co
   );
 }
 
-function Row({ line: l, data, where, visible, readOnly, containers, actions }: {
+function Row({ line: l, data, where, visible, readOnly, actions, onOpen }: {
   line: InventoryItem;
   data: ItemInfo | undefined;
   /** Id del contenedor donde está la línea; `null` = suelta. */
   where: string | null;
   visible: boolean;
   readOnly: boolean;
-  containers: InventoryItem[];
-  actions: InventoryActions;
+  actions: Pick<InventoryActions, "equip">;
+  onOpen: (id: string, from: HTMLElement) => void;
 }) {
   const props = data?.properties.map(weaponPropertyName).join(", ");
   const details = [props, data?.rarity ? rarityName(data.rarity) : ""].filter(Boolean).join(" · ");
   const inContainer = where !== null;
-  const targets = containers.filter((k) => k.id !== l.id);
   return (
     <tr className={`border-t border-line align-middle ${visible ? "" : "hidden print:table-row"}`}>
       <td className="py-2 pr-3">
@@ -131,7 +121,13 @@ function Row({ line: l, data, where, visible, readOnly, containers, actions }: {
         )}
       </td>
       <td className="py-2 pr-3">
-        <span className="font-semibold">{l.name}</span>
+        <button
+          type="button"
+          onClick={(e) => onOpen(l.id, e.currentTarget)}
+          className="rounded-sm text-left font-semibold underline-offset-2 hover:text-brand-soft hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+        >
+          {l.name}
+        </button>
         {data?.type && <span className="block text-xs text-muted">{itemTypeName(data.type)}</span>}
       </td>
       <td className="whitespace-nowrap py-2 pr-3 text-muted">
@@ -142,80 +138,12 @@ function Row({ line: l, data, where, visible, readOnly, containers, actions }: {
           </>
         ) : "-"}
       </td>
-      <td className="py-2 pr-3">
-        {readOnly ? l.quantity : (
-          <QuantityField label={`Cantidad de ${l.name}`} value={l.quantity} onCommit={(q) => actions.quantity(l.id, q)} />
-        )}
-      </td>
+      <td className="py-2 pr-3">{l.quantity}</td>
       <td className="whitespace-nowrap py-2 pr-3 text-muted">{data && data.value > 0 ? goldText(data.value) : "—"}</td>
       <td className="py-2 pr-3">
         {details && <span className="mb-1 block text-xs text-muted">{details}</span>}
-        {readOnly ? <span className="text-muted">{l.notes}</span> : (
-          <NotesField label={`Notas de ${l.name}`} value={l.notes} onCommit={(notes) => actions.notes(l.id, notes)} />
-        )}
+        <span className="text-muted">{l.notes}</span>
       </td>
-      {!readOnly && (
-        <td className="whitespace-nowrap py-2 text-right print:hidden">
-          {!data?.container && targets.length > 0 && (
-            <select
-              aria-label={`Mover ${l.name} a…`}
-              value={where ?? ""}
-              onChange={(e) => actions.move(l.id, e.target.value || null)}
-              className={`${smallInput} mr-1 max-w-40`}
-            >
-              <option value="">Equipo</option>
-              {targets.map((k) => <option key={k.id} value={k.id}>{k.name}</option>)}
-            </select>
-          )}
-          <button
-            type="button"
-            aria-label={`Quitar ${l.name}`}
-            onClick={() => actions.remove(l.id)}
-            className="rounded-md p-1.5 text-muted transition-colors hover:text-brand-soft"
-          >
-            <X size={16} aria-hidden="true" />
-          </button>
-        </td>
-      )}
     </tr>
-  );
-}
-
-// Campos con borrador propio: se guardan al salir del campo o con Intro
-function QuantityField({ label, value, onCommit }: { label: string; value: number; onCommit: (v: number) => void }) {
-  const [draft, setDraft] = useState(String(value));
-  const [shown, setShown] = useState(value);
-  if (shown !== value) {
-    setShown(value);
-    setDraft(String(value));
-  }
-  const commit = () => {
-    const v = clampInt(draft, MAX_QUANTITY, value);
-    setDraft(String(v));
-    if (v !== value) onCommit(v);
-  };
-  return (
-    <input
-      type="number" inputMode="numeric" min={0} max={MAX_QUANTITY} aria-label={label}
-      className={`${smallInput} w-20`} value={draft}
-      onChange={(e) => setDraft(e.target.value)} onBlur={commit} onKeyDown={(e) => e.key === "Enter" && commit()}
-    />
-  );
-}
-
-function NotesField({ label, value, onCommit }: { label: string; value: string; onCommit: (v: string) => void }) {
-  const [draft, setDraft] = useState(value);
-  const [shown, setShown] = useState(value);
-  if (shown !== value) {
-    setShown(value);
-    setDraft(value);
-  }
-  return (
-    <input
-      type="text" aria-label={label} maxLength={MAX_ITEM_NOTES} className={`${smallInput} w-full`} value={draft}
-      onChange={(e) => setDraft(e.target.value)}
-      onBlur={() => draft !== value && onCommit(draft)}
-      onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
-    />
   );
 }

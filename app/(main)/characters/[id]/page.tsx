@@ -25,6 +25,7 @@ import { hitDicePools } from "@/lib/rules/dnd2024/sheet/rest";
 import { statusOf } from "@/lib/rules/dnd2024/sheet/status";
 import { shortRestRestores } from "@/lib/rules/dnd2024/spells/spellOps";
 import { sizeName } from "@/lib/rules/dnd2024/sheet/labels";
+import { itemDetails, type ItemDetails } from "@/lib/rules/dnd2024/sheet/itemDetails";
 import type { ActionData, BackgroundData, ItemData, SpeciesData } from "@/lib/rules/types";
 import SheetHeader from "@/app/components/characters/sheet/SheetHeader";
 import type { JoinableCampaign } from "@/app/components/characters/sheet/JoinCampaignDialog";
@@ -112,6 +113,8 @@ export default async function CharacterPage({ params, searchParams }: Props) {
   const admitted = sheet.inventory.items.flatMap((line) => lineData(line.ref)?.container?.items.map((i) => i.ref) ?? []);
   const admittedNames = new Map((await getEntries(admitted)).map((e) => [refKey(e.ref), e.nameEs ?? e.name]));
   const itemInfo: Record<string, ItemInfo> = {};
+  const itemCards: Record<string, ItemDetails> = {};
+  const itemDescriptions: Record<string, string> = {};
   for (const line of sheet.inventory.items) {
     const data = lineData(line.ref);
     const entry = line.ref ? entries.get(refKey(line.ref)) : undefined;
@@ -131,6 +134,8 @@ export default async function CharacterPage({ params, searchParams }: Props) {
       value: data?.value ?? 0,
       container: cap ? { weight: cap.weight, text: capacityText, weightless: cap.weightless } : null,
     };
+    itemCards[line.id] = itemDetails(line, entry, capacityText);
+    itemDescriptions[line.id] = entry?.descriptionEs || entry?.description || "";
   }
 
   // Maestrías con armas: las actuales y, para cambiarlas, las armas con maestría y competencia (del Bárbaro, solo
@@ -316,6 +321,8 @@ export default async function CharacterPage({ params, searchParams }: Props) {
             books={found.books}
             base={base}
             query={query}
+            details={itemCards}
+            descriptions={itemDescriptions}
           />
         </section>
 

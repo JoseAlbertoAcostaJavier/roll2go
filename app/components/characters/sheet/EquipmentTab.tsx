@@ -2,16 +2,20 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { LoaderCircle, TriangleAlert } from "lucide-react";
+import { LoaderCircle, SlidersHorizontal, TriangleAlert } from "lucide-react";
 import type { Coins, Inventory } from "@/lib/rules/dnd2024/sheet/sheet";
 import { MAX_COINS, MAX_OTHER, type InventoryOp } from "@/lib/rules/dnd2024/sheet/edits";
 import { inventoryWeights } from "@/lib/rules/dnd2024/sheet/inventory";
+import { itemDetails, type ItemDetails } from "@/lib/rules/dnd2024/sheet/itemDetails";
 import { inventoryChips, inventoryGroups, type ItemInfo } from "@/lib/rules/dnd2024/sheet/inventoryTable";
 import { parseSection } from "@/lib/rules/dnd2024/sheet/sheetSections";
 import { sheetCard, cardTitle } from "@/app/components/ui/formStyles";
-import AddItemDialog, { type NewItem } from "./AddItemDialog";
+import type { NewItem } from "./AddItemDialog";
 import InventoryFilters from "./InventoryFilters";
-import InventoryTable, { clampInt, fmt, smallInput, weightText, type InventoryActions } from "./InventoryTable";
+import { clampInt, smallInput } from "./InventoryFields";
+import ItemDialog from "./ItemDialog";
+import ManageInventory from "./ManageInventory";
+import InventoryTable, { fmt, weightText, type InventoryActions } from "./InventoryTable";
 
 export type { ItemInfo };
 
@@ -30,6 +34,9 @@ type Props = {
   /** Dirección de la ficha y sus parámetros (`?seccion=`, `?q=`). */
   base: string;
   query: Query;
+  /** Datos y descripción de cada línea (clave: id de la línea) para su ficha. */
+  details: Record<string, ItemDetails>;
+  descriptions: Record<string, string>;
 };
 
 const COINS: { key: keyof Coins; label: string }[] = [
@@ -40,11 +47,13 @@ const toDraft = (c: Coins) => ({ cp: String(c.cp), sp: String(c.sp), ep: String(
 const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v) ?? "";
 
 // Pestaña Equipo: inventario, monedas, peso y otras posesiones. Edita el dueño; el resto solo lee.
-export default function EquipmentTab({ characterId, isOwner, inventory, info, capacity, armorWarning, systemId, books, base, query }: Props) {
+export default function EquipmentTab({ characterId, isOwner, inventory, info, capacity, armorWarning, systemId, books, base, query, details, descriptions }: Props) {
   const router = useRouter();
   const [inv, setInv] = useState(inventory);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(0);
+  const [open, setOpen] = useState<{ id: string; opener: HTMLElement } | null>(null);
+  const [manage, setManage] = useState<HTMLElement | null>(null);
   const saved = useRef(inventory);
   const queue = useRef<Promise<unknown>>(Promise.resolve());
   const pending = useRef(0);
@@ -102,6 +111,10 @@ export default function EquipmentTab({ characterId, isOwner, inventory, info, ca
   };
 
   const readOnly = !isOwner;
+  // Ficha del objeto abierto: cantidad y notas salen del inventario optimista; una línea recién añadida (aún sin datos
+  // del servidor) se arma con lo que se sabe de ella
+  const openLine = open ? inv.items.find((l) => l.id === open.id) : undefined;
+  const card = openLine ? liveCard(details[openLine.id] ?? itemDetails(openLine, undefined, null), openLine) : null;
   const carried = inventoryWeights(inv.items, info).carried;
   const over = carried > capacity;
 
@@ -113,7 +126,6 @@ export default function EquipmentTab({ characterId, isOwner, inventory, info, ca
   const shown = new Map(inventoryGroups(inv.items, info, active, q).map((g) => [g.id, g]));
   const shownLines = [...shown.values()].reduce((n, g) => n + g.lines.length, 0);
   const nothing = shownLines === 0 && (q.trim() !== "" || active === "equipado" || ![...shown.values()].some((g) => g.container));
-  const containers = inv.items.filter((l) => info[l.id]?.container);
   const section = (on: boolean) => (on ? "" : "hidden print:block");
 
   return (
@@ -131,15 +143,6 @@ export default function EquipmentTab({ characterId, isOwner, inventory, info, ca
             Inventario
             {saving > 0 && <LoaderCircle size={14} aria-label="Guardando" className="ml-2 inline animate-spin text-muted" />}
           </h3>
-          {!readOnly && (
-            <div className="print:hidden">
-              <AddItemDialog
-                systemId={systemId}
-                books={books}
-                onAdd={(item: NewItem) => send({ op: "add", ...item })}
-              />
-            </div>
-          )}
         </div>
 
         <div className="mb-4 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 text-sm">
@@ -154,7 +157,18 @@ export default function EquipmentTab({ characterId, isOwner, inventory, info, ca
           <p className="text-muted">Monedas: {fmt(goldValue(inv.coins))} po</p>
         </div>
 
-        <InventoryFilters base={base} query={query} chips={chips} active={active} q={q} />
+        <InventoryFilters
+          base={base} query={query} chips={chips} active={active} q={q}
+          action={readOnly ? undefined : (
+            <button
+              type="button"
+              onClick={(e) => setManage(e.currentTarget)}
+              className="flex shrink-0 items-center gap-2 rounded-md bg-brand px-4 py-2.5 font-heading text-sm font-bold text-white transition-colors hover:bg-brand-hover"
+            >
+              <SlidersHorizontal size={16} aria-hidden="true" /> Gestionar inventario
+            </button>
+          )}
+        />
         {error && <p role="alert" className="mb-3 text-sm text-brand-soft">{error}</p>}
 
         <div className={`space-y-6 ${section(active !== "otras")}`}>
@@ -169,13 +183,37 @@ export default function EquipmentTab({ characterId, isOwner, inventory, info, ca
                 info={info}
                 items={inv.items}
                 readOnly={readOnly}
-                containers={containers}
                 actions={actions}
+                onOpen={(id, opener) => setOpen({ id, opener })}
               />
             );
           })}
         </div>
       </section>
+
+      {manage && !readOnly && (
+        <ManageInventory
+          inv={inv}
+          info={info}
+          actions={actions}
+          systemId={systemId}
+          books={books}
+          onAdd={(item: NewItem) => send({ op: "add", ...item })}
+          onClose={() => setManage(null)}
+          error={error}
+          saving={saving > 0}
+          opener={manage}
+        />
+      )}
+
+      {card && open && (
+        <ItemDialog
+          details={card}
+          description={descriptions[open.id] ?? ""}
+          onClose={() => setOpen(null)}
+          opener={open.opener}
+        />
+      )}
 
       <section className={`${sheetCard} animate-fade-up ${section(active === "todo")}`} aria-labelledby="coins-title">
         <h3 id="coins-title" className={cardTitle}>Monedas</h3>
@@ -244,4 +282,12 @@ function OtherField({ value, onCommit }: { value: string; onCommit: (v: string) 
       onBlur={() => draft !== value && onCommit(draft)}
     />
   );
+}
+
+// Pone en la ficha la cantidad y las notas actuales de la línea
+function liveCard(card: ItemDetails, line: Inventory["items"][number]): ItemDetails {
+  const rows = card.rows.filter((r) => r.label !== "Cantidad" && r.label !== "Notas");
+  rows.push({ label: "Cantidad", value: String(line.quantity) });
+  if (line.notes.trim()) rows.push({ label: "Notas", value: line.notes });
+  return { ...card, rows };
 }
