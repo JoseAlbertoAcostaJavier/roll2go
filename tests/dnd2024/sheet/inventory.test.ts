@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { InventoryItem } from "@/lib/rules/dnd2024/sheet/sheet";
 import { effectiveContainer, inventoryWeights, startingInventory, type WeightInfo } from "@/lib/rules/dnd2024/sheet/inventory";
-import type { BackgroundData, ClassData } from "@/lib/rules/types";
+import type { BackgroundData, ClassData, ItemData } from "@/lib/rules/types";
 import { B, buildCatalog, ref } from "../fixtureCatalog";
 
 const counter = () => {
@@ -68,6 +68,70 @@ describe("startingInventory", () => {
     expect(inv.items).toEqual([
       { id: "id1", ref: null, name: "Carta de un amigo", quantity: 1, equipped: false, notes: "" },
     ]);
+  });
+});
+
+describe("startingInventory: mochila inicial", () => {
+  // Catálogo del fixture más objetos sueltos con los datos que importan aquí
+  const withItems = (items: Record<string, Partial<ItemData>>) => {
+    const cat = buildCatalog();
+    for (const [key, data] of Object.entries(items)) {
+      const base = cat.get(`${B}:item:greataxe|xphb`)!;
+      cat.set(`${B}:${key}`, { ...base, ref: ref(key), name: key, data: { type: "G", weight: 1, value: 0, ...data } });
+    }
+    return cat;
+  };
+  const backpack = { container: { weight: 30, volume: null, items: [], weightless: false } };
+  const pouch = { container: { weight: 6, volume: null, items: [], weightless: false } };
+
+  it("Bárbaro A + Acólito A: armas, ropa, herramientas y contenedores sueltos; el resto en la mochila", () => {
+    const cat = withItems({
+      "item:backpack|xphb": backpack,
+      "item:torch|xphb": {},
+      "item:robe|xphb": {},
+      "item:calligrapher's supplies|xphb": { type: "AT" },
+      "item:holy symbol|xphb": { type: "SCF" },
+    });
+    const inv = startingInventory([{ pack: classData.equipment.A }, { pack: bgData.equipment.A }], cat, counter());
+    const byKey = (key: string) => inv.items.find((i) => i.ref?.key === key)!;
+    const mochila = byKey("item:backpack|xphb").id;
+    for (const key of ["item:greataxe|xphb", "item:handaxe|xphb", "item:backpack|xphb", "item:robe|xphb", "item:calligrapher's supplies|xphb"])
+      expect(byKey(key).container, key).toBeUndefined();
+    // Del paquete, el canalizador y lo que no está en el catálogo (el libro de oraciones) van a la mochila
+    for (const key of ["item:torch|xphb", "item:holy symbol|xphb", "item:book|xphb"])
+      expect(byKey(key).container, key).toBe(mochila);
+    expect(byKey("item:greataxe|xphb").equipped).toBe(true);
+  });
+
+  it("munición, armaduras, escudos, ropa de viaje y bolsas se quedan sueltos", () => {
+    const cat = withItems({
+      "item:backpack|xphb": backpack,
+      "item:pouch|xphb": pouch,
+      "item:arrow|xphb": { type: "A" },
+      "item:traveler's clothes|xphb": {},
+      "item:navigator's tools|xphb": { type: "T" },
+      "item:rope|xphb": {},
+    });
+    const packs = [
+      { ref: ref("item:backpack|xphb") },
+      { ref: ref("item:pouch|xphb"), quantity: 2 },
+      { ref: ref("item:arrow|xphb"), quantity: 20 },
+      { ref: ref("item:traveler's clothes|xphb") },
+      { ref: ref("item:navigator's tools|xphb") },
+      { ref: ref("item:chain mail|xphb") },
+      { ref: ref("item:shield|xphb") },
+      { ref: ref("item:rope|xphb") },
+    ];
+    const inv = startingInventory([{ pack: packs }], cat, counter());
+    const inBackpack = inv.items.filter((i) => i.container).map((i) => i.ref?.key);
+    expect(inBackpack).toEqual(["item:rope|xphb"]);
+  });
+
+  it("sin mochila, todo queda suelto", () => {
+    const cat = withItems({ "item:torch|xphb": {}, "item:pouch|xphb": pouch });
+    const packs = [{ ref: ref("item:torch|xphb"), quantity: 5 }, { ref: ref("item:pouch|xphb") }];
+    const inv = startingInventory([{ pack: packs }], cat, counter());
+    expect(inv.items.every((i) => i.container === undefined)).toBe(true);
   });
 });
 

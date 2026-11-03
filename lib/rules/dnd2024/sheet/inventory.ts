@@ -5,6 +5,12 @@ import type { ItemData, Pack } from "@/lib/rules/types";
 import { bareName, refKey } from "./equipmentRefs";
 import type { Inventory, InventoryItem } from "./sheet";
 
+// Tipos de 5etools que no van a la mochila inicial: munición, armas, armaduras, escudos, herramientas, juegos e
+// instrumentos (las armas y armaduras sin estos tipos se reconocen por sus datos)
+const LOOSE_TYPES = new Set(["A", "AF", "M", "R", "LA", "MA", "HA", "S", "AT", "T", "GS", "INS"]);
+// 5etools no marca la ropa: se reconoce por el objeto
+const CLOTHING = new Set(["robe", "traveler's clothes", "fine clothes", "costume"]);
+
 
 export function startingInventory(
   choices: { pack: Pack[] }[],
@@ -63,6 +69,18 @@ export function startingInventory(
     }
   }
   if (bestArmor) bestArmor.equipped = true;
+
+  // Lo que no se lleva a mano ni puesto va a la primera mochila: quedan sueltos las armas, armaduras, escudos,
+  // munición, herramientas, ropa y contenedores
+  const backpack = items.find((i) => i.ref && bareName(i.ref.key) === "backpack" && dataOf(i)?.container);
+  if (backpack) {
+    for (const i of items) {
+      const data = dataOf(i);
+      const loose = !!data && (!!data.weapon || !!data.armor || !!data.container || LOOSE_TYPES.has(data.type)
+        || CLOTHING.has(bareName(i.ref!.key)));
+      if (i !== backpack && !loose) i.container = backpack.id;
+    }
+  }
 
   return {
     items,
