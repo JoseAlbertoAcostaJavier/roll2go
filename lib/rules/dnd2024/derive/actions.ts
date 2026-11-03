@@ -3,7 +3,7 @@
 import type { CatalogEntry, SpellOption } from "@/lib/rules/catalog/types";
 import { actionIcon } from "@/lib/rules/dnd2024/sheet/actionIcons";
 import { refKey } from "@/lib/rules/dnd2024/sheet/equipmentRefs";
-import { damageIdOf, hitOf, usableSpells } from "@/lib/rules/dnd2024/spells/spellTable";
+import { damageIdOf, hitOf, spellDamageAt, usableSpells } from "@/lib/rules/dnd2024/spells/spellTable";
 import type { ActionData, FeatureData, Ref } from "@/lib/rules/types";
 import type { Attack } from "./attacks";
 import type { FeatureUse } from "./featureUses";
@@ -15,6 +15,8 @@ export type ActionItem =
   | { kind: "attack"; group: "action"; attack: Attack }
   | {
     kind: "spell"; group: ActionGroup; ref: Ref; name: string; level: number;
+    /** Escuela de 5etools (`V`), para su icono. */
+    school: string;
     range: string; hit: string | null; damage: string | null; damageTypeId: string | null; notes: string;
   }
   | {
@@ -39,6 +41,8 @@ export type ActionsInput = {
   featureUses: FeatureUse[];
   /** Catálogo con los conjuros y los rasgos del personaje (por `refKey`). */
   entries: Map<string, CatalogEntry>;
+  /** Nivel total del personaje (los dados de los trucos suben con él). */
+  level: number;
 };
 
 const GROUP_ORDER: ActionGroup[] = ["action", "bonus", "reaction", "other"];
@@ -60,12 +64,11 @@ const featureName = (ref: Ref) => ref.key.replace(/^[^:]*:/, "");
 const EXTRA_ATTACKS: [string, number][] = [["three extra attacks|", 3], ["two extra attacks|", 2], ["extra attack|", 1]];
 
 // Conjuros que se pueden lanzar (los mismos que en la tabla de conjuros), con su tirada y tipo de daño
-function spellItems(spells: SpellsSummary, entries: Map<string, CatalogEntry>): ActionItem[] {
+function spellItems(spells: SpellsSummary, entries: Map<string, CatalogEntry>, level: number): ActionItem[] {
   const out: ActionItem[] = usableSpells(spells, entries).map(({ ref, block, origin, entry, data }) => ({
     kind: "spell", group: spellGroup(data.time), ref, name: entry.nameEs ?? entry.name,
-    level: data.level, range: data.range, hit: hitOf(data.tags, block),
-    // El catálogo no guarda los dados de daño de los conjuros
-    damage: null, damageTypeId: data.tags.map(damageIdOf).find((d) => d) ?? null, notes: origin,
+    level: data.level, school: data.school, range: data.range, hit: hitOf(data.tags, block),
+    damage: spellDamageAt(data, level), damageTypeId: data.tags.map(damageIdOf).find((d) => d) ?? null, notes: origin,
   }));
   return out.sort((a, b) => (a.kind === "spell" && b.kind === "spell"
     ? a.level - b.level || a.name.localeCompare(b.name, "es") : 0));
@@ -88,7 +91,7 @@ export function withSpellEntries(entries: Map<string, CatalogEntry>, spells: Spe
 }
 
 export function deriveActions(input: ActionsInput): ActionsSummary {
-  const { attacks, spells, features, featureUses, basics, entries } = input;
+  const { attacks, spells, features, featureUses, basics, entries, level } = input;
   const classFeatures = features.filter((g) => g.source === "class" || g.source === "subclass")
     .flatMap((g) => g.features);
 
@@ -125,7 +128,7 @@ export function deriveActions(input: ActionsInput): ActionsSummary {
 
   const items: ActionItem[] = [
     ...attacks.map((attack): ActionItem => ({ kind: "attack", group: "action", attack })),
-    ...spellItems(spells, entries),
+    ...spellItems(spells, entries, level),
     ...featureItems,
     ...basicItems,
   ];

@@ -31,6 +31,8 @@ type Props = {
 };
 
 const SPELL_ICON = iconSrc("action", "cast-spell");
+// Icono de la escuela del conjuro (blanco, como los demás); sin él, el genérico
+const schoolIcon = (school: string) => iconSrc("darkSchool", school) ?? SPELL_ICON;
 
 // Tabla de ataques: armas y conjuros con tirada; se desplaza dentro de su caja en móvil
 function AttackTable({ rows }: { rows: ActionSection["attacks"] }) {
@@ -79,12 +81,11 @@ function AttackTable({ rows }: { rows: ActionSection["attacks"] }) {
                 </tr>
               );
             }
-            // Conjuro: el catálogo no guarda sus dados de daño, así que solo se muestra el tipo
-            return (
+                        return (
               <tr key={refKey(r.ref)}>
                 <th scope="row" className="py-2 pr-3 font-semibold">
                   <span className="flex items-center gap-2">
-                    <MaskIcon src={SPELL_ICON} size={18} label="Conjuro" className="text-muted" />
+                    <MaskIcon src={schoolIcon(r.school)} size={18} label="Conjuro" className="text-muted" />
                     <span>
                       <SpellLink spellRef={r.ref} name={r.name} />
                       <span className="block text-xs font-normal text-muted">{spellLevelLabel(r.level)}</span>
@@ -141,7 +142,7 @@ function Section({ section, vis, attacksPerAction, characterId, isOwner }: {
         <ul className={`divide-y divide-line border-y border-line ${hide(vis.spells)}`}>
           {spells.map((s) => (
             <li key={refKey(s.ref)} className="flex items-center gap-3 py-2 text-sm">
-              <MaskIcon src={SPELL_ICON} size={18} label="Conjuro" className="text-muted" />
+              <MaskIcon src={schoolIcon(s.school)} size={18} label="Conjuro" className="text-muted" />
               <span className="min-w-0 flex-1">
                 <SpellLink spellRef={s.ref} name={s.name} />
                 <span className="block text-xs text-muted">

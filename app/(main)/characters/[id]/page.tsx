@@ -179,7 +179,7 @@ export default async function CharacterPage({ params, searchParams }: Props) {
   // (los conjuros no están en `entries`: se toman del listado de la pestaña Conjuros)
   const spellEntries = withSpellEntries(entries, spellOptions);
   const actions = deriveActions({
-    attacks: d.attacks, spells: d.spells, features: d.features, featureUses: d.featureUses, basics: basicEntries, entries: spellEntries,
+    attacks: d.attacks, spells: d.spells, features: d.features, featureUses: d.featureUses, basics: basicEntries, entries: spellEntries, level: d.level,
   });
   const actionFilter = parseActionFilter(query.filtro);
   const actionSpellKeys = new Set(actions.items.flatMap((i) => (i.kind === "spell" ? [refKey(i.ref)] : [])));

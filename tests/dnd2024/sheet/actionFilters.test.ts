@@ -9,7 +9,7 @@ const attack: Attack = {
   kind: "melee", range: "1,5 m", damageTypeId: "slashing",
 };
 const spell = (name: string, group: ActionItem["group"], hit: string | null): ActionItem => ({
-  kind: "spell", group, ref: ref(`spell:${name}`), name, level: 0, range: "18 m", hit, damage: null, damageTypeId: null, notes: "",
+  kind: "spell", group, ref: ref(`spell:${name}`), name, level: 0, school: "V", range: "18 m", hit, damage: null, damageTypeId: null, notes: "",
 });
 const summary: ActionsSummary = {
   attacksPerAction: 2,

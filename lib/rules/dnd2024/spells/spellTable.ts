@@ -45,6 +45,18 @@ export function hitOf(tags: string[], block: CasterBlock | null): string | null 
   return save ? `CD ${block.dc} ${ABILITY_ABBR[save]}` : null;
 }
 
+/**
+ * Dados de daño del conjuro: en los trucos, el último escalón alcanzado por el nivel de personaje (`level`); en los
+ * de nivel 1+, sus dados base. null sin daño.
+ */
+export function spellDamageAt(data: SpellData, level: number): string | null {
+  const damage = data.damage;
+  if (!damage) return null;
+  if (data.level > 0 || !damage.scaling?.length) return damage.dice;
+  const reached = damage.scaling.filter((s) => s.level <= level).sort((a, b) => a.level - b.level).at(-1);
+  return reached?.dice ?? damage.dice;
+}
+
 export type UsableSpell = {
   ref: Ref; block: CasterBlock | null; origin: string; entry: CatalogEntry; data: SpellData;
   limited: { key: string; max: number; used: number } | null;

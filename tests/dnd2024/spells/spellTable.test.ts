@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { CatalogEntry } from "@/lib/rules/catalog/types";
 import { innateKey, type CasterBlock, type SpellsSummary } from "@/lib/rules/dnd2024/derive/spells";
-import { spellTableRows, timeShort } from "@/lib/rules/dnd2024/spells/spellTable";
+import { spellDamageAt, spellTableRows, timeShort } from "@/lib/rules/dnd2024/spells/spellTable";
 import type { Ref, SpellData } from "@/lib/rules/types";
 
 const B = "b";
@@ -92,4 +92,26 @@ describe("timeShort", () => {
     ["1 acción", "1A"], ["1 acción adicional", "1AA"], ["1 reacción, que tomas cuando…", "1R"],
     ["10 minutos", "10 min"], ["1 hora", "1 h"], ["8 horas", "8 h"], ["1 minuto", "1 min"], ["Especial", "Especial"],
   ])("%s → %s", (time, short) => expect(timeShort(time)).toBe(short));
+});
+
+describe("spellDamageAt", () => {
+  const withDamage = (damage?: SpellData["damage"]): SpellData => ({
+    level: 0, school: "V", time: "1 acción", range: "", components: "", duration: "", concentration: false, ritual: false,
+    classes: [], tags: [], ...(damage ? { damage } : {}),
+  });
+  const fireBolt = withDamage({
+    dice: "1d10", scaling: [{ level: 1, dice: "1d10" }, { level: 5, dice: "2d10" }, { level: 11, dice: "3d10" }, { level: 17, dice: "4d10" }],
+  });
+  it("truco: el último escalón alcanzado por el nivel del personaje", () => {
+    expect(spellDamageAt(fireBolt, 1)).toBe("1d10");
+    expect(spellDamageAt(fireBolt, 4)).toBe("1d10");
+    expect(spellDamageAt(fireBolt, 5)).toBe("2d10");
+    expect(spellDamageAt(fireBolt, 17)).toBe("4d10");
+  });
+  it("conjuro de nivel 1+: sus dados", () => {
+    expect(spellDamageAt({ ...withDamage({ dice: "3d6" }), level: 1 }, 9)).toBe("3d6");
+  });
+  it("sin daño: null", () => {
+    expect(spellDamageAt(withDamage(), 5)).toBeNull();
+  });
 });
