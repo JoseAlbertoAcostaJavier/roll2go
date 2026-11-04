@@ -21,6 +21,16 @@ const entry = (key: string, data: unknown, extra: Partial<CatalogEntry> = {}): C
 const catalog = new Map<string, CatalogEntry>(
   [
     entry("item:longsword|xphb", { weapon: { category: "martial" } }, { name: "Longsword", nameEs: "Espada larga" }),
+    entry("item:dice set|xphb", { type: "GS" }, { name: "Dice Set", nameEs: "Juego de dados" }),
+    entry("item:magic dice|xphb", { type: "GS", rarity: "rare" }),
+    entry("background:soldier|xphb", {
+      abilities: ["str", "dex", "con"], skills: ["Insight", "Intimidation"],
+      equipment: { A: [{ displayName: "Un juego (a elegir)", choose: { kinds: ["gaming"], label: "Un juego (a elegir)" } }, { displayName: "Carta" }], B: [] },
+    }),
+    entry("language:elvish|xphb", { type: "standard" }, { name: "Elvish", nameEs: "Élfico" }),
+    entry("language:dwarvish|xphb", { type: "standard" }, { name: "Dwarvish", nameEs: "Enano" }),
+    entry("language:celestial|xphb", { type: "rare" }, { name: "Celestial", nameEs: "Celestial" }),
+    entry("language:common|xphb", { type: "standard" }, { name: "Common", nameEs: "Común" }),
     entry("species:elf|xphb", { size: ["M"], hasLineages: true, skills: { fixed: [] } }, { name: "Elf", nameEs: "Elfo" }),
     entry("species:dwarf|xphb", {
       size: ["M"], hasLineages: false, skills: { fixed: ["Perception"] },
@@ -67,6 +77,7 @@ const valid = (): Sheet => ({
   rolls: null,
   speciesChoices: { skills: [], size: null },
   alignment: "Neutral", appearance: "", age: "", languages: "", notes: "", xp: 0,
+  languageChoices: [{ book: B, key: "language:elvish|xphb" }, { book: B, key: "language:dwarvish|xphb" }],
   hp: { max: null, current: null, temp: 0 },
 });
 const run = (mut: (s: Sheet) => void) => {
@@ -107,6 +118,48 @@ describe("validateSheet", () => {
     expect(r.sheet.inventory.items).toEqual([{
       id: "id1", ref: { book: B, key: "item:longsword|xphb" }, name: "Espada larga", quantity: 1, equipped: true, notes: "",
     }]);
+  });
+  it("guarda los idiomas elegidos", async () => {
+    const r = await run(() => {});
+    if (!r.ok) throw new Error("hoja no válida");
+    expect(r.sheet.languageChoices).toEqual([{ book: B, key: "language:elvish|xphb" }, { book: B, key: "language:dwarvish|xphb" }]);
+  });
+  it("idiomas: faltan, Común, raro de origen, sin libro y no enviados", async () => {
+    const l = (n: string) => ({ book: B, key: `language:${n}|xphb` });
+    expect((await errorsOf((s) => { s.languageChoices = [l("elvish")]; })).languageChoices).toBe("Faltan idiomas por elegir.");
+    expect((await errorsOf((s) => { s.languageChoices = [l("elvish"), l("common")]; })).languageChoices).toBe("Ya conoces ese idioma.");
+    expect((await errorsOf((s) => { s.languageChoices = [l("elvish"), l("celestial")]; })).languageChoices)
+      .toBe("Elige idiomas estándar para tus idiomas de origen.");
+    expect((await errorsOf((s) => { s.languageChoices = [l("elvish"), { book: "otro", key: "language:giant|xphb" }]; })).languageChoices)
+      .toBe("Idiomas no válidos.");
+    expect((await errorsOf((s) => { delete s.languageChoices; })).languageChoices).toBe("Faltan idiomas por elegir.");
+  });
+  it("idiomas: sin idiomas en los libros no se pide elegir ninguno; con pocos, solo los que hay", async () => {
+    const pool = async () => [] as { name: string; type: string | null }[];
+    const none = valid();
+    none.languageChoices = [];
+    expect((await validateSheet(none, { ...ctx, languagePool: pool })).ok).toBe(true);
+    // Un solo idioma estándar disponible: se pide uno, no dos
+    const one = valid();
+    one.languageChoices = [{ book: B, key: "language:elvish|xphb" }];
+    const onePool = async () => [{ name: "elvish", type: "standard" }];
+    expect((await validateSheet(one, { ...ctx, languagePool: onePool })).ok).toBe(true);
+    one.languageChoices = [];
+    const r = await validateSheet(one, { ...ctx, languagePool: onePool });
+    expect(r.ok ? null : r.errors.languageChoices).toBe("Faltan idiomas por elegir.");
+  });
+  it("idiomas: el mismo idioma de otro libro cuenta como repetido", async () => {
+    const other = new Map(catalog);
+    const c = catalog.get("language:elvish|xphb")!;
+    other.set("language:elvish|otro", { ...c, ref: { book: B, key: "language:elvish|otro" } });
+    const s = valid();
+    s.languageChoices = [{ book: B, key: "language:elvish|xphb" }, { book: B, key: "language:elvish|otro" }];
+    const r = await validateSheet(s, { ...ctx, resolve: async (x: Ref) => (x.book === B ? (other.get(x.key) ?? null) : null) });
+    expect(r.ok ? null : r.errors.languageChoices).toBe("Ya conoces ese idioma.");
+  });
+  it("idiomas: una lista enorme se rechaza", async () => {
+    const l = { book: B, key: "language:elvish|xphb" };
+    expect((await errorsOf((s) => { s.languageChoices = Array(50).fill(l); })).languageChoices).toBe("Idiomas no válidos.");
   });
   it("rechaza lo que no es un objeto", async () => {
     expect((await validateSheet(null, ctx)).ok).toBe(false);
@@ -289,6 +342,8 @@ describe("validateSheet: elecciones de clase de nivel 1", () => {
       ...(ability ? { ability } : {}),
     },
   });
+  for (const [n, type] of [["elvish", "standard"], ["dwarvish", "standard"], ["celestial", "rare"], ["common", "standard"]])
+    extra(`language:${n}|xphb`, { type }, n);
   const sheetFor = (cls: string, choices: unknown[]): Sheet => ({
     version: 1,
     species: fnamed("species:elf|xphb"),
@@ -304,6 +359,7 @@ describe("validateSheet: elecciones de clase de nivel 1", () => {
     rolls: null,
     speciesChoices: { skills: ["perception"], size: null },
     alignment: "", appearance: "", age: "", languages: "", notes: "", xp: 0,
+    languageChoices: ["elvish", "dwarvish", ...(cls === "rogue" ? ["celestial"] : [])].map((n) => fref(`language:${n}|xphb`)),
     hp: { max: null, current: null, temp: 0 },
   });
   const order = (key: string) => ({ type: "featureOption", source: "classFeature:divine order|cleric|xphb|1", value: fnamed(key) });
@@ -311,6 +367,15 @@ describe("validateSheet: elecciones de clase de nivel 1", () => {
   const choiceErrors = (r: Awaited<ReturnType<typeof validateSheet>>) =>
     Object.keys(errs(r)).filter((k) => k.startsWith("levels.0.choices"));
 
+  it("Pícaro 1 sin su tercer idioma → Faltan idiomas por elegir.", async () => {
+    const s = sheetFor("rogue", [
+      skills(["stealth", "acrobatics", "deception", "sleight of hand"]),
+      { type: "expertise", source: "classFeature:expertise|rogue|xphb|1", value: ["stealth", "insight"] },
+      weaponMastery("rogue", "handaxe", "shortsword"),
+    ]);
+    s.languageChoices = s.languageChoices.slice(0, 2);
+    expect(errs(await validateSheet(s, fctx)).languageChoices).toBe("Faltan idiomas por elegir.");
+  });
   it("Clérigo 1 sin Orden divina → error en levels.0.choices", async () => {
     const r = await validateSheet(sheetFor("cleric", [skills(["history", "medicine"])]), fctx);
     expect(errs(r)).toHaveProperty("levels.0.choices");
@@ -613,5 +678,38 @@ describe("featSpellClash", () => {
     const cls = { type: "spells" as const, source: "c", value: { cantrips: [n("light")], spells: [] } };
     expect(clash(cls, fs("a", ["light"]))).toEqual({ source: "a", name: "light", with: null });
     expect(clash(fs("a", ["light"]), fs("b", ["guidance"]))).toBeNull();
+  });
+});
+
+describe("validateSheet: objetos a elegir del equipo", () => {
+  const soldier = (s: Sheet, picks?: unknown) => {
+    s.background = { ...named("background:soldier|xphb"), abilities: { str: 2, dex: 1 }, equipment: "A" };
+    if (picks !== undefined) s.background.equipmentPicks = picks;
+  };
+  const dice = { book: B, key: "item:dice set|xphb" };
+
+  it("falta el pick", async () => {
+    expect((await errorsOf((s) => soldier(s)))["background.equipmentPicks"]).toBe("Falta elegir: Un juego (a elegir).");
+  });
+  it("un objeto de otro tipo", async () => {
+    const e = await errorsOf((s) => soldier(s, { "0": { book: B, key: "item:longsword|xphb" } }));
+    expect(e["background.equipmentPicks"]).toBe("Ese objeto no vale para Un juego (a elegir).");
+  });
+  it("un objeto mágico", async () => {
+    const e = await errorsOf((s) => soldier(s, { "0": { book: B, key: "item:magic dice|xphb" } }));
+    expect(e["background.equipmentPicks"]).toBe("Ese objeto no vale para Un juego (a elegir).");
+  });
+  it("pick en un índice sin choose", async () => {
+    const e = await errorsOf((s) => soldier(s, { "0": dice, "1": dice }));
+    expect(e["background.equipmentPicks"]).toBe("Petición no válida.");
+  });
+  it("pick sobrante en una opción sin choose", async () => {
+    const e = await errorsOf((s) => { s.background.equipmentPicks = { "0": dice }; });
+    expect(e["background.equipmentPicks"]).toBe("Petición no válida.");
+  });
+  it("un juego válido llega al inventario", async () => {
+    const r = await run((s) => soldier(s, { "0": dice }));
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.sheet.inventory.items.some((i) => i.ref?.key === "item:dice set|xphb")).toBe(true);
   });
 });

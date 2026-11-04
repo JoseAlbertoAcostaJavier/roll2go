@@ -77,7 +77,19 @@ describe("derive", () => {
     const s = sheet();
     s.languages = "Común, Élfico\nInfracomún";
     expect(derive(s, build()).languages).toEqual(["Común", "Élfico", "Infracomún"]);
-    expect(d.languages).toEqual([]);
+    expect(d.languages).toEqual(["Común"]);
+  });
+
+  it("idiomas elegidos al subir de nivel (Explorador hábil) se suman a los de la creación", () => {
+    const entries = build();
+    const lang = (key: string, name: string) => entries.set(`${B}:${key}`, {
+      ...entries.get(`${B}:item:greataxe|xphb`)!, ref: ref(key), name, nameEs: null, data: { type: "standard" },
+    });
+    lang("language:elvish|xphb", "Elvish");
+    lang("language:dwarvish|xphb", "Dwarvish");
+    const s = v2(entries, [{ type: "languages", source: "languages:ranger", value: [ref("language:elvish|xphb")] }]);
+    s.languageChoices = [ref("language:dwarvish|xphb")];
+    expect(derive(s, entries).languages).toEqual(["Común", "Dwarvish", "Elvish"]);
   });
 
   it("con la especie borrada anota el nombre guardado y calcula el resto", () => {

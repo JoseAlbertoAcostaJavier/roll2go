@@ -31,6 +31,7 @@ vi.mock("@/lib/server/catalog/catalog", () => {
     },
     listEntries: async () => [],
     listMasteryWeapons: async () => [],
+    listChoiceItems: async () => [],
     getEntries: async () => [],
     getEntry: async () => null,
     resolveRef: async () => null,

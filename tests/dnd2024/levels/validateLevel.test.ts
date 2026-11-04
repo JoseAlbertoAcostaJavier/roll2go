@@ -12,6 +12,7 @@ beforeAll(() => {
 
 const cat = buildCatalog([
   "class-barbarian.json", "class-cleric.json", "class-fighter.json", "class-warlock.json", "class-wizard.json", "class-bard.json",
+  "class-ranger.json",
 ]);
 // Dotes, invocaciones y armas que no están en los fixtures
 const extra = (key: string, data: unknown, name: string) =>
@@ -30,6 +31,9 @@ extra("feat:athlete|xphb", {
 extra("feat:boon of combat prowess|xphb", {
   category: "epicBoon", prerequisite: "Level 19+", repeatable: false, abilityIncrease: ["str", "dex", "con", "int", "wis", "cha"],
 }, "Boon of Combat Prowess");
+for (const [n, type] of [["elvish", "standard"], ["dwarvish", "standard"], ["celestial", "rare"], ["common", "standard"]]) {
+  extra(`language:${n}|xphb`, { type }, n);
+}
 const DAMAGE_TYPES = ["acid", "bludgeoning", "cold", "fire", "force", "lightning", "necrotic", "piercing", "poison", "psychic", "radiant", "slashing", "thunder"];
 extra("feat:boon of energy resistance|xphb", {
   category: "epicBoon", prerequisite: "Level 19+", repeatable: false, abilityIncrease: ["str", "dex", "con", "int", "wis", "cha"],
@@ -1069,5 +1073,42 @@ describe("dotes y Pacto del tomo", () => {
     }, ctx());
     if (!r.ok) throw new Error(JSON.stringify(r.errors));
     expect(r.entry.choices.at(-1)).toMatchObject({ value: { spells: [{ name: "cure wounds" }] } });
+  });
+});
+
+describe("validateLevel: idiomas de Explorador hábil", () => {
+  const LANG = "languages:ranger";
+  const lang = (...names: string[]) => ({ type: "languages", source: LANG, value: names.map((n) => ref(`language:${n}|xphb`)) });
+  const ranger1 = () => sheetWith([["ranger", 1]]);
+  const body = (choices: unknown[]) => ({ expectedLevel: 2, class: client("class:ranger|xphb"), choices, hp: average });
+  const langErrors = (errs: Record<string, string>) => Object.entries(errs).filter(([k]) => k.endsWith(LANG));
+  it("sin la elección de idiomas, falta elegir", async () => {
+    expect((await errorsOf(ranger1(), body([]))).choices).toContain("Explorador hábil: elige 2 idiomas.");
+  });
+  it("con 2 idiomas válidos no hay error de idiomas y se guardan en el nivel", async () => {
+    const r = await validateLevel(ranger1(), body([lang("elvish", "celestial")]), ctx());
+    expect(langErrors(r.ok ? {} : r.errors)).toEqual([]);
+  });
+  it("un idioma que ya conoce (Común) o repetido → «Ya conoces ese idioma.»", async () => {
+    expect((await errorsOf(ranger1(), body([lang("elvish", "common")])))[`choices.${LANG}`]).toContain("Ya conoces ese idioma.");
+    expect((await errorsOf(ranger1(), body([lang("elvish", "elvish")])))[`choices.${LANG}`]).toContain("Ya conoces ese idioma.");
+  });
+  it("un idioma que ya eligió al crear → «Ya conoces ese idioma.»", async () => {
+    const sheet = ranger1();
+    sheet.languageChoices = [ref("language:elvish|xphb"), ref("language:dwarvish|xphb")];
+    expect((await errorsOf(sheet, body([lang("celestial", "elvish")])))[`choices.${LANG}`]).toContain("Ya conoces ese idioma.");
+  });
+  it("sin idiomas en los libros no pide ninguno (el nivel no se bloquea)", async () => {
+    const empty = { ...ctx(), languagePool: async () => [] };
+    const r = await validateLevel(ranger1(), body([]), empty);
+    expect(langErrors(r.ok ? {} : r.errors)).toEqual([]);
+    expect((r.ok ? {} : r.errors).choices ?? "").not.toContain("idiomas");
+    const withTwo = { ...ctx(), languagePool: async () => [{ name: "elvish", type: "standard" }, { name: "dwarvish", type: "standard" }, { name: "common", type: "standard" }] };
+    const pending = await validateLevel(ranger1(), body([]), withTwo);
+    expect(pending.ok ? "" : pending.errors.choices).toContain("Explorador hábil: elige 2 idiomas.");
+  });
+  it("Guerrero 1 → 2 no acepta idiomas", async () => {
+    const errs = await errorsOf(sheetWith([["fighter", 1]]), { ...body([lang("elvish", "celestial")]), class: client("class:fighter|xphb") });
+    expect(errs.choices).toContain("Hay elecciones que este nivel no pide.");
   });
 });

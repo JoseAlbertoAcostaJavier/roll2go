@@ -160,6 +160,10 @@ describe("validateEntryData", () => {
     expect(withEquipment({ a: [] }).ok).toBe(false);
     expect(withEquipment({ AB: [] }).ok).toBe(false);
     expect(withEquipment({ A: [{ value: "x" }] }).ok).toBe(false);
+    const choose = (kinds: unknown) => withEquipment({ A: [{ choose: { kinds, label: "Un juego (a elegir)" }, displayName: "Un juego (a elegir)" }] });
+    expect(choose(["gaming", "martialMelee"]).ok).toBe(true);
+    expect(choose(["zzz"]).ok).toBe(false);
+    expect(choose([]).ok).toBe(false);
   });
   test("lineage acepta velocidad propia", () => {
     expect(validateEntryData("lineage", { speed: 35, spells: [], traitName: "Wood Elf" }).ok).toBe(true);

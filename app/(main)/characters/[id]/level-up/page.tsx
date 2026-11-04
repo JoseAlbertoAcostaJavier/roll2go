@@ -43,11 +43,12 @@ export default async function LevelUpPage({ params }: { params: Promise<{ id: st
   }
 
   // Listas para las elecciones: dotes, rasgos opcionales y armas con maestría
-  const [classOptions, feats, optionalFeatures, weapons] = await Promise.all([
+  const [classOptions, feats, optionalFeatures, weapons, languages] = await Promise.all([
     listEntries({ books, kind: "class" }),
     listEntries({ books, kind: "feat" }),
     listEntries({ books, kind: "optionalFeature" }),
     listMasteryWeapons(books),
+    listEntries({ books, kind: "language" }),
   ]);
   const usable = (r: Ref) => books.includes(r.book);
 
@@ -107,6 +108,7 @@ export default async function LevelUpPage({ params }: { params: Promise<{ id: st
         feats={plain(feats)}
         optionalFeatures={plain(optionalFeatures)}
         weapons={plain(weapons)}
+        languages={plain(languages)}
       />
     </div>
   );

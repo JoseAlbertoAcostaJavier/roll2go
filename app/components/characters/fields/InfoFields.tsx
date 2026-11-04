@@ -16,12 +16,14 @@ export type InfoValues = {
 
 /* Alineamiento, edad, PX, apariencia, historia, idiomas y notas. */
 export default function InfoFields({
-  values, errors, onChange,
+  values, errors, onChange, hideLanguages,
 }: {
   values: InfoValues;
   errors: Record<string, string>;
   /** Cambia un campo; `key` es también la clave del error del servidor que deja de aplicar. */
   onChange: (patch: Partial<InfoValues>, ...errorKeys: string[]) => void;
+  /** El creador elige los idiomas en su propia sección. */
+  hideLanguages?: boolean;
 }) {
   return (
     <div className="space-y-5">
@@ -69,11 +71,11 @@ export default function InfoFields({
         <BbcodeEditor id="backstory" value={values.backstory} onChange={(v) => onChange({ backstory: v }, "backstory")} />
         <FieldError errors={errors} keys={["backstory"]} />
       </div>
-      <div>
+      {!hideLanguages && <div>
         <label htmlFor="languages" className={labelClass}>Idiomas</label>
         <input id="languages" className={field} maxLength={LIMITS.languages} value={values.languages} onChange={(e) => onChange({ languages: e.target.value }, "languages")} />
         <FieldError errors={errors} keys={["languages"]} />
-      </div>
+      </div>}
       <div>
         <label htmlFor="notes" className={labelClass}>Otras notas</label>
         <textarea id="notes" rows={4} className={field} maxLength={LIMITS.notes} value={values.notes} onChange={(e) => onChange({ notes: e.target.value }, "notes")} />

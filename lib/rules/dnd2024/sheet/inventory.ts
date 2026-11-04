@@ -1,8 +1,8 @@
 // Inventario inicial: vuelca el equipo elegido de clase y trasfondo en líneas de inventario. Función pura; el id de
 // cada línea lo da quien llama (`makeId`, un ObjectId en texto en el servidor).
 import type { CatalogEntry } from "@/lib/rules/catalog/types";
-import type { ItemData, Pack } from "@/lib/rules/types";
-import { bareName, refKey } from "./equipmentRefs";
+import type { ItemData, Pack, Ref } from "@/lib/rules/types";
+import { applyPicks, bareName, refKey } from "./equipmentRefs";
 import type { Inventory, InventoryItem } from "./sheet";
 
 // Tipos de 5etools que no van a la mochila inicial: munición, armas, armaduras, escudos, herramientas, juegos e
@@ -13,7 +13,7 @@ const CLOTHING = new Set(["robe", "traveler's clothes", "fine clothes", "costume
 
 
 export function startingInventory(
-  choices: { pack: Pack[] }[],
+  choices: { pack: Pack[]; picks?: Record<string, Ref> }[],
   entries: Map<string, CatalogEntry>,
   makeId: () => string,
 ): Inventory {
@@ -51,7 +51,7 @@ export function startingInventory(
       items.push(item);
     }
   };
-  for (const c of choices) add(c.pack, 1);
+  for (const c of choices) add(applyPicks(c.pack, c.picks), 1);
 
   // Se equipan la armadura de mayor CA base, el primer escudo y todas las armas
   const dataOf = (i: InventoryItem) => (i.ref ? (entries.get(refKey(i.ref))?.data as ItemData | undefined) : undefined);

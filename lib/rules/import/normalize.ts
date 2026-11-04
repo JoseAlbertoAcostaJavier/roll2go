@@ -6,7 +6,7 @@
 import { ABILITIES } from "../types";
 import type {
   Ability, ActionData, ContainerData, ClassTable, Defenses, DefenseList, EntryData, EntryKind, Equipment, FeatSpellChoice, FeatSpellFilter, FeatureData, LevelCounts,
-  LevelFeature, MulticlassData, NameGender, OptionalFeatureData, Pack, Ref, Spellcasting, SpellcastingProgression, SpellData, SpellGrant,
+  LevelFeature, MulticlassData, ChoiceKind, NameGender, OptionalFeatureData, Pack, Ref, Spellcasting, SpellcastingProgression, SpellData, SpellGrant,
 } from "../types";
 import { normalizeName, validateEntryData } from "../schemas";
 import { activationFor } from "./activation";
@@ -328,6 +328,15 @@ const collectStrings = (v: unknown): string[] =>
 /** Código de 5etools (`setGaming`, `anyGamingSet`…) → texto en español; si no se conoce, el código. */
 const choiceLabel = (code: string) => CHOICE_LABELS[code] ?? code;
 
+/** Código de 5etools de un objeto a elegir → clase de objeto del catálogo (los canalizadores y demás, solo texto). */
+const CHOICE_KINDS: Record<string, ChoiceKind> = {
+  setGaming: "gaming", anyGamingSet: "gaming",
+  instrumentMusical: "instrument", anyMusicalInstrument: "instrument",
+  toolArtisan: "artisan", anyArtisansTool: "artisan",
+  weaponSimple: "simple", weaponSimpleMelee: "simpleMelee",
+  weaponMartial: "martial", weaponMartialMelee: "martialMelee",
+};
+
 /** Elemento de equipo inicial de 5etools → `Pack`. */
 function toPack(p: unknown): Pack | null {
   if (typeof p === "string") return { ref: ref("item", cleanRefKey(p)) };
@@ -342,6 +351,10 @@ function toPack(p: unknown): Pack | null {
       return i && l ? l[0].toLowerCase() + l.slice(1) : l; // "Un juego (a elegir) o un instrumento…"
     }).join(" o ");
   if (label) pack.displayName = label;
+  // Solo se puede elegir del catálogo si todos los códigos se conocen
+  const codes = p.equipmentType ? [str(p.equipmentType)] : asArr(p.equipmentTypes).map(str);
+  const kinds = codes.map((c) => CHOICE_KINDS[c]);
+  if (label && !p.displayName && !p.special && codes.length && kinds.every(Boolean)) pack.choose = { kinds, label };
   return Object.keys(pack).length ? pack : null;
 }
 

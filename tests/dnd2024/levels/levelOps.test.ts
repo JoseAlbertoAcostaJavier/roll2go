@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { chosenLanguageRefs } from "@/lib/rules/dnd2024/creation/languages";
 import { applyLevel, checkExpectedLevel, removeLastLevel } from "@/lib/rules/dnd2024/levels/levelOps";
 import type { CasterBlock } from "@/lib/rules/dnd2024/derive";
 import type { Dnd2024SheetV2, LevelEntry } from "@/lib/rules/dnd2024/sheet/sheet";
@@ -128,6 +129,21 @@ describe("removeLastLevel", () => {
     const sheet = sheetOf([lvl(1, cleric, 1), lvl(2, cleric, 2)], { current: 12 }, { prepared: { x: [] }, slotsUsed: { 1: 1 } });
     const r = removeLastLevel(sheet, 12);
     expect(r.ok && [r.sheet.prepared, r.sheet.slotsUsed]).toEqual([{ x: [] }, { 1: 1 }]);
+  });
+});
+
+describe("idiomas de Explorador hábil", () => {
+  const ranger = cls("class:ranger|xphb", "Explorador");
+  const elvish = ref("language:elvish|xphb");
+  const celestial = ref("language:celestial|xphb");
+  const creation = ref("language:dwarvish|xphb");
+  const picks: LevelEntry["choices"] = [{ type: "languages", source: "languages:ranger", value: [elvish, celestial] }];
+  it("el nivel los guarda en su entrada y la hoja los cuenta; borrar el nivel los quita", () => {
+    const sheet = sheetOf([lvl(1, ranger, 1)], { current: 12 }, { languageChoices: [creation] });
+    const up = applyLevel(sheet, lvl(2, ranger, 2, picks), 12, 19);
+    expect(chosenLanguageRefs(up)).toEqual([creation, elvish, celestial]);
+    const down = removeLastLevel(up, 12);
+    expect(down.ok && chosenLanguageRefs(down.sheet)).toEqual([creation]);
   });
 });
 

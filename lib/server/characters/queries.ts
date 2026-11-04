@@ -5,7 +5,7 @@ import { Campaign } from "@/lib/models/Campaign";
 import { Character } from "@/lib/models/Character";
 import { joinReasons } from "@/lib/server/campaigns/campaignEligibility";
 import { visibleBooksOf } from "@/lib/server/catalog/books";
-import { NotFoundError, listEntries, listMasteryWeapons, usableBooks, type EntryOption } from "@/lib/server/catalog/catalog";
+import { NotFoundError, listEntries, listChoiceItems, listMasteryWeapons, usableBooks, type EntryOption } from "@/lib/server/catalog/catalog";
 import type { loadCharacterFor } from "@/lib/server/characters/characterAccess";
 import { isValidId } from "@/lib/server/ids";
 import { system as rpgSystems } from "@/lib/utils/systems";
@@ -103,15 +103,17 @@ export async function listMyCharacters(userId: string, { q, status, sort }: Char
 
 /* Listas del creador con los libros dados: especies (con los legados de cada una que los tiene, del mismo libro, por
    "libro:clave" de la especie), clases, trasfondos, y dotes, rasgos opcionales y armas con maestría para las
-   elecciones de nivel 1 de la clase. Las listas de conjuros las pide el creador al elegir la clase. */
+   elecciones de nivel 1 de la clase, y los idiomas y los objetos a elegir del equipo inicial. Las listas de conjuros las pide el creador al elegir la clase. */
 export async function loadCreatorLists(books: string[]) {
-  const [species, classes, backgrounds, feats, optionalFeatures, weapons] = await Promise.all([
+  const [species, classes, backgrounds, feats, optionalFeatures, weapons, languages, choiceItems] = await Promise.all([
     listEntries({ books, kind: "species" }),
     listEntries({ books, kind: "class" }),
     listEntries({ books, kind: "background" }),
     listEntries({ books, kind: "feat" }),
     listEntries({ books, kind: "optionalFeature" }),
     listMasteryWeapons(books),
+    listEntries({ books, kind: "language" }),
+    listChoiceItems(books),
   ]);
   const lineages: Record<string, EntryOption[]> = {};
   await Promise.all(
@@ -122,7 +124,7 @@ export async function loadCreatorLists(books: string[]) {
         lineages[`${s.ref.book}:${s.ref.key}`] = list.filter((l) => l.ref.book === s.ref.book);
       }),
   );
-  return { species, lineages, classes, backgrounds, feats, optionalFeatures, weapons };
+  return { species, lineages, classes, backgrounds, feats, optionalFeatures, weapons, languages, choiceItems };
 }
 
 /* El creador de un personaje nuevo. Con campaña, tiene que ser del mismo sistema y admitir personajes internos, y

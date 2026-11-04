@@ -11,9 +11,16 @@ export type Dnd2024Sheet = {
   version: 1;
   species: Named;
   lineage: Named | null;
-  /** `equipment` es la letra de la opción de equipo inicial ("A", "B", "C"…). */
-  background: Named & { abilities: Partial<Record<Ability, 1 | 2>>; equipment: string };
-  classes: (Named & { level: number; subclass: Named | null; skills: string[]; equipment: string })[];
+  /**
+   * `equipment` es la letra de la opción de equipo inicial ("A", "B", "C"…); `equipmentPicks`, el objeto elegido en
+   * cada `Pack` con `choose` (clave = índice del `Pack` en la opción, en texto).
+   */
+  background: Named & {
+    abilities: Partial<Record<Ability, 1 | 2>>; equipment: string; equipmentPicks?: Record<string, Ref>;
+  };
+  classes: (Named & {
+    level: number; subclass: Named | null; skills: string[]; equipment: string; equipmentPicks?: Record<string, Ref>;
+  })[];
   abilityMethod: AbilityMethod;
   baseAbilities: Record<Ability, number>;
   /** `dice`: los 4 dados de cada tirada, sin firmar (solo para mostrarlos). */
@@ -23,6 +30,11 @@ export type Dnd2024Sheet = {
   appearance: string;
   age: string;
   languages: string;
+  /**
+   * Idiomas elegidos al crear, en el orden de los huecos. Los de Explorador hábil (Explorador 2) van en las `choices`
+   * del nivel (`{ type: "languages" }`). `languages` queda para el texto antiguo.
+   */
+  languageChoices?: Ref[];
   notes: string;
   /** Trasfondo y notas, editables en la ficha. Opcionales: las hojas antiguas los leen como vacíos. */
   gender?: string;
@@ -92,6 +104,8 @@ export type Choice =
   | { type: "feat"; source: string; value: FeatPickValue[]; replaced?: Named[] }
   | { type: "optionalFeature"; source: string; value: Named[]; replaced?: Named[] }
   | { type: "weaponMastery"; source: string; value: Ref[] }
+  // Idiomas elegidos al subir de nivel (Explorador hábil): se quitan con el nivel
+  | { type: "languages"; source: string; value: Ref[] }
   | { type: "featureOption"; source: string; value: Named }
   | { type: "skills"; source: string; value: string[] }
   | { type: "expertise"; source: string; value: string[] }
@@ -115,6 +129,8 @@ export type LevelEntry = {
   choices: Choice[];
   /** Solo en el nivel 1: letra de la opción de equipo inicial de la clase. */
   equipment?: string;
+  /** Solo en el nivel 1: objeto elegido en cada `Pack` con `choose` de esa opción (para rehacer la creación). */
+  equipmentPicks?: Record<string, Ref>;
 };
 
 export type Coins = { cp: number; sp: number; ep: number; gp: number; pp: number };

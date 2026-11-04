@@ -39,7 +39,12 @@ const shape = (fields: Record<string, Check>): Check => (v, p, e) => {
 };
 
 const ref = shape({ book: str, key: str });
-const pack = shape({ "ref?": ref, "quantity?": num, "value?": num, "displayName?": str });
+const choiceKind = oneOf("gaming", "instrument", "artisan", "simple", "simpleMelee", "martial", "martialMelee");
+const choose: Check = (v, p, e) => {
+  shape({ kinds: arrayOf(choiceKind), label: str })(v, p, e);
+  if (isObj(v) && Array.isArray(v.kinds) && v.kinds.length === 0) e.push(`${p}.kinds: debe tener al menos un tipo`);
+};
+const pack = shape({ "ref?": ref, "quantity?": num, "value?": num, "displayName?": str, "choose?": choose });
 /** Opciones de equipo por letra mayúscula ("A", "B", "C"…); al menos una. */
 const equipment: Check = (v, p, e) => {
   if (!isObj(v)) { e.push(`${p}: debe ser un objeto`); return; }

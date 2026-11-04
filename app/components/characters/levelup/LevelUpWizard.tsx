@@ -9,7 +9,8 @@ import { derive } from "@/lib/rules/dnd2024/derive";
 import { characterFeats } from "@/lib/rules/dnd2024/derive/features";
 import { chosenFeatSpells, featNameOfLabel, levelFeatSpellPending, type FeatWithData } from "@/lib/rules/dnd2024/spells/featSpells";
 import { chosenSpells, knownSpellRefs } from "@/lib/rules/dnd2024/derive/spells";
-import { refKey } from "@/lib/rules/dnd2024/sheet/equipmentRefs";
+import { chosenLanguageRefs, fixedLanguages, languagePool } from "@/lib/rules/dnd2024/creation/languages";
+import { bareName, refKey } from "@/lib/rules/dnd2024/sheet/equipmentRefs";
 import { FEATURE_OPTION_LABELS } from "@/lib/rules/dnd2024/levels/featureChoices";
 import { ABILITY_NAMES, skillName } from "@/lib/rules/dnd2024/sheet/labels";
 import { heldArcana, heldBonusSpells, heldOptionalFeatures, heldPicks } from "@/lib/rules/dnd2024/levels/held";
@@ -62,11 +63,13 @@ type Props = {
   feats: EntryOption[];
   optionalFeatures: EntryOption[];
   weapons: EntryOption[];
+  /** Idiomas del catálogo (Explorador hábil). */
+  languages: EntryOption[];
 };
 
 type Step = { id: string; title: string; p?: PendingChoice };
 
-const ROW_TYPES: PendingChoice["type"][] = ["skills", "expertise", "weaponMastery"];
+const ROW_TYPES: PendingChoice["type"][] = ["skills", "expertise", "weaponMastery", "languages"];
 const uniq = <T,>(list: T[]) => [...new Set(list)];
 const nameOf = (e: { nameEs: string | null; name: string }) => e.nameEs ?? e.name;
 // Entrada ligera del listado como entrada completa, para `derive` (solo usa `data` y los nombres)
@@ -155,9 +158,14 @@ function Wizard(props: Props & { draftKey: string; draft: string | null }) {
     : null;
   const subclassEntry = chosenSub ?? (owned?.subclass ? entries.get(refKey(owned.subclass.ref)) ?? null : null);
 
+  const knownLanguages = [
+    ...fixedLanguages(Object.fromEntries(summary.map((s) => [bareName(s.class.ref.key), s.level]))),
+    ...chosenLanguageRefs(sheet).map((r) => r.key),
+  ];
   const basePending = classEntry
     ? pendingChoices(sheet, classEntry.ref, classLevel, entries, {
       ...(chosenSub ? { subclass: chosenSub.ref } : {}), known: knownSpellRefs(derived.spells),
+      languages: { pool: languagePool(props.languages), known: knownLanguages },
     })
     : [];
   // Conjuros de dotes e invocaciones (Pacto del tomo): los de las que elige ahora (hasta este nivel), los que dan más
@@ -234,6 +242,8 @@ function Wizard(props: Props & { draftKey: string; draft: string | null }) {
     classLevel,
     held,
     masteries: currentMasteries(sheet).map(refKey),
+    languages: props.languages,
+    knownLanguages,
     featBlocked,
   };
   // Dotes generales para la mejora de característica: sin la propia mejora, con requisitos y sin las que ya tiene
@@ -341,6 +351,8 @@ function Wizard(props: Props & { draftKey: string; draft: string | null }) {
     const spell = spellNames.get(k);
     if (spell) return spell;
     if (k.startsWith("builtin:")) return FEATURE_OPTION_LABELS[k.slice(8)] ?? k.slice(8);
+    const lang = props.languages.find((x) => refKey(x.ref) === k);
+    if (lang) return nameOf(lang);
     const w = props.weapons.find((x) => refKey(x.ref) === k);
     if (w) return masteryLabel(nameOf(w), (w.data as ItemData).weapon?.mastery);
     const listed = [...props.feats, ...props.optionalFeatures].find((x) => refKey(x.ref) === k) ?? entries.get(k);

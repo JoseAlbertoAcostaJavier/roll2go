@@ -8,12 +8,14 @@ import { card, cardTitle, errorClass, field, labelClass, primaryButton } from "@
 import type { CatalogEntry, EntryOption } from "@/lib/rules/catalog/types";
 import {
   ABILITIES, type Ability, type BackgroundData, type ClassData, type Equipment, type FeatData, type FeatureData,
-  type OptionalFeatureData, type Pack, type Ref, type SpeciesData,
+  type LanguageData, type OptionalFeatureData, type Pack, type Ref, type SpeciesData,
 } from "@/lib/rules/types";
 import type { AbilityMethod, Dnd2024Sheet } from "@/lib/rules/dnd2024/sheet/sheet";
 import { checkBackgroundBonus } from "@/lib/rules/dnd2024/creation/abilities";
 import { totalsWithinLimit } from "@/lib/rules/dnd2024/creation/assign";
 import { draftWithoutRolls } from "@/lib/rules/dnd2024/creation/drafts";
+import { languageTotal, pruneLanguages, prunePicks, choosePacks } from "@/lib/rules/dnd2024/creation/creatorPicks";
+import { capSlots, fixedLanguages, languagePool, languageSlots } from "@/lib/rules/dnd2024/creation/languages";
 import { bareName, equipmentRefs, refKey } from "@/lib/rules/dnd2024/sheet/equipmentRefs";
 import { ABILITY_NAMES, sizeName, skillName, toolName } from "@/lib/rules/dnd2024/sheet/labels";
 import { crossSourceGranted } from "@/lib/rules/dnd2024/spells/grantedSpells";
@@ -31,6 +33,8 @@ import AbilityScores from "./AbilityScores";
 import CharacterSummary, { type MissingItem } from "./CharacterSummary";
 import RoundIcon from "../../ui/RoundIcon";
 import ClassFeaturesSection, { choicesFor, refFromKey, unfinished, type ChoiceValues } from "./ClassFeaturesSection";
+import EquipmentPicks from "./EquipmentPicks";
+import LanguagesSection from "./LanguagesSection";
 import NameGeneratorButton from "./NameGeneratorButton";
 import RuleSelect from "./RuleSelect";
 import FieldError from "../fields/FieldError";
@@ -62,10 +66,13 @@ type FormState = {
   background: Ref | null;
   bonus: Partial<Record<Ability, number>>;
   bgEquipment: string;
+  /** Objeto elegido en cada paquete con `choose` de la opción de equipo, por índice del paquete (en texto). */
+  bgEquipmentPicks: Record<string, Ref>;
   klass: Ref | null;
   /** Elecciones de nivel 1 de la clase (habilidades incluidas), por `source` de `pendingChoices`. */
   classChoices: ChoiceValues;
   classEquipment: string;
+  classEquipmentPicks: Record<string, Ref>;
   /** Trucos y conjuros iniciales (o libro del Mago). Los preparados se eligen en la ficha, no al crear. */
   spells: SpellPick;
   /**
@@ -81,7 +88,10 @@ type FormState = {
   appearance: string;
   age: string;
   backstory: string;
+  /** Texto libre de un borrador antiguo; ya no se edita, pero se conserva. */
   languages: string;
+  /** Idiomas elegidos, uno por hueco y en su orden (null = sin elegir). */
+  languageChoices: (Ref | null)[];
   notes: string;
   xp: string;
 };
@@ -101,6 +111,10 @@ type Props = {
   optionalFeatures: EntryOption[];
   /** Armas con propiedad de maestría (con `data`). */
   weapons: EntryOption[];
+  /** Idiomas (con `data`: estándar o raro). */
+  languages: EntryOption[];
+  /** Objetos no mágicos que pueden elegirse en el equipo inicial (con `data`). */
+  choiceItems: EntryOption[];
   /**
    * Rehacer la creación de un personaje de nivel 1: se precarga con su creación actual (si no hay borrador propio) y
    * se guarda con `PUT /api/characters/[id]/creation`. Sin campaña, imágenes, estado ni información (no cambian).
@@ -111,11 +125,11 @@ type Props = {
 const emptyForm = (): FormState => ({
   name: "", pronouns: [], status: "active",
   species: null, lineage: null, speciesSkills: [], size: null,
-  background: null, bonus: {}, bgEquipment: "",
-  klass: null, classChoices: {}, classEquipment: "", spells: emptySpellPick(),
+  background: null, bonus: {}, bgEquipment: "", bgEquipmentPicks: {},
+  klass: null, classChoices: {}, classEquipment: "", classEquipmentPicks: {}, spells: emptySpellPick(),
   featSpells: {}, featAbility: {},
   method: "pointBuy", base: { str: 8, dex: 8, con: 8, int: 8, wis: 8, cha: 8 }, rolls: null,
-  alignment: "", appearance: "", age: "", backstory: "", languages: "", notes: "", xp: "",
+  alignment: "", appearance: "", age: "", backstory: "", languages: "", languageChoices: [], notes: "", xp: "",
 });
 
 // En la creación aún no conoce ningún conjuro
@@ -133,7 +147,7 @@ const fmtGold = (copper: number) => `${(copper / 100).toLocaleString("es-ES", { 
 // Las secciones del formulario, para los enlaces de "Falta por completar"
 const S = {
   details: "#detalles", status: "#estado", background: "#trasfondo",
-  klass: "#clase", spells: "#conjuros", abilities: "#caracteristicas", info: "#informacion",
+  klass: "#clase", spells: "#conjuros", languages: "#idiomas", abilities: "#caracteristicas", info: "#informacion",
 } as const;
 
 // ---------- borrador ----------
@@ -210,8 +224,44 @@ export function parseDraft(raw: string | null, props: Props): FormState {
   }
   if (!form.background) form.bgEquipment = "";
   if (!form.klass) form.classEquipment = "";
+
+  // Objetos elegidos: solo los que siguen en el catálogo y en un paquete con `choose` de la opción elegida
+  const readPicks = (v: unknown, equipment: Equipment | undefined, letter: string) => {
+    const picks: Record<string, Ref> = {};
+    if (isObj(v))
+      for (const [i, r] of Object.entries(v)) {
+        const ref = findOption(props.choiceItems, asRef(r))?.ref;
+        if (ref) picks[i] = ref;
+      }
+    return prunePicks(picks, equipment, letter);
+  };
+  form.bgEquipmentPicks = readPicks(d.bgEquipmentPicks, bgData0(props, form), form.bgEquipment);
+  const classData0 = (findOption(props.classes, form.klass)?.data as ClassData | undefined)?.equipment;
+  form.classEquipmentPicks = readPicks(d.classEquipmentPicks, classData0, form.classEquipment);
+  // Idiomas elegidos: los de un borrador antiguo no los tienen
+  const typeOf = languageTypeOf(props.languages);
+  const levels = classLevelsOf(form.klass);
+  const slots = languageSlotsFor(levels, props.languages);
+  const given = Array.isArray(d.languageChoices) ? d.languageChoices.slice(0, languageTotal(slots)) : [];
+  form.languageChoices = pruneLanguages(
+    given.map((r) => findOption(props.languages, asRef(r))?.ref ?? null), slots, fixedLanguages(levels), typeOf,
+  );
   return form;
 }
+
+const bgData0 = (props: Props, form: FormState) =>
+  (findOption(props.backgrounds, form.background)?.data as BackgroundData | undefined)?.equipment;
+
+// Niveles por clase para las reglas de idiomas: la clase inicial, a nivel 1
+const classLevelsOf = (klass: Ref | null): Record<string, number> => (klass ? { [bareName(klass.key)]: 1 } : {});
+
+// Huecos de idiomas con lo que se pide recortado a los idiomas que hay para elegir en los libros del personaje
+const languageSlotsFor = (levels: Record<string, number>, languages: EntryOption[]) =>
+  capSlots(languageSlots(levels), languagePool(languages), fixedLanguages(levels));
+
+// Tipo (estándar o raro) de un idioma del listado, o null si no está
+const languageTypeOf = (languages: EntryOption[]) => (ref: Ref) =>
+  (findOption(languages, ref)?.data as LanguageData | undefined)?.type ?? null;
 
 // Entrada ligera del listado como entrada completa, para `derive` (solo usa `data` y los nombres)
 const asEntry = (o: EntryOption): CatalogEntry => ({
@@ -235,11 +285,11 @@ function Description({ entry }: { entry: CatalogEntry | null | undefined }) {
   );
 }
 
-function packText(p: Pack, cache: Record<string, CatalogEntry | null>): string {
+function packText(p: Pack, cache: Record<string, CatalogEntry | null>, pick: EntryOption | null): string {
   const parts: string[] = [];
   if (p.ref || p.displayName) {
     const e = p.ref ? cache[refKey(p.ref)] : null;
-    const name = e ? nameOf(e) : (p.displayName ?? bareName(p.ref!.key));
+    const name = pick ? nameOf(pick) : e ? nameOf(e) : (p.displayName ?? bareName(p.ref!.key));
     parts.push(p.quantity && p.quantity > 1 ? `${p.quantity}× ${name}` : name);
   }
   if (p.value) parts.push(fmtGold(p.value));
@@ -247,13 +297,16 @@ function packText(p: Pack, cache: Record<string, CatalogEntry | null>): string {
 }
 
 function EquipmentChoice({
-  name, equipment, value, onChange, cache,
+  name, equipment, value, onChange, cache, picks, items,
 }: {
   name: string;
   equipment: Equipment | undefined;
   value: string;
   onChange: (letter: string) => void;
   cache: Record<string, CatalogEntry | null>;
+  /** Objetos elegidos en la opción marcada, por índice del paquete, y dónde buscar sus nombres. */
+  picks: Record<string, Ref>;
+  items: EntryOption[];
 }) {
   const options = letters(equipment);
   if (options.length === 0) return <p className="text-sm text-muted">Sin equipo inicial.</p>;
@@ -267,7 +320,9 @@ function EquipmentChoice({
           <input type="radio" name={name} value={l} checked={value === l} onChange={() => onChange(l)} className="mt-0.5 accent-brand" />
           <span>
             <span className="font-semibold">Opción {l}:</span>{" "}
-            {equipment![l].map((p) => packText(p, cache)).filter(Boolean).join(", ") || "—"}
+            {equipment![l]
+              .map((p, i) => packText(p, cache, value === l && p.choose ? findOption(items, picks[String(i)] ?? null) : null))
+              .filter(Boolean).join(", ") || "—"}
           </span>
         </label>
       ))}
@@ -470,6 +525,12 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
   ];
   const grantedFor = (source: string) => crossSourceGranted(baseGranted, pickSources, source);
 
+  // ---- idiomas ----
+  const levels = classLevelsOf(form.klass);
+  const slots = languageSlotsFor(levels, props.languages);
+  const fixed = fixedLanguages(levels);
+  const typeOf = languageTypeOf(props.languages);
+
   // ---- hoja ----
   const filledBase = (): Record<Ability, number | null> => {
     const def = defaultBase(form.method);
@@ -517,12 +578,19 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
   if (!form.klass) missing.push({ label: "Clase", href: S.details });
   if (!form.background) missing.push({ label: "Trasfondo", href: S.background });
   else if (!form.bgEquipment && letters(bgData?.equipment).length) missing.push({ label: "Equipo del trasfondo", href: S.background });
+  else
+    for (const c of choosePacks(bgData?.equipment, form.bgEquipment))
+      if (!form.bgEquipmentPicks[c.index]) missing.push({ label: `Trasfondo: ${c.pack.choose!.label}`, href: S.background });
   for (const p of unfinished(pending, form.classChoices)) missing.push({ label: p.label, href: S.klass });
   if (spellsMissing) missing.push({ label: "Conjuros", href: S.spells });
   for (const p of featPendings) {
     if (featSpellsLeft(p)) missing.push({ label: p.label, href: p === bgFeatPending ? S.background : S.klass });
   }
   if (classData && !form.classEquipment && letters(classData.equipment).length) missing.push({ label: "Equipo de clase", href: S.klass });
+  else if (classData)
+    for (const c of choosePacks(classData.equipment, form.classEquipment))
+      if (!form.classEquipmentPicks[c.index]) missing.push({ label: `Clase: ${c.pack.choose!.label}`, href: S.klass });
+  if (form.languageChoices.filter(Boolean).length < languageTotal(slots)) missing.push({ label: "Idiomas", href: S.languages });
   if (Object.values(filledBase()).some((v) => v === null) || !abilitiesValid)
     missing.push({ label: "Puntuaciones de característica", href: S.abilities });
   if (bgData && !checkBackgroundBonus(form.bonus, bgData.abilities))
@@ -553,11 +621,12 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
     const speciesSkills = form.speciesSkills.map((s) => (skills.includes(s) ? "" : s));
     update(
       {
-        background: ref, bonus: {}, bgEquipment: "", speciesSkills, classChoices: withoutSkills(form.classChoices, skills),
+        background: ref, bonus: {}, bgEquipment: "", bgEquipmentPicks: {}, speciesSkills, classChoices: withoutSkills(form.classChoices, skills),
         // (los de la dote del trasfondo anterior dejan de valer)
         ...withoutFeatSpells(bgFeatPending ? [bgFeatPending.source] : []),
       },
-      "background", "background.abilities", "background.equipment", "speciesChoices.skills", ...choiceErrorKeys(),
+      "background", "background.abilities", "background.equipment", "background.equipmentPicks", "speciesChoices.skills",
+      ...choiceErrorKeys(),
     );
   }
   function chooseSpeciesSkills(skills: string[]) {
@@ -576,10 +645,15 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
     if (sameRef(ref, form.klass)) return;
     update(
       {
-        klass: ref, classChoices: {}, classEquipment: "", spells: emptySpellPick(),
+        klass: ref, classChoices: {}, classEquipment: "", classEquipmentPicks: {}, spells: emptySpellPick(),
         ...withoutFeatSpells(invocationPending.map((p) => p.source)),
+        // Los idiomas que ya no valen con la nueva clase (huecos de menos, uno que ya da la clase) se quitan
+        languageChoices: pruneLanguages(
+          form.languageChoices, languageSlotsFor(classLevelsOf(ref), props.languages), fixedLanguages(classLevelsOf(ref)), typeOf,
+        ),
       },
-      "classes", "classes.0", "classes.0.level", "classes.0.subclass", "classes.0.equipment", ...choiceErrorKeys(),
+      "classes", "classes.0", "classes.0.level", "classes.0.subclass", "classes.0.equipment", "classes.0.equipmentPicks",
+      "languageChoices", ...choiceErrorKeys(),
     );
   }
   const spellErrorKeys = () => ["levels.0.choices", ...(spellPending ? [`levels.0.choices.${spellPending.source}`] : [])];
@@ -600,6 +674,12 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
     ev.preventDefault();
     if (!abilitiesValid || loading) return;
     setFormError("");
+    // Con huecos de idioma sin elegir no se envía: las posiciones de lo elegido se desplazarían
+    if (form.languageChoices.filter(Boolean).length < languageTotal(slots)) {
+      setErrors((e) => ({ ...e, languageChoices: "Faltan idiomas por elegir." }));
+      document.getElementById("idiomas")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
     if (recreate && !confirming) {
       setConfirming(true);
       return;
@@ -610,10 +690,16 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
       version: 1,
       species: form.species ? { ref: form.species, name: "" } : null,
       lineage: form.lineage ? { ref: form.lineage, name: "" } : null,
-      background: form.background ? { ref: form.background, name: "", abilities: form.bonus, equipment: form.bgEquipment } : null,
+      background: form.background
+        ? {
+          ref: form.background, name: "", abilities: form.bonus, equipment: form.bgEquipment,
+          equipmentPicks: prunePicks(form.bgEquipmentPicks, bgData?.equipment, form.bgEquipment),
+        }
+        : null,
       classes: [form.klass
         ? {
           ref: form.klass, name: "", level: 1, subclass: null, equipment: form.classEquipment,
+          equipmentPicks: prunePicks(form.classEquipmentPicks, classData?.equipment, form.classEquipment),
           choices: [
             ...choicesFor(pending, form.classChoices),
             ...(spellPending ? [spellChoiceOf(spellPending, form.spells)].filter((c) => !!c) : []),
@@ -632,6 +718,7 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
       appearance: form.appearance,
       age: form.age,
       languages: form.languages,
+      languageChoices: form.languageChoices.filter((r) => !!r),
       notes: form.notes,
       xp,
       hp: { max: null, current: null, temp: 0 },
@@ -870,12 +957,22 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
                 name="bg-equipment"
                 equipment={bgData.equipment}
                 value={form.bgEquipment}
-                onChange={(l) => update({ bgEquipment: l }, "background.equipment")}
+                onChange={(l) => update({ bgEquipment: l, bgEquipmentPicks: {} }, "background.equipment", "background.equipmentPicks")}
                 cache={cache}
+                picks={form.bgEquipmentPicks}
+                items={props.choiceItems}
+              />
+              <EquipmentPicks
+                idPrefix="bg-pick"
+                equipment={bgData.equipment}
+                letter={form.bgEquipment}
+                picks={form.bgEquipmentPicks}
+                onChange={(bgEquipmentPicks) => update({ bgEquipmentPicks }, "background.equipmentPicks")}
+                items={props.choiceItems}
               />
             </>
           )}
-          <FieldError errors={errors} keys={["background.equipment"]} />
+          <FieldError errors={errors} keys={["background.equipment", "background.equipmentPicks"]} />
           {bgFeatPending && featSpellsSection(bgFeatPending, "creator-feat-spells")}
         </section>
 
@@ -907,13 +1004,23 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
                   name="class-equipment"
                   equipment={classData.equipment}
                   value={form.classEquipment}
-                  onChange={(l) => update({ classEquipment: l }, "classes.0.equipment")}
+                  onChange={(l) => update({ classEquipment: l, classEquipmentPicks: {} }, "classes.0.equipment", "classes.0.equipmentPicks")}
                   cache={cache}
+                  picks={form.classEquipmentPicks}
+                  items={props.choiceItems}
+                />
+                <EquipmentPicks
+                  idPrefix="class-pick"
+                  equipment={classData.equipment}
+                  letter={form.classEquipment}
+                  picks={form.classEquipmentPicks}
+                  onChange={(classEquipmentPicks) => update({ classEquipmentPicks }, "classes.0.equipmentPicks")}
+                  items={props.choiceItems}
                 />
               </div>
             </div>
           )}
-          <FieldError errors={errors} keys={["classes.0.equipment"]} />
+          <FieldError errors={errors} keys={["classes.0.equipment", "classes.0.equipmentPicks"]} />
         </section>
 
         {/* 5. Conjuros */}
@@ -942,8 +1049,22 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
           </section>
         )}
 
-        {/* 6. Puntuaciones de característica */}
-        <section id="caracteristicas" {...section(5)}>
+        {/* 6. Idiomas */}
+        <section id="idiomas" {...section(5)}>
+          <h2 className={cardTitle}>Idiomas</h2>
+          <LanguagesSection
+            fixed={fixed}
+            slots={slots}
+            languages={props.languages}
+            choices={form.languageChoices}
+            onChange={(languageChoices) => update({ languageChoices }, "languageChoices")}
+            legacyText={form.languages}
+          />
+          <FieldError errors={errors} keys={["languageChoices"]} />
+        </section>
+
+        {/* 7. Puntuaciones de característica */}
+        <section id="caracteristicas" {...section(6)}>
           <h2 className={cardTitle}>Puntuaciones de característica</h2>
           <AbilityScores
             method={form.method}
@@ -961,11 +1082,11 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
           <FieldError errors={errors} keys={["abilityMethod", "baseAbilities", "rolls", "background.abilities"]} />
         </section>
 
-        {/* 7. Información */}
+        {/* 8. Información */}
         {!recreate && (
-          <section id="informacion" {...section(6)}>
+          <section id="informacion" {...section(7)}>
             <h2 className={cardTitle}>Información</h2>
-            <InfoFields values={form} errors={errors} onChange={update} />
+            <InfoFields values={form} errors={errors} onChange={update} hideLanguages />
           </section>
         )}
 
@@ -1017,10 +1138,11 @@ const SHOWN_ERRORS = new Set([
   "classes", "classes.0", "classes.0.level", "classes.0.subclass", "campaign", "portrait", "image",
   "status", "pronouns", "background", "background.equipment", "classes.0.equipment",
   "abilityMethod", "baseAbilities", "rolls", "background.abilities",
-  "alignment", "age", "xp", "appearance", "backstory", "languages", "notes",
+  "background.equipmentPicks", "classes.0.equipmentPicks", "languageChoices",
+  "alignment", "age", "xp", "appearance", "backstory", "notes",
 ]);
 
 // Campos que no aparecen al rehacer la creación
 const NOT_ON_RECREATE = new Set([
-  "campaign", "portrait", "image", "status", "alignment", "age", "xp", "appearance", "backstory", "languages", "notes",
+  "campaign", "portrait", "image", "status", "alignment", "age", "xp", "appearance", "backstory", "notes",
 ]);

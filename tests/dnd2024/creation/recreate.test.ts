@@ -113,13 +113,32 @@ describe("creationDraft", () => {
   });
 });
 
+describe("creationDraft: picks e idiomas", () => {
+  it("lleva a los borradores los objetos y los idiomas elegidos", () => {
+    const s = sheet();
+    s.background.equipmentPicks = { "1": ref("item:dice set|xphb") };
+    s.levels[0].equipmentPicks = { "2": ref("item:shortsword|xphb") };
+    s.languageChoices = [ref("language:elvish|xphb"), ref("language:dwarvish|xphb")];
+    const d = creationDraft({ name: "Ana", pronouns: [], status: "active", backstory: "" }, s);
+    expect(d.bgEquipmentPicks).toEqual({ "1": ref("item:dice set|xphb") });
+    expect(d.classEquipmentPicks).toEqual({ "2": ref("item:shortsword|xphb") });
+    expect(d.languageChoices).toEqual(s.languageChoices);
+  });
+  it("una hoja sin picks ni idiomas elegidos da listas vacías", () => {
+    const d = creationDraft({ name: "Ana", pronouns: [], status: "active", backstory: "" }, sheet());
+    expect(d.bgEquipmentPicks).toEqual({});
+    expect(d.classEquipmentPicks).toEqual({});
+    expect(d.languageChoices).toEqual([]);
+  });
+});
+
 describe("creationUpdate", () => {
   it("sustituye los datos de creación, el nivel 1, el inventario y lo que depende de la clase", () => {
     const next = sheet();
     const set = creationUpdate(next);
     expect(Object.keys(set).sort()).toEqual([
       "sheet.abilityMethod", "sheet.background", "sheet.baseAbilities", "sheet.classesSummary", "sheet.hitDiceUsed",
-      "sheet.hp", "sheet.inventory", "sheet.levels", "sheet.lineage", "sheet.prepared", "sheet.rolls", "sheet.slotsUsed",
+      "sheet.hp", "sheet.inventory", "sheet.languageChoices", "sheet.levels", "sheet.lineage", "sheet.prepared", "sheet.rolls", "sheet.slotsUsed",
       "sheet.species", "sheet.speciesChoices", "sheet.spellbookExtra", "sheet.weaponMasteries",
     ]);
     expect(set["sheet.levels"]).toBe(next.levels);

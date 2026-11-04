@@ -165,3 +165,28 @@ describe("inventoryWeights", () => {
     expect(inventoryWeights([l("raciones", 3), l("cuerda")], info)).toEqual({ carried: 11, byContainer: {} });
   });
 });
+
+describe("startingInventory: objetos a elegir", () => {
+  const cat = buildCatalog();
+  const dice = { ...cat.get(`${B}:item:greataxe|xphb`)!, ref: ref("item:dice set|xphb"), name: "Dice Set",
+    data: { type: "GS", weight: 0, value: 0 } };
+  cat.set(`${B}:item:dice set|xphb`, dice);
+  const pack = [{ displayName: "Un juego (a elegir)", choose: { kinds: ["gaming" as const], label: "Un juego (a elegir)" } }, { value: 500 }];
+
+  it("con pick: línea con la ref elegida, suelta", () => {
+    const inv = startingInventory([{ pack, picks: { "0": ref("item:dice set|xphb") } }], cat, counter());
+    expect(inv.items).toHaveLength(1);
+    expect(inv.items[0]).toMatchObject({ ref: ref("item:dice set|xphb"), quantity: 1, equipped: false });
+    expect(inv.items[0].container).toBeUndefined();
+  });
+
+  it("sin pick: línea de texto como hasta ahora", () => {
+    const inv = startingInventory([{ pack }], cat, counter());
+    expect(inv.items[0]).toMatchObject({ ref: null, name: "Un juego (a elegir)" });
+  });
+
+  it("un pick en un índice sin choose se ignora", () => {
+    const inv = startingInventory([{ pack: [{ displayName: "Carta" }], picks: { "0": ref("item:dice set|xphb") } }], cat, counter());
+    expect(inv.items[0]).toMatchObject({ ref: null, name: "Carta" });
+  });
+});

@@ -3,7 +3,7 @@
 // niveles (`levels`) y el inventario de la hoja v2; una v1 se convierte antes en memoria.
 import type { CatalogEntry } from "@/lib/rules/catalog/types";
 import { bareName, refKey } from "@/lib/rules/dnd2024/sheet/equipmentRefs";
-import type { AnySheet, Named } from "@/lib/rules/dnd2024/sheet/sheet";
+import type { AnySheet, Dnd2024SheetV2, Named } from "@/lib/rules/dnd2024/sheet/sheet";
 import { currentMasteries } from "@/lib/rules/dnd2024/levels/masteries";
 import { summarizeClasses, upgradeSheet } from "@/lib/rules/dnd2024/sheet/upgrade";
 import type {
@@ -19,6 +19,8 @@ import { unarmedAttack, weaponAttack, weaponProficient, type Attack } from "./at
 import { defensesOf, type DefenseRow } from "./defenses";
 import { characterFeats, featureGroups, type FeatureGroup } from "./features";
 import { featureUses, usesVars, type FeatureUse } from "./featureUses";
+import { normalizeName } from "@/lib/rules/schemas";
+import { FIXED_LANGUAGE_NAMES_ES, chosenLanguageRefs, fixedLanguages, languageName } from "../creation/languages";
 import { hitPoints } from "./hp";
 import { speedBreakdown } from "./speed";
 import { spellsSummary, type SpellsSummary } from "./spells";
@@ -103,6 +105,24 @@ const SHIELD = "shield";
 // Dado de Artes marciales del Monje si el catálogo no trae la tabla de clase
 const MARTIAL_ARTS_COLUMN = /artes marciales|martial arts/i;
 const martialArtsFallback = (level: number) => (level <= 4 ? "1d6" : level <= 10 ? "1d8" : level <= 16 ? "1d10" : "1d12");
+
+// Idiomas con su nombre en español: los fijos, los elegidos y, al final, los del texto antiguo (sin repetir)
+function languageNames(
+  sheet: Dnd2024SheetV2, summary: Dnd2024SheetV2["classesSummary"], entries: Map<string, CatalogEntry>,
+): string[] {
+  const levels = Object.fromEntries(summary.map((c) => [bareName(c.class.ref.key), c.level]));
+  // Los fijos están en el libro que los tenga; los elegidos, en el suyo
+  const all = [...entries.values()];
+  const fixed = fixedLanguages(levels).map((key) => {
+    const e = all.find((x) => x.ref.key.startsWith("language:") && languageName(x.ref.key) === languageName(key));
+    return e ? e.nameEs || e.name : (FIXED_LANGUAGE_NAMES_ES[languageName(key)] ?? languageName(key));
+  });
+  const chosen = chosenLanguageRefs(sheet).flatMap((r) => entries.get(refKey(r)) ?? []);
+  const names = [...fixed, ...chosen.map((e) => e.nameEs || e.name)];
+  const old = sheet.languages.split(/[,;\n]/).map((l) => l.trim()).filter(Boolean);
+  const seen = new Set<string>();
+  return [...names, ...old].filter((n) => !seen.has(normalizeName(n)) && seen.add(normalizeName(n)));
+}
 
 export function derive(input: AnySheet, entries: Map<string, CatalogEntry>): Derived {
   // Los ids de las líneas del inventario no influyen en el cálculo
@@ -260,7 +280,7 @@ export function derive(input: AnySheet, entries: Map<string, CatalogEntry>): Der
     armor,
     weapons,
     tools,
-    languages: sheet.languages.split(/[,;\n]/).map((l) => l.trim()).filter(Boolean),
+    languages: languageNames(sheet, summary, entries),
     attacks,
     weight: carriedWeight(sheet.inventory, entries, abilities.str.score, size),
     features,

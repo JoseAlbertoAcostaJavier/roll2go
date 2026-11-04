@@ -33,7 +33,7 @@ export default async function NewCharacterPage({ searchParams }: { searchParams:
   const { campaign } = page;
   // Dotes, rasgos opcionales y armas con maestría: para las elecciones de nivel 1 de la clase (las listas de conjuros
   // las pide el creador al elegir la clase)
-  const { species, lineages, classes, backgrounds, feats, optionalFeatures, weapons } = page.lists;
+  const { species, lineages, classes, backgrounds, feats, optionalFeatures, weapons, languages, choiceItems } = page.lists;
 
   const back = campaign ? `/campaigns/${campaign.id}/characters` : "/characters";
 
@@ -74,6 +74,8 @@ export default async function NewCharacterPage({ searchParams }: { searchParams:
         feats={feats}
         optionalFeatures={optionalFeatures}
         weapons={weapons}
+        languages={languages}
+        choiceItems={choiceItems}
       />
     </div>
   );

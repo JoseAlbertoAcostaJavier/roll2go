@@ -3,16 +3,17 @@ import { cleanText } from "@/lib/utils/utils";
 import type { CatalogEntry } from "@/lib/rules/catalog/types";
 import {
   ABILITIES, type Ability, type BackgroundData, type ClassData, type FeatData, type FeatureData,
-  type LineageData, type Ref, type SpeciesData, type SubclassData,
+  type ItemData, type LineageData, type Pack, type Ref, type SpeciesData, type SubclassData,
 } from "@/lib/rules/types";
 import { POINT_BUY_TOTAL, STANDARD_ARRAY, checkBackgroundBonus, pointBuyCost } from "./abilities";
 import { checkChoices, loadInto } from "./checkChoices";
 import { checkFeatSpells } from "./checkFeatSpells";
+import { capSlots, checkLanguages, fixedLanguages, languageSlots, type LanguageInfo } from "./languages";
 import { has, isObj, isStringList } from "./rawInput";
 import { splitFeatSpells } from "../spells/featSpells";
 import { pendingChoices } from "../levels/pendingChoices";
 import { abilityRollValue, verifyRolls } from "./rolls";
-import { loadEquipmentEntries, refKey } from "../sheet/equipmentRefs";
+import { bareName, choiceMatches, loadEquipmentEntries, refKey } from "../sheet/equipmentRefs";
 import {
   ABILITY_METHODS, type AbilityMethod, type Choice, type Dnd2024Sheet, type Dnd2024SheetV2, type Named,
 } from "../sheet/sheet";
@@ -25,6 +26,8 @@ export type ValidateCtx = {
   resolve: (ref: Ref) => Promise<CatalogEntry | null>;
   /** Si la especie tiene algún legado en los libros utilizables (si no hay ninguno, no se exige elegirlo). */
   hasLineages: (species: Ref) => Promise<boolean>;
+  /** Idiomas de los libros utilizables: con ellos se recorta cuántos hay que elegir (sin idiomas, ninguno). */
+  languagePool?: () => Promise<LanguageInfo[]>;
   /** Id de cada línea del inventario inicial (un ObjectId en texto). */
   makeId: () => string;
   /**
@@ -65,6 +68,39 @@ export async function validateSheet(input: unknown, ctx: ValidateCtx): Promise<V
     const entry = await ctx.resolve(ref);
     if (!entry) err(path, "Contenido no disponible.");
     return entry;
+  }
+  // Objetos elegidos para los `Pack` con `choose` de la opción de equipo: uno por cada uno, del tipo que pide, del
+  // catálogo de los libros del personaje y no mágico. Devuelve los picks limpios (o `undefined` si no hay ninguno).
+  async function checkPicks(path: string, packs: Pack[], raw: unknown): Promise<Record<string, Ref> | undefined> {
+    const picks: Record<string, Ref> = {};
+    if (raw != null && !isObj(raw)) {
+      err(path, "Petición no válida.");
+      return undefined;
+    }
+    const given = raw ?? {};
+    if (Object.keys(given).some((k) => !packs[Number(k)]?.choose || String(Number(k)) !== k)) {
+      err(path, "Petición no válida.");
+      return undefined;
+    }
+    for (const [i, p] of packs.entries()) {
+      if (!p.choose) continue;
+      const pick = given[String(i)];
+      if (pick == null) {
+        err(path, `Falta elegir: ${p.choose.label}.`);
+        continue;
+      }
+      const notValid = `Ese objeto no vale para ${p.choose.label}.`;
+      if (!isObj(pick) || typeof pick.book !== "string" || typeof pick.key !== "string"
+        || !pick.key.startsWith("item:") || !ctx.books.includes(pick.book)) {
+        err(path, notValid);
+        continue;
+      }
+      const ref: Ref = { book: pick.book, key: pick.key };
+      const data = (await ctx.resolve(ref))?.data as ItemData | undefined;
+      if (!data || data.rarity || !p.choose.kinds.some((k) => choiceMatches(k, data))) err(path, notValid);
+      else picks[String(i)] = ref;
+    }
+    return Object.keys(picks).length ? picks : undefined;
   }
   const named = (e: CatalogEntry): Named => ({ ref: { book: e.ref.book, key: e.ref.key }, name: e.nameEs || e.name });
   const isChildOf = (child: CatalogEntry, parent: CatalogEntry) =>
@@ -120,6 +156,7 @@ export async function validateSheet(input: unknown, ctx: ValidateCtx): Promise<V
   const bg = bgEntry ? (bgEntry.data as BackgroundData) : null;
   const bonus: Partial<Record<Ability, 1 | 2>> = {};
   let bgEquipment = "";
+  let bgPicks: Record<string, Ref> | undefined;
   if (bg && isObj(input.background)) {
     const rawBonus = isObj(input.background.abilities) ? input.background.abilities : null;
     if (!rawBonus) err("background.abilities", "Reparte la bonificación del trasfondo.");
@@ -136,7 +173,10 @@ export async function validateSheet(input: unknown, ctx: ValidateCtx): Promise<V
     }
     const eq = input.background.equipment;
     if (typeof eq !== "string" || !has(bg.equipment, eq)) err("background.equipment", "Elige el equipo del trasfondo.");
-    else bgEquipment = eq;
+    else {
+      bgEquipment = eq;
+      bgPicks = await checkPicks("background.equipmentPicks", bg.equipment[eq], input.background.equipmentPicks);
+    }
   }
 
   // Habilidades que ya dan el trasfondo y la especie: las elegidas no pueden repetirlas
@@ -201,9 +241,14 @@ export async function validateSheet(input: unknown, ctx: ValidateCtx): Promise<V
 
       const eq = raw.equipment;
       if (typeof eq !== "string" || !has(cls.equipment, eq)) err("classes.0.equipment", "Elige el equipo de la clase.");
-      if (ok && !errors["classes.0.equipment"]) {
+      let classPicks: Record<string, Ref> | undefined;
+      if (typeof eq === "string" && has(cls.equipment, eq))
+        classPicks = await checkPicks("classes.0.equipmentPicks", cls.equipment[eq], raw.equipmentPicks);
+      if (ok && !errors["classes.0.equipment"] && !errors["classes.0.equipmentPicks"]) {
         const skills = choices.find((c) => c.type === "skills" && c.source === SKILLS_SOURCE)?.value as string[] | undefined;
-        classes.push({ ...named(cEntry), level: 1, subclass, skills: skills ?? [], equipment: eq as string });
+        classes.push({ ...named(cEntry), level: 1, subclass, skills: skills ?? [], equipment: eq as string,
+          ...(classPicks ? { equipmentPicks: classPicks } : {}),
+        });
         classEntry = cEntry;
       }
     }
@@ -250,6 +295,33 @@ export async function validateSheet(input: unknown, ctx: ValidateCtx): Promise<V
       err("background.abilities", "Ninguna característica puede superar 20.");
   }
 
+  // Idiomas: los de origen y, según la clase, los del Pícaro (los fijos no se eligen). `languages` de texto se ignora
+  let languageChoices: Ref[] = [];
+  if (classEntry) {
+    const levels = { [bareName(classEntry.ref.key)]: 1 };
+    const raw = input.languageChoices ?? [];
+    const refs: Ref[] = [];
+    const langEntries = new Map<string, CatalogEntry>();
+    // Sin más idiomas de los que caben: no se consulta el catálogo con listas enormes
+    const rawSlots = languageSlots(levels);
+    const slots = ctx.languagePool ? capSlots(rawSlots, await ctx.languagePool(), fixedLanguages(levels)) : rawSlots;
+    let shape = Array.isArray(raw) && raw.length <= slots.reduce((n, x) => n + x.count, 0);
+    for (const r of shape ? (raw as unknown[]) : []) {
+      if (!isObj(r) || typeof r.book !== "string" || typeof r.key !== "string" || !r.key.startsWith("language:")
+        || !ctx.books.includes(r.book)) shape = false;
+      else {
+        const ref: Ref = { book: r.book, key: r.key };
+        const e = await ctx.resolve(ref);
+        if (e) langEntries.set(refKey(ref), e);
+        refs.push(ref);
+      }
+    }
+    const msg = !shape ? "Idiomas no válidos."
+      : checkLanguages(refs, slots, fixedLanguages(levels), (r) => langEntries.get(refKey(r)) ?? null);
+    if (msg) err("languageChoices", msg);
+    else languageChoices = refs;
+  }
+
   // Textos y números
   const text = {} as Record<keyof typeof TEXT_LIMITS, string>;
   for (const [k, max] of Object.entries(TEXT_LIMITS) as [keyof typeof TEXT_LIMITS, number][]) {
@@ -276,13 +348,14 @@ export async function validateSheet(input: unknown, ctx: ValidateCtx): Promise<V
     [refKey(bgEntry.ref), bgEntry],
   ]);
   const classEquipment = (classEntry.data as ClassData).equipment[classes[0].equipment] ?? [];
-  await loadEquipmentEntries([classEquipment, bg?.equipment[bgEquipment] ?? []], entries, ctx.resolve);
+  await loadEquipmentEntries([classEquipment, bg?.equipment[bgEquipment] ?? []], entries, ctx.resolve,
+    [...Object.values(classes[0].equipmentPicks ?? {}), ...Object.values(bgPicks ?? {})]);
 
   const sheet: Dnd2024Sheet = {
     version: 1,
     species: named(speciesEntry),
     lineage,
-    background: { ...named(bgEntry), abilities: bonus, equipment: bgEquipment },
+    background: { ...named(bgEntry), abilities: bonus, equipment: bgEquipment, ...(bgPicks ? { equipmentPicks: bgPicks } : {}) },
     classes,
     abilityMethod: method,
     baseAbilities: base,
@@ -292,6 +365,7 @@ export async function validateSheet(input: unknown, ctx: ValidateCtx): Promise<V
     appearance: text.appearance,
     age: text.age,
     languages: text.languages,
+    languageChoices,
     notes: text.notes,
     xp: xp as number,
     hp: { max: null, current: null, temp: 0 },
