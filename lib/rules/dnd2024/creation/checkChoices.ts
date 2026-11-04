@@ -284,7 +284,8 @@ export async function checkChoices(
         picks, [{ source: "ranger", label: p.label, count: p.count, standardOnly: false }], ctx.knownLanguages ?? [],
         (r) => ctx.entries.get(refKey(r)) ?? null,
       );
-      if (msg) { bad(msg); continue; }
+      // La etiqueta es una instrucción («Explorador hábil: elige 2 idiomas.»): el error lleva solo el nombre del rasgo
+      if (msg) { err(`${ctx.path}.${p.source}`, `${p.label.split(":")[0]}: ${msg}`); continue; }
       out.push({ type: "languages", source: p.source, value: picks });
     } else if (p.type === "spells" && p.spells) {
       // Con los trucos de más de las opciones de rasgo de este nivel, que ya están comprobadas (van antes)
