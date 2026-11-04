@@ -1,6 +1,7 @@
 import type { CatalogEntry } from "@/lib/rules/catalog/types";
 import { ALIGNMENTS } from "@/lib/rules/dnd2024/sheet/alignments";
-import { ABILITY_NAMES, pronounsText, skillName, toolName } from "@/lib/rules/dnd2024/sheet/labels";
+import { parsePronouns, pronounsText } from "@/lib/rules/dnd2024/creation/names";
+import { ABILITY_NAMES, skillName, toolName } from "@/lib/rules/dnd2024/sheet/labels";
 import type { Dnd2024SheetV2 } from "@/lib/rules/dnd2024/sheet/sheet";
 import { BACKGROUND_SECTION_CHIPS, parseSection, type BackgroundSection } from "@/lib/rules/dnd2024/sheet/sheetSections";
 import type { SheetTextField } from "@/lib/rules/dnd2024/sheet/textFields";
@@ -91,7 +92,7 @@ export default function BackgroundTab({ characterId, isOwner, sheet, backstory, 
             />
             <div className="min-w-0">
               <div className="text-xs font-semibold uppercase tracking-wide text-muted">Género</div>
-              <p className="text-sm text-fg">{pronounsText(pronouns)}</p>
+              <p className="text-sm text-fg">{pronounsText(parsePronouns(pronouns.join(",")) ?? []) || "—"}</p>
             </div>
             {text("eyes", "Ojos", false, true)}
             <div className="min-w-0">

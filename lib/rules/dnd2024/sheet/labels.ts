@@ -227,7 +227,3 @@ export function featureReference(entry: CatalogEntry | undefined): string | null
   return entry.page ? `${entry.bookName}, pág. ${entry.page}` : entry.bookName;
 }
 
-const PRONOUN_NAMES: Record<string, string> = { he: "Él", she: "Ella", they: "Elle" };
-
-/** Pronombres de la creación como género de la ficha: «Él / Ella»; «—» si no hay. */
-export const pronounsText = (p: string[]): string => p.map((x) => PRONOUN_NAMES[x] ?? x).join(" / ") || "—";
