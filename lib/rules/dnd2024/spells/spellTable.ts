@@ -1,7 +1,7 @@
 // Tabla de conjuros de la ficha (spec de la tabla de conjuros §2.1): una fila por conjuro que el personaje puede
 // lanzar. Lo común con las Acciones (conjuros utilizables, tirada y tipo de daño) vive aquí.
 import type { CatalogEntry } from "@/lib/rules/catalog/types";
-import { innateKey, type CasterBlock, type SpellsSummary } from "@/lib/rules/dnd2024/derive/spells";
+import { DEFAULT_SPELL_ABILITY, innateKey, type CasterBlock, type CastingStats, type SpellsSummary } from "@/lib/rules/dnd2024/derive/spells";
 import { refKey } from "@/lib/rules/dnd2024/sheet/equipmentRefs";
 import { ABILITY_ABBR, ABILITY_NAMES, DAMAGE_TYPE_NAMES, fmtMod } from "@/lib/rules/dnd2024/sheet/labels";
 import { spellSchoolName } from "@/lib/rules/dnd2024/spells/spellTextClient";
@@ -36,13 +36,22 @@ export const damageIdOf = (tag: string) => {
 const SAVE_ABILITIES = new Map(Object.entries(ABILITY_NAMES).map(([a, name]) => [`Salvación de ${name}`, a as Ability]));
 const SPELL_ATTACK_TAG = "Ataque de conjuro";
 
-// «+N» con ataque de conjuro, «CD N {Car}» con salvación; null sin tirada o sin bloque lanzador (especie, dotes: no
-// se guarda con qué característica los lanza)
-export function hitOf(tags: string[], block: CasterBlock | null): string | null {
-  if (!block) return null;
-  if (tags.includes(SPELL_ATTACK_TAG)) return fmtMod(block.attack);
+/** Ataque y CD de un lanzador: los de su bloque o, en especie, legado y dotes, los de su característica. */
+export type CastingBonus = { attack: number; dc: number };
+
+/** Ataque y CD de un conjuro de `other`: competencia + modificador de su característica (Inteligencia por defecto). */
+export function otherCasting(ability: Ability | undefined, casting: CastingStats | undefined): CastingBonus | null {
+  if (!casting) return null;
+  const attack = casting.proficiencyBonus + casting.mods[ability ?? DEFAULT_SPELL_ABILITY];
+  return { attack, dc: 8 + attack };
+}
+
+// «+N» con ataque de conjuro, «CD N {Car}» con salvación; null sin tirada o sin quien lo lance
+export function hitOf(tags: string[], caster: CastingBonus | null): string | null {
+  if (!caster) return null;
+  if (tags.includes(SPELL_ATTACK_TAG)) return fmtMod(caster.attack);
   const save = tags.map((t) => SAVE_ABILITIES.get(t)).find((a) => a);
-  return save ? `CD ${block.dc} ${ABILITY_ABBR[save]}` : null;
+  return save ? `CD ${caster.dc} ${ABILITY_ABBR[save]}` : null;
 }
 
 /**
@@ -59,6 +68,8 @@ export function spellDamageAt(data: SpellData, level: number): string | null {
 
 export type UsableSpell = {
   ref: Ref; block: CasterBlock | null; origin: string; entry: CatalogEntry; data: SpellData;
+  /** Ataque y CD con que se lanza: los del bloque o, en los de `other`, los de su característica (null sin datos). */
+  caster: CastingBonus | null;
   limited: { key: string; max: number; used: number } | null;
 };
 
@@ -69,20 +80,21 @@ export type UsableSpell = {
  * (derive ya lo avisa en `missing`) y se omite.
  */
 export function usableSpells(spells: SpellsSummary, entries: Map<string, CatalogEntry>): UsableSpell[] {
-  const sources: { ref: Ref; block: CasterBlock | null; origin: string; limited: UsableSpell["limited"] }[] = [
+  type Source = Pick<UsableSpell, "ref" | "block" | "origin" | "limited" | "caster">;
+  const sources: Source[] = [
     ...spells.blocks.flatMap((b) => [
-      ...b.cantrips.map((n) => ({ ref: n.ref, block: b, origin: b.name, limited: null })),
-      ...b.prepared.map((r) => ({ ref: r, block: b, origin: b.name, limited: null })),
-      ...b.always.map((a) => ({ ref: a.spell.ref, block: b, origin: a.origin, limited: null })),
+      ...b.cantrips.map((n) => ({ ref: n.ref, block: b, origin: b.name, limited: null, caster: b })),
+      ...b.prepared.map((r) => ({ ref: r, block: b, origin: b.name, limited: null, caster: b })),
+      ...b.always.map((a) => ({ ref: a.spell.ref, block: b, origin: a.origin, limited: null, caster: b })),
       ...b.limited.map((l) => ({
-        ref: l.spell.ref, block: b, origin: l.origin, limited: { key: l.key, max: l.max, used: l.used },
+        ref: l.spell.ref, block: b, origin: l.origin, limited: { key: l.key, max: l.max, used: l.used }, caster: b,
       })),
     ]),
     // (los de especie, legado y dotes de nivel 1+: un uso gratis por descanso largo; los trucos se lanzan a voluntad)
     ...spells.other.map((o) => {
       const key = innateKey(o.spell.ref);
       const limited = o.innate ? { key, max: 1, used: Math.min(spells.limitedUsed[key] ?? 0, 1) } : null;
-      return { ref: o.spell.ref, block: null, origin: o.origin, limited };
+      return { ref: o.spell.ref, block: null, origin: o.origin, limited, caster: otherCasting(o.ability, spells.casting) };
     }),
   ];
   const out = new Map<string, UsableSpell>();
@@ -128,11 +140,11 @@ function effectOf(tags: string[]): SpellRow["effect"] {
 
 /** Una fila por conjuro utilizable, en el orden en que aparecen en la ficha. */
 export function spellTableRows(spells: SpellsSummary, entries: Map<string, CatalogEntry>): SpellRow[] {
-  return usableSpells(spells, entries).map(({ ref, block, origin, entry, data, limited }) => ({
+  return usableSpells(spells, entries).map(({ ref, block, caster, origin, entry, data, limited }) => ({
     ref, key: refKey(ref), name: entry.nameEs ?? entry.name, nameEn: entry.name, level: data.level,
     school: spellSchoolName(data.school), schoolId: data.school, time: data.time, timeShort: timeShort(data.time), range: data.range,
     duration: data.duration, components: data.components, concentration: data.concentration, ritual: data.ritual,
-    hit: hitOf(data.tags, block), effect: effectOf(data.tags), origin, limited,
+    hit: hitOf(data.tags, caster), effect: effectOf(data.tags), origin, limited,
     casterClass: block?.class ?? null, tags: data.tags,
   }));
 }

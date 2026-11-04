@@ -1,10 +1,10 @@
+import { Star } from "lucide-react";
 import { Fragment } from "react";
 import type { CatalogEntry, SpellOption } from "@/lib/rules/catalog/types";
 import type { ActionsSummary } from "@/lib/rules/dnd2024/derive/actions";
 import { actionSections, sectionVisibility, type ActionFilter, type ActionSection, type SectionVisibility } from "@/lib/rules/dnd2024/sheet/actionFilters";
 import { refKey } from "@/lib/rules/dnd2024/sheet/equipmentRefs";
 import { DAMAGE_TYPE_NAMES, fmtMod } from "@/lib/rules/dnd2024/sheet/labels";
-import { spellLevelLabel } from "@/lib/rules/dnd2024/spells/spellTextClient";
 import { iconSrc } from "@/lib/utils/icons";
 import { sheetCard } from "@/app/components/ui/formStyles";
 import MaskIcon from "@/app/components/ui/MaskIcon";
@@ -56,16 +56,23 @@ function AttackTable({ rows }: { rows: ActionSection["attacks"] }) {
                 <tr key={`${a.name}-${i}`}>
                   <th scope="row" className="py-2 pr-3 font-semibold">
                     <span className="flex items-center gap-2">
-                      <MaskIcon
-                        src={iconSrc("weaponType", a.kind)}
-                        size={18}
-                        label={a.kind === "ranged" ? "A distancia" : "Cuerpo a cuerpo"}
-                        className="text-muted"
-                      />
-                      <span>
-                        {a.name}
-                        {a.mastery && <span className="block text-xs font-normal text-brand-soft">Maestría: {a.mastery}</span>}
+                      <span className="relative inline-flex shrink-0">
+                        <MaskIcon
+                          src={iconSrc("weaponType", a.kind)}
+                          size={18}
+                          label={a.kind === "ranged" ? "A distancia" : "Cuerpo a cuerpo"}
+                          className="text-muted"
+                        />
+                        {a.mastery && (
+                          <Star
+                            size={9}
+                            role="img"
+                            aria-label={`Maestría: ${a.mastery}`}
+                            className="absolute -right-1 -top-1 fill-brand-soft text-brand-soft"
+                          />
+                        )}
                       </span>
+                      <span>{a.name}</span>
                     </span>
                   </th>
                   <td className="py-2 pr-3 whitespace-nowrap">{a.range}</td>
@@ -77,7 +84,7 @@ function AttackTable({ rows }: { rows: ActionSection["attacks"] }) {
                       {a.damageType && <span className="text-xs text-muted">{a.damageType}</span>}
                     </span>
                   </td>
-                  <td className="py-2 text-muted">{a.properties.join(", ")}</td>
+                  <td className="py-2 text-muted">{a.notes}</td>
                 </tr>
               );
             }
@@ -88,7 +95,7 @@ function AttackTable({ rows }: { rows: ActionSection["attacks"] }) {
                     <MaskIcon src={schoolIcon(r.school)} size={18} label="Conjuro" className="text-muted" />
                     <span>
                       <SpellLink spellRef={r.ref} name={r.name} />
-                      <span className="block text-xs font-normal text-muted">{spellLevelLabel(r.level)}</span>
+                      <span className="block text-xs font-normal text-muted">{r.subtitle}</span>
                     </span>
                   </span>
                 </th>
@@ -146,7 +153,7 @@ function Section({ section, vis, attacksPerAction, characterId, isOwner }: {
               <span className="min-w-0 flex-1">
                 <SpellLink spellRef={s.ref} name={s.name} />
                 <span className="block text-xs text-muted">
-                  {[spellLevelLabel(s.level), s.range, s.notes].filter(Boolean).join(" · ")}
+                  {[s.subtitle, s.range, s.notes].filter(Boolean).join(" · ")}
                 </span>
               </span>
             </li>

@@ -249,6 +249,17 @@ function heldFeatSpells(levels: LevelEntry[]): Map<string, { spells: Named[]; li
   return out;
 }
 
+/** Característica de lanzamiento elegida con cada dote (por `refKey`); la última elección gana. */
+export function chosenFeatAbility(levels: LevelEntry[]): Map<string, Ability> {
+  const out = new Map<string, Ability>();
+  for (const l of levels) {
+    for (const c of l.choices) {
+      if (c.type === "featSpells" && c.value.ability) out.set(refKey(c.value.feat), c.value.ability);
+    }
+  }
+  return out;
+}
+
 /** Conjuros elegidos con cada dote en el historial (una dote puede dar más en niveles posteriores o cambiarlos). */
 export function chosenFeatSpells(levels: LevelEntry[]): Map<string, Named[]> {
   return new Map([...heldFeatSpells(levels)].map(([k, v]) => [k, v.spells]));

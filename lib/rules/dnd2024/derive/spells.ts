@@ -2,7 +2,7 @@
 // (combinados en multiclase y la Magia de pacto aparte) y los conjuros de especie, legado y dotes.
 import type { CatalogEntry } from "@/lib/rules/catalog/types";
 import { refKey } from "@/lib/rules/dnd2024/sheet/equipmentRefs";
-import { chosenFeatSpells } from "@/lib/rules/dnd2024/spells/featSpells";
+import { chosenFeatAbility, chosenFeatSpells } from "@/lib/rules/dnd2024/spells/featSpells";
 import {
   BONUS_SPELL_ORIGINS, IMPROVED_ILLUSIONS, IMPROVED_ILLUSIONS_CANTRIP, SIGNATURE_SPELLS, SPELL_MASTERY,
 } from "@/lib/rules/dnd2024/levels/featureChoices";
@@ -13,17 +13,28 @@ import { secretSpellLists } from "@/lib/rules/dnd2024/levels/spellPending";
 import type { Dnd2024SheetV2, Named } from "@/lib/rules/dnd2024/sheet/sheet";
 import { maxSpellLevel, PACT_SLOTS, preparedKey, slotLevels, spellListOf } from "@/lib/rules/dnd2024/spells/spellcasting";
 import { summarizeClasses } from "@/lib/rules/dnd2024/sheet/upgrade";
-import type {
-  Ability, BackgroundData, ClassData, FeatData, LineageData, OptionalFeatureData, Ref, SpeciesData, Spellcasting,
-  SpellcastingMode, SpellcastingProgression, SubclassData,
+import {
+  ABILITIES, type Ability, type BackgroundData, type ClassData, type FeatData, type LineageData,
+  type OptionalFeatureData, type Ref, type SpeciesData, type Spellcasting, type SpellcastingMode,
+  type SpellcastingProgression, type SubclassData,
 } from "@/lib/rules/types";
 import type { AbilityScores } from "./abilities";
 import { characterFeats } from "./features";
 
 export { chosenSpells };
 
-/** `innate`: de especie, legado o dote; si es de nivel 1+, se lanza una vez sin espacio por descanso largo. */
-export type OtherSpell = { spell: Named; origin: string; innate?: true };
+/**
+ * `innate`: de especie, legado o dote; si es de nivel 1+, se lanza una vez sin espacio por descanso largo.
+ * `ability`: con la que se lanza, si se sabe (la elegida con la dote o la de la concesión); sin ella, Inteligencia
+ * (`DEFAULT_SPELL_ABILITY`).
+ */
+export type OtherSpell = { spell: Named; origin: string; innate?: true; ability?: Ability };
+
+/** Lo que hace falta para el ataque y la CD de los conjuros de `other`: competencia y modificadores de característica. */
+export type CastingStats = { proficiencyBonus: number; mods: Record<Ability, number> };
+
+/** Característica de lanzamiento por defecto de los conjuros de especie, legado y dotes sin otra indicada. */
+export const DEFAULT_SPELL_ABILITY: Ability = "int";
 
 /**
  * Conjuro que se lanza sin espacio un número de veces por descanso largo (Arcano místico, Conjuros distintivos), con
@@ -88,6 +99,8 @@ export type SpellsSummary = {
   blocks: CasterBlock[]; slots: Slots; other: OtherSpell[]; used: Record<string, number>;
   /** Usos gastados por descanso (`sheet.limitedUsed`): los de `other` no tienen otra fuente. */
   limitedUsed: Record<string, number>;
+  /** Competencia y modificadores para el ataque y la CD de `other` (sin él, esos conjuros no llevan tirada). */
+  casting?: CastingStats;
 };
 
 const capitalize = (s: string) => (s ? s[0].toUpperCase() + s.slice(1) : s);
@@ -258,36 +271,47 @@ export function spellSlots(sheet: Dnd2024SheetV2, entries: Map<string, CatalogEn
 export function otherSpells(sheet: Dnd2024SheetV2, entries: Map<string, CatalogEntry>): OtherSpell[] {
   const level = sheet.levels.length;
   const out: OtherSpell[] = [];
-  const add = (refs: Ref[], origin: string, innate = false) =>
-    out.push(...refs.map((r) => ({ spell: named(r, entries), origin, ...(innate ? { innate: true as const } : {}) })));
+  type Grants = { level: number; ref: Ref; ability?: Ability }[] | undefined;
+  // `ability`: la elegida con la dote; si no, la de cada concesión y, si no, Inteligencia
+  const addGrants = (grants: Grants, origin: string, innate = false, chosen?: Ability) =>
+    out.push(...(grants ?? []).filter((g) => g.level <= level).map((g) => {
+      const ability = chosen ?? g.ability;
+      return {
+        spell: named(g.ref, entries), origin, ...(ability ? { ability } : {}),
+        ...(innate ? { innate: true as const } : {}),
+      };
+    }));
 
   const species = entries.get(refKey(sheet.species.ref))?.data as SpeciesData | undefined;
-  add(upTo(species?.spells, level), `Especie: ${sheet.species.name}`, true);
+  addGrants(species?.spells, `Especie: ${sheet.species.name}`, true);
   if (sheet.lineage) {
     const lineage = entries.get(refKey(sheet.lineage.ref))?.data as LineageData | undefined;
-    add(upTo(lineage?.spells, level), `Legado: ${sheet.lineage.name}`, true);
+    addGrants(lineage?.spells, `Legado: ${sheet.lineage.name}`, true);
   }
   const casterRefs = new Set(casters(sheet, entries).map((c) => refKey(c.ref)));
   for (const c of summarizeClasses(sheet.levels)) {
     if (casterRefs.has(refKey(c.class.ref)) || (c.subclass && casterRefs.has(refKey(c.subclass.ref)))) continue;
-    add(upTo((entries.get(refKey(c.class.ref))?.data as ClassData | undefined)?.spells, c.level), c.class.name);
+    addGrants((entries.get(refKey(c.class.ref))?.data as ClassData | undefined)?.spells?.filter((g) => g.level <= c.level), c.class.name);
     if (!c.subclass) continue;
     const sub = entries.get(refKey(c.subclass.ref))?.data as SubclassData | undefined;
-    add(upTo(sub?.spells, c.level), c.subclass.name);
+    addGrants(sub?.spells?.filter((g) => g.level <= c.level), c.subclass.name);
   }
   // Dotes: sus conjuros fijos y los elegidos con ellas (solo de las que conserva)
   const chosen = chosenFeatSpells(sheet.levels);
   for (const f of characterFeats(sheet, background(sheet, entries))) {
     const origin = `Dote: ${f.name ?? named(f.ref, entries).name}`;
-    add(upTo(featData(f.ref, entries)?.spells, level), origin, true);
-    out.push(...(chosen.get(refKey(f.ref)) ?? []).map((spell) => ({ spell, origin, innate: true as const })));
+    const ability = chosenFeatAbility(sheet.levels).get(refKey(f.ref));
+    addGrants(featData(f.ref, entries)?.spells, origin, true, ability);
+    out.push(...(chosen.get(refKey(f.ref)) ?? []).map((spell) => ({
+      spell, origin, innate: true as const, ...(ability ? { ability } : {}),
+    })));
   }
   // Invocaciones (y demás rasgos opcionales) con conjuros fijos o elegidos (Pacto del tomo, con su nombre de origen)
   for (const o of heldOptionalFeatures(sheet.levels)) {
     const data = entries.get(refKey(o.ref))?.data as OptionalFeatureData | undefined;
     const name = o.name || named(o.ref, entries).name;
     const kind = data?.featureType?.includes("EI") ? "Invocación" : "Rasgo";
-    if (data?.spells?.length) add(upTo(data.spells, level), `${kind}: ${name}`);
+    if (data?.spells?.length) addGrants(data.spells, `${kind}: ${name}`);
     out.push(...(chosen.get(refKey(o.ref)) ?? []).map((spell) => ({ spell, origin: name })));
   }
   return out;
@@ -312,7 +336,13 @@ export function spellsSummary(
   const other = otherSpells(sheet, entries);
   const spellFeat = characterFeats(sheet, background(sheet, entries)).some((f) => featData(f.ref, entries)?.grantsSpells);
   return {
-    spells: { blocks, slots: spellSlots(sheet, entries), other, used: sheet.slotsUsed ?? {}, limitedUsed: sheet.limitedUsed ?? {} },
+    spells: {
+      blocks, slots: spellSlots(sheet, entries), other, used: sheet.slotsUsed ?? {}, limitedUsed: sheet.limitedUsed ?? {},
+      casting: {
+        proficiencyBonus: derived.proficiencyBonus,
+        mods: Object.fromEntries(ABILITIES.map((a) => [a, derived.abilities[a].mod])) as Record<Ability, number>,
+      },
+    },
     hasSpells: blocks.length > 0 || other.length > 0 || spellFeat,
   };
 }

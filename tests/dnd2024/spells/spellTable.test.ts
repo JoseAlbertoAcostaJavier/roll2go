@@ -24,6 +24,7 @@ const ENTRIES = [
   spell("spell:fly|xphb", "Volar", 3, "1 acción"),
   spell("spell:arcane gate|xphb", "Puerta arcana", 6, "1 acción", ["Teletransporte"]),
   spell("spell:thaumaturgy|xphb", "Taumaturgia", 0, "1 acción"),
+  spell("spell:poison spray|xphb", "Rociada venenosa", 0, "1 acción", ["Daño de veneno", "Salvación de Constitución"]),
 ];
 const entries = new Map(ENTRIES.map((e) => [`${B}:${e.ref.key}`, e]));
 const named = (key: string) => ({ ref: ref(key), name: key });
@@ -58,6 +59,14 @@ describe("spellTableRows", () => {
     expect(row("Descarga de fuego").hit).toBe("+5");
     expect(row("Amigos").hit).toBe("CD 13 SAB");
     expect(row("Paso brumoso").hit).toBeNull();
+  });
+  it("otros conjuros: CD con competencia y la característica del conjuro", () => {
+    const withAbility: SpellsSummary = {
+      ...summary,
+      other: [{ spell: named("spell:poison spray|xphb"), origin: "Legado: Drow", innate: true, ability: "wis" }],
+      casting: { proficiencyBonus: 2, mods: { str: 0, dex: 0, con: 0, int: 0, wis: 3, cha: 0 } },
+    };
+    expect(spellTableRows(withAbility, entries).find((r) => r.name === "Rociada venenosa")?.hit).toBe("CD 13 CON");
   });
   it("calcula el efecto", () => {
     expect(row("Descarga de fuego").effect).toEqual({ damageTypeId: "fire", label: "Fuego" });

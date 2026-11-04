@@ -188,6 +188,8 @@ const DAMAGE_CODE_IDS: Record<string, string> = {
 export const damageTypeId = (code: string) => DAMAGE_CODE_IDS[code] ?? code.toLowerCase();
 export const damageTypeName = (code: string) => DAMAGE_CODE_NAMES[code] ?? code;
 export const weaponPropertyName = (code: string) => WEAPON_PROPERTY_NAMES[code] ?? code;
+const WEAPON_CATEGORY_NAMES: Record<string, string> = { simple: "Sencilla", martial: "Marcial" };
+export const weaponCategoryName = (category: string) => WEAPON_CATEGORY_NAMES[category.toLowerCase()] ?? capitalize(category);
 export const masteryName = (id: string) => MASTERY_NAMES[id.toLowerCase()] ?? capitalize(id);
 
 const ITEM_TYPE_NAMES: Record<string, string> = {

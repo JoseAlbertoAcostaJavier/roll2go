@@ -4,7 +4,8 @@ import type { CatalogEntry, SpellOption } from "@/lib/rules/catalog/types";
 import { actionIcon } from "@/lib/rules/dnd2024/sheet/actionIcons";
 import { refKey } from "@/lib/rules/dnd2024/sheet/equipmentRefs";
 import { damageIdOf, hitOf, spellDamageAt, usableSpells } from "@/lib/rules/dnd2024/spells/spellTable";
-import type { ActionData, FeatureData, Ref } from "@/lib/rules/types";
+import { spellLevelLabel } from "@/lib/rules/dnd2024/spells/spellTextClient";
+import type { ActionData, FeatureData, Ref, SpellData } from "@/lib/rules/types";
 import type { Attack } from "./attacks";
 import type { FeatureUse } from "./featureUses";
 import type { FeatureGroup } from "./features";
@@ -17,7 +18,11 @@ export type ActionItem =
     kind: "spell"; group: ActionGroup; ref: Ref; name: string; level: number;
     /** Escuela de 5etools (`V`), para su icono. */
     school: string;
-    range: string; hit: string | null; damage: string | null; damageTypeId: string | null; notes: string;
+    range: string; hit: string | null; damage: string | null; damageTypeId: string | null;
+    /** «Truco · Mago», «Nivel 1 · Dote: Iniciado en la magia (mago)». */
+    subtitle: string;
+    /** Componentes (solo las letras), «Concentración» y «Ritual»: «V, S · Concentración · Ritual». */
+    notes: string;
   }
   | {
     kind: "feature"; group: ActionGroup; ref: Ref; name: string; source: string;
@@ -63,12 +68,18 @@ const BASIC_GROUPS: Record<ActionData["time"], ActionGroup> = {
 const featureName = (ref: Ref) => ref.key.replace(/^[^:]*:/, "");
 const EXTRA_ATTACKS: [string, number][] = [["three extra attacks|", 3], ["two extra attacks|", 2], ["extra attack|", 1]];
 
+// «V, S, M (un trozo de hierro)» → «V, S, M»; con «Concentración» y «Ritual»
+const spellNotes = (data: SpellData) => [
+  data.components.replace(/\s*\(.*\)/, "").trim(), data.concentration ? "Concentración" : "", data.ritual ? "Ritual" : "",
+].filter(Boolean).join(" · ");
+
 // Conjuros que se pueden lanzar (los mismos que en la tabla de conjuros), con su tirada y tipo de daño
 function spellItems(spells: SpellsSummary, entries: Map<string, CatalogEntry>, level: number): ActionItem[] {
-  const out: ActionItem[] = usableSpells(spells, entries).map(({ ref, block, origin, entry, data }) => ({
+  const out: ActionItem[] = usableSpells(spells, entries).map(({ ref, caster, origin, entry, data }) => ({
     kind: "spell", group: spellGroup(data.time), ref, name: entry.nameEs ?? entry.name,
-    level: data.level, school: data.school, range: data.range, hit: hitOf(data.tags, block),
-    damage: spellDamageAt(data, level), damageTypeId: data.tags.map(damageIdOf).find((d) => d) ?? null, notes: origin,
+    level: data.level, school: data.school, range: data.range, hit: hitOf(data.tags, caster),
+    damage: spellDamageAt(data, level), damageTypeId: data.tags.map(damageIdOf).find((d) => d) ?? null,
+    subtitle: `${spellLevelLabel(data.level)} · ${origin}`, notes: spellNotes(data),
   }));
   return out.sort((a, b) => (a.kind === "spell" && b.kind === "spell"
     ? a.level - b.level || a.name.localeCompare(b.name, "es") : 0));
