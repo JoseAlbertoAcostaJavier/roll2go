@@ -278,6 +278,7 @@ export default async function CharacterPage({ params, searchParams }: Props) {
             characterId={id}
             isOwner={isOwner}
             size={size}
+            pronouns={(c.pronouns ?? []) as string[]}
             base={base}
             query={query}
             sheet={sheet}

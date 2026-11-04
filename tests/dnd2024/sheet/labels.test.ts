@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { defenseTypeName, distanceText, featureReference, fmtMod, itemTypeName, rarityName, toolName } from "@/lib/rules/dnd2024/sheet/labels";
+import { defenseTypeName, distanceText, featureReference, fmtMod, itemTypeName, pronounsText, rarityName, toolName } from "@/lib/rules/dnd2024/sheet/labels";
 import type { CatalogEntry } from "@/lib/rules/catalog/types";
 
 describe("toolName", () => {
@@ -60,5 +60,13 @@ describe("featureReference", () => {
     expect(featureReference({ bookName: "Manual del Jugador 2024", page: null } as CatalogEntry)).toBe("Manual del Jugador 2024");
     expect(featureReference({ bookName: "", page: 12 } as CatalogEntry)).toBeNull();
     expect(featureReference(undefined)).toBeNull();
+  });
+});
+
+describe("pronounsText", () => {
+  it("une los pronombres con « / » y usa «—» si no hay", () => {
+    expect(pronounsText(["he"])).toBe("Él");
+    expect(pronounsText(["she", "they"])).toBe("Ella / Elle");
+    expect(pronounsText([])).toBe("—");
   });
 });

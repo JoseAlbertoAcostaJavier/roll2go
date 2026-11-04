@@ -39,7 +39,10 @@ const valueButton =
 // Campo de la ficha editable en el sitio (spec de rasgos §6). El dueño ve el valor como un botón que abre la edición
 // (o «+ Añadir …» si está vacío); los demás, el valor o «—». Guarda al salir del campo, con Enter (en un textarea,
 // Ctrl/Cmd+Enter); Escape cancela y devuelve el foco al botón.
-export function InlineText({ characterId, field, label, value, multiline, editable }: Common & { value: string; multiline?: boolean }) {
+//
+// Con `boxed` el dueño ve el campo como un cuadro de texto siempre visible (mismo borde y fondo que los demás
+// formularios), que guarda al salir del campo o con Enter.
+export function InlineText({ characterId, field, label, value, multiline, editable, boxed }: Common & { value: string; multiline?: boolean; boxed?: boolean }) {
   const router = useRouter();
   const max = SHEET_TEXT_LIMITS[field];
   const [shown, setShown] = useShown(value);
@@ -78,6 +81,7 @@ export function InlineText({ characterId, field, label, value, multiline, editab
     if (saving) return;
     const next = draft.trim();
     if (next === shown.trim()) {
+      setDraft(next);
       if (focusBack) close();
       else setEditing(false);
       return;
@@ -90,12 +94,45 @@ export function InlineText({ characterId, field, label, value, multiline, editab
       return;
     }
     setShown(next);
+    setDraft(next);
     if (focusBack) close();
     else setEditing(false);
     router.refresh();
   }
 
   const Control = multiline ? "textarea" : "input";
+
+  if (boxed && editable && !multiline) {
+    return (
+      <div className="min-w-0">
+        <label htmlFor={inputId} className={`mb-1 block ${labelText}`}>{label}</label>
+        <input
+          id={inputId}
+          value={draft}
+          readOnly={saving}
+          maxLength={max}
+          aria-busy={saving || undefined}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={error ? `${inputId}-error` : undefined}
+          data-print="text"
+          className={`${fieldClass} py-1.5 text-sm`}
+          onFocus={() => { setError(""); }}
+          onChange={(e) => { if (!saving) setDraft(e.target.value); }}
+          onBlur={() => { void commit(); }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              void commit();
+            } else if (e.key === "Escape") {
+              setDraft(shown);
+              setError("");
+            }
+          }}
+        />
+        <p id={`${inputId}-error`} role="alert" className={error ? "mt-1 text-xs text-brand-soft" : ""}>{error}</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-w-0">
