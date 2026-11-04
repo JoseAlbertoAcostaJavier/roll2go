@@ -58,6 +58,7 @@ describe("featureReference", () => {
   it("libro y página, solo el libro o nada", () => {
     expect(featureReference({ bookName: "Manual del Jugador 2024", page: 165 } as CatalogEntry)).toBe("Manual del Jugador 2024, pág. 165");
     expect(featureReference({ bookName: "Manual del Jugador 2024", page: null } as CatalogEntry)).toBe("Manual del Jugador 2024");
+    expect(featureReference({ bookName: "", page: 12 } as CatalogEntry)).toBeNull();
     expect(featureReference(undefined)).toBeNull();
   });
 });

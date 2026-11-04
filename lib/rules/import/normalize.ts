@@ -155,8 +155,8 @@ export function applyMod(obj: Rec, mod: unknown): Rec {
   return obj;
 }
 
-// Campos de la base que no pasan a una copia (son propios de cada entrada en 5etools). `page` sí pasa: la copia sin
-// página propia muestra la del original
+// Campos de la base que no pasan a una copia (son propios de cada entrada en 5etools). `page` sí pasa si la copia es
+// del mismo libro y no trae la suya
 const NOT_COPIED = ["srd52", "basicRules2024", "_versions", "hasFluff", "hasFluffImages", "reprintedAs"];
 
 /** Resuelve `_copy`: copia la base (buscada por `nombre|fuente` en `all`), encima los campos propios y aplica `_mod`. */
@@ -169,6 +169,8 @@ export function resolveCopy(raw: unknown, all: unknown[], depth = 0): unknown {
   const out = clone(resolveCopy(base, all, depth + 1)) as Rec;
   for (const k of NOT_COPIED) delete out[k];
   Object.assign(out, clone(own));
+  // La página del original solo vale si la copia es del mismo libro
+  if (own.page === undefined && lower(str(copy.source)) !== lower(str(own.source))) delete out.page;
   return applyMod(out, copy._mod);
 }
 

@@ -946,8 +946,11 @@ describe("página de la entrada", () => {
       { name: "Base", source: "X", page: 12, entries: ["a"] },
       { name: "Sin", source: "X", _copy: { name: "Base", source: "X" } },
       { name: "Con", source: "X", page: 30, _copy: { name: "Base", source: "X" } },
+      { name: "Otro", source: "Y", _copy: { name: "Base", source: "X" } },
     ];
     expect(normalizeFeat(resolveCopy(all[1], all) as Record<string, unknown>).page).toBe(12);
     expect(normalizeFeat(resolveCopy(all[2], all) as Record<string, unknown>).page).toBe(30);
+    // De otro libro, la página del original no vale
+    expect(normalizeFeat(resolveCopy(all[3], all) as Record<string, unknown>).page).toBeNull();
   });
 });

@@ -98,6 +98,7 @@ export default function FeaturesTab({ groups, entries, base, query, featureUses,
                     {g.features.length === 0 && usesOf(g.ref) && (
                       <FeatureUsesControl characterId={characterId} use={usesOf(g.ref)!} isOwner={isOwner} className="mt-3" />
                     )}
+                    {g.ref && !entry && <p className="mt-4 text-sm text-muted">Contenido no disponible.</p>}
                     {g.ref && descriptionOf(entry) && (
                       <Collapsible className="mt-4" header={<span className="text-sm font-semibold text-brand-soft">Descripción</span>}>
                         <Description entry={entry} />

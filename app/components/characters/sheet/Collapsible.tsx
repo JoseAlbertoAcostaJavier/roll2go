@@ -20,8 +20,8 @@ export default function Collapsible({ header, aside, children, className = "" }:
         onClick={() => setOpen((o) => !o)}
         className="group flex w-full items-start gap-2 rounded text-left focus-visible:outline-2 focus-visible:outline-brand-soft print:cursor-text"
       >
-        <span className="min-w-0 flex-1">{header}</span>
-        <ChevronDown size={16} aria-hidden="true" className={`mt-1 shrink-0 text-muted transition-transform print:hidden ${open ? "rotate-180" : ""}`} />
+        <span className="min-w-0 flex-1 transition-colors group-hover:text-white">{header}</span>
+        <ChevronDown size={16} aria-hidden="true" className={`mt-1 shrink-0 text-muted transition-transform group-hover:text-white print:hidden ${open ? "rotate-180" : ""}`} />
       </button>
       {aside}
       <div id={id} className={`mt-2 ${open ? "" : "hidden print:block"}`}>{children}</div>

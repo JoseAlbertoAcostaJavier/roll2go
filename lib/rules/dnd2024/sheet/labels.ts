@@ -221,8 +221,8 @@ const SPELL_LIST_NAMES: Record<string, string> = {
 };
 export const spellListName = (id: string) => SPELL_LIST_NAMES[id] ?? capitalize(id);
 
-/** «Libro, pág. N» de un rasgo o entrada del catálogo; solo el libro si no tiene página; `null` si no hay entrada. */
+/** «Libro, pág. N» de un rasgo o entrada del catálogo; solo el libro si no tiene página; `null` si no hay entrada o no se sabe el libro. */
 export function featureReference(entry: CatalogEntry | undefined): string | null {
-  if (!entry) return null;
+  if (!entry?.bookName) return null;
   return entry.page ? `${entry.bookName}, pág. ${entry.page}` : entry.bookName;
 }
