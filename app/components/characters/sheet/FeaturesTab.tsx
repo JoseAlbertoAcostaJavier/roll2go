@@ -1,14 +1,14 @@
-import { ChevronDown } from "lucide-react";
 import type { CatalogEntry } from "@/lib/rules/catalog/types";
 import type { FeatureGroup } from "@/lib/rules/dnd2024/derive";
 import type { FeatureUse } from "@/lib/rules/dnd2024/derive/featureUses";
 import { bareName, refKey } from "@/lib/rules/dnd2024/sheet/equipmentRefs";
+import { featureReference } from "@/lib/rules/dnd2024/sheet/labels";
 import { FEATURE_SECTION_CHIPS, featureSections, parseSection } from "@/lib/rules/dnd2024/sheet/sheetSections";
 import type { Ref } from "@/lib/rules/types";
 import Bbcode from "@/app/components/ui/Bbcode";
 import { sheetCard } from "@/app/components/ui/formStyles";
 import RoundIcon from "@/app/components/ui/RoundIcon";
-import ClampedText from "./ClampedText";
+import Collapsible from "./Collapsible";
 import FeatureUsesControl from "./FeatureUsesControl";
 import SectionChips from "./SectionChips";
 
@@ -29,13 +29,20 @@ export function Description({ entry, missing }: { entry: CatalogEntry | undefine
 // Identificador de la entrada (o de su entrada padre: la especie de un legado, la clase de una subclase)
 const idOf = (entry: CatalogEntry | undefined, ref: Ref | null) => entry?.identifier || bareName(ref?.key ?? "");
 
+const Reference = ({ text }: { text: string | null }) =>
+  text ? <span className="block text-xs text-muted">{text}</span> : null;
+
 function GroupHeading({ group, entry }: { group: FeatureGroup; entry: CatalogEntry | undefined }) {
   const title = entry ? (entry.nameEs ?? entry.name) : group.title;
+  const reference = featureReference(entry);
   if (group.source === "class") {
     return (
       <div className="flex items-center gap-3">
         <RoundIcon kind="class" id={idOf(entry, group.ref)} label={title} size={48} />
-        <h3 className="font-heading text-xl font-bold">{title} <span className="text-muted">Nivel {group.level}</span></h3>
+        <div>
+          <h3 className="font-heading text-xl font-bold">{title} <span className="text-muted">Nivel {group.level}</span></h3>
+          <Reference text={reference} />
+        </div>
       </div>
     );
   }
@@ -49,17 +56,20 @@ function GroupHeading({ group, entry }: { group: FeatureGroup; entry: CatalogEnt
   return (
     <div className="flex items-center gap-3">
       {icon ?? <RoundIcon kind="feature" id={feature} label={title} size={40} />}
-      <h3 className="font-heading text-xl font-bold">
-        {title}
-        {kind && <span className="ml-2 text-sm font-semibold uppercase tracking-wide text-muted">{kind}</span>}
-      </h3>
+      <div>
+        <h3 className="font-heading text-xl font-bold">
+          {title}
+          {kind && <span className="ml-2 text-sm font-semibold uppercase tracking-wide text-muted">{kind}</span>}
+        </h3>
+        <Reference text={reference} />
+      </div>
     </div>
   );
 }
 
 // Rasgos por origen en tres secciones (clase, especie, dotes) con chips de filtro. Lo que el filtro oculta sigue en el
-// DOM (`hidden print:block`) para que la impresión lo saque todo. Cada rasgo lleva su descripción abierta, recortada
-// si es larga.
+// DOM (`hidden print:block`) para que la impresión lo saque todo. Cada rasgo y cada introducción de grupo se pliega
+// (`Collapsible`) con su referencia «Libro, pág. N» a la vista; impresa, la descripción sale completa.
 export default function FeaturesTab({ groups, entries, base, query, featureUses, characterId, isOwner }: Props) {
   const usesByKey = new Map(featureUses.map((u) => [u.key, u]));
   const usesOf = (ref: Ref | null) => (ref ? usesByKey.get(refKey(ref)) : undefined);
@@ -82,50 +92,42 @@ export default function FeaturesTab({ groups, entries, base, query, featureUses,
               {sec.groups.map((g) => {
                 const entry = get(g.ref);
                 const n = gi++;
-                // La descripción del grupo: la de la especie o el legado completa; la de la clase o subclase, plegada
-                const longIntro = g.source === "class" || g.source === "subclass";
                 return (
                   <article key={`${g.source}-${g.ref ? refKey(g.ref) : n}`} className={`${sheetCard} animate-fade-up`} style={{ animationDelay: `${Math.min(n, 6) * 50}ms` }}>
                     <GroupHeading group={g} entry={entry} />
                     {g.features.length === 0 && usesOf(g.ref) && (
                       <FeatureUsesControl characterId={characterId} use={usesOf(g.ref)!} isOwner={isOwner} className="mt-3" />
                     )}
-                    {g.ref && (
-                      <div className="mt-4">
-                        {longIntro ? (
-                          descriptionOf(entry) && (
-                            <details className="group/intro">
-                              <summary className="flex cursor-pointer list-none items-center gap-1 text-sm font-semibold text-brand-soft hover:text-white">
-                                <ChevronDown size={16} aria-hidden="true" className="transition-transform group-open/intro:rotate-180" />
-                                Descripción
-                              </summary>
-                              <div className="mt-2"><Description entry={entry} /></div>
-                            </details>
-                          )
-                        ) : (
-                          <ClampedText><Description entry={entry} /></ClampedText>
-                        )}
-                      </div>
+                    {g.ref && descriptionOf(entry) && (
+                      <Collapsible className="mt-4" header={<span className="text-sm font-semibold text-brand-soft">Descripción</span>}>
+                        <Description entry={entry} />
+                      </Collapsible>
                     )}
 
                     {g.features.length > 0 && (
                       <ul className="mt-4 divide-y divide-line border-y border-line">
                         {g.features.map((f, i) => (
                           <li key={`${refKey(f.ref)}-${i}`} className="py-3">
-                            <div className="flex items-baseline gap-3">
-                              <span className="flex-1 font-semibold">
-                                {f.name}
-                                {f.chosen && <span className="ml-2 font-normal text-brand-soft">{f.chosen.join(", ")}</span>}
-                              </span>
-                              {f.value && <span className="text-sm text-success">{f.value}</span>}
-                              <span className="shrink-0 text-xs uppercase tracking-wide text-muted">· Nivel {f.level}</span>
-                            </div>
-                            {usesOf(f.ref) && (
-                              <FeatureUsesControl characterId={characterId} use={usesOf(f.ref)!} isOwner={isOwner} className="mt-2" />
-                            )}
-                            <div className="mt-2">
-                              <ClampedText><Description entry={get(f.ref)} /></ClampedText>
-                            </div>
+                            <Collapsible
+                              header={
+                                <>
+                                  <span className="flex items-baseline gap-3">
+                                    <span className="flex-1 font-semibold">
+                                      {f.name}
+                                      {f.chosen && <span className="ml-2 font-normal text-brand-soft">{f.chosen.join(", ")}</span>}
+                                    </span>
+                                    {f.value && <span className="text-sm text-success">{f.value}</span>}
+                                    <span className="shrink-0 text-xs uppercase tracking-wide text-muted">· Nivel {f.level}</span>
+                                  </span>
+                                  <Reference text={featureReference(get(f.ref))} />
+                                </>
+                              }
+                              aside={usesOf(f.ref) && (
+                                <FeatureUsesControl characterId={characterId} use={usesOf(f.ref)!} isOwner={isOwner} className="mt-2" />
+                              )}
+                            >
+                              <Description entry={get(f.ref)} />
+                            </Collapsible>
                           </li>
                         ))}
                       </ul>
