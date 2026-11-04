@@ -40,7 +40,7 @@ describe("fixedLanguages y languageSlots", () => {
 
 const lang = (name: string, type: "standard" | "rare"): CatalogEntry => ({
   ref: ref(`language:${name.toLowerCase()}|xphb`), name, nameEs: null, bookName: "Libro", srd52: true, data: { type },
-  description: "", descriptionEs: "", identifier: "", parent: null, foundry: null,
+  description: "", descriptionEs: "", identifier: "", page: null, parent: null, foundry: null,
 });
 const langs = new Map<string, CatalogEntry>([
   lang("Common", "standard"), lang("Elvish", "standard"), lang("Dwarvish", "standard"), lang("Giant", "standard"),

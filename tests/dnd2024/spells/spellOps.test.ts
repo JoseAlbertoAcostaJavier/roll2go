@@ -44,7 +44,7 @@ for (const [name, level, classes] of SPELLS) {
   };
   entries.set(`${B}:spell:${name}|xphb`, {
     ref: ref(`spell:${name}|xphb`), name, nameEs: null, bookName: "Libro", srd52: true, data, description: "",
-    descriptionEs: "", identifier: name, parent: null, foundry: null,
+    descriptionEs: "", identifier: name, page: null, parent: null, foundry: null,
   });
 }
 const spell = (name: string): Named => ({ ref: ref(`spell:${name}|xphb`), name });
@@ -323,7 +323,7 @@ describe("usos gratis de los conjuros de especie, legado y dotes", () => {
   const TIEFLING = ref("species:tiefling|xphb");
   entries.set(refKey(TIEFLING), {
     ref: TIEFLING, name: "Tiefling", nameEs: "Tiefling", bookName: "Libro", srd52: true, description: "", descriptionEs: "",
-    identifier: "", parent: null, foundry: null,
+    identifier: "", page: null, parent: null, foundry: null,
     data: {
       size: ["M"], speed: 30, darkvision: 60, creatureType: "humanoid", skills: { fixed: [] }, hasLineages: false,
       spells: [{ level: 1, ref: spell("light").ref }, { level: 1, ref: spell("detect magic").ref }],

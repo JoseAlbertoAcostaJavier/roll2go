@@ -8,7 +8,7 @@ import { B, buildCatalog, ref } from "../fixtureCatalog";
 const catalog = buildCatalog(["class-barbarian.json", "class-cleric.json"]);
 const weapon = (key: string, w: Partial<NonNullable<ItemData["weapon"]>>, type = "M"): CatalogEntry => ({
   ref: ref(key), name: key, nameEs: null, bookName: "Libro", srd52: true, description: "", descriptionEs: "",
-  identifier: "", parent: null, foundry: null,
+  identifier: "", page: null, parent: null, foundry: null,
   data: { type, weight: 1, value: 1, weapon: { damage: "1d6", damageType: "S", properties: [], category: "martial", ...w } },
 });
 for (const e of [

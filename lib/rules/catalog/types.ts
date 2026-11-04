@@ -23,6 +23,8 @@ export type CatalogEntry = EntryOption & {
   description: string;
   descriptionEs: string;
   identifier: string;
+  /** Página en el libro (5etools); `null` en las entradas sin página o importadas antes de guardarla. */
+  page: number | null;
   parent: Ref | null;
   foundry: unknown;
 };

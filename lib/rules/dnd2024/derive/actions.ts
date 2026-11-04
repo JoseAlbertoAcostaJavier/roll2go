@@ -84,7 +84,7 @@ export function withSpellEntries(entries: Map<string, CatalogEntry>, spells: Spe
   for (const s of spells) {
     const key = refKey(s.ref);
     if (!out.has(key)) {
-      out.set(key, { ...s, description: "", descriptionEs: "", identifier: "", parent: null, foundry: null });
+      out.set(key, { ...s, description: "", descriptionEs: "", identifier: "", page: null, parent: null, foundry: null });
     }
   }
   return out;

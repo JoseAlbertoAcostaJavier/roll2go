@@ -31,7 +31,7 @@ export function buildCatalog(classFiles = ["class-barbarian.json"]): Map<string,
     const c: CatalogEntry = {
       ref: { book: B, key: e.key }, name: e.name, nameEs: null, bookName: "Libro", srd52: e.srd52,
       data: withBook(e.data), description: e.description, descriptionEs: "", identifier: e.identifier,
-      parent: e.parent ? { book: B, key: e.parent.key } : null, foundry: null,
+      page: e.page, parent: e.parent ? { book: B, key: e.parent.key } : null, foundry: null,
     };
     return [`${B}:${c.ref.key}`, c] as const;
   }));

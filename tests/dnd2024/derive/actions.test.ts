@@ -11,7 +11,7 @@ const B = "b";
 const ref = (key: string): Ref => ({ book: B, key });
 const entry = (key: string, name: string, data: unknown, nameEs: string | null = null): CatalogEntry => ({
   ref: ref(key), name, nameEs, bookName: "Libro", srd52: false, data, description: "", descriptionEs: "",
-  identifier: "", parent: null, foundry: null,
+  identifier: "", page: null, parent: null, foundry: null,
 });
 const spell = (key: string, nameEs: string, level: number, time: string, tags: string[] = [], range = "18 metros", damage?: SpellData["damage"]):
   CatalogEntry => entry(key, key, {

@@ -6,7 +6,7 @@ const ref = (key: string) => ({ book: "b", key });
 const pack = {
   ref: ref("item:explorer's pack|xphb"), name: "Explorer's Pack", nameEs: null, bookName: "", srd52: true,
   data: { contents: [{ ref: ref("item:backpack|xphb"), quantity: 1 }, { ref: ref("item:torch|xphb"), quantity: 10 }] },
-  description: "", descriptionEs: "", identifier: "", parent: null, foundry: null,
+  description: "", descriptionEs: "", identifier: "", page: null, parent: null, foundry: null,
 } as CatalogEntry;
 
 describe("equipmentRefs", () => {
