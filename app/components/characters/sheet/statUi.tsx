@@ -12,13 +12,18 @@ export const chip = "flex h-14 flex-col items-center justify-center rounded-md b
 export const chipLabel = "flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-muted";
 export const chipValue = "font-heading text-xl font-extrabold leading-tight";
 
-// Marca de competencia: vacía, competencia o pericia (doble)
+// Marca de competencia, un solo marcador: sin competencia = anillo atenuado, competencia = punto relleno,
+// pericia = punto relleno dentro de un anillo (círculo dentro de círculo)
 export function ProficiencyDot({ level }: { level: 0 | 1 | 2 }) {
   const label = level === 2 ? "Pericia" : level === 1 ? "Competencia" : "Sin competencia";
   return (
-    <span title={label} className="flex shrink-0 items-center gap-0.5">
-      <span className={`h-2.5 w-2.5 rounded-full border ${level > 0 ? "border-brand bg-brand" : "border-muted"}`} />
-      {level === 2 && <span className="h-2.5 w-2.5 rounded-full border border-brand bg-brand" />}
+    <span
+      title={label}
+      className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full border ${
+        level === 0 ? "border-muted/50" : level === 1 ? "border-brand bg-brand" : "border-brand"
+      }`}
+    >
+      {level === 2 && <span className="h-1.5 w-1.5 rounded-full bg-brand" />}
       <span className="sr-only">{label}</span>
     </span>
   );
