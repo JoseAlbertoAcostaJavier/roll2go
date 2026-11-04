@@ -134,6 +134,10 @@ describe("validateSheet", () => {
       .toBe("Idiomas no válidos.");
     expect((await errorsOf((s) => { delete s.languageChoices; })).languageChoices).toBe("Faltan idiomas por elegir.");
   });
+  it("idiomas: una lista enorme se rechaza", async () => {
+    const l = { book: B, key: "language:elvish|xphb" };
+    expect((await errorsOf((s) => { s.languageChoices = Array(50).fill(l); })).languageChoices).toBe("Idiomas no válidos.");
+  });
   it("rechaza lo que no es un objeto", async () => {
     expect((await validateSheet(null, ctx)).ok).toBe(false);
   });
@@ -340,6 +344,15 @@ describe("validateSheet: elecciones de clase de nivel 1", () => {
   const choiceErrors = (r: Awaited<ReturnType<typeof validateSheet>>) =>
     Object.keys(errs(r)).filter((k) => k.startsWith("levels.0.choices"));
 
+  it("Pícaro 1 sin su tercer idioma → Faltan idiomas por elegir.", async () => {
+    const s = sheetFor("rogue", [
+      skills(["stealth", "acrobatics", "deception", "sleight of hand"]),
+      { type: "expertise", source: "classFeature:expertise|rogue|xphb|1", value: ["stealth", "insight"] },
+      weaponMastery("rogue", "handaxe", "shortsword"),
+    ]);
+    s.languageChoices = s.languageChoices.slice(0, 2);
+    expect(errs(await validateSheet(s, fctx)).languageChoices).toBe("Faltan idiomas por elegir.");
+  });
   it("Clérigo 1 sin Orden divina → error en levels.0.choices", async () => {
     const r = await validateSheet(sheetFor("cleric", [skills(["history", "medicine"])]), fctx);
     expect(errs(r)).toHaveProperty("levels.0.choices");

@@ -3,7 +3,7 @@ import type { CatalogEntry } from "@/lib/rules/catalog/types";
 import { checkLanguages, fixedLanguages, languageSlots } from "@/lib/rules/dnd2024/creation/languages";
 import { derive } from "@/lib/rules/dnd2024/derive";
 import type { Dnd2024Sheet } from "@/lib/rules/dnd2024/sheet/sheet";
-import { upgradeSheet } from "@/lib/rules/dnd2024/sheet/upgrade";
+import { summarizeClasses, upgradeSheet } from "@/lib/rules/dnd2024/sheet/upgrade";
 import { loadSheetEntries } from "@/lib/rules/dnd2024/sheet/sheetEntries";
 import { refKey } from "@/lib/rules/dnd2024/sheet/equipmentRefs";
 import type { Ref } from "@/lib/rules/types";
@@ -109,6 +109,41 @@ describe("hoja y derive", () => {
     expect([...entries.keys()]).toEqual(expect.arrayContaining([
       refKey(r("common")), refKey(r("elvish")), refKey(r("dwarvish")),
     ]));
+  });
+  it("Común sale aunque la especie sea de otro libro", async () => {
+    const s = sheet();
+    s.species = { ref: { book: "otro", key: "species:elf|xphb" }, name: "Elfo" };
+    const requested: Ref[] = [];
+    const entries = await loadSheetEntries(s, [B, "otro"], async (refs) => {
+      requested.push(...refs);
+      return refs.map((x) => catalog().get(refKey(x))).filter((e): e is CatalogEntry => !!e);
+    });
+    expect(requested).toContainEqual(r("common"));
+    expect(derive(s, catalog()).languages[0]).toBe("Común");
+    expect(entries.has(refKey(r("common")))).toBe(true);
+  });
+  it("derive: Pícaro/Druida suman Jerga de ladrones y Druídico", () => {
+    const c = catalog();
+    for (const [n, es] of [["thieves' cant", "Jerga de ladrones"], ["druidic", "Druídico"]] as const) {
+      const e = lang(n, "rare");
+      e.nameEs = es;
+      c.set(refKey(e.ref), e);
+    }
+    const s = sheet();
+    s.classes[0].ref = ref("class:rogue|xphb");
+    s.classes[0].name = "Pícaro";
+    const rogue = derive(s, c).languages;
+    expect(rogue).toEqual(["Común", "Jerga de ladrones", "Élfico", "Enano"]);
+    // Pícaro 1 / Druida 1
+    const v2 = upgradeSheet(s, c, () => "id");
+    v2.levels.push({ ...v2.levels[0], n: 2, class: { ref: ref("class:druid|xphb"), name: "Druida" }, classLevel: 1 });
+    v2.classesSummary = summarizeClasses(v2.levels);
+    expect(derive(v2, c).languages).toEqual(["Común", "Jerga de ladrones", "Druídico", "Élfico", "Enano"]);
+  });
+  it("derive: el texto antiguo no repite sin tildes ni mayúsculas", () => {
+    const s = sheet();
+    s.languages = "comun, ELFICO, Infracomún";
+    expect(derive(s, catalog()).languages).toEqual(["Común", "Élfico", "Enano", "Infracomún"]);
   });
   it("upgradeSheet conserva languageChoices", () => {
     expect(upgradeSheet(sheet(), catalog(), () => "id").languageChoices).toEqual([r("elvish"), r("dwarvish")]);

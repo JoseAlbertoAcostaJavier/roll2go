@@ -19,9 +19,9 @@ export function fixedLanguages(classLevels: ClassLevels): string[] {
   ];
 }
 
-/** Los idiomas fijos como referencias; el libro es el de la clase (los idiomas de la hoja son de los mismos libros). */
-export const fixedLanguageRefs = (classLevels: ClassLevels, book: string): Ref[] =>
-  fixedLanguages(classLevels).map((key) => ({ book, key }));
+/** Los idiomas fijos como referencias, una por cada libro (el idioma está en el libro que lo contenga). */
+export const fixedLanguageRefs = (classLevels: ClassLevels, books: string[]): Ref[] =>
+  fixedLanguages(classLevels).flatMap((key) => books.map((book) => ({ book, key })));
 
 export type LanguageSlot = { source: "origin" | "rogue" | "ranger"; label: string; count: number; standardOnly: boolean };
 

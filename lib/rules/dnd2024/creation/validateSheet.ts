@@ -300,8 +300,9 @@ export async function validateSheet(input: unknown, ctx: ValidateCtx): Promise<V
     const raw = input.languageChoices ?? [];
     const refs: Ref[] = [];
     const langEntries = new Map<string, CatalogEntry>();
-    let shape = Array.isArray(raw);
-    for (const r of Array.isArray(raw) ? raw : []) {
+    // Sin más idiomas de los que caben: no se consulta el catálogo con listas enormes
+    let shape = Array.isArray(raw) && raw.length <= languageSlots(levels).reduce((n, x) => n + x.count, 0);
+    for (const r of shape ? (raw as unknown[]) : []) {
       if (!isObj(r) || typeof r.book !== "string" || typeof r.key !== "string" || !r.key.startsWith("language:")
         || !ctx.books.includes(r.book)) shape = false;
       else {

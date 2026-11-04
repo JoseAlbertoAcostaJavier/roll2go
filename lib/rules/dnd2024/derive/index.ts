@@ -19,7 +19,8 @@ import { unarmedAttack, weaponAttack, weaponProficient, type Attack } from "./at
 import { defensesOf, type DefenseRow } from "./defenses";
 import { characterFeats, featureGroups, type FeatureGroup } from "./features";
 import { featureUses, usesVars, type FeatureUse } from "./featureUses";
-import { fixedLanguageRefs } from "../creation/languages";
+import { normalizeName } from "@/lib/rules/schemas";
+import { fixedLanguages } from "../creation/languages";
 import { hitPoints } from "./hp";
 import { speedBreakdown } from "./speed";
 import { spellsSummary, type SpellsSummary } from "./spells";
@@ -110,14 +111,17 @@ function languageNames(
   sheet: Dnd2024SheetV2, summary: Dnd2024SheetV2["classesSummary"], entries: Map<string, CatalogEntry>,
 ): string[] {
   const levels = Object.fromEntries(summary.map((c) => [bareName(c.class.ref.key), c.level]));
-  const refs = [...fixedLanguageRefs(levels, sheet.species.ref.book), ...(sheet.languageChoices ?? [])];
-  const names = refs.flatMap((r) => {
-    const e = entries.get(refKey(r));
-    return e ? [e.nameEs || e.name] : [];
+  // Los fijos están en el libro que los tenga; los elegidos, en el suyo
+  const all = [...entries.values()];
+  const fixed = fixedLanguages(levels).flatMap((key) => {
+    const e = all.find((x) => x.ref.key === key);
+    return e ? [e] : [];
   });
+  const chosen = (sheet.languageChoices ?? []).flatMap((r) => entries.get(refKey(r)) ?? []);
+  const names = [...fixed, ...chosen].map((e) => e.nameEs || e.name);
   const old = sheet.languages.split(/[,;\n]/).map((l) => l.trim()).filter(Boolean);
   const seen = new Set<string>();
-  return [...names, ...old].filter((n) => !seen.has(n.toLowerCase()) && seen.add(n.toLowerCase()));
+  return [...names, ...old].filter((n) => !seen.has(normalizeName(n)) && seen.add(normalizeName(n)));
 }
 
 export function derive(input: AnySheet, entries: Map<string, CatalogEntry>): Derived {

@@ -17,7 +17,7 @@ export type FetchEntries = (refs: Ref[]) => Promise<CatalogEntry[]>;
 const MAX_ROUNDS = 6;
 
 // Referencias que hacen falta con lo que ya está cargado
-function wantedRefs(sheet: AnySheet, entries: Map<string, CatalogEntry>): Ref[] {
+function wantedRefs(sheet: AnySheet, entries: Map<string, CatalogEntry>, books: string[]): Ref[] {
   const data = <T,>(ref: Ref | undefined | null) => (ref ? (entries.get(refKey(ref))?.data as T | undefined) : undefined);
   const classes = sheet.version === 2
     ? summarizeClasses(sheet.levels).map((c) => ({ ref: c.class.ref, level: c.level, subclass: c.subclass?.ref ?? null }))
@@ -53,7 +53,7 @@ function wantedRefs(sheet: AnySheet, entries: Map<string, CatalogEntry>): Ref[] 
     ...options,
     ...inventory,
     ...fixedLanguageRefs(
-      Object.fromEntries(classes.map((c) => [bareName(c.ref.key), c.level])), sheet.species.ref.book),
+      Object.fromEntries(classes.map((c) => [bareName(c.ref.key), c.level])), books),
     ...(sheet.languageChoices ?? []),
   ];
 
@@ -77,7 +77,7 @@ export async function loadSheetEntries(
   const tried = new Set<string>();
   for (let round = 0; round < MAX_ROUNDS; round++) {
     const pending = new Map<string, Ref>();
-    for (const r of wantedRefs(sheet, entries)) {
+    for (const r of wantedRefs(sheet, entries, books)) {
       const k = refKey(r);
       if (!tried.has(k) && !pending.has(k)) pending.set(k, r);
     }

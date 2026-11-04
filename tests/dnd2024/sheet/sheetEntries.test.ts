@@ -110,6 +110,7 @@ describe("loadSheetEntries", () => {
     const { calls, fetch } = fetcher();
     const entries = await loadSheetEntries(v2(), ["otro-libro"], fetch);
     expect(entries.size).toBe(0);
-    expect(calls).toHaveLength(0);
+    // Solo se piden los idiomas fijos (están en cualquier libro permitido)
+    expect(calls.flat().every((r) => r.book === "otro-libro" && r.key.startsWith("language:"))).toBe(true);
   });
 });
