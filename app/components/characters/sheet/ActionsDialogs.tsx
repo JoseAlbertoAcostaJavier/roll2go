@@ -9,6 +9,8 @@ import Bbcode from "@/app/components/ui/Bbcode";
 import MaskIcon from "@/app/components/ui/MaskIcon";
 import SpellDialog from "@/app/components/characters/spells/SpellDialog";
 import { spellHrefFrom } from "@/app/components/characters/spells/SpellList";
+import type { ItemDetails } from "@/lib/rules/dnd2024/sheet/itemDetails";
+import ItemDialog from "./ItemDialog";
 import StatDialog from "./StatDialog";
 
 /** Acción básica de combate para su diálogo: icono, nombre, cuánto cuesta y texto. */
@@ -21,6 +23,7 @@ type Ctx = {
   openSpell: (ref: Ref, from: HTMLElement) => void;
   openBasic: (key: string, from: HTMLElement) => void;
   openFeature: (key: string, from: HTMLElement) => void;
+  openItem: (lineId: string, from: HTMLElement) => void;
 };
 const ActionsContext = createContext<Ctx | null>(null);
 
@@ -33,12 +36,15 @@ function useActions(): Ctx {
 // Ficha de conjuro (la de la pestaña Conjuros, `?spell=`) y diálogos de las acciones básicas y de los rasgos de la
 // pestaña Acciones.
 // `active`: la pestaña está a la vista; si no, no se monta la ficha (la pestaña Conjuros tiene la suya).
-export default function ActionsDialogs({ characterId, active, spells, basics, features, children }: {
+export default function ActionsDialogs({ characterId, active, spells, basics, features, itemCards, itemDescriptions, children }: {
   characterId: string;
   active: boolean;
   spells: SpellOption[];
   basics: BasicActionInfo[];
   features: FeatureInfo[];
+  /** Fichas y descripciones de las líneas del inventario (clave: id de la línea); desde aquí son de solo lectura. */
+  itemCards: Record<string, ItemDetails>;
+  itemDescriptions: Record<string, string>;
   children: ReactNode;
 }) {
   const byKey = useMemo(() => new Map(spells.map((s) => [refKey(s.ref), s])), [spells]);
@@ -46,6 +52,7 @@ export default function ActionsDialogs({ characterId, active, spells, basics, fe
   const [basic, setBasic] = useState<{ info: BasicActionInfo; opener: HTMLElement } | null>(null);
 
   const [feature, setFeature] = useState<{ info: FeatureInfo; opener: HTMLElement } | null>(null);
+  const [item, setItem] = useState<{ id: string; opener: HTMLElement } | null>(null);
 
   const ctx = useMemo<Ctx>(() => ({
     // Cambia `?spell=` sin recargar (SpellDialog lo lee) y recuerda quién la abrió
@@ -61,6 +68,7 @@ export default function ActionsDialogs({ characterId, active, spells, basics, fe
       const info = features.find((f) => f.key === key);
       if (info) setFeature({ info, opener: from });
     },
+    openItem: (id, from) => setItem({ id, opener: from }),
   }), [basics, features]);
 
   return (
@@ -77,6 +85,14 @@ export default function ActionsDialogs({ characterId, active, spells, basics, fe
             ? <Bbcode source={basic.info.description} className="text-sm" />
             : <p className="text-sm text-muted">Sin descripción.</p>}
         </StatDialog>
+      )}
+      {item && itemCards[item.id] && (
+        <ItemDialog
+          details={itemCards[item.id]}
+          description={itemDescriptions[item.id] ?? ""}
+          onClose={() => setItem(null)}
+          opener={item.opener}
+        />
       )}
       {feature && (
         <StatDialog title={feature.info.name} description="" onClose={() => setFeature(null)} opener={feature.opener}>
@@ -130,6 +146,20 @@ export function FeatureButton({ featureKey, name }: { featureKey: string; name: 
     <button
       type="button"
       onClick={(e) => openFeature(featureKey, e.currentTarget)}
+      className="text-left font-semibold text-fg hover:text-brand-soft hover:underline"
+    >
+      {name}
+    </button>
+  );
+}
+
+/** Nombre de un arma con línea de inventario que abre su ficha de objeto. */
+export function ItemButton({ lineId, name }: { lineId: string; name: string }) {
+  const { openItem } = useActions();
+  return (
+    <button
+      type="button"
+      onClick={(e) => openItem(lineId, e.currentTarget)}
       className="text-left font-semibold text-fg hover:text-brand-soft hover:underline"
     >
       {name}

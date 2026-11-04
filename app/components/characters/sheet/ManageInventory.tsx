@@ -277,7 +277,7 @@ function Row({ line: l, data, where, containers, actions }: {
 }
 
 // Botón «Mover» con menú de destinos. El menú es `fixed` (dentro del panel) y se cierra si algo se desplaza.
-function MoveMenu({ name, targets, onMove }: {
+export function MoveMenu({ name, targets, onMove }: {
   name: string;
   targets: { id: string | null; name: string }[];
   onMove: (to: string | null) => void;

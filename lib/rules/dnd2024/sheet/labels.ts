@@ -192,6 +192,18 @@ const WEAPON_CATEGORY_NAMES: Record<string, string> = { simple: "Sencilla", mart
 export const weaponCategoryName = (category: string) => WEAPON_CATEGORY_NAMES[category.toLowerCase()] ?? capitalize(category);
 export const masteryName = (id: string) => MASTERY_NAMES[id.toLowerCase()] ?? capitalize(id);
 
+/** Resumen propio, en español, de lo que hace cada maestría de arma (clave en minúsculas, como `MASTERY_NAMES`). */
+export const MASTERY_TEXTS: Record<string, string> = {
+  cleave: "Si impactas a una criatura con esta arma, puedes hacer otra tirada de ataque contra una segunda criatura que esté cerca de la primera y a tu alcance. Solo se puede usar una vez por turno.",
+  graze: "Si fallas el ataque, la criatura recibe de todos modos daño igual a tu modificador de característica, aunque sea un daño mínimo.",
+  nick: "El ataque adicional de la propiedad Ligera se hace como parte de la acción de Atacar, en vez de como acción adicional. Solo se puede usar una vez por turno.",
+  push: "Si impactas a una criatura de tamaño Grande o menor, puedes empujarla hasta 3 metros en línea recta alejándola de ti.",
+  sap: "Si impactas a una criatura, tiene desventaja en su próxima tirada de ataque antes del inicio de tu siguiente turno.",
+  slow: "Si impactas a una criatura y le haces daño, su velocidad se reduce en 3 metros hasta el inicio de tu siguiente turno. Las reducciones no se acumulan.",
+  topple: "Si impactas a una criatura, puede tener que superar una salvación de Constitución o quedar derribada.",
+  vex: "Si impactas a una criatura y le haces daño, tienes ventaja en tu siguiente tirada de ataque contra ella antes del final de tu siguiente turno.",
+};
+
 const ITEM_TYPE_NAMES: Record<string, string> = {
   M: "Arma cuerpo a cuerpo", R: "Arma a distancia", A: "Munición", LA: "Armadura ligera", MA: "Armadura intermedia",
   HA: "Armadura pesada", S: "Escudo", G: "Equipo de aventurero", AT: "Herramientas de artesano", T: "Herramienta",

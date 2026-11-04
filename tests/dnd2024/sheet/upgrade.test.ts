@@ -131,6 +131,8 @@ describe("loadUpgradeEntries", () => {
 describe("conversión y valores derivados", () => {
   it("una v1 y su v2 dan los mismos valores derivados", () => {
     const original = v1();
-    expect(derive(upgradeSheet(original, catalog, counter()), catalog)).toEqual(derive(original, catalog));
+    // (los ids de línea de los ataques dependen de cómo se numeran las líneas: no se comparan)
+    const sansIds = (d: ReturnType<typeof derive>) => ({ ...d, attacks: d.attacks.map((a) => ({ ...a, lineId: undefined })) });
+    expect(sansIds(derive(upgradeSheet(original, catalog, counter()), catalog))).toEqual(sansIds(derive(original, catalog)));
   });
 });

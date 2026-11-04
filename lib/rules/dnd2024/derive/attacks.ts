@@ -19,6 +19,8 @@ export type Attack = {
   range: string;
   /** Clave inglesa en minúsculas del tipo de daño ("slashing"). */
   damageTypeId: string;
+  /** Línea del inventario de la que sale el arma (no el ataque sin armas). */
+  lineId?: string;
 };
 
 export const UNARMED_NAME = "Ataque sin armas";
@@ -79,7 +81,7 @@ export function isMonkWeapon(weapon: ItemData): boolean {
   return category === "simple" || (category === MARTIAL && w.properties.includes(LIGHT));
 }
 
-function attackRange(weapon: ItemData, ranged: boolean): string {
+export function attackRange(weapon: ItemData, ranged: boolean): string {
   const properties = weapon.weapon?.properties ?? [];
   const thrown = weapon.weapon?.range ? rangeMetersText(weapon.weapon.range) : null;
   if (ranged) return thrown ?? "—";

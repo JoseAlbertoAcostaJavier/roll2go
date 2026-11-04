@@ -5,15 +5,15 @@ import { useRouter } from "next/navigation";
 import { LoaderCircle, SlidersHorizontal, TriangleAlert } from "lucide-react";
 import type { Coins, Inventory } from "@/lib/rules/dnd2024/sheet/sheet";
 import { MAX_COINS, MAX_OTHER, type InventoryOp } from "@/lib/rules/dnd2024/sheet/edits";
-import { inventoryWeights } from "@/lib/rules/dnd2024/sheet/inventory";
-import { itemDetails, type ItemDetails } from "@/lib/rules/dnd2024/sheet/itemDetails";
+import { effectiveContainer, inventoryWeights } from "@/lib/rules/dnd2024/sheet/inventory";
+import { itemDetails, locationText, type ItemDetails } from "@/lib/rules/dnd2024/sheet/itemDetails";
 import { inventoryChips, inventoryGroups, type ItemInfo } from "@/lib/rules/dnd2024/sheet/inventoryTable";
 import { parseSection } from "@/lib/rules/dnd2024/sheet/sheetSections";
 import { sheetCard, cardTitle } from "@/app/components/ui/formStyles";
 import type { NewItem } from "./AddItemDialog";
 import InventoryFilters from "./InventoryFilters";
 import { clampInt, smallInput } from "./InventoryFields";
-import ItemDialog from "./ItemDialog";
+import ItemDialog, { type ItemOwnerControls } from "./ItemDialog";
 import ManageInventory from "./ManageInventory";
 import InventoryTable, { fmt, weightText, type InventoryActions } from "./InventoryTable";
 
@@ -114,7 +114,26 @@ export default function EquipmentTab({ characterId, isOwner, inventory, info, ca
   // Ficha del objeto abierto: cantidad y notas salen del inventario optimista; una línea recién añadida (aún sin datos
   // del servidor) se arma con lo que se sabe de ella
   const openLine = open ? inv.items.find((l) => l.id === open.id) : undefined;
-  const card = openLine ? liveCard(details[openLine.id] ?? itemDetails(openLine, undefined, null), openLine) : null;
+  const where = openLine ? locationText(openLine, inv.items, info) : "";
+  const card = openLine
+    ? liveCard(details[openLine.id] ?? itemDetails(openLine, undefined, { capacityText: null, location: where }), openLine, where)
+    : null;
+  // Controles de la ficha (solo el dueño): «Mover» no en los contenedores ni a donde ya está
+  let owner: ItemOwnerControls | undefined;
+  if (openLine && !readOnly) {
+    const here = effectiveContainer(openLine, inv.items, info);
+    const targets: { id: string | null; name: string }[] = info[openLine.id] && !info[openLine.id].container ? [
+      ...(here !== null ? [{ id: null, name: "Equipo" }] : []),
+      ...inv.items.filter((x) => info[x.id]?.container && x.id !== here && x.id !== openLine.id).map((x) => ({ id: x.id, name: x.name })),
+    ] : [];
+    owner = {
+      quantity: openLine.quantity,
+      onQuantity: (q) => actions.quantity(openLine.id, q),
+      targets,
+      onMove: (to) => actions.move(openLine.id, to),
+      onRemove: () => actions.remove(openLine.id),
+    };
+  }
   const carried = inventoryWeights(inv.items, info).carried;
   const over = carried > capacity;
 
@@ -212,6 +231,7 @@ export default function EquipmentTab({ characterId, isOwner, inventory, info, ca
           description={descriptions[open.id] ?? ""}
           onClose={() => setOpen(null)}
           opener={open.opener}
+          owner={owner}
         />
       )}
 
@@ -285,9 +305,9 @@ function OtherField({ value, onCommit }: { value: string; onCommit: (v: string) 
 }
 
 // Pone en la ficha la cantidad y las notas actuales de la línea
-function liveCard(card: ItemDetails, line: Inventory["items"][number]): ItemDetails {
+function liveCard(card: ItemDetails, line: Inventory["items"][number], location: string): ItemDetails {
   const rows = card.rows.filter((r) => r.label !== "Cantidad" && r.label !== "Notas");
   rows.push({ label: "Cantidad", value: String(line.quantity) });
   if (line.notes.trim()) rows.push({ label: "Notas", value: line.notes });
-  return { ...card, rows };
+  return { ...card, rows, location };
 }

@@ -4,11 +4,12 @@ import type { CatalogEntry, SpellOption } from "@/lib/rules/catalog/types";
 import type { ActionsSummary } from "@/lib/rules/dnd2024/derive/actions";
 import { actionSections, sectionVisibility, type ActionFilter, type ActionSection, type SectionVisibility } from "@/lib/rules/dnd2024/sheet/actionFilters";
 import { refKey } from "@/lib/rules/dnd2024/sheet/equipmentRefs";
+import type { ItemDetails } from "@/lib/rules/dnd2024/sheet/itemDetails";
 import { DAMAGE_TYPE_NAMES, fmtMod } from "@/lib/rules/dnd2024/sheet/labels";
 import { iconSrc } from "@/lib/utils/icons";
 import { sheetCard } from "@/app/components/ui/formStyles";
 import MaskIcon from "@/app/components/ui/MaskIcon";
-import ActionsDialogs, { BasicActionButton, FeatureButton, SpellLink, type BasicActionInfo, type FeatureInfo } from "./ActionsDialogs";
+import ActionsDialogs, { BasicActionButton, FeatureButton, ItemButton, SpellLink, type BasicActionInfo, type FeatureInfo } from "./ActionsDialogs";
 import ActionsFilters from "./ActionsFilters";
 import FeatureUsesControl from "./FeatureUsesControl";
 
@@ -28,6 +29,9 @@ type Props = {
   /** Conjuros de las filas (cabecera de su ficha mientras llega la descripción). */
   spells: SpellOption[];
   basics: BasicActionInfo[];
+  /** Fichas y descripciones de las líneas del inventario, para abrir la de cada arma. */
+  itemCards: Record<string, ItemDetails>;
+  itemDescriptions: Record<string, string>;
 };
 
 const SPELL_ICON = iconSrc("action", "cast-spell");
@@ -72,7 +76,7 @@ function AttackTable({ rows }: { rows: ActionSection["attacks"] }) {
                           />
                         )}
                       </span>
-                      <span>{a.name}</span>
+                      {a.lineId ? <ItemButton lineId={a.lineId} name={a.name} /> : <span>{a.name}</span>}
                     </span>
                   </th>
                   <td className="py-2 pr-3 whitespace-nowrap">{a.range}</td>
@@ -198,7 +202,7 @@ function Section({ section, vis, attacksPerAction, characterId, isOwner }: {
 
 // Pestaña Acciones (spec de acciones §4): filtros y, por lo que cuesta usarlos, armas, conjuros, rasgos y acciones
 // básicas de combate
-export default function ActionsTab({ characterId, isOwner, active, summary, filter, base, query, entries, spells, basics }: Props) {
+export default function ActionsTab({ characterId, isOwner, active, summary, filter, base, query, entries, spells, basics, itemCards, itemDescriptions }: Props) {
   // Siempre todas las secciones: el filtro solo decide qué se ve en pantalla, la hoja impresa sale completa
   const sections = actionSections(summary, "todo");
   const shown = sections.some((s) => sectionVisibility(s, filter).section);
@@ -207,7 +211,7 @@ export default function ActionsTab({ characterId, isOwner, active, summary, filt
     return { key: refKey(f.ref), name: f.name, source: f.source, description: e ? e.descriptionEs || e.description : "" };
   });
   return (
-    <ActionsDialogs characterId={characterId} active={active} spells={spells} basics={basics} features={features}>
+    <ActionsDialogs characterId={characterId} active={active} spells={spells} basics={basics} features={features} itemCards={itemCards} itemDescriptions={itemDescriptions}>
       <ActionsFilters base={base} query={query} active={filter} />
       {sections.length === 0 ? (
         <p className="text-sm text-muted">No hay acciones que mostrar.</p>

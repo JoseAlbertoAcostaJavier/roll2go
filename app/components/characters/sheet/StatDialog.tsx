@@ -8,7 +8,7 @@ import { partText, totalText, type BreakdownUnit } from "@/lib/rules/dnd2024/she
 // Detalle de un valor de la pestaña Información (spec §3): qué es y de dónde sale su número. Mismo comportamiento que
 // la ficha de conjuro: foco atrapado, Escape cierra y el foco vuelve al botón que lo abrió.
 export default function StatDialog({ title, subject, description, breakdown, unit, children, onClose, opener }: {
-  title: string;
+  title: ReactNode;
   /** A qué afecta el desglose, para la frase de entrada: «tu puntuación de Fuerza», «la Clase de armadura»… */
   subject?: string;
   description: string;
@@ -35,6 +35,8 @@ export default function StatDialog({ title, subject, description, breakdown, uni
 
   // Escape cierra y Tab no sale de la ventana
   function onKeyDown(e: React.KeyboardEvent) {
+    // Lo que ya gastó un menú de dentro (Escape, flechas, Tab) no es de la ventana
+    if (e.defaultPrevented) return;
     if (e.key === "Escape") {
       e.preventDefault();
       onClose();
