@@ -48,6 +48,12 @@ describe("pruneLanguages", () => {
     expect(pruneLanguages([l("celestial"), l("elvish")], languageSlots({}), [], typeOf)).toEqual([null, l("elvish")]);
     expect(pruneLanguages([l("elvish"), l("elvish")], languageSlots({}), [], typeOf)).toEqual([l("elvish"), null]);
   });
+  it("compara por nombre: el mismo idioma de otro libro es el mismo", () => {
+    const other = (name: string) => ({ book: "otro", key: `language:${name}|otro` });
+    const t = () => "standard";
+    expect(pruneLanguages([l("elvish"), other("elvish")], languageSlots({}), [], t)).toEqual([l("elvish"), null]);
+    expect(pruneLanguages([other("common"), l("elvish")], languageSlots({}), fixedLanguages({}), t)).toEqual([null, l("elvish")]);
+  });
   it("rellena con null los huecos sin elegir", () => {
     expect(pruneLanguages([], languageSlots({ rogue: 1 }), [], typeOf)).toEqual([null, null, null]);
   });

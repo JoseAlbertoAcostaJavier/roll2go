@@ -1098,6 +1098,15 @@ describe("validateLevel: idiomas de Explorador hábil", () => {
     sheet.languageChoices = [ref("language:elvish|xphb"), ref("language:dwarvish|xphb")];
     expect((await errorsOf(sheet, body([lang("celestial", "elvish")])))[`choices.${LANG}`]).toContain("Ya conoces ese idioma.");
   });
+  it("sin idiomas en los libros no pide ninguno (el nivel no se bloquea)", async () => {
+    const empty = { ...ctx(), languagePool: async () => [] };
+    const r = await validateLevel(ranger1(), body([]), empty);
+    expect(langErrors(r.ok ? {} : r.errors)).toEqual([]);
+    expect((r.ok ? {} : r.errors).choices ?? "").not.toContain("idiomas");
+    const withTwo = { ...ctx(), languagePool: async () => [{ name: "elvish", type: "standard" }, { name: "dwarvish", type: "standard" }, { name: "common", type: "standard" }] };
+    const pending = await validateLevel(ranger1(), body([]), withTwo);
+    expect(pending.ok ? "" : pending.errors.choices).toContain("Explorador hábil: elige 2 idiomas.");
+  });
   it("Guerrero 1 → 2 no acepta idiomas", async () => {
     const errs = await errorsOf(sheetWith([["fighter", 1]]), { ...body([lang("elvish", "celestial")]), class: client("class:fighter|xphb") });
     expect(errs.choices).toContain("Hay elecciones que este nivel no pide.");

@@ -30,7 +30,10 @@ export type Dnd2024Sheet = {
   appearance: string;
   age: string;
   languages: string;
-  /** Idiomas elegidos al crear (y al subir a Explorador 2), en el orden de los huecos. `languages` queda para el texto antiguo. */
+  /**
+   * Idiomas elegidos al crear, en el orden de los huecos. Los de Explorador hábil (Explorador 2) van en las `choices`
+   * del nivel (`{ type: "languages" }`). `languages` queda para el texto antiguo.
+   */
   languageChoices?: Ref[];
   notes: string;
   /** Trasfondo y notas, editables en la ficha. Opcionales: las hojas antiguas los leen como vacíos. */

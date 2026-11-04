@@ -9,6 +9,7 @@ import { notify } from "@/lib/server/notifications/notify";
 import { MAX_IMAGE, readImage, storeImage } from "@/lib/server/campaigns/campaignInput";
 import { OUTDATED_SHEET_ERROR, loadCharacterFor } from "@/lib/server/characters/characterAccess";
 import { NotFoundError, listEntries, resolveRef, usableBooks } from "@/lib/server/catalog/catalog";
+import { languagePool } from "@/lib/rules/dnd2024/creation/languages";
 import { isValidId, newId } from "@/lib/server/ids";
 import { fail, invalid, type Result } from "@/lib/server/result";
 import { cleanText } from "@/lib/utils/utils";
@@ -47,6 +48,7 @@ async function checkSheet(
     books,
     resolve: (ref) => resolveRef(ref, books),
     makeId: newId,
+    languagePool: async () => languagePool(await listEntries({ books, kind: "language" })),
     // Legados de la especie en su mismo libro (como los muestra el asistente)
     hasLineages: async (species) =>
       (await listEntries({ books, kind: "lineage", parent: species.key })).some((l) => l.ref.book === species.book),

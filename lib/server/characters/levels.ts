@@ -4,7 +4,8 @@ import "server-only";
 import { Campaign } from "@/lib/models/Campaign";
 import { Character } from "@/lib/models/Character";
 import { loadForWrite } from "@/lib/server/characters/writeAccess";
-import { getEntries, getEntry } from "@/lib/server/catalog/catalog";
+import { getEntries, getEntry, listEntries } from "@/lib/server/catalog/catalog";
+import { languagePool } from "@/lib/rules/dnd2024/creation/languages";
 import { notify } from "@/lib/server/notifications/notify";
 import { fail, invalid, type Result } from "@/lib/server/result";
 import { unchangedFilter } from "@/lib/utils/unchangedFilter";
@@ -35,6 +36,7 @@ export async function levelUp(userId: string, id: string, body: unknown): Promis
     books: found.books,
     resolve: async (ref) => (found.books.includes(ref.book) ? getEntry(ref) : null),
     entries: found.entries,
+    languagePool: async () => languagePool(await listEntries({ books: found.books, kind: "language" })),
   });
   if (!result.ok) return invalid(result.errors);
 

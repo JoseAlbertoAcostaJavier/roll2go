@@ -6,7 +6,7 @@ import type {
   SubclassData,
 } from "@/lib/rules/types";
 import type { Derived } from "../derive";
-import { RANGER_LANGUAGES_SOURCE, languageSlots } from "../creation/languages";
+import { RANGER_LANGUAGES_SOURCE, capSlots, languageSlots, type LanguageInfo } from "../creation/languages";
 import { bareName, refKey } from "../sheet/equipmentRefs";
 import {
   BONUS_SPELL_ORIGINS, FEATURE_CHOICES, IMPROVED_ILLUSIONS, IMPROVED_ILLUSIONS_CANTRIP, MAGICAL_DISCOVERIES,
@@ -107,7 +107,7 @@ export function pendingChoices(
   classRef: Ref,
   newClassLevel: number,
   entries: Map<string, CatalogEntry>,
-  opts: { subclass?: Ref; known?: Ref[] } = {},
+  opts: { subclass?: Ref; known?: Ref[]; languages?: { pool: LanguageInfo[]; known: string[] } } = {},
 ): PendingChoice[] {
   const data = entries.get(refKey(classRef))?.data as ClassData | undefined;
   if (!data) return [];
@@ -190,10 +190,13 @@ export function pendingChoices(
   // Idiomas de Explorador hábil, al llegar a Explorador 2
   const rangerLanguages = newClassLevel === 2
     ? languageSlots({ [bareName(classRef.key)]: newClassLevel }).find((s) => s.source === "ranger") : undefined;
-  if (rangerLanguages) {
+  // (con la lista de idiomas del catálogo, solo los que hay para elegir)
+  const languageCount = rangerLanguages && opts.languages
+    ? capSlots([rangerLanguages], opts.languages.pool, opts.languages.known)[0].count : rangerLanguages?.count ?? 0;
+  if (rangerLanguages && languageCount > 0) {
     out.push({
-      type: "languages", source: RANGER_LANGUAGES_SOURCE, count: rangerLanguages.count,
-      label: `${rangerLanguages.label}: elige ${rangerLanguages.count} idiomas.`,
+      type: "languages", source: RANGER_LANGUAGES_SOURCE, count: languageCount,
+      label: `${rangerLanguages.label}: elige ${languageCount} ${languageCount === 1 ? "idioma" : "idiomas"}.`,
     });
   }
 

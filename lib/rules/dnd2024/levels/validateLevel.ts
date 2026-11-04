@@ -11,7 +11,7 @@ import {
   checkFeatSpellChoices, chosenFeatSpells, featNameOfLabel, featSpellClash, levelFeatSpellPending, splitFeatSpells, type FeatWithData,
 } from "../spells/featSpells";
 import { bareName, refKey } from "../sheet/equipmentRefs";
-import { chosenLanguageRefs, fixedLanguages } from "../creation/languages";
+import { chosenLanguageRefs, fixedLanguages, type LanguageInfo } from "../creation/languages";
 import { heldArcana, heldBonusSpells, heldOptionalFeatures, heldPicks } from "./held";
 import { meetsMulticlass, pendingChoices } from "./pendingChoices";
 import { currentMasteries } from "./masteries";
@@ -30,6 +30,8 @@ export type ValidateLevelCtx = {
   resolve: (ref: Ref) => Promise<CatalogEntry | null>;
   /** Entradas de la hoja (`loadSheetEntries`): clases, subclases, rasgos y dotes actuales. No se modifica. */
   entries: Map<string, CatalogEntry>;
+  /** Idiomas de los libros utilizables (Explorador hábil pide solo los que hay para elegir). */
+  languagePool?: () => Promise<LanguageInfo[]>;
 };
 export type ValidateLevelResult = { ok: true; entry: LevelEntry } | { ok: false; errors: Record<string, string> };
 
@@ -113,8 +115,13 @@ export async function validateLevel(
   await loadInto(entries, newFeatures.map((f) => f.ref), ctx.resolve);
   const options = newFeatures.flatMap((f) => (entries.get(refKey(f.ref))?.data as FeatureData | undefined)?.options ?? []);
   await loadInto(entries, options, ctx.resolve);
+  const knownLanguages = [
+    ...fixedLanguages(Object.fromEntries(summary.map((c) => [bareName(c.class.ref.key), c.level]))),
+    ...chosenLanguageRefs(sheet).map((r) => r.key),
+  ];
   const pending = pendingChoices(sheet, classEntry.ref, classLevel, entries, {
     ...(subclass ? { subclass: subclass.ref } : {}), known: knownSpellRefs(derived.spells),
+    ...(ctx.languagePool ? { languages: { pool: await ctx.languagePool(), known: knownLanguages } } : {}),
   });
 
   // Al entrar en una clase nueva se ganan sus competencias de multiclase (las maestrías y las dotes ya las tienen en cuenta)
@@ -143,10 +150,7 @@ export async function validateLevel(
     held: heldPicks(sheet.levels),
     masteries: currentMasteries(sheet),
     // Los idiomas que ya conoce: los fijos de sus clases, los elegidos al crear y los de niveles anteriores
-    knownLanguages: [
-      ...fixedLanguages(Object.fromEntries(summary.map((c) => [bareName(c.class.ref.key), c.level]))),
-      ...chosenLanguageRefs(sheet).map((r) => r.key),
-    ],
+    knownLanguages,
     // Los siempre preparados de esta clase (también los que da este nivel) y los de especie, legado y dotes (los de
     // otra clase sí se pueden aprender: el Hechicero, uno que su subclase de Clérigo le da siempre preparado)
     spellsGranted: [

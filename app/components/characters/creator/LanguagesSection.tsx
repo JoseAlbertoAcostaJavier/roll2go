@@ -2,7 +2,8 @@
 
 import type { EntryOption } from "@/lib/rules/catalog/types";
 import type { LanguageSlot } from "@/lib/rules/dnd2024/creation/languages";
-import { bareName, refKey } from "@/lib/rules/dnd2024/sheet/equipmentRefs";
+import { FIXED_LANGUAGE_NAMES_ES, languageName } from "@/lib/rules/dnd2024/creation/languages";
+import { refKey } from "@/lib/rules/dnd2024/sheet/equipmentRefs";
 import type { LanguageData, Ref } from "@/lib/rules/types";
 import SkillPicker from "../fields/SkillPicker";
 import { refFromKey } from "./ClassFeaturesSection";
@@ -32,17 +33,22 @@ export default function LanguagesSection({
       <ul className="flex flex-wrap gap-2" aria-label="Idiomas que ya conoces">
         {fixed.map((key) => (
           <li key={key} className="rounded-full border border-line bg-surface px-3 py-1 text-sm">
-            {byKey.get(key) ? nameOf(byKey.get(key)!) : bareName(key)}
+            {(() => {
+              const found = languages.find((l) => languageName(l.ref.key) === languageName(key));
+              return found ? nameOf(found) : (FIXED_LANGUAGE_NAMES_ES[languageName(key)] ?? languageName(key));
+            })()}
           </li>
         ))}
       </ul>
       {legacyText && <p className="text-sm text-muted">Anotados antes: {legacyText}</p>}
       {slots.map((slot, si) => {
+        if (slot.count === 0) return null;
         const start = starts[si];
         const own = Array.from({ length: slot.count }, (_, i) => choices[start + i] ?? null);
         const others = choices.filter((c, i) => c && (i < start || i >= start + slot.count)) as Ref[];
+        const seen = new Set([...fixed, ...others.map((o) => o.key)].map(languageName));
         const options = [...byKey.values()]
-          .filter((l) => !fixed.includes(l.ref.key) && !others.some((o) => o.key === l.ref.key))
+          .filter((l) => !seen.has(languageName(l.ref.key)) && seen.add(languageName(l.ref.key)))
           .filter((l) => !slot.standardOnly || (l.data as LanguageData | null)?.type === "standard")
           .map((l) => ({ id: refKey(l.ref), label: nameOf(l) }));
         return (

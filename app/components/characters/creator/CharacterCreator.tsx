@@ -15,7 +15,7 @@ import { checkBackgroundBonus } from "@/lib/rules/dnd2024/creation/abilities";
 import { totalsWithinLimit } from "@/lib/rules/dnd2024/creation/assign";
 import { draftWithoutRolls } from "@/lib/rules/dnd2024/creation/drafts";
 import { languageTotal, pruneLanguages, prunePicks, choosePacks } from "@/lib/rules/dnd2024/creation/creatorPicks";
-import { fixedLanguages, languageSlots } from "@/lib/rules/dnd2024/creation/languages";
+import { capSlots, fixedLanguages, languagePool, languageSlots } from "@/lib/rules/dnd2024/creation/languages";
 import { bareName, equipmentRefs, refKey } from "@/lib/rules/dnd2024/sheet/equipmentRefs";
 import { ABILITY_NAMES, sizeName, skillName, toolName } from "@/lib/rules/dnd2024/sheet/labels";
 import { crossSourceGranted } from "@/lib/rules/dnd2024/spells/grantedSpells";
@@ -241,7 +241,7 @@ export function parseDraft(raw: string | null, props: Props): FormState {
   // Idiomas elegidos: los de un borrador antiguo no los tienen
   const typeOf = languageTypeOf(props.languages);
   const levels = classLevelsOf(form.klass);
-  const slots = languageSlots(levels);
+  const slots = languageSlotsFor(levels, props.languages);
   const given = Array.isArray(d.languageChoices) ? d.languageChoices.slice(0, languageTotal(slots)) : [];
   form.languageChoices = pruneLanguages(
     given.map((r) => findOption(props.languages, asRef(r))?.ref ?? null), slots, fixedLanguages(levels), typeOf,
@@ -254,6 +254,10 @@ const bgData0 = (props: Props, form: FormState) =>
 
 // Niveles por clase para las reglas de idiomas: la clase inicial, a nivel 1
 const classLevelsOf = (klass: Ref | null): Record<string, number> => (klass ? { [bareName(klass.key)]: 1 } : {});
+
+// Huecos de idiomas con lo que se pide recortado a los idiomas que hay para elegir en los libros del personaje
+const languageSlotsFor = (levels: Record<string, number>, languages: EntryOption[]) =>
+  capSlots(languageSlots(levels), languagePool(languages), fixedLanguages(levels));
 
 // Tipo (estándar o raro) de un idioma del listado, o null si no está
 const languageTypeOf = (languages: EntryOption[]) => (ref: Ref) =>
@@ -523,7 +527,7 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
 
   // ---- idiomas ----
   const levels = classLevelsOf(form.klass);
-  const slots = languageSlots(levels);
+  const slots = languageSlotsFor(levels, props.languages);
   const fixed = fixedLanguages(levels);
   const typeOf = languageTypeOf(props.languages);
 
@@ -645,7 +649,7 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
         ...withoutFeatSpells(invocationPending.map((p) => p.source)),
         // Los idiomas que ya no valen con la nueva clase (huecos de menos, uno que ya da la clase) se quitan
         languageChoices: pruneLanguages(
-          form.languageChoices, languageSlots(classLevelsOf(ref)), fixedLanguages(classLevelsOf(ref)), typeOf,
+          form.languageChoices, languageSlotsFor(classLevelsOf(ref), props.languages), fixedLanguages(classLevelsOf(ref)), typeOf,
         ),
       },
       "classes", "classes.0", "classes.0.level", "classes.0.subclass", "classes.0.equipment", "classes.0.equipmentPicks",
@@ -670,6 +674,12 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
     ev.preventDefault();
     if (!abilitiesValid || loading) return;
     setFormError("");
+    // Con huecos de idioma sin elegir no se envía: las posiciones de lo elegido se desplazarían
+    if (form.languageChoices.filter(Boolean).length < languageTotal(slots)) {
+      setErrors((e) => ({ ...e, languageChoices: "Faltan idiomas por elegir." }));
+      document.getElementById("idiomas")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
     if (recreate && !confirming) {
       setConfirming(true);
       return;

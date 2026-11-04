@@ -9,7 +9,7 @@ import { derive } from "@/lib/rules/dnd2024/derive";
 import { characterFeats } from "@/lib/rules/dnd2024/derive/features";
 import { chosenFeatSpells, featNameOfLabel, levelFeatSpellPending, type FeatWithData } from "@/lib/rules/dnd2024/spells/featSpells";
 import { chosenSpells, knownSpellRefs } from "@/lib/rules/dnd2024/derive/spells";
-import { chosenLanguageRefs, fixedLanguages } from "@/lib/rules/dnd2024/creation/languages";
+import { chosenLanguageRefs, fixedLanguages, languagePool } from "@/lib/rules/dnd2024/creation/languages";
 import { bareName, refKey } from "@/lib/rules/dnd2024/sheet/equipmentRefs";
 import { FEATURE_OPTION_LABELS } from "@/lib/rules/dnd2024/levels/featureChoices";
 import { ABILITY_NAMES, skillName } from "@/lib/rules/dnd2024/sheet/labels";
@@ -158,9 +158,14 @@ function Wizard(props: Props & { draftKey: string; draft: string | null }) {
     : null;
   const subclassEntry = chosenSub ?? (owned?.subclass ? entries.get(refKey(owned.subclass.ref)) ?? null : null);
 
+  const knownLanguages = [
+    ...fixedLanguages(Object.fromEntries(summary.map((s) => [bareName(s.class.ref.key), s.level]))),
+    ...chosenLanguageRefs(sheet).map((r) => r.key),
+  ];
   const basePending = classEntry
     ? pendingChoices(sheet, classEntry.ref, classLevel, entries, {
       ...(chosenSub ? { subclass: chosenSub.ref } : {}), known: knownSpellRefs(derived.spells),
+      languages: { pool: languagePool(props.languages), known: knownLanguages },
     })
     : [];
   // Conjuros de dotes e invocaciones (Pacto del tomo): los de las que elige ahora (hasta este nivel), los que dan más
@@ -238,10 +243,7 @@ function Wizard(props: Props & { draftKey: string; draft: string | null }) {
     held,
     masteries: currentMasteries(sheet).map(refKey),
     languages: props.languages,
-    knownLanguages: [
-      ...fixedLanguages(Object.fromEntries(summary.map((s) => [bareName(s.class.ref.key), s.level]))),
-      ...chosenLanguageRefs(sheet).map((r) => r.key),
-    ],
+    knownLanguages,
     featBlocked,
   };
   // Dotes generales para la mejora de característica: sin la propia mejora, con requisitos y sin las que ya tiene

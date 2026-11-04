@@ -134,6 +134,29 @@ describe("validateSheet", () => {
       .toBe("Idiomas no válidos.");
     expect((await errorsOf((s) => { delete s.languageChoices; })).languageChoices).toBe("Faltan idiomas por elegir.");
   });
+  it("idiomas: sin idiomas en los libros no se pide elegir ninguno; con pocos, solo los que hay", async () => {
+    const pool = async () => [] as { name: string; type: string | null }[];
+    const none = valid();
+    none.languageChoices = [];
+    expect((await validateSheet(none, { ...ctx, languagePool: pool })).ok).toBe(true);
+    // Un solo idioma estándar disponible: se pide uno, no dos
+    const one = valid();
+    one.languageChoices = [{ book: B, key: "language:elvish|xphb" }];
+    const onePool = async () => [{ name: "elvish", type: "standard" }];
+    expect((await validateSheet(one, { ...ctx, languagePool: onePool })).ok).toBe(true);
+    one.languageChoices = [];
+    const r = await validateSheet(one, { ...ctx, languagePool: onePool });
+    expect(r.ok ? null : r.errors.languageChoices).toBe("Faltan idiomas por elegir.");
+  });
+  it("idiomas: el mismo idioma de otro libro cuenta como repetido", async () => {
+    const other = new Map(catalog);
+    const c = catalog.get("language:elvish|xphb")!;
+    other.set("language:elvish|otro", { ...c, ref: { book: B, key: "language:elvish|otro" } });
+    const s = valid();
+    s.languageChoices = [{ book: B, key: "language:elvish|xphb" }, { book: B, key: "language:elvish|otro" }];
+    const r = await validateSheet(s, { ...ctx, resolve: async (x: Ref) => (x.book === B ? (other.get(x.key) ?? null) : null) });
+    expect(r.ok ? null : r.errors.languageChoices).toBe("Ya conoces ese idioma.");
+  });
   it("idiomas: una lista enorme se rechaza", async () => {
     const l = { book: B, key: "language:elvish|xphb" };
     expect((await errorsOf((s) => { s.languageChoices = Array(50).fill(l); })).languageChoices).toBe("Idiomas no válidos.");

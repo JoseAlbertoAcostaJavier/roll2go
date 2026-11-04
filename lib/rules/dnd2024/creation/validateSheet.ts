@@ -8,7 +8,7 @@ import {
 import { POINT_BUY_TOTAL, STANDARD_ARRAY, checkBackgroundBonus, pointBuyCost } from "./abilities";
 import { checkChoices, loadInto } from "./checkChoices";
 import { checkFeatSpells } from "./checkFeatSpells";
-import { checkLanguages, fixedLanguages, languageSlots } from "./languages";
+import { capSlots, checkLanguages, fixedLanguages, languageSlots, type LanguageInfo } from "./languages";
 import { has, isObj, isStringList } from "./rawInput";
 import { splitFeatSpells } from "../spells/featSpells";
 import { pendingChoices } from "../levels/pendingChoices";
@@ -26,6 +26,8 @@ export type ValidateCtx = {
   resolve: (ref: Ref) => Promise<CatalogEntry | null>;
   /** Si la especie tiene algún legado en los libros utilizables (si no hay ninguno, no se exige elegirlo). */
   hasLineages: (species: Ref) => Promise<boolean>;
+  /** Idiomas de los libros utilizables: con ellos se recorta cuántos hay que elegir (sin idiomas, ninguno). */
+  languagePool?: () => Promise<LanguageInfo[]>;
   /** Id de cada línea del inventario inicial (un ObjectId en texto). */
   makeId: () => string;
   /**
@@ -301,7 +303,9 @@ export async function validateSheet(input: unknown, ctx: ValidateCtx): Promise<V
     const refs: Ref[] = [];
     const langEntries = new Map<string, CatalogEntry>();
     // Sin más idiomas de los que caben: no se consulta el catálogo con listas enormes
-    let shape = Array.isArray(raw) && raw.length <= languageSlots(levels).reduce((n, x) => n + x.count, 0);
+    const rawSlots = languageSlots(levels);
+    const slots = ctx.languagePool ? capSlots(rawSlots, await ctx.languagePool(), fixedLanguages(levels)) : rawSlots;
+    let shape = Array.isArray(raw) && raw.length <= slots.reduce((n, x) => n + x.count, 0);
     for (const r of shape ? (raw as unknown[]) : []) {
       if (!isObj(r) || typeof r.book !== "string" || typeof r.key !== "string" || !r.key.startsWith("language:")
         || !ctx.books.includes(r.book)) shape = false;
@@ -313,7 +317,7 @@ export async function validateSheet(input: unknown, ctx: ValidateCtx): Promise<V
       }
     }
     const msg = !shape ? "Idiomas no válidos."
-      : checkLanguages(refs, languageSlots(levels), fixedLanguages(levels), (r) => langEntries.get(refKey(r)) ?? null);
+      : checkLanguages(refs, slots, fixedLanguages(levels), (r) => langEntries.get(refKey(r)) ?? null);
     if (msg) err("languageChoices", msg);
     else languageChoices = refs;
   }

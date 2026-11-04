@@ -20,7 +20,7 @@ import { defensesOf, type DefenseRow } from "./defenses";
 import { characterFeats, featureGroups, type FeatureGroup } from "./features";
 import { featureUses, usesVars, type FeatureUse } from "./featureUses";
 import { normalizeName } from "@/lib/rules/schemas";
-import { chosenLanguageRefs, fixedLanguages } from "../creation/languages";
+import { FIXED_LANGUAGE_NAMES_ES, chosenLanguageRefs, fixedLanguages, languageName } from "../creation/languages";
 import { hitPoints } from "./hp";
 import { speedBreakdown } from "./speed";
 import { spellsSummary, type SpellsSummary } from "./spells";
@@ -113,12 +113,12 @@ function languageNames(
   const levels = Object.fromEntries(summary.map((c) => [bareName(c.class.ref.key), c.level]));
   // Los fijos están en el libro que los tenga; los elegidos, en el suyo
   const all = [...entries.values()];
-  const fixed = fixedLanguages(levels).flatMap((key) => {
-    const e = all.find((x) => x.ref.key === key);
-    return e ? [e] : [];
+  const fixed = fixedLanguages(levels).map((key) => {
+    const e = all.find((x) => x.ref.key.startsWith("language:") && languageName(x.ref.key) === languageName(key));
+    return e ? e.nameEs || e.name : (FIXED_LANGUAGE_NAMES_ES[languageName(key)] ?? languageName(key));
   });
   const chosen = chosenLanguageRefs(sheet).flatMap((r) => entries.get(refKey(r)) ?? []);
-  const names = [...fixed, ...chosen].map((e) => e.nameEs || e.name);
+  const names = [...fixed, ...chosen.map((e) => e.nameEs || e.name)];
   const old = sheet.languages.split(/[,;\n]/).map((l) => l.trim()).filter(Boolean);
   const seen = new Set<string>();
   return [...names, ...old].filter((n) => !seen.has(normalizeName(n)) && seen.add(normalizeName(n)));

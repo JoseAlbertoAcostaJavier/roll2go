@@ -102,7 +102,7 @@ function listBookEntries(bookId: string, kind: EntryKind, parent: string, q: str
           .map((d) => ({ sort: d.nameLower, option: toOption(d, book.name, withData) })),
       };
     },
-    ["rules-entries", bookId, kind, parent, q],
+    ["rules-entries-v2", bookId, kind, parent, q],
     { tags: [`book:${bookId}`], revalidate: CACHE_SECONDS },
   )();
 }

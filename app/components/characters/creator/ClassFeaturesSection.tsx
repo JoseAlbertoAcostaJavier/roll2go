@@ -22,6 +22,7 @@ type Cache = Record<string, CatalogEntry | null>;
 
 const ALL_SKILLS = Object.keys(SKILL_NAMES);
 const nameOf = (e: { nameEs: string | null; name: string }) => e.nameEs ?? e.name;
+import { languageName } from "@/lib/rules/dnd2024/creation/languages";
 const lower = (s: string) => s.toLowerCase();
 // "classFeature:protector|cleric|xphb|1" → "Protector"
 export const nameFromKey = (key: string) => {
@@ -131,8 +132,8 @@ export function choiceOptions(p: PendingChoice, ctx: ChoiceCtx): PickerOption[] 
         .map((w) => ({ id: refKey(w.ref), label: masteryLabel(nameOf(w), (w.data as ItemData).weapon?.mastery) }));
     case "languages": {
       // Uno por idioma (el catálogo trae una entrada por libro), sin los que ya conoce
-      const seen = new Set(ctx.knownLanguages ?? []);
-      return (ctx.languages ?? []).filter((l) => !seen.has(l.ref.key) && seen.add(l.ref.key))
+      const seen = new Set((ctx.knownLanguages ?? []).map(languageName));
+      return (ctx.languages ?? []).filter((l) => !seen.has(languageName(l.ref.key)) && seen.add(languageName(l.ref.key)))
         .map((l) => ({ id: refKey(l.ref), label: nameOf(l) }));
     }
     case "featureOption":

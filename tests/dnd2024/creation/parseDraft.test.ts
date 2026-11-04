@@ -29,7 +29,7 @@ describe("parseDraft: objetos a elegir e idiomas", () => {
     species: [], lineages: {},
     classes: [opt("class:rogue|xphb", { equipment })],
     backgrounds: [opt("background:soldier|xphb", { equipment })],
-    languages: [opt("language:elvish|xphb", { type: "standard" }), opt("language:dwarvish|xphb", { type: "standard" })],
+    languages: [opt("language:elvish|xphb", { type: "standard" }), opt("language:dwarvish|xphb", { type: "standard" }), opt("language:celestial|xphb", { type: "rare" })],
     choiceItems: [opt("item:dice set|xphb", { type: "GS" })],
   } as unknown as Parameters<typeof parseDraft>[1];
   const r = (key: string) => ({ book: "b", key });
