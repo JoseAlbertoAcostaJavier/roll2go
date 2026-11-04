@@ -8,7 +8,7 @@ const B = "b";
 const ref = (key: string): Ref => ({ book: B, key });
 const spell = (key: string, nameEs: string, level: number, time: string, tags: string[] = []): CatalogEntry => ({
   ref: ref(key), name: key, nameEs, bookName: "Libro", srd52: false, description: "", descriptionEs: "",
-  identifier: "", parent: null, foundry: null,
+  identifier: "", page: null, parent: null, foundry: null,
   data: {
     level, school: "V", time, range: "18 metros", components: "V, S", duration: "Instantáneo",
     concentration: tags.includes("Concentración"), ritual: tags.includes("Ritual"), classes: ["wizard"], tags,

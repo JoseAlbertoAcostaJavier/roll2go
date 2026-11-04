@@ -16,7 +16,7 @@ type Sheet = Record<string, any>; // eslint-disable-line @typescript-eslint/no-e
 const B = "b1";
 const entry = (key: string, data: unknown, extra: Partial<CatalogEntry> = {}): CatalogEntry => ({
   ref: { book: B, key }, name: key, nameEs: null, bookName: "Libro", srd52: true, data,
-  description: "", descriptionEs: "", identifier: "", parent: null, foundry: null, ...extra,
+  description: "", descriptionEs: "", identifier: "", page: null, parent: null, foundry: null, ...extra,
 });
 const catalog = new Map<string, CatalogEntry>(
   [
@@ -640,7 +640,7 @@ describe("checkChoices: estilo de combate del Paladín", () => {
   const blessed: CatalogEntry = {
     ref: { book: "b1", key: "feat:blessed warrior|xphb" }, name: "Blessed Warrior", nameEs: null, bookName: "Libro",
     srd52: false, data: { category: "fightingStyle", categoryCode: "FS:P", repeatable: false }, description: "",
-    descriptionEs: "", identifier: "blessed-warrior", parent: null, foundry: null,
+    descriptionEs: "", identifier: "blessed-warrior", page: null, parent: null, foundry: null,
   };
   const source = "progression:fs,fs:p|paladin|xphb";
   const cctx = {

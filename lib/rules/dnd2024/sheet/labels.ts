@@ -1,5 +1,6 @@
 // Nombres en español de los identificadores que guarda el catálogo en minúsculas e inglés (habilidades, etc.).
 import type { Ability, FeatData } from "@/lib/rules/types";
+import type { CatalogEntry } from "@/lib/rules/catalog/types";
 import type { DefenseKind } from "../derive/defenses";
 
 /** Categoría de dote de 5etools (y de las elecciones de `pendingChoices`) → `FeatData.category`. */
@@ -219,3 +220,9 @@ const SPELL_LIST_NAMES: Record<string, string> = {
   sorcerer: "Hechicero", warlock: "Brujo", wizard: "Mago",
 };
 export const spellListName = (id: string) => SPELL_LIST_NAMES[id] ?? capitalize(id);
+
+/** «Libro, pág. N» de un rasgo o entrada del catálogo; solo el libro si no tiene página; `null` si no hay entrada o no se sabe el libro. */
+export function featureReference(entry: CatalogEntry | undefined): string | null {
+  if (!entry?.bookName) return null;
+  return entry.page ? `${entry.bookName}, pág. ${entry.page}` : entry.bookName;
+}

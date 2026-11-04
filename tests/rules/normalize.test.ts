@@ -737,7 +737,7 @@ describe("progresiones escritas a mano", () => {
 test("rasgos con elección en el texto sin especificar", () => {
   const feature = (key: string, description: string, data: Partial<FeatureData> = {}): NormalizedEntry => ({
     kind: key.startsWith("subclassFeature") ? "subclassFeature" : "classFeature", key, identifier: "", parent: null,
-    name: key, description, srd52: false, data: { level: 1, className: "Rogue", ...data },
+    name: key, description, srd52: false, page: null, data: { level: 1, className: "Rogue", ...data },
   });
   const list = [
     feature("classFeature:expertise|rogue|xphb|1", "You gain Expertise in two skills of your choice. Choose Stealth."),
@@ -932,5 +932,25 @@ describe("ids de columna y daño de conjuros", () => {
   });
   test("sin {@damage} ni scalingLevelDice: sin daño", () => {
     expect(spellData({ level: 1, entries: ["Nothing."] })).not.toHaveProperty("damage");
+  });
+});
+
+describe("página de la entrada", () => {
+  test("se guarda la página de 5etools; sin página o con 0 queda en null", () => {
+    expect(normalizeFeat({ name: "Alert", source: "XPHB", category: "O", page: 165 }).page).toBe(165);
+    expect(normalizeFeat({ name: "Alert", source: "XPHB", category: "O" }).page).toBeNull();
+    expect(normalizeFeat({ name: "Alert", source: "XPHB", category: "O", page: 0 }).page).toBeNull();
+  });
+  test("una copia sin página hereda la del original; si tiene la suya, la conserva", () => {
+    const all = [
+      { name: "Base", source: "X", page: 12, entries: ["a"] },
+      { name: "Sin", source: "X", _copy: { name: "Base", source: "X" } },
+      { name: "Con", source: "X", page: 30, _copy: { name: "Base", source: "X" } },
+      { name: "Otro", source: "Y", _copy: { name: "Base", source: "X" } },
+    ];
+    expect(normalizeFeat(resolveCopy(all[1], all) as Record<string, unknown>).page).toBe(12);
+    expect(normalizeFeat(resolveCopy(all[2], all) as Record<string, unknown>).page).toBe(30);
+    // De otro libro, la página del original no vale
+    expect(normalizeFeat(resolveCopy(all[3], all) as Record<string, unknown>).page).toBeNull();
   });
 });

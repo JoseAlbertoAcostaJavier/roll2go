@@ -166,6 +166,7 @@ async function main() {
           nameLower: normalizeName(nameEs || e.name),
           description: e.description,
           srd52: e.srd52,
+          page: e.page,
           data: withBook(e.data),
         };
         const $unset: Record<string, 1> = {};

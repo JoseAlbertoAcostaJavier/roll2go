@@ -11,7 +11,7 @@ const entry = (data: Partial<ItemData> & { type: string }): CatalogEntry => ({
   ref: { bookId: "b", kind: "item", identifier: "x" },
   name: "X", nameEs: null, bookName: "PHB", srd52: true,
   data: { weight: 0, value: 0, ...data },
-  description: "", descriptionEs: "", identifier: "x", parent: null, foundry: null,
+  description: "", descriptionEs: "", identifier: "x", page: null, parent: null, foundry: null,
 } as unknown as CatalogEntry);
 const labels = (d: { rows: { label: string; value: string }[] }) => d.rows.map((r) => r.label);
 const row = (d: { rows: { label: string; value: string }[] }, label: string) => d.rows.find((r) => r.label === label)?.value;

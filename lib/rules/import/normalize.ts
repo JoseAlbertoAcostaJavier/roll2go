@@ -26,6 +26,8 @@ export type NormalizedEntry = {
   name: string;
   description: string;
   srd52: boolean;
+  /** Página en el libro (5etools); `null` si no consta. */
+  page: number | null;
   data: EntryData[EntryKind];
 };
 
@@ -153,8 +155,9 @@ export function applyMod(obj: Rec, mod: unknown): Rec {
   return obj;
 }
 
-// Campos de la base que no pasan a una copia (son propios de cada entrada en 5etools)
-const NOT_COPIED = ["srd52", "basicRules2024", "page", "_versions", "hasFluff", "hasFluffImages", "reprintedAs"];
+// Campos de la base que no pasan a una copia (son propios de cada entrada en 5etools). `page` sí pasa si la copia es
+// del mismo libro y no trae la suya
+const NOT_COPIED = ["srd52", "basicRules2024", "_versions", "hasFluff", "hasFluffImages", "reprintedAs"];
 
 /** Resuelve `_copy`: copia la base (buscada por `nombre|fuente` en `all`), encima los campos propios y aplica `_mod`. */
 export function resolveCopy(raw: unknown, all: unknown[], depth = 0): unknown {
@@ -166,6 +169,8 @@ export function resolveCopy(raw: unknown, all: unknown[], depth = 0): unknown {
   const out = clone(resolveCopy(base, all, depth + 1)) as Rec;
   for (const k of NOT_COPIED) delete out[k];
   Object.assign(out, clone(own));
+  // La página del original solo vale si la copia es del mismo libro
+  if (own.page === undefined && lower(str(copy.source)) !== lower(str(own.source))) delete out.page;
   return applyMod(out, copy._mod);
 }
 
@@ -370,6 +375,10 @@ function toEquipment(raw: unknown): Equipment {
 const trueKeys = (v: unknown): string[] =>
   asArr(v).flatMap((o) => (isObj(o) ? Object.keys(o).filter((k) => k !== "choose") : typeof o === "string" ? [o] : []));
 
+/** Página de 5etools: solo un entero positivo; si no, `null`. */
+const pageOf = (raw: Rec): number | null =>
+  typeof raw.page === "number" && Number.isInteger(raw.page) && raw.page > 0 ? raw.page : null;
+
 function header(kind: EntryKind, raw: Rec, key: string, extra: Partial<NormalizedEntry> = {}): Omit<NormalizedEntry, "data"> {
   const name = str(raw.name);
   return {
@@ -380,6 +389,7 @@ function header(kind: EntryKind, raw: Rec, key: string, extra: Partial<Normalize
     name,
     description: entriesToBbcode(asArr(raw.entries)),
     srd52: Boolean(raw.srd52),
+    page: pageOf(raw),
     ...extra,
   };
 }
@@ -470,6 +480,7 @@ export function normalizeLineage(version: Rec, species: Rec): NormalizedEntry {
     name,
     description: entriesToBbcode(own),
     srd52: Boolean(species.srd52),
+    page: pageOf(species),
   }, data);
 }
 

@@ -28,7 +28,7 @@ function catalog(extra: { species?: Defenses; lineage?: Defenses; feat?: Defense
   const entries = buildCatalog();
   const put = (key: string, name: string, data: object) => entries.set(`${B}:${key}`, {
     ref: ref(key), name, nameEs: null, bookName: "Libro", srd52: false, data, description: "", descriptionEs: "",
-    identifier: key, parent: null, foundry: null,
+    identifier: key, page: null, parent: null, foundry: null,
   } as CatalogEntry);
   const speciesBase = entries.get(`${B}:species:elf|xphb`)!.data as object;
   put("species:dwarf|xphb", "Enano", { ...speciesBase, defenses: extra.species });

@@ -31,6 +31,8 @@ const BookEntrySchema = new Schema(
     description: { type: String, default: "", maxlength: 50000 }, // BBCode
     descriptionEs: { type: String, default: "", maxlength: 50000 },
     srd52: { type: Boolean, default: false },
+    // Página en el libro (5etools); null si no consta
+    page: { type: Number, default: null },
     // Campos normalizados según `kind` (ver lib/rules/schemas.ts)
     data: { type: Schema.Types.Mixed, default: {} },
     // Activities y efectos de Foundry tal cual; solo para exportar

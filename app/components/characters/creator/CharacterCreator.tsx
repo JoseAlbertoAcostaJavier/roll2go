@@ -265,7 +265,7 @@ const languageTypeOf = (languages: EntryOption[]) => (ref: Ref) =>
 
 // Entrada ligera del listado como entrada completa, para `derive` (solo usa `data` y los nombres)
 const asEntry = (o: EntryOption): CatalogEntry => ({
-  ...o, description: "", descriptionEs: "", identifier: "", parent: null, foundry: null,
+  ...o, description: "", descriptionEs: "", identifier: "", page: null, parent: null, foundry: null,
 });
 
 // ---------- piezas de la interfaz ----------

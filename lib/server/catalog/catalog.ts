@@ -64,6 +64,7 @@ type EntryDoc = {
   nameEs?: string;
   nameLower: string;
   srd52?: boolean;
+  page?: number | null;
   data?: unknown;
 };
 
@@ -288,6 +289,7 @@ const toEntry = (d: FullEntryDoc, bookName: string): CatalogEntry => ({
   description: d.description ?? "",
   descriptionEs: d.descriptionEs ?? "",
   identifier: d.identifier ?? "",
+  page: d.page ?? null,
   parent: d.parent ? { book: String(d.parent.book), key: d.parent.key } : null,
   foundry: d.foundry ?? null,
 });

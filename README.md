@@ -47,3 +47,7 @@ Tras desplegar el inventario:
 Tras desplegar la elección de objetos e idiomas:
 
 - Vuelve a ejecutar `npm run import:5etools -- --data <carpeta data de 5etools>` y reinicia el servidor tras borrar la caché de datos de Next.
+
+Tras desplegar los rasgos compactos:
+
+- Vuelve a ejecutar `npm run import:5etools -- --data <carpeta data de 5etools>` y reinicia el servidor tras borrar la caché de datos de Next.
