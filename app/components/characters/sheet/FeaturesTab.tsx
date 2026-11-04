@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import type { CatalogEntry } from "@/lib/rules/catalog/types";
 import type { FeatureGroup } from "@/lib/rules/dnd2024/derive";
 import type { FeatureUse } from "@/lib/rules/dnd2024/derive/featureUses";
@@ -100,8 +101,8 @@ export default function FeaturesTab({ groups, entries, base, query, featureUses,
                     )}
                     {g.ref && !entry && <p className="mt-4 text-sm text-muted">Contenido no disponible.</p>}
                     {g.ref && descriptionOf(entry) && (
-                      <Collapsible className="mt-4" header={<span className="text-sm font-semibold text-brand-soft">Descripción</span>}>
-                        <Description entry={entry} />
+                      <Collapsible className="mt-4" header={<span key="header" className="text-sm font-semibold text-brand-soft">Descripción</span>}>
+                        <Description key="description" entry={entry} />
                       </Collapsible>
                     )}
 
@@ -111,7 +112,8 @@ export default function FeaturesTab({ groups, entries, base, query, featureUses,
                           <li key={`${refKey(f.ref)}-${i}`} className="py-3">
                             <Collapsible
                               header={
-                                <>
+                                // Con `key`: React comprueba los elementos que se pasan a un componente de cliente dentro de un `map`
+                                <Fragment key="header">
                                   <span className="flex items-baseline gap-3">
                                     <span className="flex-1 font-semibold">
                                       {f.name}
@@ -121,13 +123,13 @@ export default function FeaturesTab({ groups, entries, base, query, featureUses,
                                     <span className="shrink-0 text-xs uppercase tracking-wide text-muted">· Nivel {f.level}</span>
                                   </span>
                                   <Reference text={featureReference(get(f.ref))} />
-                                </>
+                                </Fragment>
                               }
                               aside={usesOf(f.ref) && (
-                                <FeatureUsesControl characterId={characterId} use={usesOf(f.ref)!} isOwner={isOwner} className="mt-2" />
+                                <FeatureUsesControl key="uses" characterId={characterId} use={usesOf(f.ref)!} isOwner={isOwner} className="mt-2" />
                               )}
                             >
-                              <Description entry={get(f.ref)} />
+                              <Description key="description" entry={get(f.ref)} />
                             </Collapsible>
                           </li>
                         ))}
