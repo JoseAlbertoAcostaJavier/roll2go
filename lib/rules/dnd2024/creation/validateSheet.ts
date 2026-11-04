@@ -8,11 +8,12 @@ import {
 import { POINT_BUY_TOTAL, STANDARD_ARRAY, checkBackgroundBonus, pointBuyCost } from "./abilities";
 import { checkChoices, loadInto } from "./checkChoices";
 import { checkFeatSpells } from "./checkFeatSpells";
+import { checkLanguages, fixedLanguages, languageSlots } from "./languages";
 import { has, isObj, isStringList } from "./rawInput";
 import { splitFeatSpells } from "../spells/featSpells";
 import { pendingChoices } from "../levels/pendingChoices";
 import { abilityRollValue, verifyRolls } from "./rolls";
-import { choiceMatches, loadEquipmentEntries, refKey } from "../sheet/equipmentRefs";
+import { bareName, choiceMatches, loadEquipmentEntries, refKey } from "../sheet/equipmentRefs";
 import {
   ABILITY_METHODS, type AbilityMethod, type Choice, type Dnd2024Sheet, type Dnd2024SheetV2, type Named,
 } from "../sheet/sheet";
@@ -292,6 +293,30 @@ export async function validateSheet(input: unknown, ctx: ValidateCtx): Promise<V
       err("background.abilities", "Ninguna característica puede superar 20.");
   }
 
+  // Idiomas: los de origen y, según la clase, los del Pícaro (los fijos no se eligen). `languages` de texto se ignora
+  let languageChoices: Ref[] = [];
+  if (classEntry) {
+    const levels = { [bareName(classEntry.ref.key)]: 1 };
+    const raw = input.languageChoices ?? [];
+    const refs: Ref[] = [];
+    const langEntries = new Map<string, CatalogEntry>();
+    let shape = Array.isArray(raw);
+    for (const r of Array.isArray(raw) ? raw : []) {
+      if (!isObj(r) || typeof r.book !== "string" || typeof r.key !== "string" || !r.key.startsWith("language:")
+        || !ctx.books.includes(r.book)) shape = false;
+      else {
+        const ref: Ref = { book: r.book, key: r.key };
+        const e = await ctx.resolve(ref);
+        if (e) langEntries.set(refKey(ref), e);
+        refs.push(ref);
+      }
+    }
+    const msg = !shape ? "Idiomas no válidos."
+      : checkLanguages(refs, languageSlots(levels), fixedLanguages(levels), (r) => langEntries.get(refKey(r)) ?? null);
+    if (msg) err("languageChoices", msg);
+    else languageChoices = refs;
+  }
+
   // Textos y números
   const text = {} as Record<keyof typeof TEXT_LIMITS, string>;
   for (const [k, max] of Object.entries(TEXT_LIMITS) as [keyof typeof TEXT_LIMITS, number][]) {
@@ -335,6 +360,7 @@ export async function validateSheet(input: unknown, ctx: ValidateCtx): Promise<V
     appearance: text.appearance,
     age: text.age,
     languages: text.languages,
+    languageChoices,
     notes: text.notes,
     xp: xp as number,
     hp: { max: null, current: null, temp: 0 },

@@ -27,6 +27,10 @@ const catalog = new Map<string, CatalogEntry>(
       abilities: ["str", "dex", "con"], skills: ["Insight", "Intimidation"],
       equipment: { A: [{ displayName: "Un juego (a elegir)", choose: { kinds: ["gaming"], label: "Un juego (a elegir)" } }, { displayName: "Carta" }], B: [] },
     }),
+    entry("language:elvish|xphb", { type: "standard" }, { name: "Elvish", nameEs: "Élfico" }),
+    entry("language:dwarvish|xphb", { type: "standard" }, { name: "Dwarvish", nameEs: "Enano" }),
+    entry("language:celestial|xphb", { type: "rare" }, { name: "Celestial", nameEs: "Celestial" }),
+    entry("language:common|xphb", { type: "standard" }, { name: "Common", nameEs: "Común" }),
     entry("species:elf|xphb", { size: ["M"], hasLineages: true, skills: { fixed: [] } }, { name: "Elf", nameEs: "Elfo" }),
     entry("species:dwarf|xphb", {
       size: ["M"], hasLineages: false, skills: { fixed: ["Perception"] },
@@ -73,6 +77,7 @@ const valid = (): Sheet => ({
   rolls: null,
   speciesChoices: { skills: [], size: null },
   alignment: "Neutral", appearance: "", age: "", languages: "", notes: "", xp: 0,
+  languageChoices: [{ book: B, key: "language:elvish|xphb" }, { book: B, key: "language:dwarvish|xphb" }],
   hp: { max: null, current: null, temp: 0 },
 });
 const run = (mut: (s: Sheet) => void) => {
@@ -113,6 +118,21 @@ describe("validateSheet", () => {
     expect(r.sheet.inventory.items).toEqual([{
       id: "id1", ref: { book: B, key: "item:longsword|xphb" }, name: "Espada larga", quantity: 1, equipped: true, notes: "",
     }]);
+  });
+  it("guarda los idiomas elegidos", async () => {
+    const r = await run(() => {});
+    if (!r.ok) throw new Error("hoja no válida");
+    expect(r.sheet.languageChoices).toEqual([{ book: B, key: "language:elvish|xphb" }, { book: B, key: "language:dwarvish|xphb" }]);
+  });
+  it("idiomas: faltan, Común, raro de origen, sin libro y no enviados", async () => {
+    const l = (n: string) => ({ book: B, key: `language:${n}|xphb` });
+    expect((await errorsOf((s) => { s.languageChoices = [l("elvish")]; })).languageChoices).toBe("Faltan idiomas por elegir.");
+    expect((await errorsOf((s) => { s.languageChoices = [l("elvish"), l("common")]; })).languageChoices).toBe("Ya conoces ese idioma.");
+    expect((await errorsOf((s) => { s.languageChoices = [l("elvish"), l("celestial")]; })).languageChoices)
+      .toBe("Elige idiomas estándar para tus idiomas de origen.");
+    expect((await errorsOf((s) => { s.languageChoices = [l("elvish"), { book: "otro", key: "language:giant|xphb" }]; })).languageChoices)
+      .toBe("Idiomas no válidos.");
+    expect((await errorsOf((s) => { delete s.languageChoices; })).languageChoices).toBe("Faltan idiomas por elegir.");
   });
   it("rechaza lo que no es un objeto", async () => {
     expect((await validateSheet(null, ctx)).ok).toBe(false);
@@ -295,6 +315,8 @@ describe("validateSheet: elecciones de clase de nivel 1", () => {
       ...(ability ? { ability } : {}),
     },
   });
+  for (const [n, type] of [["elvish", "standard"], ["dwarvish", "standard"], ["celestial", "rare"], ["common", "standard"]])
+    extra(`language:${n}|xphb`, { type }, n);
   const sheetFor = (cls: string, choices: unknown[]): Sheet => ({
     version: 1,
     species: fnamed("species:elf|xphb"),
@@ -310,6 +332,7 @@ describe("validateSheet: elecciones de clase de nivel 1", () => {
     rolls: null,
     speciesChoices: { skills: ["perception"], size: null },
     alignment: "", appearance: "", age: "", languages: "", notes: "", xp: 0,
+    languageChoices: ["elvish", "dwarvish", ...(cls === "rogue" ? ["celestial"] : [])].map((n) => fref(`language:${n}|xphb`)),
     hp: { max: null, current: null, temp: 0 },
   });
   const order = (key: string) => ({ type: "featureOption", source: "classFeature:divine order|cleric|xphb|1", value: fnamed(key) });

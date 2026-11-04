@@ -3,7 +3,8 @@
 // inventario (y, en una hoja v1, el equipo inicial elegido con el contenido de los paquetes). Puro: quien llama
 // inyecta la consulta en lote al catálogo.
 import type { CatalogEntry } from "@/lib/rules/catalog/types";
-import { equipmentRefs, refKey } from "@/lib/rules/dnd2024/sheet/equipmentRefs";
+import { fixedLanguageRefs } from "@/lib/rules/dnd2024/creation/languages";
+import { bareName, equipmentRefs, refKey } from "@/lib/rules/dnd2024/sheet/equipmentRefs";
 import { heldOptionalFeatures } from "@/lib/rules/dnd2024/levels/held";
 import type { AnySheet } from "@/lib/rules/dnd2024/sheet/sheet";
 import { summarizeClasses } from "@/lib/rules/dnd2024/sheet/upgrade";
@@ -51,6 +52,9 @@ function wantedRefs(sheet: AnySheet, entries: Map<string, CatalogEntry>): Ref[] 
     ...feats,
     ...options,
     ...inventory,
+    ...fixedLanguageRefs(
+      Object.fromEntries(classes.map((c) => [bareName(c.ref.key), c.level])), sheet.species.ref.book),
+    ...(sheet.languageChoices ?? []),
   ];
 
   // Una hoja v1 necesita el equipo inicial elegido (y el contenido de los paquetes) para convertirla en v2
