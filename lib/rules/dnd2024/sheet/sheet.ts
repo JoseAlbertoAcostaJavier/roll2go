@@ -124,6 +124,8 @@ export type LevelEntry = {
   choices: Choice[];
   /** Solo en el nivel 1: letra de la opción de equipo inicial de la clase. */
   equipment?: string;
+  /** Solo en el nivel 1: objeto elegido en cada `Pack` con `choose` de esa opción (para rehacer la creación). */
+  equipmentPicks?: Record<string, Ref>;
 };
 
 export type Coins = { cp: number; sp: number; ep: number; gp: number; pp: number };

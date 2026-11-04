@@ -17,10 +17,13 @@ export type CreationDraft = {
   background: Ref;
   bonus: Dnd2024SheetV2["background"]["abilities"];
   bgEquipment: string;
+  /** Objeto elegido en cada `Pack` con `choose` de la opción de equipo (clave = índice del `Pack`, en texto). */
+  bgEquipmentPicks: Record<string, Ref>;
   klass: Ref | null;
   /** Elecciones de nivel 1 por `source`: habilidades o claves `libro:clave` de las entradas. */
   classChoices: Record<string, string[]>;
   classEquipment: string;
+  classEquipmentPicks: Record<string, Ref>;
   /** Trucos y conjuros iniciales (o libro), claves `libro:clave`. Los preparados no se eligen al crear. */
   spells: SpellPick;
   /**
@@ -37,6 +40,8 @@ export type CreationDraft = {
   age: string;
   backstory: string;
   languages: string;
+  /** Idiomas elegidos, en el orden de los huecos (origen, Pícaro). */
+  languageChoices: Ref[];
   notes: string;
   xp: string;
 };
@@ -99,9 +104,11 @@ export function creationDraft(
     background: sheet.background.ref,
     bonus: sheet.background.abilities,
     bgEquipment: sheet.background.equipment,
+    bgEquipmentPicks: sheet.background.equipmentPicks ?? {},
     klass: first?.class.ref ?? null,
     classChoices,
     classEquipment: first?.equipment ?? "",
+    classEquipmentPicks: first?.equipmentPicks ?? {},
     spells,
     featSpells,
     featAbility,
@@ -113,6 +120,7 @@ export function creationDraft(
     age: sheet.age,
     backstory: character.backstory,
     languages: sheet.languages,
+    languageChoices: sheet.languageChoices ?? [],
     notes: sheet.notes,
     xp: String(sheet.xp),
   };
@@ -120,13 +128,13 @@ export function creationDraft(
 
 /**
  * `$set` que sustituye la creación por la de `next` (la hoja validada): especie, trasfondo, características, el nivel
- * 1, el inventario inicial y los PG. Los conjuros preparados, los espacios gastados y los dados de golpe gastados
+ * 1, el inventario inicial, los idiomas elegidos y los PG. Los conjuros preparados, los espacios gastados y los dados de golpe gastados
  * dependían de la creación anterior, así que también vuelven a empezar. Los textos y la experiencia no se tocan (se
  * editan en «Editar personaje»).
  */
 export function creationUpdate(next: Dnd2024SheetV2): Record<string, unknown> {
   const keys = [
-    "species", "lineage", "background", "abilityMethod", "baseAbilities", "rolls", "speciesChoices", "hp",
+    "species", "lineage", "background", "abilityMethod", "baseAbilities", "rolls", "speciesChoices", "languageChoices", "hp",
     "levels", "classesSummary", "inventory", "weaponMasteries", "prepared", "spellbookExtra", "slotsUsed", "hitDiceUsed",
   ] as const;
   return Object.fromEntries(keys.map((k) => [`sheet.${k}`, next[k]]));

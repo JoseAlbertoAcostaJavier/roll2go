@@ -78,6 +78,7 @@ export function upgradeSheet(
           ...(first.subclass ? [{ type: "subclass" as const, source: SUBCLASS_SOURCE, value: first.subclass }] : []),
         ],
         equipment: first.equipment,
+        ...(first.equipmentPicks ? { equipmentPicks: first.equipmentPicks } : {}),
       }]
     : [];
 

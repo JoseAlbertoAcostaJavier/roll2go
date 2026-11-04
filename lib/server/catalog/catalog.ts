@@ -29,8 +29,9 @@ export class NotFoundError extends Error {
 const MAX_RESULTS = 200;
 const CACHE_SECONDS = 3600;
 // Solo estos tipos devuelven `data` en el listado; el resto lo omite para aligerar la respuesta
-// (las dotes y los rasgos opcionales, para filtrarlos por categoría en las elecciones de clase)
-const KINDS_WITH_DATA: readonly EntryKind[] = ["species", "lineage", "class", "background", "feat", "optionalFeature"];
+// (las dotes y los rasgos opcionales, para filtrarlos por categoría en las elecciones de clase; los idiomas, por
+// estándar o raro)
+const KINDS_WITH_DATA: readonly EntryKind[] = ["species", "lineage", "class", "background", "feat", "optionalFeature", "language"];
 
 /* Libros que el usuario puede usar para crear un personaje:
    visibles (oficiales públicos del sistema + propios) ∩ campaña ∩ elegidos. */
@@ -149,6 +150,44 @@ function listBookMasteryWeapons(bookId: string) {
 export async function listMasteryWeapons(books: string[]): Promise<EntryOption[]> {
   const ids = [...new Set(books)].filter((id) => mongoose.isValidObjectId(id)).sort();
   const lists = await Promise.all(ids.map(listBookMasteryWeapons));
+  return lists
+    .flatMap((l) => l.entries)
+    .sort((a, b) => (a.sort < b.sort ? -1 : a.sort > b.sort ? 1 : 0))
+    .map((e) => e.option);
+}
+
+/* Objetos no mágicos que pueden ser la elección de un paquete de equipo (juegos, instrumentos, herramientas de
+   artesano y armas sencillas o marciales), con `data` para filtrarlos con `choiceMatches`. Misma caché que el listado. */
+function listBookChoiceItems(bookId: string) {
+  return unstable_cache(
+    async (): Promise<Cached> => {
+      await connectDB();
+      const book = await Book.findById(bookId).select("name").lean();
+      if (!book) return { entries: [] };
+      const docs = (await BookEntry.find({
+        book: bookId,
+        kind: "item",
+        "data.rarity": { $exists: false },
+        $or: [{ "data.type": { $in: ["GS", "INS", "AT"] } }, { "data.weapon.category": { $in: ["simple", "martial"] } }],
+      })
+        .select("-description -descriptionEs -foundry")
+        .sort({ nameLower: 1 })
+        .lean()) as unknown as EntryDoc[];
+      return {
+        entries: docs
+          .filter((d) => validateEntryData("item", d.data).ok)
+          .map((d) => ({ sort: d.nameLower, option: toOption(d, book.name, true) })),
+      };
+    },
+    ["rules-choice-items", bookId],
+    { tags: [`book:${bookId}`], revalidate: CACHE_SECONDS },
+  )();
+}
+
+/** Objetos que pueden elegirse en el equipo inicial, de los libros dados, ordenados por nombre. */
+export async function listChoiceItems(books: string[]): Promise<EntryOption[]> {
+  const ids = [...new Set(books)].filter((id) => mongoose.isValidObjectId(id)).sort();
+  const lists = await Promise.all(ids.map(listBookChoiceItems));
   return lists
     .flatMap((l) => l.entries)
     .sort((a, b) => (a.sort < b.sort ? -1 : a.sort > b.sort ? 1 : 0))
