@@ -21,6 +21,12 @@ const entry = (key: string, data: unknown, extra: Partial<CatalogEntry> = {}): C
 const catalog = new Map<string, CatalogEntry>(
   [
     entry("item:longsword|xphb", { weapon: { category: "martial" } }, { name: "Longsword", nameEs: "Espada larga" }),
+    entry("item:dice set|xphb", { type: "GS" }, { name: "Dice Set", nameEs: "Juego de dados" }),
+    entry("item:magic dice|xphb", { type: "GS", rarity: "rare" }),
+    entry("background:soldier|xphb", {
+      abilities: ["str", "dex", "con"], skills: ["Insight", "Intimidation"],
+      equipment: { A: [{ displayName: "Un juego (a elegir)", choose: { kinds: ["gaming"], label: "Un juego (a elegir)" } }, { displayName: "Carta" }], B: [] },
+    }),
     entry("species:elf|xphb", { size: ["M"], hasLineages: true, skills: { fixed: [] } }, { name: "Elf", nameEs: "Elfo" }),
     entry("species:dwarf|xphb", {
       size: ["M"], hasLineages: false, skills: { fixed: ["Perception"] },
@@ -613,5 +619,38 @@ describe("featSpellClash", () => {
     const cls = { type: "spells" as const, source: "c", value: { cantrips: [n("light")], spells: [] } };
     expect(clash(cls, fs("a", ["light"]))).toEqual({ source: "a", name: "light", with: null });
     expect(clash(fs("a", ["light"]), fs("b", ["guidance"]))).toBeNull();
+  });
+});
+
+describe("validateSheet: objetos a elegir del equipo", () => {
+  const soldier = (s: Sheet, picks?: unknown) => {
+    s.background = { ...named("background:soldier|xphb"), abilities: { str: 2, dex: 1 }, equipment: "A" };
+    if (picks !== undefined) s.background.equipmentPicks = picks;
+  };
+  const dice = { book: B, key: "item:dice set|xphb" };
+
+  it("falta el pick", async () => {
+    expect((await errorsOf((s) => soldier(s)))["background.equipmentPicks"]).toBe("Falta elegir: Un juego (a elegir).");
+  });
+  it("un objeto de otro tipo", async () => {
+    const e = await errorsOf((s) => soldier(s, { "0": { book: B, key: "item:longsword|xphb" } }));
+    expect(e["background.equipmentPicks"]).toBe("Ese objeto no vale para Un juego (a elegir).");
+  });
+  it("un objeto mágico", async () => {
+    const e = await errorsOf((s) => soldier(s, { "0": { book: B, key: "item:magic dice|xphb" } }));
+    expect(e["background.equipmentPicks"]).toBe("Ese objeto no vale para Un juego (a elegir).");
+  });
+  it("pick en un índice sin choose", async () => {
+    const e = await errorsOf((s) => soldier(s, { "0": dice, "1": dice }));
+    expect(e["background.equipmentPicks"]).toBe("Petición no válida.");
+  });
+  it("pick sobrante en una opción sin choose", async () => {
+    const e = await errorsOf((s) => { s.background.equipmentPicks = { "0": dice }; });
+    expect(e["background.equipmentPicks"]).toBe("Petición no válida.");
+  });
+  it("un juego válido llega al inventario", async () => {
+    const r = await run((s) => soldier(s, { "0": dice }));
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.sheet.inventory.items.some((i) => i.ref?.key === "item:dice set|xphb")).toBe(true);
   });
 });

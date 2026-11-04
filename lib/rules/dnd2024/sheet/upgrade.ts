@@ -41,7 +41,8 @@ export async function loadUpgradeEntries(
   const klass = cls ? (entries.get(refKey(cls.ref))?.data as ClassData | undefined) : undefined;
   const bg = entries.get(refKey(sheet.background.ref))?.data as BackgroundData | undefined;
   const options = [klass?.equipment?.[cls?.equipment ?? ""] ?? [], bg?.equipment?.[sheet.background.equipment] ?? []];
-  await loadEquipmentEntries(options, entries, resolve);
+  await loadEquipmentEntries(options, entries, resolve,
+    [...Object.values(cls?.equipmentPicks ?? {}), ...Object.values(sheet.background.equipmentPicks ?? {})]);
   return entries;
 }
 
@@ -87,8 +88,8 @@ export function upgradeSheet(
     classesSummary: summarizeClasses(levels),
     inventory: startingInventory(
       [
-        { pack: classData?.equipment?.[first?.equipment ?? ""] ?? [] },
-        { pack: bgData?.equipment?.[sheet.background.equipment] ?? [] },
+        { pack: classData?.equipment?.[first?.equipment ?? ""] ?? [], picks: first?.equipmentPicks },
+        { pack: bgData?.equipment?.[sheet.background.equipment] ?? [], picks: sheet.background.equipmentPicks },
       ],
       entries,
       makeId,

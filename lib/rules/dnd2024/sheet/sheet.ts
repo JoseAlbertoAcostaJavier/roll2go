@@ -11,9 +11,16 @@ export type Dnd2024Sheet = {
   version: 1;
   species: Named;
   lineage: Named | null;
-  /** `equipment` es la letra de la opción de equipo inicial ("A", "B", "C"…). */
-  background: Named & { abilities: Partial<Record<Ability, 1 | 2>>; equipment: string };
-  classes: (Named & { level: number; subclass: Named | null; skills: string[]; equipment: string })[];
+  /**
+   * `equipment` es la letra de la opción de equipo inicial ("A", "B", "C"…); `equipmentPicks`, el objeto elegido en
+   * cada `Pack` con `choose` (clave = índice del `Pack` en la opción, en texto).
+   */
+  background: Named & {
+    abilities: Partial<Record<Ability, 1 | 2>>; equipment: string; equipmentPicks?: Record<string, Ref>;
+  };
+  classes: (Named & {
+    level: number; subclass: Named | null; skills: string[]; equipment: string; equipmentPicks?: Record<string, Ref>;
+  })[];
   abilityMethod: AbilityMethod;
   baseAbilities: Record<Ability, number>;
   /** `dice`: los 4 dados de cada tirada, sin firmar (solo para mostrarlos). */

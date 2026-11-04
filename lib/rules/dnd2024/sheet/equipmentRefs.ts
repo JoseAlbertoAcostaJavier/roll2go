@@ -24,6 +24,15 @@ export function choiceMatches(kind: ChoiceKind, data: ItemData): boolean {
   }
 }
 
+/** Los `Pack` con el objeto elegido en lugar del texto de los que tienen `choose` (clave del pick = índice en texto). */
+export function applyPicks(packs: Pack[], picks?: Record<string, Ref>): Pack[] {
+  if (!picks) return packs;
+  return packs.map((p, i) => {
+    const pick = p.choose ? picks[String(i)] : undefined;
+    return pick ? { ref: pick, quantity: p.quantity } : p;
+  });
+}
+
 export function equipmentRefs(options: Pack[][], lookup: (key: string) => CatalogEntry | null | undefined): Ref[] {
   const found = new Map<string, Ref>();
   const visit = (ref: Ref) => {
@@ -42,11 +51,12 @@ export async function loadEquipmentEntries(
   options: Pack[][],
   entries: Map<string, CatalogEntry>,
   resolve: (ref: Ref) => Promise<CatalogEntry | null>,
+  picks: Ref[] = [],
 ): Promise<void> {
   const tried = new Set<string>();
   // Un paquete dentro de otro es raro: con unas pocas tandas basta
   for (let i = 0; i < 4; i++) {
-    const pending = equipmentRefs(options, (k) => entries.get(k))
+    const pending = equipmentRefs([...options, picks.map((ref) => ({ ref }))], (k) => entries.get(k))
       .filter((r) => !tried.has(refKey(r)) && !entries.has(refKey(r)));
     if (pending.length === 0) return;
     pending.forEach((r) => tried.add(refKey(r)));
