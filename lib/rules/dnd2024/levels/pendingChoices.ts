@@ -6,7 +6,8 @@ import type {
   SubclassData,
 } from "@/lib/rules/types";
 import type { Derived } from "../derive";
-import { refKey } from "../sheet/equipmentRefs";
+import { RANGER_LANGUAGES_SOURCE, languageSlots } from "../creation/languages";
+import { bareName, refKey } from "../sheet/equipmentRefs";
 import {
   BONUS_SPELL_ORIGINS, FEATURE_CHOICES, IMPROVED_ILLUSIONS, IMPROVED_ILLUSIONS_CANTRIP, MAGICAL_DISCOVERIES,
   MYSTIC_ARCANUM, REPLACEABLE_FIGHTING_STYLE, SCHOOL_SAVANT, SIGNATURE_SPELLS, type ChoiceSpec,
@@ -183,6 +184,16 @@ export function pendingChoices(
     out.push({
       type: "weaponMastery", source: `progression:weapon mastery|${bareKey(classRef.key)}`, count: masteries,
       label: "Maestría con armas",
+    });
+  }
+
+  // Idiomas de Explorador hábil, al llegar a Explorador 2
+  const rangerLanguages = newClassLevel === 2
+    ? languageSlots({ [bareName(classRef.key)]: newClassLevel }).find((s) => s.source === "ranger") : undefined;
+  if (rangerLanguages) {
+    out.push({
+      type: "languages", source: RANGER_LANGUAGES_SOURCE, count: rangerLanguages.count,
+      label: `${rangerLanguages.label}: elige ${rangerLanguages.count} idiomas.`,
     });
   }
 

@@ -10,7 +10,8 @@ import { chosenSpells, knownSpellRefs } from "../derive/spells";
 import {
   checkFeatSpellChoices, chosenFeatSpells, featNameOfLabel, featSpellClash, levelFeatSpellPending, splitFeatSpells, type FeatWithData,
 } from "../spells/featSpells";
-import { refKey } from "../sheet/equipmentRefs";
+import { bareName, refKey } from "../sheet/equipmentRefs";
+import { chosenLanguageRefs, fixedLanguages } from "../creation/languages";
 import { heldArcana, heldBonusSpells, heldOptionalFeatures, heldPicks } from "./held";
 import { meetsMulticlass, pendingChoices } from "./pendingChoices";
 import { currentMasteries } from "./masteries";
@@ -141,6 +142,11 @@ export async function validateLevel(
     },
     held: heldPicks(sheet.levels),
     masteries: currentMasteries(sheet),
+    // Los idiomas que ya conoce: los fijos de sus clases, los elegidos al crear y los de niveles anteriores
+    knownLanguages: [
+      ...fixedLanguages(Object.fromEntries(summary.map((c) => [bareName(c.class.ref.key), c.level]))),
+      ...chosenLanguageRefs(sheet).map((r) => r.key),
+    ],
     // Los siempre preparados de esta clase (también los que da este nivel) y los de especie, legado y dotes (los de
     // otra clase sí se pueden aprender: el Hechicero, uno que su subclase de Clérigo le da siempre preparado)
     spellsGranted: [

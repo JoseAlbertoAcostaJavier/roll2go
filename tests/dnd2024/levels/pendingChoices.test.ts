@@ -185,6 +185,15 @@ describe("pendingChoices", () => {
     })]);
   });
 
+  it("Explorador 1 → 2 pide 2 idiomas (Explorador hábil); Explorador 3 y Guerrero 2 no", () => {
+    const ranger = pendingChoices(sheetWith([["ranger", 1]]), cls("ranger"), 2, catalog);
+    expect(ranger.filter((p) => p.type === "languages")).toEqual([
+      { type: "languages", source: "languages:ranger", count: 2, label: "Explorador hábil: elige 2 idiomas." },
+    ]);
+    expect(pendingChoices(sheetWith([["ranger", 2]]), cls("ranger"), 3, catalog).some((p) => p.type === "languages")).toBe(false);
+    expect(pendingChoices(sheetWith([["fighter", 1]]), cls("fighter"), 2, catalog).some((p) => p.type === "languages")).toBe(false);
+  });
+
   it("entrada en Explorador como multiclase: 1 habilidad de su lista (y sus maestrías)", () => {
     const r = pendingChoices(sheetWith([["barbarian", 3]]), cls("ranger"), 1, catalog);
     expect(types(r)).toEqual(["skills", "weaponMastery", "spells"]);

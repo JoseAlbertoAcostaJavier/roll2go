@@ -12,6 +12,7 @@ import { ABILITY_NAMES, SKILL_NAMES, featFitsCategories } from "../sheet/labels"
 import {
   meetsFeatPrerequisite, withBonusCantrips, type FeatPrerequisiteCtx, type PendingChoice,
 } from "../levels/pendingChoices";
+import { checkLanguages } from "./languages";
 import { meleeOnlySource, validateMasteries } from "../levels/masteries";
 import { bareName, refKey } from "../sheet/equipmentRefs";
 import type { Choice, Named } from "../sheet/sheet";
@@ -52,6 +53,8 @@ export type ChoicesCtx = SpellsHeldCtx & {
   character?: FeatPrerequisiteCtx & { feats: string[] };
   /** Dotes y rasgos opcionales que conserva de cada elección (`heldPicks`): no se repiten y se pueden sustituir. */
   held?: Map<string, Named[]>;
+  /** Claves (sin libro) de los idiomas que ya conoce: no se repiten al elegir más. */
+  knownLanguages?: string[];
   /** Armas con las que ya tiene maestría. */
   masteries?: Ref[];
   /** Arcanos (Arcano místico) que ya tiene la clase: no se repiten y de ahí sale el que se sustituye. */
@@ -268,6 +271,21 @@ export async function checkChoices(
         continue;
       }
       out.push({ type: "weaponMastery", source: p.source, value: weapons });
+    } else if (p.type === "languages") {
+      // Idiomas de Explorador hábil: cualquiera, sin repetir entre sí ni con los que ya conoce
+      const refs = Array.isArray(value) ? value.map(asRef) : [];
+      if (refs.some((r) => !r || !r.key.startsWith("language:") || (ctx.books && !ctx.books.includes(r.book)))) {
+        bad(chooseN);
+        continue;
+      }
+      const picks = refs as Ref[];
+      await loadInto(ctx.entries, picks, ctx.resolve);
+      const msg = checkLanguages(
+        picks, [{ source: "ranger", label: p.label, count: p.count, standardOnly: false }], ctx.knownLanguages ?? [],
+        (r) => ctx.entries.get(refKey(r)) ?? null,
+      );
+      if (msg) { bad(msg); continue; }
+      out.push({ type: "languages", source: p.source, value: picks });
     } else if (p.type === "spells" && p.spells) {
       // Con los trucos de más de las opciones de rasgo de este nivel, que ya están comprobadas (van antes)
       const options = out.flatMap((o) => (o.type === "featureOption" ? [o.value.ref.key] : []));

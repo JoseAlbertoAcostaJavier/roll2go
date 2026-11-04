@@ -2,6 +2,7 @@
 // inyecta quien llama.
 import type { CatalogEntry } from "@/lib/rules/catalog/types";
 import type { LanguageData, Ref } from "@/lib/rules/types";
+import type { Dnd2024SheetV2 } from "../sheet/sheet";
 
 const COMMON = "language:common|xphb";
 const THIEVES_CANT = "language:thieves' cant|xphb";
@@ -22,6 +23,15 @@ export function fixedLanguages(classLevels: ClassLevels): string[] {
 /** Los idiomas fijos como referencias, una por cada libro (el idioma está en el libro que lo contenga). */
 export const fixedLanguageRefs = (classLevels: ClassLevels, books: string[]): Ref[] =>
   fixedLanguages(classLevels).flatMap((key) => books.map((book) => ({ book, key })));
+
+/** `source` de la elección de idiomas del Explorador (Explorador hábil) al subir a Explorador 2. */
+export const RANGER_LANGUAGES_SOURCE = "languages:ranger";
+
+/** Idiomas elegidos por la hoja: los de la creación y los que dieron los niveles (Explorador hábil). */
+export const chosenLanguageRefs = (sheet: { languageChoices?: Ref[]; levels?: Dnd2024SheetV2["levels"] }): Ref[] => [
+  ...(sheet.languageChoices ?? []),
+  ...(sheet.levels ?? []).flatMap((l) => l.choices.flatMap((c) => (c.type === "languages" ? c.value : []))),
+];
 
 export type LanguageSlot = { source: "origin" | "rogue" | "ranger"; label: string; count: number; standardOnly: boolean };
 

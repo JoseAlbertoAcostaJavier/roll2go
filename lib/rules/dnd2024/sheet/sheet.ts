@@ -101,6 +101,8 @@ export type Choice =
   | { type: "feat"; source: string; value: FeatPickValue[]; replaced?: Named[] }
   | { type: "optionalFeature"; source: string; value: Named[]; replaced?: Named[] }
   | { type: "weaponMastery"; source: string; value: Ref[] }
+  // Idiomas elegidos al subir de nivel (Explorador hábil): se quitan con el nivel
+  | { type: "languages"; source: string; value: Ref[] }
   | { type: "featureOption"; source: string; value: Named }
   | { type: "skills"; source: string; value: string[] }
   | { type: "expertise"; source: string; value: string[] }

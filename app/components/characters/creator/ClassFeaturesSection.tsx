@@ -45,6 +45,7 @@ export function choicesFor(pending: PendingChoice[], values: ChoiceValues): Choi
       case "expertise":
         return [{ type: p.type, source: p.source, value: v }];
       case "weaponMastery":
+      case "languages":
         return [{ type: p.type, source: p.source, value: v.map(refFromKey) }];
       case "featureOption":
         return v[0] ? [{ type: p.type, source: p.source, value: named(v[0]) }] : [];
@@ -94,6 +95,9 @@ export type ChoiceCtx = {
   held?: Map<string, { ref: Ref }[]>;
   /** Armas con las que ya tiene maestría (`libro:clave`). */
   masteries?: string[];
+  /** Idiomas del catálogo y claves (sin libro) de los que ya conoce (idiomas a elegir al subir de nivel). */
+  languages?: EntryOption[];
+  knownLanguages?: string[];
   /** Por qué no puede elegir una dote (prerrequisitos, ya la tiene); null si puede. */
   featBlocked?: (f: EntryOption) => string | null;
 };
@@ -125,6 +129,12 @@ export function choiceOptions(p: PendingChoice, ctx: ChoiceCtx): PickerOption[] 
           && weaponProficient(w.data as ItemData, [w.name, bareName(w.ref.key)], ctx.weaponProficiencies)
           && !ctx.masteries?.includes(refKey(w.ref)))
         .map((w) => ({ id: refKey(w.ref), label: masteryLabel(nameOf(w), (w.data as ItemData).weapon?.mastery) }));
+    case "languages": {
+      // Uno por idioma (el catálogo trae una entrada por libro), sin los que ya conoce
+      const seen = new Set(ctx.knownLanguages ?? []);
+      return (ctx.languages ?? []).filter((l) => !seen.has(l.ref.key) && seen.add(l.ref.key))
+        .map((l) => ({ id: refKey(l.ref), label: nameOf(l) }));
+    }
     case "featureOption":
       return p.options?.length
         ? p.options.map((o) => {

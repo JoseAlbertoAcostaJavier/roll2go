@@ -20,7 +20,7 @@ import { defensesOf, type DefenseRow } from "./defenses";
 import { characterFeats, featureGroups, type FeatureGroup } from "./features";
 import { featureUses, usesVars, type FeatureUse } from "./featureUses";
 import { normalizeName } from "@/lib/rules/schemas";
-import { fixedLanguages } from "../creation/languages";
+import { chosenLanguageRefs, fixedLanguages } from "../creation/languages";
 import { hitPoints } from "./hp";
 import { speedBreakdown } from "./speed";
 import { spellsSummary, type SpellsSummary } from "./spells";
@@ -117,7 +117,7 @@ function languageNames(
     const e = all.find((x) => x.ref.key === key);
     return e ? [e] : [];
   });
-  const chosen = (sheet.languageChoices ?? []).flatMap((r) => entries.get(refKey(r)) ?? []);
+  const chosen = chosenLanguageRefs(sheet).flatMap((r) => entries.get(refKey(r)) ?? []);
   const names = [...fixed, ...chosen].map((e) => e.nameEs || e.name);
   const old = sheet.languages.split(/[,;\n]/).map((l) => l.trim()).filter(Boolean);
   const seen = new Set<string>();
