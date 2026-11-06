@@ -188,7 +188,21 @@ const DAMAGE_CODE_IDS: Record<string, string> = {
 export const damageTypeId = (code: string) => DAMAGE_CODE_IDS[code] ?? code.toLowerCase();
 export const damageTypeName = (code: string) => DAMAGE_CODE_NAMES[code] ?? code;
 export const weaponPropertyName = (code: string) => WEAPON_PROPERTY_NAMES[code] ?? code;
+const WEAPON_CATEGORY_NAMES: Record<string, string> = { simple: "Sencilla", martial: "Marcial" };
+export const weaponCategoryName = (category: string) => WEAPON_CATEGORY_NAMES[category.toLowerCase()] ?? capitalize(category);
 export const masteryName = (id: string) => MASTERY_NAMES[id.toLowerCase()] ?? capitalize(id);
+
+/** Resumen propio, en español, de lo que hace cada maestría de arma (clave en minúsculas, como `MASTERY_NAMES`). */
+export const MASTERY_TEXTS: Record<string, string> = {
+  cleave: "Si impactas con un ataque cuerpo a cuerpo con esta arma, puedes atacar con ella a una segunda criatura que esté a 1,5 m o menos de la primera y a tu alcance. Si impacta, recibe el daño del arma, pero sin sumar tu modificador de característica salvo que sea negativo. Solo una vez por turno.",
+  graze: "Si fallas un ataque con esta arma, la criatura recibe daño igual al modificador de característica que usaste en la tirada, del mismo tipo que el del arma. Ese daño solo mejora si mejora el modificador.",
+  nick: "El ataque adicional de la propiedad Ligera lo haces como parte de la acción de Atacar, en lugar de como acción adicional. Solo una vez por turno.",
+  push: "Si impactas a una criatura de tamaño Grande o menor, puedes empujarla hasta 3 m en línea recta, alejándola de ti.",
+  sap: "Si impactas a una criatura, tiene desventaja en su próxima tirada de ataque antes del comienzo de tu siguiente turno.",
+  slow: "Si impactas a una criatura y le haces daño, su velocidad baja 3 m hasta el comienzo de tu siguiente turno. Varios impactos con esta maestría no reducen más de 3 m.",
+  topple: "Si impactas a una criatura, puedes obligarla a hacer una salvación de Constitución (CD 8 + el modificador de característica de tu ataque + tu bonificador de competencia). Si la falla, cae derribada.",
+  vex: "Si impactas a una criatura y le haces daño, tienes ventaja en tu siguiente tirada de ataque contra ella antes del final de tu siguiente turno.",
+};
 
 const ITEM_TYPE_NAMES: Record<string, string> = {
   M: "Arma cuerpo a cuerpo", R: "Arma a distancia", A: "Munición", LA: "Armadura ligera", MA: "Armadura intermedia",

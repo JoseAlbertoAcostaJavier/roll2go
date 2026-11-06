@@ -49,7 +49,6 @@ describe("weaponAttack", () => {
     expect(a.bonus).toBe(5);
     expect(a.damage).toBe("1d12+3");
     expect(a.damageType).toBe("cortante");
-    expect(a.properties).toEqual(["Pesada", "A dos manos"]);
     expect(a.name).toBe("Hacha a dos manos");
   });
   it("sin competencia no suma el bonificador", () => {
@@ -105,6 +104,14 @@ describe("alcance, tipo y clave del tipo de daño", () => {
     const dagger = withRange(weapon("Daga", "M", "1d4", "P", ["F", "L", "T"], "simple", "nick"), "20/60");
     const a = weaponAttack(dagger, mods({ dex: 2 }), 2, true, false);
     expect([a.kind, a.range, a.damageTypeId]).toEqual(["melee", "1,5 m · 6/18 m", "piercing"]);
+  });
+  it("notas: categoría, propiedades, maestría (si la tiene) y alcance", () => {
+    const dagger = withRange(weapon("Daga", "M", "1d4", "P", ["F", "L", "T"], "simple", "nick"), "20/60");
+    expect(weaponAttack(dagger, mods({ dex: 2 }), 2, true, true).notes)
+      .toBe("Sencilla, Sutil, Ligera, Arrojadiza, Mellar, Alcance 6/18 m");
+    const staff = weapon("Bastón", "M", "1d6", "B", ["V"], "simple", "topple");
+    expect(weaponAttack(staff, mods({ str: 1 }), 2, true, false).notes).toBe("Sencilla, Versátil");
+    expect(unarmedAttack(mods({ str: 2 }), 2, null).notes).toBe("");
   });
   it("alabarda: Alcance → 3 m", () => {
     const glaive = weapon("Guja", "M", "1d10", "S", ["H", "R", "2H"], "martial", "graze");

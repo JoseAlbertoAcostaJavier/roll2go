@@ -25,7 +25,11 @@ const basic = (key: string, nameEs: string, time: ActionData["time"]) => entry(k
 const SPELLS = [
   spell("spell:ray of frost|xphb", "Rayo de escarcha", 0, "1 acción", ["Daño de frío", "Ataque de conjuro"], "18 metros (60 pies)"),
   spell("spell:shield|xphb", "Escudo", 1, "1 reacción"),
-  spell("spell:detect magic|xphb", "Detectar magia", 1, "1 acción"),
+  entry("spell:detect magic|xphb", "detect magic", {
+    level: 1, school: "D", time: "1 acción", range: "Propia", components: "V, S, M (un trozo de hierro)", duration: "10 minutos",
+    concentration: true, ritual: true, classes: ["wizard"], tags: [],
+  } satisfies SpellData, "Detectar magia"),
+  spell("spell:shocking grasp|xphb", "Agarre electrizante", 0, "1 acción", ["Daño de relámpago", "Ataque de conjuro"], "Toque", { dice: "1d8" }),
   spell("spell:identify|xphb", "Identificar", 1, "1 minuto"),
   spell("spell:sleep|xphb", "Dormir", 1, "1 acción", ["Salvación de Sabiduría"]),
   spell("spell:misty step|xphb", "Paso brumoso", 2, "1 acción adicional"),
@@ -94,7 +98,7 @@ describe("deriveActions: conjuros", () => {
   it("truco de ataque en Acciones con «+N» y el tipo de daño", () => {
     expect(spellItem(items, "Rayo de escarcha")).toEqual({
       kind: "spell", group: "action", ref: ref("spell:ray of frost|xphb"), name: "Rayo de escarcha", level: 0,
-      range: "18 metros (60 pies)", hit: "+5", damage: null, school: "V", damageTypeId: "cold", notes: "Mago",
+      range: "18 metros (60 pies)", hit: "+5", damage: null, school: "V", damageTypeId: "cold", subtitle: "Truco · Mago", notes: "V, S",
     });
   });
   it("daño: dados del conjuro y, en los trucos, según el nivel del personaje", () => {
@@ -117,8 +121,21 @@ describe("deriveActions: conjuros", () => {
   it("del libro, solo los preparados", () => {
     expect(spellItem(items, "Dormir")).toBeUndefined();
   });
-  it("los de especie y dotes, con su origen y sin tirada (no se sabe su característica)", () => {
-    expect(spellItem(items, "Paso brumoso")).toMatchObject({ notes: "Especie: Tiefling", hit: null });
+  it("los de especie y dotes, con su origen en el subtítulo y sin tirada si no la tienen", () => {
+    expect(spellItem(items, "Paso brumoso")).toMatchObject({ subtitle: "Nivel 2 · Especie: Tiefling", notes: "V, S", hit: null });
+  });
+  it("notas: componentes, concentración y ritual; subtítulo: nivel y origen", () => {
+    const fire = run(summary([block({ cantrips: [named("spell:fire bolt|xphb")] })])).items;
+    expect(spellItem(fire, "Descarga de fuego")).toMatchObject({ notes: "V, S", subtitle: "Truco · Mago" });
+    expect(spellItem(items, "Detectar magia")).toMatchObject({ notes: "V, S, M · Concentración · Ritual", subtitle: "Nivel 1 · Mago" });
+  });
+  it("conjuro de dote con característica: ataque, daño y a la tabla de ataques", () => {
+    const spells = {
+      ...summary([], [{ spell: named("spell:shocking grasp|xphb", "Agarre electrizante"), origin: "Dote: Iniciado en la magia (mago)", innate: true as const, ability: "int" as const }]),
+      casting: { proficiencyBonus: 2, mods: { str: 0, dex: 0, con: 0, int: 3, wis: 0, cha: 0 } },
+    };
+    const grasp = spellItem(run(spells).items, "Agarre electrizante");
+    expect(grasp).toMatchObject({ hit: "+5", damage: "1d8", subtitle: "Truco · Dote: Iniciado en la magia (mago)" });
   });
   it("aprendidos, siempre preparados y con usos; sin repetir", () => {
     const sorcerer = summary([block({
@@ -130,7 +147,7 @@ describe("deriveActions: conjuros", () => {
     const out = run(sorcerer).items.filter((i) => i.kind === "spell");
     expect(out.map((i) => i.kind === "spell" && i.name)).toEqual(["Dormir", "Escudo", "Identificar"]);
     expect(spellItem(out, "Dormir")?.hit).toBe("CD 14 SAB");
-    expect(spellItem(out, "Escudo")?.notes).toBe("Mente aberrante");
+    expect(spellItem(out, "Escudo")?.subtitle).toBe("Nivel 1 · Mente aberrante");
   });
 });
 

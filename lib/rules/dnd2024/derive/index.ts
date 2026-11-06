@@ -58,6 +58,8 @@ export type Derived = {
   tools: string[];
   languages: string[];
   attacks: Attack[];
+  /** Ataque de cada arma del inventario (clave: id de la línea), equipada o no; solo para la ficha del objeto. */
+  weaponCards: Record<string, Attack>;
   /** En libras. */
   weight: { total: number; capacity: number; over: boolean };
   features: FeatureGroup[];
@@ -183,12 +185,12 @@ export function derive(input: AnySheet, entries: Map<string, CatalogEntry>): Der
   const saveProfs = firstData?.saves ?? [];
 
   // Inventario: objetos equipados y referencias perdidas
-  const equipped: { name: string; key: string; data: ItemData }[] = [];
+  const equipped: { id: string; name: string; key: string; data: ItemData }[] = [];
   for (const i of sheet.inventory.items) {
     if (!i.ref) continue;
     const entry = entries.get(refKey(i.ref));
     if (!entry) missing.push(i.name);
-    else if (i.equipped) equipped.push({ name: i.name, key: i.ref.key, data: entry.data as ItemData });
+    else if (i.equipped) equipped.push({ id: i.id, name: i.name, key: i.ref.key, data: entry.data as ItemData });
   }
 
   // CA: la armadura de cuerpo equipada que más dé (solo debería haber una) y el escudo
@@ -214,10 +216,20 @@ export function derive(input: AnySheet, entries: Map<string, CatalogEntry>): Der
       || martialArtsFallback(summary[monk].level));
   // Maestrías actuales (se pueden cambiar en la ficha); en hojas anteriores, las elegidas al subir de nivel
   const masteries = new Set(currentMasteries(sheet).map((r) => r.key));
-  const attacks = equipped.filter((e) => e.data.weapon).map((e) => weaponAttack(
-    { ...e.data, name: e.name }, mods, proficiencyBonus,
-    weaponProficient(e.data, [e.name, bareName(e.key)], weapons), masteries.has(e.key), martialArts,
-  ));
+  const attackOf = (e: { id: string; name: string; key: string; data: ItemData }): Attack => ({
+    ...weaponAttack(
+      { ...e.data, name: e.name }, mods, proficiencyBonus,
+      weaponProficient(e.data, [e.name, bareName(e.key)], weapons), masteries.has(e.key), martialArts,
+    ),
+    lineId: e.id,
+  });
+  const attacks: Attack[] = equipped.filter((e) => e.data.weapon).map(attackOf);
+  // El mismo cálculo para las armas sin equipar, para la ficha del objeto (no salen en Acciones)
+  const weaponCards: Record<string, Attack> = {};
+  for (const i of sheet.inventory.items) {
+    const data = i.ref ? (entries.get(refKey(i.ref))?.data as ItemData | undefined) : undefined;
+    if (i.ref && data?.weapon) weaponCards[i.id] = attackOf({ id: i.id, name: i.name, key: i.ref.key, data });
+  }
   attacks.push(unarmedAttack(mods, proficiencyBonus, martialArts));
 
   const initiativeBreakdown = makeBreakdown([
@@ -282,6 +294,7 @@ export function derive(input: AnySheet, entries: Map<string, CatalogEntry>): Der
     tools,
     languages: languageNames(sheet, summary, entries),
     attacks,
+    weaponCards,
     weight: carriedWeight(sheet.inventory, entries, abilities.str.score, size),
     features,
     featureUses: uses,

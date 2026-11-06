@@ -1,5 +1,5 @@
 // Ataques de la ficha (spec §4.2): armas equipadas y ataque sin armas. Sin bonificadores mágicos.
-import { damageTypeId, damageTypeName, masteryName, rangeMetersText, weaponPropertyName } from "@/lib/rules/dnd2024/sheet/labels";
+import { damageTypeId, damageTypeName, masteryName, rangeMetersText, weaponCategoryName, weaponPropertyName } from "@/lib/rules/dnd2024/sheet/labels";
 import type { Ability, ItemData } from "@/lib/rules/types";
 
 export type Attack = {
@@ -8,8 +8,8 @@ export type Attack = {
   damage: string;
   /** En español. */
   damageType: string;
-  /** Propiedades del arma en español. */
-  properties: string[];
+  /** Notas de la tabla: categoría, propiedades, maestría (si la tiene) y alcance de distancia («Sencilla, Sutil, Mellar, Alcance 6/18 m»). */
+  notes: string;
   /** Nombre de la maestría si el personaje la tiene con esa arma. */
   mastery: string | null;
   kind: "melee" | "ranged";
@@ -17,6 +17,8 @@ export type Attack = {
   range: string;
   /** Clave inglesa en minúsculas del tipo de daño ("slashing"). */
   damageTypeId: string;
+  /** Línea del inventario de la que sale el arma (no el ataque sin armas). */
+  lineId?: string;
 };
 
 export const UNARMED_NAME = "Ataque sin armas";
@@ -77,7 +79,7 @@ export function isMonkWeapon(weapon: ItemData): boolean {
   return category === "simple" || (category === MARTIAL && w.properties.includes(LIGHT));
 }
 
-function attackRange(weapon: ItemData, ranged: boolean): string {
+export function attackRange(weapon: ItemData, ranged: boolean): string {
   const properties = weapon.weapon?.properties ?? [];
   const thrown = weapon.weapon?.range ? rangeMetersText(weapon.weapon.range) : null;
   if (ranged) return thrown ?? "—";
@@ -106,13 +108,18 @@ export function weaponAttack(
   let damage = w?.damage ? withMod(die(w.damage), mod) : "";
   const twoHanded = w && properties.includes(VERSATILE) ? versatileDie(w.damage) : null;
   if (twoHanded) damage += ` / ${withMod(die(twoHanded), mod)} (dos manos)`;
+  const masteryLabel = mastery && w?.mastery ? masteryName(w.mastery) : null;
+  const notes = [
+    ...(w?.category ? [weaponCategoryName(w.category)] : []), ...properties.map(weaponPropertyName),
+    ...(masteryLabel ? [masteryLabel] : []), ...(w?.range ? [`Alcance ${rangeMetersText(w.range)}`] : []),
+  ].join(", ");
   return {
     name: weapon.name,
     bonus: mod + (proficient ? profBonus : 0),
     damage,
     damageType: w ? damageTypeName(w.damageType) : "",
-    properties: properties.map(weaponPropertyName),
-    mastery: mastery && w?.mastery ? masteryName(w.mastery) : null,
+    notes,
+    mastery: masteryLabel,
     kind: weapon.type === RANGED_TYPE ? "ranged" : "melee",
     range: attackRange(weapon, weapon.type === RANGED_TYPE),
     damageTypeId: w ? damageTypeId(w.damageType) : "",
@@ -127,7 +134,7 @@ export function unarmedAttack(mods: Record<Ability, number>, profBonus: number, 
     bonus: mod + profBonus,
     damage: martialArtsDie ? withMod(martialArtsDie, mod) : String(Math.max(0, 1 + mod)),
     damageType: damageTypeName("B"),
-    properties: [],
+    notes: "",
     mastery: null,
     kind: "melee",
     range: MELEE_REACH,

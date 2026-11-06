@@ -25,7 +25,7 @@ import { hitDicePools } from "@/lib/rules/dnd2024/sheet/rest";
 import { statusOf } from "@/lib/rules/dnd2024/sheet/status";
 import { shortRestRestores } from "@/lib/rules/dnd2024/spells/spellOps";
 import { sizeName } from "@/lib/rules/dnd2024/sheet/labels";
-import { itemDetails, type ItemDetails } from "@/lib/rules/dnd2024/sheet/itemDetails";
+import { itemDetails, locationText, type ItemDetails } from "@/lib/rules/dnd2024/sheet/itemDetails";
 import type { ActionData, BackgroundData, ItemData, SpeciesData } from "@/lib/rules/types";
 import SheetHeader from "@/app/components/characters/sheet/SheetHeader";
 import type { JoinableCampaign } from "@/app/components/characters/sheet/JoinCampaignDialog";
@@ -115,6 +115,8 @@ export default async function CharacterPage({ params, searchParams }: Props) {
   const itemInfo: Record<string, ItemInfo> = {};
   const itemCards: Record<string, ItemDetails> = {};
   const itemDescriptions: Record<string, string> = {};
+  const capacityTexts: Record<string, string | null> = {};
+  const masteryKeys = new Set(currentMasteries(sheet).map((r) => r.key));
   for (const line of sheet.inventory.items) {
     const data = lineData(line.ref);
     const entry = line.ref ? entries.get(refKey(line.ref)) : undefined;
@@ -134,8 +136,20 @@ export default async function CharacterPage({ params, searchParams }: Props) {
       value: data?.value ?? 0,
       container: cap ? { weight: cap.weight, text: capacityText, weightless: cap.weightless } : null,
     };
-    itemCards[line.id] = itemDetails(line, entry, capacityText);
+    capacityTexts[line.id] = capacityText;
     itemDescriptions[line.id] = entry?.descriptionEs || entry?.description || "";
+  }
+  // Fichas de objeto: con el ataque del personaje (armas equipadas), su competencia y su ubicación
+  for (const line of sheet.inventory.items) {
+    const data = lineData(line.ref);
+    itemCards[line.id] = itemDetails(line, line.ref ? entries.get(refKey(line.ref)) : undefined, {
+      capacityText: capacityTexts[line.id],
+      location: locationText(line, sheet.inventory.items, itemInfo),
+      attack: d.weaponCards[line.id],
+      proficient: data?.weapon ? weaponProficient(data, [line.name, bareName(line.ref!.key)], d.weapons) : undefined,
+      hasMastery: !!line.ref && masteryKeys.has(line.ref.key),
+      bookName: line.ref ? entries.get(refKey(line.ref))?.bookName : undefined,
+    });
   }
 
   // Maestrías con armas: las actuales y, para cambiarlas, las armas con maestría y competencia (del Bárbaro, solo
@@ -270,6 +284,8 @@ export default async function CharacterPage({ params, searchParams }: Props) {
             entries={entries}
             spells={actionSpells}
             basics={basics}
+            itemCards={itemCards}
+            itemDescriptions={itemDescriptions}
           />
         </section>
         <section {...panel("trasfondo")}>
@@ -278,6 +294,7 @@ export default async function CharacterPage({ params, searchParams }: Props) {
             characterId={id}
             isOwner={isOwner}
             size={size}
+            pronouns={(c.pronouns ?? []) as string[]}
             base={base}
             query={query}
             sheet={sheet}

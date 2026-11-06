@@ -1,5 +1,6 @@
 import type { CatalogEntry } from "@/lib/rules/catalog/types";
 import { ALIGNMENTS } from "@/lib/rules/dnd2024/sheet/alignments";
+import { parsePronouns, pronounsText } from "@/lib/rules/dnd2024/creation/names";
 import { ABILITY_NAMES, skillName, toolName } from "@/lib/rules/dnd2024/sheet/labels";
 import type { Dnd2024SheetV2 } from "@/lib/rules/dnd2024/sheet/sheet";
 import { BACKGROUND_SECTION_CHIPS, parseSection, type BackgroundSection } from "@/lib/rules/dnd2024/sheet/sheetSections";
@@ -22,6 +23,8 @@ type Props = {
   feat: CatalogEntry | null;
   /** Tamaño ya traducido («Mediano»), o «—» si no se sabe. */
   size: string;
+  /** Pronombres de la creación, para el género. */
+  pronouns: string[];
   base: string;
   query: Query;
 };
@@ -31,19 +34,20 @@ const entryText = (e: CatalogEntry) => e.descriptionEs || e.description;
 
 // Trasfondo en tres secciones (Trasfondo, Características, Aspecto) con chips de filtro. Lo que el filtro oculta sigue en
 // el DOM (`hidden print:block`) para que la impresión lo saque todo. Las características se editan en el sitio.
-export default function BackgroundTab({ characterId, isOwner, sheet, backstory, imageUrl, background, feat, size, base, query }: Props) {
+export default function BackgroundTab({ characterId, isOwner, sheet, backstory, imageUrl, background, feat, size, pronouns, base, query }: Props) {
   const active: BackgroundSection = parseSection(query.seccion, BACKGROUND_SECTION_CHIPS.map((c) => c.id));
   const hide = (id: Exclude<BackgroundSection, "todo">) => (active === "todo" || active === id ? "" : "hidden print:block");
   const bg = background?.data as BackgroundData | undefined;
   const bonuses = (Object.entries(sheet.background.abilities) as [Ability, number][])
     .map(([a, v]) => `${ABILITY_NAMES[a]} +${v}`);
-  const text = (name: SheetTextField, label: string, multiline?: boolean) => (
+  const text = (name: SheetTextField, label: string, multiline?: boolean, boxed?: boolean) => (
     <InlineText
       characterId={characterId}
       field={name}
       label={label}
       value={sheet[name] ?? ""}
       multiline={multiline}
+      boxed={boxed}
       editable={isOwner}
     />
   );
@@ -86,18 +90,21 @@ export default function BackgroundTab({ characterId, isOwner, sheet, backstory, 
               options={ALIGNMENTS}
               editable={isOwner}
             />
-            {text("gender", "Género")}
-            {text("eyes", "Ojos")}
+            <div className="min-w-0">
+              <div className="text-xs font-semibold uppercase tracking-wide text-muted">Género</div>
+              <p className="text-sm text-fg">{pronounsText(parsePronouns(pronouns.join(",")) ?? []) || "—"}</p>
+            </div>
+            {text("eyes", "Ojos", false, true)}
             <div className="min-w-0">
               <div className="text-xs font-semibold uppercase tracking-wide text-muted">Tamaño</div>
               <p className="text-sm text-fg">{size}</p>
             </div>
-            {text("height", "Altura")}
-            {text("faith", "Fe")}
-            {text("hair", "Pelo")}
-            {text("skin", "Piel")}
-            {text("age", "Edad")}
-            {text("weight", "Peso")}
+            {text("height", "Altura", false, true)}
+            {text("faith", "Fe", false, true)}
+            {text("hair", "Pelo", false, true)}
+            {text("skin", "Piel", false, true)}
+            {text("age", "Edad", false, true)}
+            {text("weight", "Peso", false, true)}
           </div>
           <div className="mt-6 grid gap-4 md:grid-cols-2">
             {text("personality", "Rasgos de personalidad", true)}
