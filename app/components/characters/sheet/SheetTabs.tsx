@@ -2,19 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import Link from "next/link";
-import { Backpack, BookUser, NotebookPen, Sparkles, Swords, WandSparkles } from "lucide-react";
-import type { SheetTabId } from "@/lib/rules/dnd2024/sheet/sheetTabs";
-
-export const SHEET_TABS = [
-  { id: "acciones", label: "Acciones", icon: Swords },
-  { id: "conjuros", label: "Conjuros", icon: WandSparkles },
-  { id: "inventario", label: "Inventario", icon: Backpack },
-  { id: "rasgos", label: "Rasgos y dotes", icon: Sparkles },
-  { id: "trasfondo", label: "Trasfondo", icon: BookUser },
-  { id: "notas", label: "Notas", icon: NotebookPen },
-] as const satisfies readonly { id: SheetTabId; label: string; icon: unknown }[];
-
-export type SheetTab = SheetTabId;
+import { SHEET_TABS, type SheetTab } from "./sheetTabsList";
 
 // Pestañas de la ficha con el estilo de CampaignTabs; la activa va en `?tab=`. `tabs`: las que se muestran. Barra
 // fija (`sticky`) al desplazarse; la barra superior de la web no es fija, así que `top-0`.

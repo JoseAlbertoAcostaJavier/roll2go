@@ -29,7 +29,8 @@ import { itemDetails, locationText, type ItemDetails } from "@/lib/rules/dnd2024
 import type { ActionData, BackgroundData, ItemData, SpeciesData } from "@/lib/rules/types";
 import SheetHeader from "@/app/components/characters/sheet/SheetHeader";
 import type { JoinableCampaign } from "@/app/components/characters/sheet/JoinCampaignDialog";
-import SheetTabs, { SHEET_TABS, type SheetTab } from "@/app/components/characters/sheet/SheetTabs";
+import SheetTabs from "@/app/components/characters/sheet/SheetTabs";
+import { SHEET_TABS, type SheetTab } from "@/app/components/characters/sheet/sheetTabsList";
 import SheetLayout, { type SheetData } from "@/app/components/characters/sheet/SheetLayout";
 import ActionsTab from "@/app/components/characters/sheet/ActionsTab";
 import type { BasicActionInfo } from "@/app/components/characters/sheet/ActionsDialogs";

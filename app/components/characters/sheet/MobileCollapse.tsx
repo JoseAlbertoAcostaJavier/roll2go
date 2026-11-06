@@ -13,16 +13,18 @@ export default function MobileCollapse({ title, children }: { title: string; chi
   return (
     <>
       <h3 className={`${cardTitle} hidden md:block print:block`}>{title}</h3>
-      <button
-        type="button"
-        aria-expanded={open}
-        aria-controls={id}
-        onClick={() => setOpen((o) => !o)}
-        className={`${cardTitle} flex w-full items-center justify-between gap-2 text-left focus-visible:outline-2 focus-visible:outline-brand-soft md:hidden print:hidden ${open ? "" : "mb-0!"}`}
-      >
-        {title}
-        <ChevronDown size={18} aria-hidden="true" className={`shrink-0 text-muted transition-transform ${open ? "rotate-180" : ""}`} />
-      </button>
+      <h3 className={`${cardTitle} md:hidden print:hidden ${open ? "" : "mb-0!"}`}>
+        <button
+          type="button"
+          aria-expanded={open}
+          aria-controls={id}
+          onClick={() => setOpen((o) => !o)}
+          className="flex w-full items-center justify-between gap-2 py-2 text-left focus-visible:outline-2 focus-visible:outline-brand-soft"
+        >
+          {title}
+          <ChevronDown size={18} aria-hidden="true" className={`shrink-0 text-muted transition-transform ${open ? "rotate-180" : ""}`} />
+        </button>
+      </h3>
       <div id={id} className={`${open ? "" : "hidden"} md:block print:block`}>{children}</div>
     </>
   );
