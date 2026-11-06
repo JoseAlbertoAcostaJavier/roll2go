@@ -93,11 +93,18 @@ export default function FeaturesTab({ groups, entries, base, query, featureUses,
               {sec.groups.map((g) => {
                 const entry = get(g.ref);
                 const n = gi++;
+                // Grupos sin rasgos propios (especie, legado): un contador por cada uso de su rasgo
+                const groupUses = g.features.length === 0 && g.ref
+                  ? featureUses.filter((u) => u.key === refKey(g.ref!) || u.owner === refKey(g.ref!)) : [];
                 return (
                   <article key={`${g.source}-${g.ref ? refKey(g.ref) : n}`} className={`${sheetCard} animate-fade-up`} style={{ animationDelay: `${Math.min(n, 6) * 50}ms` }}>
                     <GroupHeading group={g} entry={entry} />
-                    {g.features.length === 0 && usesOf(g.ref) && (
-                      <FeatureUsesControl characterId={characterId} use={usesOf(g.ref)!} isOwner={isOwner} className="mt-3" />
+                    {groupUses.length > 0 && (
+                      <div className="mt-3 space-y-2">
+                        {groupUses.map((u) => (
+                          <FeatureUsesControl key={u.key} characterId={characterId} use={u} isOwner={isOwner} showName />
+                        ))}
+                      </div>
                     )}
                     {g.ref && !entry && <p className="mt-4 text-sm text-muted">Contenido no disponible.</p>}
                     {g.ref && descriptionOf(entry) && (

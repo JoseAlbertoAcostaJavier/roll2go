@@ -115,12 +115,44 @@ describe("featureUses", () => {
     });
   });
 
-  it("especie: el propio grupo es el rasgo (Aguante incansable del orco)", () => {
-    const vars = usesVars({ prof: 2, mods: { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 } }, []);
-    const groups = [{ title: "Orco", source: "species" as const, ref: ref("species:orc|xphb"), features: [] }];
-    expect(featureUses(sheetOf([["barbarian", 1]]), entries, groups, vars)).toEqual([{
-      key: `${B}:species:orc|xphb`, name: "Aguante incansable", max: 1, used: 0, recovery: { long: "all", short: "none" },
-    }]);
+  describe("contadores de especie", () => {
+    const speciesUses = (speciesKey: string, level: number, prof = 2, extra: Partial<Dnd2024SheetV2> = {}) => {
+      const vars = usesVars({ prof, mods: { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 } }, []);
+      const groups = [{ title: "Especie", source: "species" as const, ref: ref(speciesKey), features: [] }];
+      return featureUses(sheetOf([["barbarian", level]], extra), entries, groups, vars);
+    };
+    const names = (list: ReturnType<typeof speciesUses>) => list.map((u) => u.name);
+    const ORC = `${B}:species:orc|xphb`;
+
+    it("Orco con competencia +2: Oleada de adrenalina y Aguante incansable", () => {
+      expect(speciesUses("species:orc|xphb", 1)).toEqual([
+        {
+          key: `${ORC}#adrenaline-rush`, name: "Oleada de adrenalina", max: 2, used: 0, recovery: { long: "all", short: "all" },
+          owner: ORC, activation: "bonus",
+        },
+        { key: ORC, name: "Aguante incansable", max: 1, used: 0, recovery: { long: "all", short: "none" }, owner: ORC },
+      ]);
+    });
+    it("Goliat: Forma grande desde el nivel 5", () => {
+      expect(names(speciesUses("species:goliath|xphb", 4))).toEqual(["Ancestro gigante"]);
+      expect(names(speciesUses("species:goliath|xphb", 5))).toEqual(["Ancestro gigante", "Forma grande"]);
+    });
+    it("Dracónido: Vuelo dracónico desde el 5; Aasimar: Revelación celestial desde el 3", () => {
+      expect(names(speciesUses("species:dragonborn|xphb", 4))).toEqual(["Arma de aliento"]);
+      expect(names(speciesUses("species:dragonborn|xphb", 5))).toEqual(["Arma de aliento", "Vuelo dracónico"]);
+      expect(names(speciesUses("species:aasimar|xphb", 2))).toEqual(["Manos sanadoras"]);
+      expect(names(speciesUses("species:aasimar|xphb", 3))).toEqual(["Manos sanadoras", "Revelación celestial"]);
+    });
+    it("Enano con competencia +3: Sentido de la piedra, 3 usos", () => {
+      expect(speciesUses("species:dwarf|xphb", 9, 3)).toMatchObject([{ name: "Sentido de la piedra", max: 3, activation: "bonus" }]);
+    });
+    it("usados: la clave de la especie es Aguante incansable; las demás llevan #id y se recortan al máximo", () => {
+      const orc = speciesUses("species:orc|xphb", 1, 2, { featureUses: { [ORC]: 1 } });
+      expect(orc.find((u) => u.name === "Aguante incansable")?.used).toBe(1);
+      expect(orc.find((u) => u.name === "Oleada de adrenalina")?.used).toBe(0);
+      const goliath = speciesUses("species:goliath|xphb", 5, 2, { featureUses: { [`${B}:species:goliath|xphb#large-form`]: 3 } });
+      expect(goliath.find((u) => u.name === "Forma grande")?.used).toBe(1);
+    });
   });
 });
 

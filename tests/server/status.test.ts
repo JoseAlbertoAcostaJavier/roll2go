@@ -87,6 +87,16 @@ describe("applyStatusOperation", () => {
     expect(set()).toEqual({ "sheet.featureUses": { [SECOND_WIND]: 1 } });
   });
 
+  it("acepta el uso de un rasgo de especie (#id) y rechaza uno que no existe", async () => {
+    const orc = `${B}:species:orc|xphb`;
+    load(sheetOf({ species: { ref: ref("species:orc|xphb"), name: "Orco" } }));
+    const res = await applyStatusOperation(OWNER, CHAR, { op: "featureUse", key: `${orc}#adrenaline-rush`, used: 1 });
+    expect(res).toMatchObject({ ok: true, status: { featureUses: { [`${orc}#adrenaline-rush`]: 1 } } });
+    expect(await applyStatusOperation(OWNER, CHAR, { op: "featureUse", key: `${orc}#nada`, used: 1 })).toEqual({
+      ok: false, status: 400, error: "Ese rasgo no tiene usos.",
+    });
+  });
+
   it("un uso fuera de rango o de un rasgo sin contador: 400 y no escribe", async () => {
     load(sheetOf());
     const max = derive(sheetOf(), entries).featureUses.find((u) => u.key === SECOND_WIND)!.max;

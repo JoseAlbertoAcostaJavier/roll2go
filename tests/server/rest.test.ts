@@ -106,6 +106,16 @@ describe("applyRestOperation", () => {
     expect(Object.keys(set())).not.toContain("sheet.featureUses");
   });
 
+  it("descanso corto: devuelve los usos de especie que lo permiten y conserva el resto", async () => {
+    const orc = refKey(ref("species:orc|xphb"));
+    load(sheetOf({
+      species: { ref: ref("species:orc|xphb"), name: "Orco" },
+      featureUses: { [`${orc}#adrenaline-rush`]: 1, [orc]: 1 },
+    }));
+    await applyRestOperation(OWNER, CHAR, { op: "shortRest" });
+    expect(set()["sheet.featureUses"]).toEqual({ [orc]: 1 });
+  });
+
   it("operación no válida: 400", async () => {
     load(sheetOf());
     expect(await applyRestOperation(OWNER, CHAR, { op: "volar" })).toEqual({ ok: false, status: 400, error: "Operación no válida." });

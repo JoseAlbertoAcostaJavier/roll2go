@@ -201,6 +201,20 @@ describe("deriveActions: rasgos con usos", () => {
   it("un rasgo sin usos ni activación no aparece", () => {
     expect(features.map((f) => f.name)).toEqual(["Furia", "Aguante incansable"]);
   });
+  it("especie con varios contadores: un ítem por uso, en el grupo de su activación", () => {
+    const orcKey = `${B}:species:orc|xphb`;
+    const base = { max: 1, used: 0 };
+    const orcUses: FeatureUse[] = [
+      { ...base, key: `${orcKey}#adrenaline-rush`, name: "Oleada de adrenalina", recovery: { long: "all", short: "all" }, owner: orcKey, activation: "bonus" },
+      { ...base, key: orcKey, name: "Aguante incansable", recovery: { long: "all", short: "none" }, owner: orcKey },
+    ];
+    const orcGroups: FeatureGroup[] = [{ title: "Orco", source: "species", ref: ref("species:orc|xphb"), features: [] }];
+    const out = run(summary([]), orcGroups, [], orcUses).items.filter((i) => i.kind === "feature");
+    expect(out).toMatchObject([
+      { name: "Oleada de adrenalina", group: "bonus", special: false, source: "Orco" },
+      { name: "Aguante incansable", group: "other", special: true, source: "Orco" },
+    ]);
+  });
 });
 
 describe("deriveActions: ataques por acción", () => {

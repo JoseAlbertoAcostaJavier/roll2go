@@ -12,7 +12,13 @@ export { evalUses } from "./usesFormula";
 
 /** `short`: qué vuelve con un descanso corto (`number` = cuántos usos). Un descanso largo lo devuelve todo. */
 export type Recovery = { long: "all"; short: "all" | "none" | number };
-export type FeatureUse = { key: string; name: string; max: number; used: number; recovery: Recovery };
+export type FeatureUse = {
+  key: string; name: string; max: number; used: number; recovery: Recovery;
+  /** `refKey` de la especie cuando el uso es de uno de sus rasgos (una especie puede tener varios contadores). */
+  owner?: string;
+  /** Cómo se activa, si el uso lo fija (los de especie no tienen rasgo con activación en el catálogo). */
+  activation?: "action" | "bonus";
+};
 
 type UsesRule = {
   /** Nombre del contador cuando el rasgo no tiene entrada propia (especie): el grupo se llamaría como la especie. */
@@ -39,12 +45,44 @@ export const USES: Record<string, UsesRule> = {
   "classFeature:indomitable|fighter|xphb|9": {
     max: "1 + min(floor(@classes.fighter.levels / 13), 1) + min(floor(@classes.fighter.levels / 17), 1)", recovery: LONG,
   },
-  "species:orc|xphb": { name: "Aguante incansable", max: "1", recovery: LONG },
   "classFeature:arcane recovery|wizard|xphb|1": { max: "1", recovery: LONG },
   "classFeature:bardic inspiration|bard|xphb|1": { max: "max(1,@abilities.cha.mod)", recovery: LONG, shortFrom: { level: 5 } },
   // Foundry no trae los puntos de concentración ni los de hechicería como usos del rasgo: salen de la tabla de clase
   "classFeature:monk's focus|monk|xphb|2": { name: "Puntos de concentración", max: "@scale.monk.focus-points", recovery: { long: "all", short: "all" } },
   "classFeature:font of magic|sorcerer|xphb|2": { name: "Puntos de hechicería", max: "@scale.sorcerer.sorcery-points", recovery: LONG },
+};
+
+type SpeciesUse = {
+  /** Sufijo de la clave del uso (`#id`); `null` = la clave de la propia especie. */
+  id: string | null; name: string; max: string; recovery: Recovery;
+  /** Nivel del personaje desde el que existe el contador. */
+  fromLevel?: number; activation?: "action" | "bonus";
+};
+
+const PB = "@prof";
+const SR: Recovery = { long: "all", short: "all" };
+
+/** Contadores de los rasgos de especie, por `ref.key` de la especie (el catálogo no los trae con usos). */
+export const SPECIES_USES: Record<string, SpeciesUse[]> = {
+  "species:dragonborn|xphb": [
+    { id: "breath-weapon", name: "Arma de aliento", max: PB, recovery: LONG },
+    { id: "draconic-flight", name: "Vuelo dracónico", max: "1", recovery: LONG, fromLevel: 5, activation: "bonus" },
+  ],
+  "species:orc|xphb": [
+    { id: "adrenaline-rush", name: "Oleada de adrenalina", max: PB, recovery: SR, activation: "bonus" },
+    { id: null, name: "Aguante incansable", max: "1", recovery: LONG },
+  ],
+  "species:goliath|xphb": [
+    { id: "giant-ancestry", name: "Ancestro gigante", max: PB, recovery: LONG },
+    { id: "large-form", name: "Forma grande", max: "1", recovery: LONG, fromLevel: 5, activation: "bonus" },
+  ],
+  "species:aasimar|xphb": [
+    { id: "healing-hands", name: "Manos sanadoras", max: "1", recovery: LONG, activation: "action" },
+    { id: "celestial-revelation", name: "Revelación celestial", max: "1", recovery: LONG, fromLevel: 3, activation: "bonus" },
+  ],
+  "species:dwarf|xphb": [
+    { id: "stonecunning", name: "Sentido de la piedra", max: PB, recovery: LONG, activation: "bonus" },
+  ],
 };
 
 /** Nombres de columna de Foundry que difieren del id de la tabla de clase (`clase.columna` → id de la columna). */
@@ -131,7 +169,23 @@ export function featureUses(
   vars: UsesVars,
 ): FeatureUse[] {
   const out: FeatureUse[] = [];
+  const level = sheet.levels.length;
   for (const f of featuresOf(groups)) {
+    const speciesRows = SPECIES_USES[f.ref.key];
+    if (speciesRows) {
+      const owner = refKey(f.ref);
+      for (const row of speciesRows) {
+        if ((row.fromLevel ?? 0) > level) continue;
+        const max = evalUses(row.max, vars);
+        if (max === null || max < 1) continue;
+        const key = row.id === null ? owner : `${owner}#${row.id}`;
+        out.push({
+          key, name: row.name, max, used: Math.min(sheet.featureUses?.[key] ?? 0, max), recovery: row.recovery, owner,
+          ...(row.activation ? { activation: row.activation } : {}),
+        });
+      }
+      continue;
+    }
     const rule = USES[f.ref.key];
     const foundry = foundryUses(entries.get(refKey(f.ref)));
     const formula = rule?.max ?? foundry.max;
