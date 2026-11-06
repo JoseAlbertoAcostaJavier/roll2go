@@ -270,9 +270,10 @@ export default async function CharacterPage({ params, searchParams }: Props) {
         pools={pools}
         status={statusOf(sheet)}
         version={new Date(c.updatedAt ?? 0).getTime()}
-        tabs={<SheetTabs base={base} active={tab} tabs={tabs} />}
+        // Con `key`: SheetLayout pinta este elemento junto a sus hijos y React comprueba los que le llegan de la página
+        tabs={<SheetTabs key="tabs" base={base} active={tab} tabs={tabs} />}
       >
-        <section {...panel("acciones")} key="acciones">
+        <section {...panel("acciones")}>
           {panelTitle("acciones")}
           <ActionsTab
             characterId={id}
@@ -289,7 +290,7 @@ export default async function CharacterPage({ params, searchParams }: Props) {
             itemDescriptions={itemDescriptions}
           />
         </section>
-        <section {...panel("trasfondo")} key="trasfondo">
+        <section {...panel("trasfondo")}>
           {panelTitle("trasfondo")}
           <BackgroundTab
             characterId={id}
@@ -306,12 +307,12 @@ export default async function CharacterPage({ params, searchParams }: Props) {
           />
         </section>
         {withNotes.length > 0 && (
-          <section {...panel("notas")} key="notas">
+          <section {...panel("notas")}>
             {panelTitle("notas")}
             <NotesTab characterId={id} isOwner={isOwner} sheet={sheet} />
           </section>
         )}
-        <section {...panel("rasgos")} key="rasgos">
+        <section {...panel("rasgos")}>
           {panelTitle("rasgos")}
           <MasteriesEditor
             key={d.level}
@@ -326,7 +327,7 @@ export default async function CharacterPage({ params, searchParams }: Props) {
             featureUses={d.featureUses} characterId={id} isOwner={isOwner}
           />
         </section>
-        <section {...panel("inventario")} key="inventario">
+        <section {...panel("inventario")}>
           {panelTitle("inventario")}
           <EquipmentTab
             characterId={id}
@@ -345,7 +346,7 @@ export default async function CharacterPage({ params, searchParams }: Props) {
         </section>
 
         {d.hasSpells && (
-          <section {...panel("conjuros")} key="conjuros">
+          <section {...panel("conjuros")}>
             {panelTitle("conjuros")}
             {/* Al borrar un nivel desde la ficha se monta de nuevo con los conjuros recortados */}
             <SpellsTab
