@@ -226,6 +226,8 @@ export type SpellData = {
   higherLevels?: string;
   /** Dados de daño: los del conjuro y, en los trucos, los que gana según el nivel del personaje. */
   damage?: { dice: string; scaling?: { level: number; dice: string }[] };
+  /** Dados de curación («regains … {@dice 2d8}»); solo en los conjuros sin daño. */
+  healing?: { dice: string };
 };
 
 /** Capacidad de un contenedor (mochila, bolsa, cofre…): peso en lb, volumen en pies cúbicos y objetos concretos que admite. */

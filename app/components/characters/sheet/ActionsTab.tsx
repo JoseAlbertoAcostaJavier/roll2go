@@ -109,8 +109,12 @@ function AttackTable({ rows }: { rows: ActionSection["attacks"] }) {
                   {r.damage || r.damageTypeId ? (
                     <span className="flex items-center gap-1.5 whitespace-nowrap">
                       {r.damage}
-                      <MaskIcon src={iconSrc("damageType", r.damageTypeId)} size={16} className="text-muted" />
-                      {r.damageTypeId && <span className="text-xs text-muted">{DAMAGE_TYPE_NAMES[r.damageTypeId] ?? r.damageTypeId}</span>}
+                      {r.healing ? <span className="text-xs text-muted">Curación</span> : (
+                        <>
+                          <MaskIcon src={iconSrc("damageType", r.damageTypeId)} size={16} className="text-muted" />
+                          {r.damageTypeId && <span className="text-xs text-muted">{DAMAGE_TYPE_NAMES[r.damageTypeId] ?? r.damageTypeId}</span>}
+                        </>
+                      )}
                     </span>
                   ) : (
                     <span className="text-muted">—</span>

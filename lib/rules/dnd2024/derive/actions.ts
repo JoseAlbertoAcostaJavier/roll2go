@@ -19,6 +19,8 @@ export type ActionItem =
     /** Escuela de 5etools (`V`), para su icono. */
     school: string;
     range: string; hit: string | null; damage: string | null; damageTypeId: string | null;
+    /** `damage` son dados de curación, no de daño. */
+    healing?: true;
     /** «Truco · Mago», «Nivel 1 · Dote: Iniciado en la magia (mago)». */
     subtitle: string;
     /** Componentes (solo las letras), «Concentración» y «Ritual»: «V, S · Concentración · Ritual». */
@@ -78,7 +80,8 @@ function spellItems(spells: SpellsSummary, entries: Map<string, CatalogEntry>, l
   const out: ActionItem[] = usableSpells(spells, entries).map(({ ref, caster, origin, entry, data }) => ({
     kind: "spell", group: spellGroup(data.time), ref, name: entry.nameEs ?? entry.name,
     level: data.level, school: data.school, range: data.range, hit: hitOf(data.tags, caster),
-    damage: spellDamageAt(data, level), damageTypeId: data.tags.map(damageIdOf).find((d) => d) ?? null,
+    damage: spellDamageAt(data, level) ?? data.healing?.dice ?? null, damageTypeId: data.tags.map(damageIdOf).find((d) => d) ?? null,
+    ...(data.healing && !data.damage ? { healing: true as const } : {}),
     subtitle: `${spellLevelLabel(data.level)} · ${origin}`, notes: spellNotes(data),
   }));
   return out.sort((a, b) => (a.kind === "spell" && b.kind === "spell"

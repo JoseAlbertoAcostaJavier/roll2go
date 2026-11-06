@@ -127,7 +127,8 @@ export function timeShort(time: string): string {
 const NOT_EFFECT = /^(Salvación de |Área: |Ataque de conjuro$|Concentración$|Ritual$)/;
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
-function effectOf(tags: string[]): SpellRow["effect"] {
+function effectOf(tags: string[], data: SpellData): SpellRow["effect"] {
+  if (data.healing) return { damageTypeId: null, label: `${data.healing.dice} Curación` };
   const damage = tags.find((t) => damageIdOf(t));
   if (damage) {
     const damageTypeId = damageIdOf(damage)!;
@@ -145,7 +146,7 @@ export function spellTableRows(spells: SpellsSummary, entries: Map<string, Catal
     ref, key: refKey(ref), name: entry.nameEs ?? entry.name, nameEn: entry.name, level: data.level,
     school: spellSchoolName(data.school), schoolId: data.school, time: data.time, timeShort: timeShort(data.time), range: data.range,
     duration: data.duration, components: data.components, concentration: data.concentration, ritual: data.ritual,
-    hit: hitOf(data.tags, caster), effect: effectOf(data.tags), origin, limited,
+    hit: hitOf(data.tags, caster), effect: effectOf(data.tags, data), origin, limited,
     casterClass: block?.class ?? null, tags: data.tags,
   }));
 }

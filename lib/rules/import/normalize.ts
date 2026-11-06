@@ -567,6 +567,14 @@ function spellDamage(raw: Rec): SpellData["damage"] {
   return m ? { dice: m[1].trim() } : undefined;
 }
 
+/** Dados de curación: el primer `{@dice …}` tras «regains»/«restore»; sin curación si el texto tiene daño. */
+export function spellHealing(raw: Rec): SpellData["healing"] {
+  const text = JSON.stringify([raw.entries]);
+  if (text.includes("{@damage")) return undefined;
+  const m = /\b(?:regains?|restore)\b[^."]*\{@dice\s+([^}|]+)/.exec(text);
+  return m ? { dice: m[1].trim() } : undefined;
+}
+
 export function normalizeSpell(raw: Rec, ctx: NormalizeContext): NormalizedEntry {
   const key = keyOf("spell", str(raw.name), str(raw.source));
   const head = header("spell", raw, key);
@@ -575,6 +583,7 @@ export function normalizeSpell(raw: Rec, ctx: NormalizeContext): NormalizedEntry
   // La mejora va sin su título («Using a Higher-Level Spell Slot»)
   const higherLevels = entriesToBbcode(asArr(raw.entriesHigherLevel).flatMap((e) => (isObj(e) ? asArr(e.entries) : [e])));
   const damage = spellDamage(raw);
+  const healing = spellHealing(raw);
   return entry<"spell">(head, {
     level: raw.level as number,
     school: str(raw.school),
@@ -588,6 +597,7 @@ export function normalizeSpell(raw: Rec, ctx: NormalizeContext): NormalizedEntry
     tags: spellTags(raw),
     ...(higherLevels ? { higherLevels } : {}),
     ...(damage ? { damage } : {}),
+    ...(healing ? { healing } : {}),
   });
 }
 

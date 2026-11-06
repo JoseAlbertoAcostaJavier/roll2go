@@ -187,6 +187,7 @@ const checks: { [K in EntryKind]: Check } = {
     tags: strings,
     "higherLevels?": str,
     "damage?": shape({ dice: str, "scaling?": arrayOf(shape({ level: int(1, 20), dice: str })) }),
+    "healing?": shape({ dice: str }),
   }),
   item: shape({
     type: str,
