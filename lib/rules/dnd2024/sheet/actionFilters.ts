@@ -42,7 +42,7 @@ export type SpellAction = Of<"spell">;
 export type ActionSection = {
   group: ActionGroup;
   title: string;
-  /** Tabla de ataques: armas y conjuros con tirada (`hit`). */
+  /** Tabla de ataques: armas y conjuros con tirada (`hit`) o con dados de curación. */
   attacks: (Of<"attack"> | SpellAction)[];
   /** Conjuros sin tirada. */
   spells: SpellAction[];
@@ -51,8 +51,10 @@ export type ActionSection = {
   basics: Of<"basic">[];
 };
 
+// Conjuro de la tabla: con tirada o con curación (sus dados se muestran en la columna de daño)
+const isTabled = (i: SpellAction) => i.hit !== null || i.healing === true;
 const isAttack = (i: ActionItem): i is Of<"attack"> | SpellAction =>
-  i.kind === "attack" || (i.kind === "spell" && i.hit !== null);
+  i.kind === "attack" || (i.kind === "spell" && isTabled(i));
 
 /**
  * Secciones que se muestran con el filtro, en orden y solo si tienen algo. Con «Ataques», solo las tablas de ataques;
@@ -69,7 +71,7 @@ export function actionSections(summary: ActionsSummary, filter: ActionFilter): A
         group,
         title: GROUP_TITLES[group],
         attacks,
-        spells: items.filter((i): i is SpellAction => i.kind === "spell" && i.hit === null),
+        spells: items.filter((i): i is SpellAction => i.kind === "spell" && !isTabled(i)),
         features: items.filter((i): i is Of<"feature"> => i.kind === "feature"),
         basics: items.filter((i): i is Of<"basic"> => i.kind === "basic"),
       };

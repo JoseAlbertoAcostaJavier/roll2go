@@ -38,7 +38,7 @@ const SPELL_ICON = iconSrc("action", "cast-spell");
 // Icono de la escuela del conjuro (blanco, como los demás); sin él, el genérico
 const schoolIcon = (school: string) => iconSrc("darkSchool", school) ?? SPELL_ICON;
 
-// Tabla de ataques: armas y conjuros con tirada; se desplaza dentro de su caja en móvil
+// Tabla de ataques: armas y conjuros con tirada (también los de curación); se desplaza dentro de su caja en móvil
 function AttackTable({ rows }: { rows: ActionSection["attacks"] }) {
   return (
     <div className="overflow-x-auto">
@@ -104,13 +104,17 @@ function AttackTable({ rows }: { rows: ActionSection["attacks"] }) {
                   </span>
                 </th>
                 <td className="py-2 pr-3 whitespace-nowrap">{r.range}</td>
-                <td className="py-2 pr-3 whitespace-nowrap font-heading font-bold">{r.hit}</td>
+                <td className="py-2 pr-3 whitespace-nowrap font-heading font-bold">{r.hit ?? <span className="font-normal text-muted">—</span>}</td>
                 <td className="py-2 pr-3">
                   {r.damage || r.damageTypeId ? (
                     <span className="flex items-center gap-1.5 whitespace-nowrap">
                       {r.damage}
-                      <MaskIcon src={iconSrc("damageType", r.damageTypeId)} size={16} className="text-muted" />
-                      {r.damageTypeId && <span className="text-xs text-muted">{DAMAGE_TYPE_NAMES[r.damageTypeId] ?? r.damageTypeId}</span>}
+                      {r.healing ? <span className="text-xs text-muted">Curación</span> : (
+                        <>
+                          <MaskIcon src={iconSrc("damageType", r.damageTypeId)} size={16} className="text-muted" />
+                          {r.damageTypeId && <span className="text-xs text-muted">{DAMAGE_TYPE_NAMES[r.damageTypeId] ?? r.damageTypeId}</span>}
+                        </>
+                      )}
                     </span>
                   ) : (
                     <span className="text-muted">—</span>
@@ -172,7 +176,7 @@ function Section({ section, vis, attacksPerAction, characterId, isOwner }: {
             <li key={`${refKey(f.ref)}-${i}`} className="py-3">
               <div className="flex items-baseline gap-3">
                 <span className="min-w-0 flex-1">
-                  <FeatureButton featureKey={refKey(f.ref)} name={f.name} />
+                  <FeatureButton featureKey={f.uses?.key ?? refKey(f.ref)} name={f.name} />
                   {f.special && <span className="ml-2 text-sm text-muted">(Especial)</span>}
                 </span>
                 <span className="shrink-0 text-xs uppercase tracking-wide text-muted">{f.source}</span>
@@ -208,7 +212,8 @@ export default function ActionsTab({ characterId, isOwner, active, summary, filt
   const shown = sections.some((s) => sectionVisibility(s, filter).section);
   const features: FeatureInfo[] = sections.flatMap((s) => s.features).map((f) => {
     const e = entries.get(refKey(f.ref));
-    return { key: refKey(f.ref), name: f.name, source: f.source, description: e ? e.descriptionEs || e.description : "" };
+    // Una especie con varios contadores repite el ref: la clave de cada uno es la de su contador
+    return { key: f.uses?.key ?? refKey(f.ref), name: f.name, source: f.source, description: e ? e.descriptionEs || e.description : "" };
   });
   return (
     <ActionsDialogs characterId={characterId} active={active} spells={spells} basics={basics} features={features} itemCards={itemCards} itemDescriptions={itemDescriptions}>

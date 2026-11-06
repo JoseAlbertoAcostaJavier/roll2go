@@ -194,6 +194,24 @@ describe("pendingChoices", () => {
     expect(pendingChoices(sheetWith([["fighter", 1]]), cls("fighter"), 2, catalog).some((p) => p.type === "languages")).toBe(false);
   });
 
+  describe("Jerga de ladrones al entrar en Pícaro por multiclase", () => {
+    const langs = (r: { type: string }[]) => r.filter((p) => p.type === "languages");
+    it("Guerrero 1 → Pícaro 1 pide 1 idioma", () => {
+      expect(langs(pendingChoices(sheetWith([["fighter", 1]]), cls("rogue"), 1, catalog))).toEqual([
+        { type: "languages", source: "languages:rogue", count: 1, label: "Jerga de ladrones: elige 1 idioma." },
+      ]);
+    });
+    it("Pícaro de primer nivel (hoja sin niveles) y Pícaro 2 no lo piden", () => {
+      expect(langs(pendingChoices(sheetWith([]), cls("rogue"), 1, catalog))).toEqual([]);
+      expect(langs(pendingChoices(sheetWith([["rogue", 1]]), cls("rogue"), 2, catalog))).toEqual([]);
+    });
+    it("sin ningún idioma libre en el catálogo no lo pide", () => {
+      const known = ["language:common|xphb", "language:elvish|xphb"];
+      const pool = [{ name: "common", type: "standard" }, { name: "elvish", type: "standard" }];
+      expect(langs(pendingChoices(sheetWith([["fighter", 1]]), cls("rogue"), 1, catalog, { languages: { pool, known } }))).toEqual([]);
+    });
+  });
+
   it("entrada en Explorador como multiclase: 1 habilidad de su lista (y sus maestrías)", () => {
     const r = pendingChoices(sheetWith([["barbarian", 3]]), cls("ranger"), 1, catalog);
     expect(types(r)).toEqual(["skills", "weaponMastery", "spells"]);

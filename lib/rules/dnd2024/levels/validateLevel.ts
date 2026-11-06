@@ -11,7 +11,7 @@ import {
   checkFeatSpellChoices, chosenFeatSpells, featNameOfLabel, featSpellClash, levelFeatSpellPending, splitFeatSpells, type FeatWithData,
 } from "../spells/featSpells";
 import { bareName, refKey } from "../sheet/equipmentRefs";
-import { chosenLanguageRefs, fixedLanguages, type LanguageInfo } from "../creation/languages";
+import { knownLanguagesAt, type LanguageInfo } from "../creation/languages";
 import { heldArcana, heldBonusSpells, heldOptionalFeatures, heldPicks } from "./held";
 import { meetsMulticlass, pendingChoices } from "./pendingChoices";
 import { currentMasteries } from "./masteries";
@@ -115,10 +115,9 @@ export async function validateLevel(
   await loadInto(entries, newFeatures.map((f) => f.ref), ctx.resolve);
   const options = newFeatures.flatMap((f) => (entries.get(refKey(f.ref))?.data as FeatureData | undefined)?.options ?? []);
   await loadInto(entries, options, ctx.resolve);
-  const knownLanguages = [
-    ...fixedLanguages(Object.fromEntries(summary.map((c) => [bareName(c.class.ref.key), c.level]))),
-    ...chosenLanguageRefs(sheet).map((r) => r.key),
-  ];
+  const knownLanguages = knownLanguagesAt(
+    sheet, Object.fromEntries(summary.map((c) => [bareName(c.class.ref.key), c.level])), classEntry.ref, classLevel,
+  );
   const pending = pendingChoices(sheet, classEntry.ref, classLevel, entries, {
     ...(subclass ? { subclass: subclass.ref } : {}), known: knownSpellRefs(derived.spells),
     ...(ctx.languagePool ? { languages: { pool: await ctx.languagePool(), known: knownLanguages } } : {}),

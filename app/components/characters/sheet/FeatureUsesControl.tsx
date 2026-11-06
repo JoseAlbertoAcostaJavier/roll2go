@@ -9,8 +9,10 @@ const recoveryLabel = (use: FeatureUse) => (use.recovery.short === "all" ? "Desc
 
 // Usos de un rasgo («Furia □□ / Descanso largo»): el dueño los marca (optimista, con vuelta atrás si falla); los demás
 // los ven en solo lectura. Una sola petición a la vez, como `InspirationBox`.
-export default function FeatureUsesControl({ characterId, use, isOwner, className = "" }: {
+export default function FeatureUsesControl({ characterId, use, isOwner, className = "", showName = false }: {
   characterId: string; use: FeatureUse; isOwner: boolean; className?: string;
+  /** Muestra el nombre del contador antes de las casillas (grupos con varios contadores). */
+  showName?: boolean;
 }) {
   const router = useRouter();
   const [used, setUsed] = useState(use.used);
@@ -55,13 +57,14 @@ export default function FeatureUsesControl({ characterId, use, isOwner, classNam
   return (
     <div className={className}>
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 print:hidden">
+        {showName && <span className="text-sm font-semibold">{use.name}</span>}
         <UseBoxes
           count={use.max} used={used} busy={busy} onSet={isOwner ? set : null}
           label={`Usos de ${use.name}`} itemLabel={`Uso de ${use.name}`}
         />
         <span className="text-xs text-muted">/ {recoveryLabel(use)}</span>
       </div>
-      <p className="hidden text-xs print:block">{use.max - spent}/{use.max} · {recoveryLabel(use)}</p>
+      <p className="hidden text-xs print:block">{showName && `${use.name}: `}{use.max - spent}/{use.max} · {recoveryLabel(use)}</p>
       {error && <p role="alert" className="mt-1 print:hidden text-xs text-brand-soft">{error}</p>}
     </div>
   );

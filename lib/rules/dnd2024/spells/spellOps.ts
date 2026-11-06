@@ -4,7 +4,7 @@
 // devuelven la hoja nueva; la ruta relee el personaje y recalcula los bloques antes de aplicarlas.
 import type { CatalogEntry } from "@/lib/rules/catalog/types";
 import type { Ref, SpellData } from "@/lib/rules/types";
-import { innateKey, type CasterBlock, type OtherSpell, type Slots, type SpellsSummary } from "../derive/spells";
+import { innateKey, innateMax, type CasterBlock, type OtherSpell, type Slots, type SpellsSummary } from "../derive/spells";
 import { refKey } from "../sheet/equipmentRefs";
 import type { Dnd2024SheetV2, Named } from "../sheet/sheet";
 import { preparedKey, spellListOf } from "./spellcasting";
@@ -23,6 +23,8 @@ export type SpellOpCtx = {
   slots: Slots;
   /** Conjuros de especie, legado, dotes… (`derive(...).spells.other`): los `innate` de nivel 1+ tienen un uso gratis. */
   other: OtherSpell[];
+  /** Bonificador de competencia (`derive(...).proficiencyBonus`): los usos de los conjuros innatos `uses: "pb"`. */
+  proficiencyBonus?: number;
   /** Entradas del catálogo de los libros utilizables (el conjuro de la operación y las clases de la hoja). */
   resolve: (ref: Ref) => CatalogEntry | null;
 };
@@ -62,7 +64,7 @@ const has = (list: { ref: Ref }[] | Ref[], ref: Ref) =>
 const innateUses = (ctx: SpellOpCtx): { key: string; spell: Named; max: number }[] =>
   ctx.other.flatMap((o) => {
     const level = (ctx.resolve(o.spell.ref)?.data as SpellData | undefined)?.level ?? 0;
-    return o.innate && level > 0 ? [{ key: innateKey(o.spell.ref), spell: o.spell, max: 1 }] : [];
+    return o.innate && level > 0 ? [{ key: innateKey(o.spell.ref), spell: o.spell, max: innateMax(o.uses, ctx.proficiencyBonus) }] : [];
   });
 
 /** Error al preparar con el límite lleno (también lo muestra la ficha). */

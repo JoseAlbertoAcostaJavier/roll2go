@@ -5,7 +5,7 @@ import { actionIcon } from "@/lib/rules/dnd2024/sheet/actionIcons";
 import { refKey } from "@/lib/rules/dnd2024/sheet/equipmentRefs";
 import { damageIdOf, hitOf, spellDamageAt, usableSpells } from "@/lib/rules/dnd2024/spells/spellTable";
 import { spellLevelLabel } from "@/lib/rules/dnd2024/spells/spellTextClient";
-import type { ActionData, FeatureData, Ref, SpellData } from "@/lib/rules/types";
+import type { ActionData, Activation, FeatureData, Ref, SpellData } from "@/lib/rules/types";
 import type { Attack } from "./attacks";
 import type { FeatureUse } from "./featureUses";
 import type { FeatureGroup } from "./features";
@@ -19,6 +19,8 @@ export type ActionItem =
     /** Escuela de 5etools (`V`), para su icono. */
     school: string;
     range: string; hit: string | null; damage: string | null; damageTypeId: string | null;
+    /** `damage` son dados de curación, no de daño. */
+    healing?: true;
     /** «Truco · Mago», «Nivel 1 · Dote: Iniciado en la magia (mago)». */
     subtitle: string;
     /** Componentes (solo las letras), «Concentración» y «Ritual»: «V, S · Concentración · Ritual». */
@@ -78,7 +80,8 @@ function spellItems(spells: SpellsSummary, entries: Map<string, CatalogEntry>, l
   const out: ActionItem[] = usableSpells(spells, entries).map(({ ref, caster, origin, entry, data }) => ({
     kind: "spell", group: spellGroup(data.time), ref, name: entry.nameEs ?? entry.name,
     level: data.level, school: data.school, range: data.range, hit: hitOf(data.tags, caster),
-    damage: spellDamageAt(data, level), damageTypeId: data.tags.map(damageIdOf).find((d) => d) ?? null,
+    damage: spellDamageAt(data, level) ?? data.healing?.dice ?? null, damageTypeId: data.tags.map(damageIdOf).find((d) => d) ?? null,
+    ...(data.healing && !data.damage ? { healing: true as const } : {}),
     subtitle: `${spellLevelLabel(data.level)} · ${origin}`, notes: spellNotes(data),
   }));
   return out.sort((a, b) => (a.kind === "spell" && b.kind === "spell"
@@ -109,7 +112,6 @@ export function deriveActions(input: ActionsInput): ActionsSummary {
   const extra = Math.max(0, ...classFeatures.map((f) =>
     EXTRA_ATTACKS.find(([prefix]) => featureName(f.ref).startsWith(prefix))?.[1] ?? 0));
 
-  const usesByKey = new Map(featureUses.map((u) => [u.key, u]));
   // Rasgos de clase y subclase con activación y cualquier rasgo con usos (la especie y el legado sin rasgos propios
   // cuentan como un solo rasgo, como en `featureUses`)
   const candidates = features.flatMap((g) => {
@@ -120,13 +122,16 @@ export function deriveActions(input: ActionsInput): ActionsSummary {
   });
   const featureItems: ActionItem[] = candidates
     .flatMap((f) => {
+      type Candidate = typeof f & { activation: Activation | undefined; uses: FeatureUse | undefined; label: string };
       const activation = f.own ? (entries.get(refKey(f.ref))?.data as FeatureData | undefined)?.activation : undefined;
-      const uses = usesByKey.get(refKey(f.ref));
-      return activation || uses ? [{ ...f, activation, uses }] : [];
+      // Un rasgo puede tener varios contadores (especie): un ítem por cada uno
+      const uses = featureUses.filter((u) => u.key === refKey(f.ref) || u.owner === refKey(f.ref));
+      if (uses.length === 0) return activation ? [{ ...f, activation, uses: undefined, label: f.name } as Candidate] : [];
+      return uses.map((u): Candidate => ({ ...f, activation: u.activation ?? activation, uses: u, label: u.name }));
     })
     .sort((a, b) => a.level - b.level)
     .map((f): ActionItem => ({
-      kind: "feature", group: f.activation ?? "other", ref: f.ref, name: f.uses?.name ?? f.name, source: f.source,
+      kind: "feature", group: f.activation ?? "other", ref: f.ref, name: f.label, source: f.source,
       special: !f.activation, ...(f.uses ? { uses: f.uses } : {}),
     }));
 

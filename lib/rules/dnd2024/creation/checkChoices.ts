@@ -272,7 +272,8 @@ export async function checkChoices(
       }
       out.push({ type: "weaponMastery", source: p.source, value: weapons });
     } else if (p.type === "languages") {
-      // Idiomas de Explorador hábil: cualquiera, sin repetir entre sí ni con los que ya conoce
+      // Idiomas de Explorador hábil o del Pícaro (multiclase): cualquiera, sin repetir entre sí ni con los que ya conoce.
+      // El `source: "ranger"` del hueco solo satisface el tipo y no influye en la comprobación; el origen real es `p.source`
       const refs = Array.isArray(value) ? value.map(asRef) : [];
       if (refs.some((r) => !r || !r.key.startsWith("language:") || (ctx.books && !ctx.books.includes(r.book)))) {
         bad(chooseN);

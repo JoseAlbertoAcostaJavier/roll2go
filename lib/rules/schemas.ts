@@ -56,7 +56,7 @@ const equipment: Check = (v, p, e) => {
   }
 };
 // `level` es el nivel de personaje o de clase en que se obtiene el conjuro, no el nivel del conjuro
-const spellGrant = shape({ level: int(1, 20), ref, "ability?": ability });
+const spellGrant = shape({ level: int(1, 20), ref, "ability?": ability, "uses?": oneOf("pb") });
 // Conjuros a elegir de una dote o de una invocación (Pacto del tomo)
 const featSpellChoices = arrayOf(shape({
   level: int(1, 20),
@@ -187,6 +187,7 @@ const checks: { [K in EntryKind]: Check } = {
     tags: strings,
     "higherLevels?": str,
     "damage?": shape({ dice: str, "scaling?": arrayOf(shape({ level: int(1, 20), dice: str })) }),
+    "healing?": shape({ dice: str }),
   }),
   item: shape({
     type: str,

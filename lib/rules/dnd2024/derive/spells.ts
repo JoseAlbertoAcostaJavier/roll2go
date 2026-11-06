@@ -28,7 +28,11 @@ export { chosenSpells };
  * `ability`: con la que se lanza, si se sabe (la elegida con la dote o la de la concesión); sin ella, Inteligencia
  * (`DEFAULT_SPELL_ABILITY`).
  */
-export type OtherSpell = { spell: Named; origin: string; innate?: true; ability?: Ability };
+export type OtherSpell = { spell: Named; origin: string; innate?: true; ability?: Ability; uses?: "pb" };
+
+/** Usos por descanso largo de un conjuro innato: el bonificador de competencia con `uses: "pb"` (si se conoce); si no, 1. */
+export const innateMax = (uses: "pb" | undefined, proficiencyBonus: number | undefined): number =>
+  uses === "pb" && proficiencyBonus !== undefined ? proficiencyBonus : 1;
 
 /** Lo que hace falta para el ataque y la CD de los conjuros de `other`: competencia y modificadores de característica. */
 export type CastingStats = { proficiencyBonus: number; mods: Record<Ability, number> };
@@ -271,7 +275,7 @@ export function spellSlots(sheet: Dnd2024SheetV2, entries: Map<string, CatalogEn
 export function otherSpells(sheet: Dnd2024SheetV2, entries: Map<string, CatalogEntry>): OtherSpell[] {
   const level = sheet.levels.length;
   const out: OtherSpell[] = [];
-  type Grants = { level: number; ref: Ref; ability?: Ability }[] | undefined;
+  type Grants = { level: number; ref: Ref; ability?: Ability; uses?: "pb" }[] | undefined;
   // `ability`: la elegida con la dote; si no, la de cada concesión y, si no, Inteligencia
   const addGrants = (grants: Grants, origin: string, innate = false, chosen?: Ability, fallback?: Ability) =>
     out.push(...(grants ?? []).filter((g) => g.level <= level).map((g) => {
@@ -279,6 +283,7 @@ export function otherSpells(sheet: Dnd2024SheetV2, entries: Map<string, CatalogE
       return {
         spell: named(g.ref, entries), origin, ...(ability ? { ability } : {}),
         ...(innate ? { innate: true as const } : {}),
+        ...(g.uses ? { uses: g.uses } : {}),
       };
     }));
 

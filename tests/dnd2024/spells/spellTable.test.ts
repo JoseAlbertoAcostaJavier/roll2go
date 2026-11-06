@@ -24,6 +24,10 @@ const ENTRIES = [
   spell("spell:fly|xphb", "Volar", 3, "1 acción"),
   spell("spell:arcane gate|xphb", "Puerta arcana", 6, "1 acción", ["Teletransporte"]),
   spell("spell:thaumaturgy|xphb", "Taumaturgia", 0, "1 acción"),
+  { ...spell("spell:cure wounds|xphb", "Curar heridas", 1, "1 acción", ["Daño de fuego"]), data: {
+    level: 1, school: "V", time: "1 acción", range: "Toque", components: "V, S", duration: "Instantáneo",
+    concentration: false, ritual: false, classes: ["cleric"], tags: ["Daño de fuego"], healing: { dice: "2d8" },
+  } satisfies SpellData },
   spell("spell:poison spray|xphb", "Rociada venenosa", 0, "1 acción", ["Daño de veneno", "Salvación de Constitución"]),
 ];
 const entries = new Map(ENTRIES.map((e) => [`${B}:${e.ref.key}`, e]));
@@ -33,7 +37,7 @@ const block: CasterBlock = {
   class: ref("class:wizard|xphb"), name: "Mago", ability: "wis", mode: "spellbook", dc: 13, attack: 5,
   cantripLimit: 3, preparedLimit: 4, maxSpellLevel: 6, known: [],
   cantrips: [named("spell:fire bolt|xphb"), named("spell:friends|xphb")],
-  prepared: [ref("spell:shield|xphb")],
+  prepared: [ref("spell:shield|xphb"), ref("spell:cure wounds|xphb")],
   spellbook: [named("spell:shield|xphb"), named("spell:sleep|xphb")],
   always: [],
   limited: [{ key: "arcanum:x", spell: named("spell:arcane gate|xphb"), origin: "Arcano místico", max: 1, used: 1 }],
@@ -52,8 +56,11 @@ const row = (name: string) => rows.find((r) => r.name === name)!;
 describe("spellTableRows", () => {
   it("incluye trucos, preparados, limitados y otros; no el libro sin preparar", () => {
     expect(rows.map((r) => r.name).sort()).toEqual(
-      ["Amigos", "Descarga de fuego", "Escudo", "Paso brumoso", "Puerta arcana", "Taumaturgia", "Volar"]);
+      ["Amigos", "Curar heridas", "Descarga de fuego", "Escudo", "Paso brumoso", "Puerta arcana", "Taumaturgia", "Volar"]);
     expect(rows.find((r) => r.name === "Dormir")).toBeUndefined();
+  });
+  it("la curación gana sobre el efecto de las etiquetas, sin tipo de daño", () => {
+    expect(row("Curar heridas").effect).toEqual({ damageTypeId: null, label: "2d8 Curación" });
   });
   it("calcula hit como en Acciones", () => {
     expect(row("Descarga de fuego").hit).toBe("+5");
@@ -93,6 +100,18 @@ describe("spellTableRows", () => {
     expect(row("Volar").limited).toBeNull();
     const spent = spellTableRows({ ...summary, limitedUsed: { [key]: 1 } }, entries);
     expect(spent.find((r) => r.name === "Paso brumoso")!.limited).toEqual({ key, max: 1, used: 1 });
+  });
+  it("usos por competencia: max = bonificador; sin uses o sin casting, 1", () => {
+    const key = innateKey(ref("spell:misty step|xphb"));
+    const casting = { proficiencyBonus: 3, mods: { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 } };
+    const other = (uses?: "pb") => [{ spell: named("spell:misty step|xphb"), origin: "Especie: Gnomo", innate: true as const, ...(uses ? { uses } : {}) }];
+    const maxOf = (s: SpellsSummary) => spellTableRows(s, entries).find((r) => r.name === "Paso brumoso")!.limited!.max;
+    const base = { ...summary, blocks: [] };
+    expect(maxOf({ ...base, other: other("pb"), casting })).toBe(3);
+    expect(maxOf({ ...base, other: other(), casting })).toBe(1);
+    expect(maxOf({ ...base, other: other("pb") })).toBe(1);
+    const spent = spellTableRows({ ...base, other: other("pb"), casting, limitedUsed: { [key]: 5 } }, entries);
+    expect(spent[0].limited).toEqual({ key, max: 3, used: 3 });
   });
 });
 

@@ -93,6 +93,25 @@ const run = (spells = summary([]), features: FeatureGroup[] = [], attacks = [fis
 const spellItem = (items: ActionItem[], name: string) =>
   items.find((i): i is Extract<ActionItem, { kind: "spell" }> => i.kind === "spell" && i.name === name);
 
+describe("deriveActions: curación", () => {
+  const cure = (healing: boolean) => {
+    const e = entry("spell:cure wounds|xphb", "cure wounds", {
+      level: 1, school: "A", time: "1 acción", range: "Toque", components: "V, S", duration: "Instantáneo",
+      concentration: false, ritual: false, classes: ["cleric"], tags: [], ...(healing ? { healing: { dice: "2d8" } } : {}),
+    } satisfies SpellData, "Curar heridas");
+    const s = summary([block({ prepared: [ref("spell:cure wounds|xphb")] })]);
+    return spellItem(run(s, [], [fist], [], new Map([[`${B}:${e.ref.key}`, e]])).items, "Curar heridas")!;
+  };
+  it("los dados de curación van en damage, con healing y sin tipo de daño; sin tirada, como los de daño sin ataque", () => {
+    expect(cure(true)).toMatchObject({ damage: "2d8", healing: true, damageTypeId: null, hit: null });
+  });
+  it("sin healing en los datos, como antes", () => {
+    const item = cure(false);
+    expect(item).toMatchObject({ damage: null, damageTypeId: null });
+    expect(item).not.toHaveProperty("healing");
+  });
+});
+
 describe("deriveActions: conjuros", () => {
   const { items } = run(wizard);
   it("truco de ataque en Acciones con «+N» y el tipo de daño", () => {
@@ -200,6 +219,20 @@ describe("deriveActions: rasgos con usos", () => {
   });
   it("un rasgo sin usos ni activación no aparece", () => {
     expect(features.map((f) => f.name)).toEqual(["Furia", "Aguante incansable"]);
+  });
+  it("especie con varios contadores: un ítem por uso, en el grupo de su activación", () => {
+    const orcKey = `${B}:species:orc|xphb`;
+    const base = { max: 1, used: 0 };
+    const orcUses: FeatureUse[] = [
+      { ...base, key: `${orcKey}#adrenaline-rush`, name: "Oleada de adrenalina", recovery: { long: "all", short: "all" }, owner: orcKey, activation: "bonus" },
+      { ...base, key: orcKey, name: "Aguante incansable", recovery: { long: "all", short: "none" }, owner: orcKey },
+    ];
+    const orcGroups: FeatureGroup[] = [{ title: "Orco", source: "species", ref: ref("species:orc|xphb"), features: [] }];
+    const out = run(summary([]), orcGroups, [], orcUses).items.filter((i) => i.kind === "feature");
+    expect(out).toMatchObject([
+      { name: "Oleada de adrenalina", group: "bonus", special: false, source: "Orco" },
+      { name: "Aguante incansable", group: "other", special: true, source: "Orco" },
+    ]);
   });
 });
 

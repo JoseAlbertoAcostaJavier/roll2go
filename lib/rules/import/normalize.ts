@@ -242,7 +242,7 @@ function spellOptions(additional: unknown[]): { name: string; spells: { level: n
   }));
 }
 
-function blockGrants(additional: unknown[], unleveled?: number): SpellGrant[] {
+export function blockGrants(additional: unknown[], unleveled?: number): SpellGrant[] {
   const grants: SpellGrant[] = [];
   for (const block of additional) {
     if (!isObj(block)) continue;
@@ -253,8 +253,13 @@ function blockGrants(additional: unknown[], unleveled?: number): SpellGrant[] {
       for (const [lvl, value] of Object.entries(byLevel)) {
         const level = lvl === "_" && unleveled !== undefined ? unleveled : Number(lvl);
         if (!Number.isInteger(level)) continue; // "_" = sin nivel, s1… = nivel de conjuro
+        // Los de `daily.pb` se lanzan tantas veces por descanso largo como el bonificador de competencia
+        const pb = group === "innate" && isObj(value) && isObj(value.daily) ? new Set(collectStrings(value.daily.pb)) : null;
         for (const s of collectStrings(value)) {
-          grants.push({ level, ref: ref("spell", cleanRefKey(s)), ...(isAbility(ability) ? { ability } : {}) });
+          grants.push({
+            level, ref: ref("spell", cleanRefKey(s)), ...(isAbility(ability) ? { ability } : {}),
+            ...(pb?.has(s) ? { uses: "pb" as const } : {}),
+          });
         }
       }
     }
@@ -562,6 +567,14 @@ function spellDamage(raw: Rec): SpellData["damage"] {
   return m ? { dice: m[1].trim() } : undefined;
 }
 
+/** Dados de curación: el primer `{@dice …}` tras «regains»/«restore»; sin curación si el texto tiene daño. */
+export function spellHealing(raw: Rec): SpellData["healing"] {
+  const text = JSON.stringify([raw.entries]);
+  if (text.includes("{@damage")) return undefined;
+  const m = /\b(?:regains?|restore)\b[^."]*\{@dice\s+([^}|]+)/.exec(text);
+  return m ? { dice: m[1].trim() } : undefined;
+}
+
 export function normalizeSpell(raw: Rec, ctx: NormalizeContext): NormalizedEntry {
   const key = keyOf("spell", str(raw.name), str(raw.source));
   const head = header("spell", raw, key);
@@ -570,6 +583,7 @@ export function normalizeSpell(raw: Rec, ctx: NormalizeContext): NormalizedEntry
   // La mejora va sin su título («Using a Higher-Level Spell Slot»)
   const higherLevels = entriesToBbcode(asArr(raw.entriesHigherLevel).flatMap((e) => (isObj(e) ? asArr(e.entries) : [e])));
   const damage = spellDamage(raw);
+  const healing = spellHealing(raw);
   return entry<"spell">(head, {
     level: raw.level as number,
     school: str(raw.school),
@@ -583,6 +597,7 @@ export function normalizeSpell(raw: Rec, ctx: NormalizeContext): NormalizedEntry
     tags: spellTags(raw),
     ...(higherLevels ? { higherLevels } : {}),
     ...(damage ? { damage } : {}),
+    ...(healing ? { healing } : {}),
   });
 }
 
