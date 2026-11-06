@@ -50,7 +50,7 @@ const hideRow = (visible: boolean) => (visible ? card : "hidden print:table-row"
 
 function Flag({ letter, title }: { letter: string; title: string }) {
   return (
-    <abbr title={title} className="rounded border border-line px-1 text-[11px] font-semibold text-muted no-underline">
+    <abbr title={title} className="rounded border border-line px-1 text-xs font-semibold text-muted no-underline">
       {letter}
       <span className="sr-only"> ({title})</span>
     </abbr>
@@ -98,7 +98,7 @@ function Row({ row, visible, props, search }: { row: SpellRow; visible: boolean;
                   e.preventDefault();
                   props.onOpen(row.ref, e.currentTarget);
                 }}
-                className="font-semibold text-fg hover:text-brand-soft hover:underline"
+                className="inline-block py-0.5 font-semibold text-fg hover:text-brand-soft hover:underline"
               >
                 {row.name}
               </a>

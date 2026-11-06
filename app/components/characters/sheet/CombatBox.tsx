@@ -19,7 +19,7 @@ export default function CombatBox({ d, show, className = "" }: {
         onClick={show({ kind: "initiative" })}
         className={`${statButton} flex h-24 w-32 flex-col items-center justify-center rounded-lg border-2 border-brand/40 bg-panel text-center`}
       >
-        <span className="text-[10px] font-semibold uppercase tracking-wide text-muted">Iniciativa</span>
+        <span className="text-[11px] font-semibold uppercase tracking-wide text-muted">Iniciativa</span>
         <span className="font-heading text-3xl font-extrabold leading-tight">{fmtMod(d.initiative)}</span>
       </button>
       <button
@@ -34,7 +34,7 @@ export default function CombatBox({ d, show, className = "" }: {
           className="absolute inset-[2px] group-focus-visible:inset-[5px] flex flex-col items-center justify-start bg-panel pt-4 text-center group-hover:bg-surface group-focus-visible:bg-surface forced-colors:group-focus-visible:border-4 forced-colors:group-focus-visible:border-[Highlight]"
           style={{ clipPath: SHIELD }}
         >
-          <span className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-muted">
+          <span className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-muted">
             CA
             {d.armorWarning && (
               <TriangleAlert size={12} className="text-brand-soft" role="img" aria-label={d.armorWarning} />

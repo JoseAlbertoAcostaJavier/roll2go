@@ -111,20 +111,23 @@ function Row({ line: l, data, where, visible, readOnly, actions, onOpen }: {
         ) : readOnly ? (
           <span className={l.equipped ? "" : "text-muted"}>{l.equipped ? "Sí" : "—"}</span>
         ) : (
-          <input
-            type="checkbox"
-            className="h-4 w-4 accent-brand"
-            checked={l.equipped}
-            aria-label={`Equipar ${l.name}`}
-            onChange={(e) => actions.equip(l.id, e.target.checked)}
-          />
+          // Casilla de 16 px con zona pulsable de 24 × 32 px (la etiqueta la reenvía a la casilla)
+          <label className="relative inline-flex h-4 w-4 after:absolute after:left-1/2 after:top-1/2 after:h-8 after:w-6 after:-translate-x-1/2 after:-translate-y-1/2">
+            <input
+              type="checkbox"
+              className="h-4 w-4 accent-brand"
+              checked={l.equipped}
+              aria-label={`Equipar ${l.name}`}
+              onChange={(e) => actions.equip(l.id, e.target.checked)}
+            />
+          </label>
         )}
       </td>
       <td className="py-2 pr-3">
         <button
           type="button"
           onClick={(e) => onOpen(l.id, e.currentTarget)}
-          className="rounded-sm text-left font-semibold underline-offset-2 hover:text-brand-soft hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+          className="inline-block rounded-sm py-0.5 text-left font-semibold underline-offset-2 hover:text-brand-soft hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
         >
           {l.name}
         </button>

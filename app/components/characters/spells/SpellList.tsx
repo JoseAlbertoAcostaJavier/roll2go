@@ -95,7 +95,7 @@ function Row({ item, onOpen, href }: { item: SpellRowItem; onOpen: SpellOpener; 
             </span>
           )}
           {item.origin && (
-            <span className="flex items-center gap-1 rounded border border-line px-1.5 text-[11px] text-muted">
+            <span className="flex items-center gap-1 rounded border border-line px-1.5 text-xs text-muted">
               <Lock size={10} aria-hidden="true" /> {item.origin}
             </span>
           )}

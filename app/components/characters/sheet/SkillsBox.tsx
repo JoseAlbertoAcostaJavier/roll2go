@@ -14,7 +14,7 @@ export default function SkillsBox({ skills, show, className = "" }: {
     <section className={`${sheetCard} ${className}`}>
       <MobileCollapse title="Habilidades">
         {/* Cabecera de columnas; los anchos coinciden con los de cada fila */}
-        <div aria-hidden="true" className="flex items-center gap-3 border-b border-line px-1 pb-1 text-[10px] font-semibold uppercase tracking-wide text-muted">
+        <div aria-hidden="true" className="flex items-center gap-3 border-b border-line px-1 pb-1 text-[11px] font-semibold uppercase tracking-wide text-muted">
           <span className="w-7 shrink-0">Comp</span>
           <span className="w-8 shrink-0">Mod</span>
           <span className="min-w-0 flex-1">Habilidad</span>

@@ -53,7 +53,7 @@ export default function UseBoxes({ count, used, onSet, busy, label, itemLabel, s
   }
 
   return (
-    <span role={onSet ? "group" : undefined} aria-label={onSet ? label : undefined} className={`inline-flex items-center gap-1.5 ${className}`}>
+    <span role={onSet ? "group" : undefined} aria-label={onSet ? label : undefined} className={`inline-flex items-center gap-2 ${className}`}>
       {tag && <span className="text-xs font-semibold uppercase tracking-wide text-muted">{tag}</span>}
       {Array.from({ length: count }, (_, i) => {
         const isSpent = i < spent;
@@ -71,7 +71,7 @@ export default function UseBoxes({ count, used, onSet, busy, label, itemLabel, s
             aria-label={`${each}, ${isSpent ? "gastado" : "libre"} (${i + 1} de ${count})`}
             title={isSpent ? "Recuperar" : "Gastar"}
             onClick={() => onSet(isSpent ? i : i + 1)}
-            className={`${box} enabled:hover:scale-110 disabled:opacity-60`}
+            className={`${box} relative after:absolute after:left-1/2 after:top-1/2 after:h-8 after:w-6 after:-translate-x-1/2 after:-translate-y-1/2 enabled:hover:scale-110 disabled:opacity-60`}
           >
             {mark}
           </button>
