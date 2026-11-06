@@ -63,7 +63,7 @@ type Props = {
   feats: EntryOption[];
   optionalFeatures: EntryOption[];
   weapons: EntryOption[];
-  /** Idiomas del catálogo (Explorador hábil). */
+  /** Idiomas del catálogo (Explorador hábil y Pícaro). */
   languages: EntryOption[];
 };
 

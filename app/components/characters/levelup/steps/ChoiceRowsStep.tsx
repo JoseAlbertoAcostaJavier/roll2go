@@ -18,11 +18,10 @@ export default function ChoiceRowsStep({ p, ctx, onChange, hint }: {
   /** Lo que ya tiene («Ya tienes: Atletismo, Percepción.»). */
   hint?: string;
 }) {
+  const intro = p.type === "languages" ? languagesIntro(p.count) : INTRO[p.type];
   return (
     <div className="space-y-4">
-      {(p.type === "languages" ? languagesIntro(p.count) : INTRO[p.type]) && (
-        <p className="text-sm text-muted">{p.type === "languages" ? languagesIntro(p.count) : INTRO[p.type]}</p>
-      )}
+      {intro && <p className="text-sm text-muted">{intro}</p>}
       <ChoiceField p={p} ctx={ctx} onChange={onChange} hint={hint} />
     </div>
   );
