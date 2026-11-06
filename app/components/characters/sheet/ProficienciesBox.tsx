@@ -1,5 +1,6 @@
 import { proficiencyName, toolName } from "@/lib/rules/dnd2024/sheet/labels";
-import { sheetCard, cardTitle } from "@/app/components/ui/formStyles";
+import { sheetCard } from "@/app/components/ui/formStyles";
+import MobileCollapse from "./MobileCollapse";
 import type { SheetData } from "./types";
 
 // Competencias y entrenamiento: armaduras, armas, herramientas e idiomas
@@ -14,15 +15,16 @@ export default function ProficienciesBox({ d, className = "" }: {
   ];
   return (
     <section className={`${sheetCard} ${className}`}>
-      <h3 className={cardTitle}>Competencias y entrenamiento</h3>
-      <dl className="space-y-2 text-sm">
-        {rows.map((o) => (
-          <div key={o.label}>
-            <dt className="font-semibold">{o.label}</dt>
-            <dd className="text-muted">{o.value || "—"}</dd>
-          </div>
-        ))}
-      </dl>
+      <MobileCollapse title="Competencias y entrenamiento">
+        <dl className="space-y-2 text-sm">
+          {rows.map((o) => (
+            <div key={o.label}>
+              <dt className="font-semibold">{o.label}</dt>
+              <dd className="text-muted">{o.value || "—"}</dd>
+            </div>
+          ))}
+        </dl>
+      </MobileCollapse>
     </section>
   );
 }
