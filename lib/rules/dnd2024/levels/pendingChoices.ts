@@ -6,7 +6,7 @@ import type {
   SubclassData,
 } from "@/lib/rules/types";
 import type { Derived } from "../derive";
-import { RANGER_LANGUAGES_SOURCE, capSlots, languageSlots, type LanguageInfo } from "../creation/languages";
+import { RANGER_LANGUAGES_SOURCE, ROGUE_LANGUAGES_SOURCE, capSlots, languageSlots, type LanguageInfo } from "../creation/languages";
 import { bareName, refKey } from "../sheet/equipmentRefs";
 import {
   BONUS_SPELL_ORIGINS, FEATURE_CHOICES, IMPROVED_ILLUSIONS, IMPROVED_ILLUSIONS_CANTRIP, MAGICAL_DISCOVERIES,
@@ -187,18 +187,20 @@ export function pendingChoices(
     });
   }
 
-  // Idiomas de Explorador hábil, al llegar a Explorador 2
-  const rangerLanguages = newClassLevel === 2
-    ? languageSlots({ [bareName(classRef.key)]: newClassLevel }).find((s) => s.source === "ranger") : undefined;
-  // (con la lista de idiomas del catálogo, solo los que hay para elegir)
-  const languageCount = rangerLanguages && opts.languages
-    ? capSlots([rangerLanguages], opts.languages.pool, opts.languages.known)[0].count : rangerLanguages?.count ?? 0;
-  if (rangerLanguages && languageCount > 0) {
-    out.push({
-      type: "languages", source: RANGER_LANGUAGES_SOURCE, count: languageCount,
-      label: `${rangerLanguages.label}: elige ${languageCount} ${languageCount === 1 ? "idioma" : "idiomas"}.`,
-    });
-  }
+  // Idiomas de Explorador hábil (al llegar a Explorador 2) y Jerga de ladrones (al entrar en Pícaro por multiclase)
+  const languageSource = (source: "ranger" | "rogue", when: boolean) => {
+    const slot = when ? languageSlots({ [bareName(classRef.key)]: newClassLevel }).find((s) => s.source === source) : undefined;
+    // (con la lista de idiomas del catálogo, solo los que hay para elegir)
+    const count = slot && opts.languages ? capSlots([slot], opts.languages.pool, opts.languages.known)[0].count : slot?.count ?? 0;
+    if (slot && count > 0) {
+      out.push({
+        type: "languages", source: source === "ranger" ? RANGER_LANGUAGES_SOURCE : ROGUE_LANGUAGES_SOURCE, count,
+        label: `${slot.label}: elige ${count} ${count === 1 ? "idioma" : "idiomas"}.`,
+      });
+    }
+  };
+  languageSource("ranger", newClassLevel === 2);
+  languageSource("rogue", newClassLevel === 1 && sheet.levels.length > 0);
 
   // 6 y 7. Opciones de rasgo y elecciones escritas a mano de los rasgos nuevos de la clase
   // («… Options» con rasgos opcionales de un tipo que ya pide una progresión no piden otra elección; si la opción no

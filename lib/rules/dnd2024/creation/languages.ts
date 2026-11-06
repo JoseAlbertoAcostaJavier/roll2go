@@ -26,6 +26,9 @@ export function fixedLanguages(classLevels: ClassLevels): string[] {
 export const fixedLanguageRefs = (classLevels: ClassLevels, books: string[]): Ref[] =>
   fixedLanguages(classLevels).flatMap((key) => books.map((book) => ({ book, key })));
 
+/** `source` de la elección de idioma del Pícaro (Jerga de ladrones) al entrar en la clase por multiclase. */
+export const ROGUE_LANGUAGES_SOURCE = "languages:rogue";
+
 /** `source` de la elección de idiomas del Explorador (Explorador hábil) al subir a Explorador 2. */
 export const RANGER_LANGUAGES_SOURCE = "languages:ranger";
 
@@ -33,6 +36,17 @@ export const RANGER_LANGUAGES_SOURCE = "languages:ranger";
 export const chosenLanguageRefs = (sheet: { languageChoices?: Ref[]; levels?: Dnd2024SheetV2["levels"] }): Ref[] => [
   ...(sheet.languageChoices ?? []),
   ...(sheet.levels ?? []).flatMap((l) => l.choices.flatMap((c) => (c.type === "languages" ? c.value : []))),
+];
+
+/**
+ * Claves de los idiomas que ya conoce la hoja al subir un nivel de `classRef`: los fijos de sus clases (con el nivel
+ * nuevo de esa clase) y los elegidos antes.
+ */
+export const knownLanguagesAt = (
+  sheet: Pick<Dnd2024SheetV2, "levels" | "languageChoices">, classLevels: ClassLevels, classRef: Ref, newClassLevel: number,
+): string[] => [
+  ...fixedLanguages({ ...classLevels, [bareName(classRef.key)]: newClassLevel }),
+  ...chosenLanguageRefs(sheet).map((r) => r.key),
 ];
 
 /** Nombre con que se compara un idioma entre libros: el inglés sin tildes ni mayúsculas («language:elvish|xphb» → «elvish»). */

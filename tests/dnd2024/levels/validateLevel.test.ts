@@ -1,5 +1,6 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import type { CatalogEntry } from "@/lib/rules/catalog/types";
+import { chosenLanguageRefs } from "@/lib/rules/dnd2024/creation/languages";
 import { signHitDie, type HitDieRoll } from "@/lib/rules/dnd2024/creation/rolls";
 import type { Choice, Dnd2024SheetV2, LevelEntry } from "@/lib/rules/dnd2024/sheet/sheet";
 import { validateLevel } from "@/lib/rules/dnd2024/levels/validateLevel";
@@ -12,7 +13,7 @@ beforeAll(() => {
 
 const cat = buildCatalog([
   "class-barbarian.json", "class-cleric.json", "class-fighter.json", "class-warlock.json", "class-wizard.json", "class-bard.json",
-  "class-ranger.json",
+  "class-ranger.json", "class-rogue.json",
 ]);
 // Dotes, invocaciones y armas que no están en los fixtures
 const extra = (key: string, data: unknown, name: string) =>
@@ -31,7 +32,7 @@ extra("feat:athlete|xphb", {
 extra("feat:boon of combat prowess|xphb", {
   category: "epicBoon", prerequisite: "Level 19+", repeatable: false, abilityIncrease: ["str", "dex", "con", "int", "wis", "cha"],
 }, "Boon of Combat Prowess");
-for (const [n, type] of [["elvish", "standard"], ["dwarvish", "standard"], ["celestial", "rare"], ["common", "standard"]]) {
+for (const [n, type] of [["elvish", "standard"], ["dwarvish", "standard"], ["celestial", "rare"], ["common", "standard"], ["thieves' cant", "secret"]]) {
   extra(`language:${n}|xphb`, { type }, n);
 }
 const DAMAGE_TYPES = ["acid", "bludgeoning", "cold", "fire", "force", "lightning", "necrotic", "piercing", "poison", "psychic", "radiant", "slashing", "thunder"];
@@ -1110,5 +1111,26 @@ describe("validateLevel: idiomas de Explorador hábil", () => {
   it("Guerrero 1 → 2 no acepta idiomas", async () => {
     const errs = await errorsOf(sheetWith([["fighter", 1]]), { ...body([lang("elvish", "celestial")]), class: client("class:fighter|xphb") });
     expect(errs.choices).toContain("Hay elecciones que este nivel no pide.");
+  });
+});
+
+describe("validateLevel: Jerga de ladrones al entrar en Pícaro por multiclase", () => {
+  const LANG = "languages:rogue";
+  const lang = (...names: string[]) => ({ type: "languages", source: LANG, value: names.map((n) => ref(`language:${n}|xphb`)) });
+  const body = (choices: unknown[]) => ({ expectedLevel: 2, class: client("class:rogue|xphb"), choices, hp: average });
+  const fighter1 = () => sheetWith([["fighter", 1]]);
+  it("sin la elección, falta elegir", async () => {
+    expect((await errorsOf(fighter1(), body([]))).choices).toContain("Jerga de ladrones: elige 1 idioma.");
+  });
+  it("elegir Jerga de ladrones (que ya conoce al entrar) → «Ya conoces ese idioma.»", async () => {
+    expect((await errorsOf(fighter1(), body([lang("thieves' cant")])))[`choices.${LANG}`]).toContain("Ya conoces ese idioma.");
+  });
+  it("elegir Élfico se acepta y se guarda en el nivel; chosenLanguageRefs lo incluye", async () => {
+    const r = await validateLevel(fighter1(), body([lang("elvish")]), ctx());
+    expect((r.ok ? {} : r.errors)[`choices.${LANG}`]).toBeUndefined();
+    if (r.ok) {
+      expect(r.entry.choices).toContainEqual({ type: "languages", source: LANG, value: [ref("language:elvish|xphb")] });
+      expect(chosenLanguageRefs({ levels: [...fighter1().levels, r.entry] })).toContainEqual(ref("language:elvish|xphb"));
+    }
   });
 });
