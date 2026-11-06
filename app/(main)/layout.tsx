@@ -16,8 +16,7 @@ export default async function MainLayout({ children }: { children: React.ReactNo
       <footer className="border-t border-line bg-[#111] py-7 text-sm text-muted">
         {/* Footer de la página principal. Añadire contenido aquí más tarde. */}
         <div className="mx-auto max-w-280 px-5">
-          <a href="#" className="hover:text-brand-soft">Work In Progress</a>
-          <p>Añadir Licencia Wizard of the Coast aqui más tarde.</p>
+          <p>Roll2Go</p>
         </div>
       </footer>
       <ChatAssistant />
