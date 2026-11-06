@@ -18,7 +18,7 @@ export default function SectionChips<T extends string>({ chips, active, base, qu
   label: string;
 }) {
   return (
-    <nav aria-label={label} className="-mx-1 mb-4 flex gap-2 overflow-x-auto px-1 pb-1 print:hidden">
+    <nav aria-label={label} className="-mx-1 mb-4 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none] print:hidden [&::-webkit-scrollbar]:hidden">
       {chips.map((c) => (
         <Link
           key={c.id}

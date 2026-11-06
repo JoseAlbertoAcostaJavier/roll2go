@@ -100,7 +100,7 @@ function AttackTable({ rows }: { rows: ActionSection["attacks"] }) {
                   </td>
                   <td role="cell" className={`py-2 ${cardDamage}`}>
                     <span className={label}>Daño</span>
-                    <span className="flex flex-wrap items-center gap-x-1.5 max-md:not-print:justify-end md:whitespace-nowrap">
+                    <span className="flex max-md:not-print:flex-wrap items-center gap-x-1.5 max-md:not-print:justify-end md:whitespace-nowrap">
                       {a.damage}
                       <MaskIcon src={iconSrc("damageType", a.damageTypeId)} size={16} className="text-muted" />
                       {a.damageType && <span className="font-sans text-xs font-normal text-muted">{a.damageType}</span>}
@@ -132,7 +132,7 @@ function AttackTable({ rows }: { rows: ActionSection["attacks"] }) {
                 <td role="cell" className={`py-2 ${cardDamage}`}>
                   <span className={label}>Daño</span>
                   {r.damage || r.damageTypeId ? (
-                    <span className="flex flex-wrap items-center gap-x-1.5 max-md:not-print:justify-end md:whitespace-nowrap">
+                    <span className="flex max-md:not-print:flex-wrap items-center gap-x-1.5 max-md:not-print:justify-end md:whitespace-nowrap">
                       {r.damage}
                       {r.healing ? <span className="font-sans text-xs font-normal text-muted">Curación</span> : (
                         <>

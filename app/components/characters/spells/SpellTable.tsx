@@ -132,9 +132,9 @@ function Row({ row, visible, props, search }: { row: SpellRow; visible: boolean;
         {row.hit ?? <span className="font-normal text-muted">—</span>}
       </td>
       <td role="cell" className={`${td} max-md:not-print:col-start-3 max-md:not-print:row-start-1 max-md:not-print:max-w-40 ${cardBig}`}>
-        <span className={label}>Daño</span>
+        <span className={label}>Efecto</span>
         {row.effect ? (
-          <span className="flex flex-wrap items-center gap-1.5 max-md:not-print:justify-end">
+          <span className="flex max-md:not-print:flex-wrap items-center gap-1.5 max-md:not-print:justify-end">
             <MaskIcon src={iconSrc("damageType", row.effect.damageTypeId)} size={16} className="text-muted" />
             <span className="max-md:not-print:text-base">{row.effect.label}</span>
           </span>
