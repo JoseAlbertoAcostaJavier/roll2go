@@ -94,6 +94,18 @@ describe("spellTableRows", () => {
     const spent = spellTableRows({ ...summary, limitedUsed: { [key]: 1 } }, entries);
     expect(spent.find((r) => r.name === "Paso brumoso")!.limited).toEqual({ key, max: 1, used: 1 });
   });
+  it("usos por competencia: max = bonificador; sin uses o sin casting, 1", () => {
+    const key = innateKey(ref("spell:misty step|xphb"));
+    const casting = { proficiencyBonus: 3, mods: { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 } };
+    const other = (uses?: "pb") => [{ spell: named("spell:misty step|xphb"), origin: "Especie: Gnomo", innate: true as const, ...(uses ? { uses } : {}) }];
+    const maxOf = (s: SpellsSummary) => spellTableRows(s, entries).find((r) => r.name === "Paso brumoso")!.limited!.max;
+    const base = { ...summary, blocks: [] };
+    expect(maxOf({ ...base, other: other("pb"), casting })).toBe(3);
+    expect(maxOf({ ...base, other: other(), casting })).toBe(1);
+    expect(maxOf({ ...base, other: other("pb") })).toBe(1);
+    const spent = spellTableRows({ ...base, other: other("pb"), casting, limitedUsed: { [key]: 5 } }, entries);
+    expect(spent[0].limited).toEqual({ key, max: 3, used: 3 });
+  });
 });
 
 describe("timeShort", () => {

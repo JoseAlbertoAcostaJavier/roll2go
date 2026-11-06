@@ -242,7 +242,7 @@ function spellOptions(additional: unknown[]): { name: string; spells: { level: n
   }));
 }
 
-function blockGrants(additional: unknown[], unleveled?: number): SpellGrant[] {
+export function blockGrants(additional: unknown[], unleveled?: number): SpellGrant[] {
   const grants: SpellGrant[] = [];
   for (const block of additional) {
     if (!isObj(block)) continue;
@@ -253,8 +253,13 @@ function blockGrants(additional: unknown[], unleveled?: number): SpellGrant[] {
       for (const [lvl, value] of Object.entries(byLevel)) {
         const level = lvl === "_" && unleveled !== undefined ? unleveled : Number(lvl);
         if (!Number.isInteger(level)) continue; // "_" = sin nivel, s1… = nivel de conjuro
+        // Los de `daily.pb` se lanzan tantas veces por descanso largo como el bonificador de competencia
+        const pb = group === "innate" && isObj(value) && isObj(value.daily) ? new Set(collectStrings(value.daily.pb)) : null;
         for (const s of collectStrings(value)) {
-          grants.push({ level, ref: ref("spell", cleanRefKey(s)), ...(isAbility(ability) ? { ability } : {}) });
+          grants.push({
+            level, ref: ref("spell", cleanRefKey(s)), ...(isAbility(ability) ? { ability } : {}),
+            ...(pb?.has(s) ? { uses: "pb" as const } : {}),
+          });
         }
       }
     }

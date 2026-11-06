@@ -339,6 +339,17 @@ describe("usos gratis de los conjuros de especie, legado y dotes", () => {
     expect(errorOf(apply(s, { op: "limited", key: innateKey(spell("light").ref), used: 1 }))).toBe("No tienes ese uso.");
     expect(errorOf(apply(sheetOf(["wizard"]), { op: "limited", key: KEY, used: 1 }))).toBe("No tienes ese uso.");
   });
+  it("op limited con uses pb: acepta hasta el bonificador de competencia", () => {
+    const s = tiefling();
+    const { blocks, slots, other } = derive(s, entries).spells;
+    const run = (used: number, proficiencyBonus?: number) => applySpellOp(s, { op: "limited", key: KEY, used }, {
+      blocks, slots, resolve: (r: Ref) => entries.get(refKey(r)) ?? null, proficiencyBonus,
+      other: other.map((o) => ({ ...o, uses: "pb" as const })),
+    });
+    expect(ok(run(3, 3)).limitedUsed).toEqual({ [KEY]: 3 });
+    expect(errorOf(run(4, 3))).toBe("detect magic solo tiene 3 usos por descanso largo.");
+    expect(errorOf(run(2))).toBe("detect magic solo tiene 1 uso por descanso largo.");
+  });
   it("el descanso corto no lo recupera; borrar un nivel lo conserva", () => {
     expect(recoversOnShortRest(KEY)).toBe(false);
     const s = { ...tiefling(), limitedUsed: { [KEY]: 1, "arcanum:otra": 1 } };

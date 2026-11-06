@@ -1,7 +1,7 @@
 // Tabla de conjuros de la ficha (spec de la tabla de conjuros §2.1): una fila por conjuro que el personaje puede
 // lanzar. Lo común con las Acciones (conjuros utilizables, tirada y tipo de daño) vive aquí.
 import type { CatalogEntry } from "@/lib/rules/catalog/types";
-import { DEFAULT_SPELL_ABILITY, innateKey, type CasterBlock, type CastingStats, type SpellsSummary } from "@/lib/rules/dnd2024/derive/spells";
+import { DEFAULT_SPELL_ABILITY, innateKey, innateMax, type CasterBlock, type CastingStats, type SpellsSummary } from "@/lib/rules/dnd2024/derive/spells";
 import { refKey } from "@/lib/rules/dnd2024/sheet/equipmentRefs";
 import { ABILITY_ABBR, ABILITY_NAMES, DAMAGE_TYPE_NAMES, fmtMod } from "@/lib/rules/dnd2024/sheet/labels";
 import { spellSchoolName } from "@/lib/rules/dnd2024/spells/spellTextClient";
@@ -93,7 +93,8 @@ export function usableSpells(spells: SpellsSummary, entries: Map<string, Catalog
     // (los de especie, legado y dotes de nivel 1+: un uso gratis por descanso largo; los trucos se lanzan a voluntad)
     ...spells.other.map((o) => {
       const key = innateKey(o.spell.ref);
-      const limited = o.innate ? { key, max: 1, used: Math.min(spells.limitedUsed[key] ?? 0, 1) } : null;
+      const max = innateMax(o.uses, spells.casting?.proficiencyBonus);
+      const limited = o.innate ? { key, max, used: Math.min(spells.limitedUsed[key] ?? 0, max) } : null;
       return { ref: o.spell.ref, block: null, origin: o.origin, limited, caster: otherCasting(o.ability, spells.casting) };
     }),
   ];

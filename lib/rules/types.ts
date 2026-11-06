@@ -38,7 +38,8 @@ export type Pack = { ref?: Ref; quantity?: number; value?: number; displayName?:
 export type ChoiceKind = "gaming" | "instrument" | "artisan" | "simple" | "simpleMelee" | "martial" | "martialMelee";
 
 /** Conjuro concedido; `level` es el nivel de personaje o de clase en que se obtiene (1-20). */
-export type SpellGrant = { level: number; ref: Ref; ability?: Ability };
+/** `uses: "pb"`: tantos usos por descanso largo como el bonificador de competencia (si no, uno). */
+export type SpellGrant = { level: number; ref: Ref; ability?: Ability; uses?: "pb" };
 export type LevelFeature = { ref: Ref; level: number };
 /** Opciones de equipo inicial por letra: `{ A: [...], B: [...], C: [...] }`. */
 export type Equipment = Record<string, Pack[]>;
