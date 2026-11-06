@@ -15,8 +15,9 @@ export default function SheetTabs({ base, active, tabs }: { base: string; active
     // La pestaña activa queda a la vista dentro de la barra, que se desplaza en horizontal en móvil
     const link = bar.querySelector<HTMLElement>("[aria-current]");
     if (link) bar.scrollLeft = Math.max(0, link.offsetLeft - (bar.clientWidth - link.offsetWidth) / 2);
-    // Al cambiar de pestaña con la barra pegada arriba, se lleva al inicio del panel nuevo
-    if (!first.current && bar.getBoundingClientRect().top <= 0) bar.parentElement?.scrollIntoView({ block: "start" });
+    // Al cambiar de pestaña, si el inicio del panel quedó por encima de la pantalla, se vuelve a él
+    const panel = bar.parentElement;
+    if (!first.current && panel && panel.getBoundingClientRect().top < 0) panel.scrollIntoView({ block: "start" });
     first.current = false;
   }, [active]);
   return (

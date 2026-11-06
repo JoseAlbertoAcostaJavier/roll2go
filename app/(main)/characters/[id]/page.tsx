@@ -272,7 +272,7 @@ export default async function CharacterPage({ params, searchParams }: Props) {
         version={new Date(c.updatedAt ?? 0).getTime()}
         tabs={<SheetTabs base={base} active={tab} tabs={tabs} />}
       >
-        <section {...panel("acciones")}>
+        <section key="acciones" {...panel("acciones")}>
           {panelTitle("acciones")}
           <ActionsTab
             characterId={id}
@@ -289,7 +289,7 @@ export default async function CharacterPage({ params, searchParams }: Props) {
             itemDescriptions={itemDescriptions}
           />
         </section>
-        <section {...panel("trasfondo")}>
+        <section key="trasfondo" {...panel("trasfondo")}>
           {panelTitle("trasfondo")}
           <BackgroundTab
             characterId={id}
@@ -306,12 +306,12 @@ export default async function CharacterPage({ params, searchParams }: Props) {
           />
         </section>
         {withNotes.length > 0 && (
-          <section {...panel("notas")}>
+          <section key="notas" {...panel("notas")}>
             {panelTitle("notas")}
             <NotesTab characterId={id} isOwner={isOwner} sheet={sheet} />
           </section>
         )}
-        <section {...panel("rasgos")}>
+        <section key="rasgos" {...panel("rasgos")}>
           {panelTitle("rasgos")}
           <MasteriesEditor
             key={d.level}
@@ -326,7 +326,7 @@ export default async function CharacterPage({ params, searchParams }: Props) {
             featureUses={d.featureUses} characterId={id} isOwner={isOwner}
           />
         </section>
-        <section {...panel("inventario")}>
+        <section key="inventario" {...panel("inventario")}>
           {panelTitle("inventario")}
           <EquipmentTab
             characterId={id}
@@ -345,7 +345,7 @@ export default async function CharacterPage({ params, searchParams }: Props) {
         </section>
 
         {d.hasSpells && (
-          <section {...panel("conjuros")}>
+          <section key="conjuros" {...panel("conjuros")}>
             {panelTitle("conjuros")}
             {/* Al borrar un nivel desde la ficha se monta de nuevo con los conjuros recortados */}
             <SpellsTab
