@@ -23,6 +23,18 @@ const summary: ActionsSummary = {
   ],
 };
 
+describe("actionSections: conjuros de curación", () => {
+  const cure: ActionItem = { ...spell("Curar heridas", "action", null), damage: "2d8", healing: true } as ActionItem;
+  const sections = actionSections({ attacksPerAction: 1, items: [cure, spell("Luz", "action", null)] }, "todo");
+  it("sin tirada pero con curación va a la tabla de ataques, no a la lista", () => {
+    expect(sections[0].attacks.map((a) => (a.kind === "spell" ? a.name : ""))).toEqual(["Curar heridas"]);
+    expect(sections[0].spells.map((a) => a.name)).toEqual(["Luz"]);
+  });
+  it("con el filtro «ataques» también sale", () => {
+    expect(actionSections({ attacksPerAction: 1, items: [cure] }, "ataques")[0].attacks).toHaveLength(1);
+  });
+});
+
 describe("parseActionFilter", () => {
   it("acepta los filtros conocidos", () => {
     for (const f of ["todo", "ataques", "action", "bonus", "reaction", "other"]) expect(parseActionFilter(f)).toBe(f);

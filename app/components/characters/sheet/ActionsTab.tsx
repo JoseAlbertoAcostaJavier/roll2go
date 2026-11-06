@@ -104,7 +104,7 @@ function AttackTable({ rows }: { rows: ActionSection["attacks"] }) {
                   </span>
                 </th>
                 <td className="py-2 pr-3 whitespace-nowrap">{r.range}</td>
-                <td className="py-2 pr-3 whitespace-nowrap font-heading font-bold">{r.hit}</td>
+                <td className="py-2 pr-3 whitespace-nowrap font-heading font-bold">{r.hit ?? <span className="font-normal text-muted">—</span>}</td>
                 <td className="py-2 pr-3">
                   {r.damage || r.damageTypeId ? (
                     <span className="flex items-center gap-1.5 whitespace-nowrap">
