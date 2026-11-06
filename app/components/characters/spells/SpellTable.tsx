@@ -39,7 +39,14 @@ type Props = {
 const th = "px-3 py-2 font-semibold";
 const td = "px-3 py-2 align-top";
 // Lo que el filtro oculta en pantalla sigue en el documento y sale al imprimir
-const hideRow = (visible: boolean) => (visible ? "" : "hidden print:table-row");
+// En móvil (y no al imprimir) la fila es una tarjeta: nombre a la izquierda, datos a la derecha, Lanzar debajo
+const card = "max-md:not-print:grid max-md:not-print:grid-cols-[minmax(0,1fr)_auto_auto] max-md:not-print:gap-x-4 max-md:not-print:gap-y-1 max-md:not-print:px-3 max-md:not-print:py-3";
+const cardStat = "max-md:not-print:p-0 max-md:not-print:text-right";
+const cardBig = `${cardStat} max-md:not-print:font-heading max-md:not-print:text-xl max-md:not-print:font-bold`;
+// Rótulo de un dato: solo se ve en la tarjeta de móvil (desde md las cabeceras de columna lo dicen)
+const label = "block font-sans text-[11px] font-normal uppercase tracking-wide text-muted md:hidden print:hidden";
+const inlineLabel = `${label} max-md:not-print:mr-1 max-md:not-print:inline`;
+const hideRow = (visible: boolean) => (visible ? card : "hidden print:table-row");
 
 function Flag({ letter, title }: { letter: string; title: string }) {
   return (
@@ -65,11 +72,12 @@ function Row({ row, visible, props, search }: { row: SpellRow; visible: boolean;
       busy={busy}
     />
   );
+  const notes = [row.duration, row.components].filter(Boolean).join(" · ");
   return (
-    <tr className={hideRow(visible)}>
+    <tr role="row" className={hideRow(visible)}>
       {/* Quien no es el dueño no lanza: sin columna, y los usos (solo lectura) van bajo el nombre */}
       {isOwner && (
-        <td className={`${td} print:hidden`}>
+        <td role="cell" className={`${td} print:hidden max-md:not-print:col-span-full max-md:not-print:col-start-1 max-md:not-print:row-start-4 max-md:not-print:p-0`}>
           <span className="flex flex-wrap items-center gap-2">
             {row.level > 0 && (
               <CastButton options={options} disabled={busy} name={row.name} onCast={(o) => props.onCast(row, o)} />
@@ -78,7 +86,7 @@ function Row({ row, visible, props, search }: { row: SpellRow; visible: boolean;
           </span>
         </td>
       )}
-      <th scope="row" className={`${td} text-left`}>
+      <th role="rowheader" scope="row" className={`${td} text-left max-md:not-print:col-start-1 max-md:not-print:row-span-3 max-md:not-print:row-start-1 max-md:not-print:p-0`}>
         <span className="flex items-start gap-2">
           <MaskIcon src={iconSrc("darkSchool", row.schoolId)} size={18} label={row.school} className="mt-0.5 text-muted" />
           <span className="min-w-0">
@@ -98,6 +106,7 @@ function Row({ row, visible, props, search }: { row: SpellRow; visible: boolean;
               {row.ritual && <Flag letter="R" title="Ritual" />}
             </span>
             <span className="block text-xs font-normal text-muted">{row.origin}</span>
+            {notes && <span className="mt-0.5 block text-xs font-normal text-muted">{notes}</span>}
             {row.limited && (
               <>
                 {!isOwner && <span className="mt-1 block print:hidden">{uses}</span>}
@@ -110,28 +119,36 @@ function Row({ row, visible, props, search }: { row: SpellRow; visible: boolean;
           </span>
         </span>
       </th>
-      <td className={`${td} whitespace-nowrap`}>
+      <td role="cell" className={`${td} md:whitespace-nowrap max-md:not-print:col-span-2 max-md:not-print:col-start-2 max-md:not-print:row-start-3 max-md:not-print:text-xs ${cardStat}`}>
+        <span className={inlineLabel}>Tiempo</span>
         <span title={row.time}>{row.timeShort}</span>
       </td>
-      <td className={`${td} whitespace-nowrap`}>{row.range}</td>
-      <td className={`${td} whitespace-nowrap font-heading font-bold`}>{row.hit ?? <span className="font-normal text-muted">—</span>}</td>
-      <td className={td}>
+      <td role="cell" className={`${td} md:whitespace-nowrap max-md:not-print:col-span-2 max-md:not-print:col-start-2 max-md:not-print:row-start-2 max-md:not-print:text-xs ${cardStat}`}>
+        <span className={inlineLabel}>Alcance</span>
+        {row.range}
+      </td>
+      <td role="cell" className={`${td} md:whitespace-nowrap font-heading font-bold max-md:not-print:col-start-2 max-md:not-print:row-start-1 ${cardBig}`}>
+        <span className={label}>Golpe</span>
+        {row.hit ?? <span className="font-normal text-muted">—</span>}
+      </td>
+      <td role="cell" className={`${td} max-md:not-print:col-start-3 max-md:not-print:row-start-1 max-md:not-print:max-w-40 ${cardBig}`}>
+        <span className={label}>Daño</span>
         {row.effect ? (
-          <span className="flex items-center gap-1.5">
+          <span className="flex flex-wrap items-center gap-1.5 max-md:not-print:justify-end">
             <MaskIcon src={iconSrc("damageType", row.effect.damageTypeId)} size={16} className="text-muted" />
-            <span>{row.effect.label}</span>
+            <span className="max-md:not-print:text-base">{row.effect.label}</span>
           </span>
         ) : (
-          <span className="text-muted">—</span>
+          <span className="font-normal text-muted">—</span>
         )}
       </td>
-      <td className={`${td} text-xs text-muted`}>{[row.duration, row.components].filter(Boolean).join(" · ")}</td>
     </tr>
   );
 }
 
 // Tabla de conjuros agrupada por nivel (spec de la tabla de conjuros §3.1): la cabecera de cada nivel lleva sus espacios
-// de conjuro y cada fila su botón Lanzar. Se desplaza dentro de su caja en móvil.
+// de conjuro y cada fila su botón Lanzar. En móvil cada fila es una tarjeta (mismo DOM, solo CSS); al cambiar el display se pierde la semántica
+// de tabla y los roles la mantienen. Desde md se desplaza dentro de su caja si no cabe.
 export default function SpellTable(props: Props) {
   const { rows, filter, slots, used, isOwner, busy, onSetSlot, clearHref } = props;
   const search = useSearchParams().toString();
@@ -159,18 +176,17 @@ export default function SpellTable(props: Props) {
           <Link href={clearHref} scroll={false} className="font-semibold text-brand-soft hover:underline">Quitar filtros</Link>
         </p>
       )}
-      <div className={`${sheetCard} animate-fade-up overflow-x-auto !p-0 ${anyVisible || rows.length === 0 ? "" : "hidden print:block"}`}>
-        <table className="w-full min-w-[46rem] text-left text-sm">
+      <div className={`${sheetCard} animate-fade-up md:overflow-x-auto !p-0 ${anyVisible || rows.length === 0 ? "" : "hidden print:block"}`}>
+        <table role="table" className="w-full text-left text-sm max-md:not-print:block md:min-w-[40rem]">
           <caption className="sr-only">Conjuros</caption>
-          <thead className="text-xs uppercase tracking-wide text-muted">
-            <tr className="border-b border-line">
-              {isOwner && <th scope="col" className={`${th} w-28 print:hidden`}>Lanzar</th>}
-              <th scope="col" className={th}>Nombre</th>
-              <th scope="col" className={th}>Tiempo</th>
-              <th scope="col" className={th}>Alcance</th>
-              <th scope="col" className={th}>Golpe/CD</th>
-              <th scope="col" className={th}>Efecto</th>
-              <th scope="col" className={th}>Notas</th>
+          <thead role="rowgroup" className="text-xs uppercase tracking-wide text-muted max-md:not-print:sr-only">
+            <tr role="row" className="border-b border-line">
+              {isOwner && <th role="columnheader" scope="col" className={`${th} w-28 print:hidden`}>Lanzar</th>}
+              <th role="columnheader" scope="col" className={th}>Nombre</th>
+              <th role="columnheader" scope="col" className={th}>Tiempo</th>
+              <th role="columnheader" scope="col" className={th}>Alcance</th>
+              <th role="columnheader" scope="col" className={th}>Golpe/CD</th>
+              <th role="columnheader" scope="col" className={th}>Efecto</th>
             </tr>
           </thead>
           {groups.map((g) => {
@@ -180,9 +196,9 @@ export default function SpellTable(props: Props) {
             const count = g.level > 0 ? (slots.levels[String(g.level)] ?? 0) : 0;
             const pact = slots.pact && slots.pact.level === g.level ? slots.pact : null;
             return (
-              <tbody key={g.level} className={`divide-y divide-line ${show ? "" : "hidden print:table-row-group"}`}>
-                <tr className="bg-surface">
-                  <th scope="rowgroup" colSpan={isOwner ? 7 : 6} className="px-3 py-2 text-left">
+              <tbody role="rowgroup" key={g.level} className={`divide-y divide-line ${show ? "max-md:not-print:block" : "hidden print:table-row-group"}`}>
+                <tr role="row" className="bg-surface max-md:not-print:block">
+                  <th role="rowheader" scope="rowgroup" colSpan={isOwner ? 6 : 5} className="px-3 py-2 text-left max-md:not-print:block">
                     <span className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
                       <span className="border-l-4 border-brand pl-3 font-heading text-base font-bold">
                         {g.level === 0 ? "Trucos" : `Nivel ${g.level}`}

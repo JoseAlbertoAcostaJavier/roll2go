@@ -38,27 +38,37 @@ const SPELL_ICON = iconSrc("action", "cast-spell");
 // Icono de la escuela del conjuro (blanco, como los demás); sin él, el genérico
 const schoolIcon = (school: string) => iconSrc("darkSchool", school) ?? SPELL_ICON;
 
-// Tabla de ataques: armas y conjuros con tirada (también los de curación); se desplaza dentro de su caja en móvil
+// Rótulo de un dato: solo se ve en la tarjeta de móvil (desde md las cabeceras de columna lo dicen)
+const label = "block font-sans text-[11px] font-normal uppercase tracking-wide text-muted md:hidden print:hidden";
+// En móvil (y no al imprimir) la fila es una tarjeta: nombre a la izquierda, datos a la derecha
+const card = "max-md:not-print:grid max-md:not-print:grid-cols-[minmax(0,1fr)_auto_auto] max-md:not-print:gap-x-4 max-md:not-print:gap-y-1 max-md:not-print:py-3";
+const cardName = "max-md:not-print:col-start-1 max-md:not-print:row-span-2 max-md:not-print:row-start-1";
+const cardStat = "max-md:not-print:p-0 max-md:not-print:text-right max-md:not-print:font-heading max-md:not-print:text-xl max-md:not-print:font-bold";
+const cardHit = `${cardStat} max-md:not-print:col-start-2 max-md:not-print:row-start-1`;
+const cardDamage = `${cardStat} max-md:not-print:col-start-3 max-md:not-print:row-start-1 max-md:not-print:max-w-40`;
+const cardRange = "max-md:not-print:col-span-2 max-md:not-print:col-start-2 max-md:not-print:row-start-2 max-md:not-print:p-0 max-md:not-print:text-right max-md:not-print:text-xs";
+
+// Tabla de ataques: armas y conjuros con tirada (también los de curación). En móvil cada fila es una tarjeta (mismo DOM,
+// solo CSS); las notas van bajo el nombre. Al cambiar el display de tabla se pierde su semántica: los roles la mantienen.
 function AttackTable({ rows }: { rows: ActionSection["attacks"] }) {
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-[36rem] text-left text-sm">
-        <thead className="text-xs uppercase tracking-wide text-muted">
-          <tr>
-            <th scope="col" className="py-2 pr-3 font-semibold">Ataque</th>
-            <th scope="col" className="py-2 pr-3 font-semibold">Alcance</th>
-            <th scope="col" className="py-2 pr-3 font-semibold">Golpe/CD</th>
-            <th scope="col" className="py-2 pr-3 font-semibold">Daño</th>
-            <th scope="col" className="py-2 font-semibold">Notas</th>
+    <div className="md:overflow-x-auto">
+      <table role="table" className="w-full text-left text-sm max-md:not-print:block md:min-w-[30rem]">
+        <thead role="rowgroup" className="text-xs uppercase tracking-wide text-muted max-md:not-print:sr-only">
+          <tr role="row">
+            <th role="columnheader" scope="col" className="py-2 pr-3 font-semibold">Ataque</th>
+            <th role="columnheader" scope="col" className="py-2 pr-3 font-semibold">Alcance</th>
+            <th role="columnheader" scope="col" className="py-2 pr-3 font-semibold">Golpe/CD</th>
+            <th role="columnheader" scope="col" className="py-2 font-semibold">Daño</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-line">
+        <tbody role="rowgroup" className="divide-y divide-line max-md:not-print:block">
           {rows.map((r, i) => {
             if (r.kind === "attack") {
               const a = r.attack;
               return (
-                <tr key={`${a.name}-${i}`}>
-                  <th scope="row" className="py-2 pr-3 font-semibold">
+                <tr role="row" key={`${a.name}-${i}`} className={card}>
+                  <th role="rowheader" scope="row" className={`py-2 pr-3 font-semibold ${cardName} max-md:not-print:p-0`}>
                     <span className="flex items-center gap-2">
                       <span className="relative inline-flex shrink-0">
                         <MaskIcon
@@ -78,23 +88,30 @@ function AttackTable({ rows }: { rows: ActionSection["attacks"] }) {
                       </span>
                       {a.lineId ? <ItemButton lineId={a.lineId} name={a.name} /> : <span>{a.name}</span>}
                     </span>
+                    {a.notes && <span className="mt-0.5 block text-xs font-normal text-muted">{a.notes}</span>}
                   </th>
-                  <td className="py-2 pr-3 whitespace-nowrap">{a.range}</td>
-                  <td className="py-2 pr-3 font-heading font-bold">{fmtMod(a.bonus)}</td>
-                  <td className="py-2 pr-3">
-                    <span className="flex items-center gap-1.5 whitespace-nowrap">
+                  <td role="cell" className={`py-2 pr-3 md:whitespace-nowrap ${cardRange}`}>
+                    <span className={`${label} max-md:not-print:mr-1 max-md:not-print:inline`}>Alcance</span>
+                    {a.range}
+                  </td>
+                  <td role="cell" className={`py-2 pr-3 font-heading font-bold ${cardHit}`}>
+                    <span className={label}>Golpe</span>
+                    {fmtMod(a.bonus)}
+                  </td>
+                  <td role="cell" className={`py-2 ${cardDamage}`}>
+                    <span className={label}>Daño</span>
+                    <span className="flex flex-wrap items-center gap-x-1.5 max-md:not-print:justify-end md:whitespace-nowrap">
                       {a.damage}
                       <MaskIcon src={iconSrc("damageType", a.damageTypeId)} size={16} className="text-muted" />
-                      {a.damageType && <span className="text-xs text-muted">{a.damageType}</span>}
+                      {a.damageType && <span className="font-sans text-xs font-normal text-muted">{a.damageType}</span>}
                     </span>
                   </td>
-                  <td className="py-2 text-muted">{a.notes}</td>
                 </tr>
               );
             }
-                        return (
-              <tr key={refKey(r.ref)}>
-                <th scope="row" className="py-2 pr-3 font-semibold">
+            return (
+              <tr role="row" key={refKey(r.ref)} className={card}>
+                <th role="rowheader" scope="row" className={`py-2 pr-3 font-semibold ${cardName} max-md:not-print:p-0`}>
                   <span className="flex items-center gap-2">
                     <MaskIcon src={schoolIcon(r.school)} size={18} label="Conjuro" className="text-muted" />
                     <span>
@@ -102,25 +119,32 @@ function AttackTable({ rows }: { rows: ActionSection["attacks"] }) {
                       <span className="block text-xs font-normal text-muted">{r.subtitle}</span>
                     </span>
                   </span>
+                  {r.notes && <span className="mt-0.5 block text-xs font-normal text-muted">{r.notes}</span>}
                 </th>
-                <td className="py-2 pr-3 whitespace-nowrap">{r.range}</td>
-                <td className="py-2 pr-3 whitespace-nowrap font-heading font-bold">{r.hit ?? <span className="font-normal text-muted">—</span>}</td>
-                <td className="py-2 pr-3">
+                <td role="cell" className={`py-2 pr-3 md:whitespace-nowrap ${cardRange}`}>
+                  <span className={`${label} max-md:not-print:mr-1 max-md:not-print:inline`}>Alcance</span>
+                  {r.range}
+                </td>
+                <td role="cell" className={`py-2 pr-3 font-heading font-bold md:whitespace-nowrap ${cardHit}`}>
+                  <span className={label}>Golpe</span>
+                  {r.hit ?? <span className="font-normal text-muted">—</span>}
+                </td>
+                <td role="cell" className={`py-2 ${cardDamage}`}>
+                  <span className={label}>Daño</span>
                   {r.damage || r.damageTypeId ? (
-                    <span className="flex items-center gap-1.5 whitespace-nowrap">
+                    <span className="flex flex-wrap items-center gap-x-1.5 max-md:not-print:justify-end md:whitespace-nowrap">
                       {r.damage}
-                      {r.healing ? <span className="text-xs text-muted">Curación</span> : (
+                      {r.healing ? <span className="font-sans text-xs font-normal text-muted">Curación</span> : (
                         <>
                           <MaskIcon src={iconSrc("damageType", r.damageTypeId)} size={16} className="text-muted" />
-                          {r.damageTypeId && <span className="text-xs text-muted">{DAMAGE_TYPE_NAMES[r.damageTypeId] ?? r.damageTypeId}</span>}
+                          {r.damageTypeId && <span className="font-sans text-xs font-normal text-muted">{DAMAGE_TYPE_NAMES[r.damageTypeId] ?? r.damageTypeId}</span>}
                         </>
                       )}
                     </span>
                   ) : (
-                    <span className="text-muted">—</span>
+                    <span className="font-normal text-muted">—</span>
                   )}
                 </td>
-                <td className="py-2 text-muted">{r.notes}</td>
               </tr>
             );
           })}
