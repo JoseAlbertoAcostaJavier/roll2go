@@ -8,7 +8,8 @@ import type { Relation } from "@/lib/shared/users";
 
 const btn = "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-semibold transition-colors disabled:opacity-50";
 const solid = `${btn} bg-brand text-white enabled:hover:bg-brand-hover`;
-const outline = `${btn} border border-line text-muted enabled:hover:border-brand enabled:hover:text-white`;
+const secondary = `${btn} border border-line-strong bg-panel text-fg hover:border-fg`;
+const outline = `${btn} border border-line-strong text-muted enabled:hover:border-brand enabled:hover:text-white`;
 
 const STATUS: Record<Relation, string> = {
   none: "",
@@ -107,7 +108,7 @@ export default function FriendActions({
 
         {relation === "friend" && !confirming && (
           <>
-            <Link href={`/messages/${username}`} className={solid}>
+            <Link href={`/messages/${username}`} className={secondary}>
               <MessageSquare size={14} aria-hidden="true" /> Enviar mensaje
             </Link>
             <button type="button" onClick={() => setConfirming(true)} className={outline}>

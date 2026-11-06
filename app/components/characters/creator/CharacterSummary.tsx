@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { CircleCheck, LoaderCircle } from "lucide-react";
+import { CircleAlert, CircleCheck, LoaderCircle } from "lucide-react";
 import type { CatalogEntry } from "@/lib/rules/catalog/types";
 import { derive } from "@/lib/rules/dnd2024/derive";
 import type { Dnd2024Sheet } from "@/lib/rules/dnd2024/sheet/sheet";
@@ -49,7 +49,10 @@ export default function CharacterSummary({
         </p>
       )}
 
-      <h3 className="mb-2 mt-5 text-sm font-semibold">Falta por completar</h3>
+      <h3 className="mb-2 mt-5 flex items-center gap-2 text-sm font-semibold">
+        {missing.length > 0 && <CircleAlert size={16} className="text-brand-soft" aria-hidden="true" />}
+        Falta por completar
+      </h3>
       {missing.length === 0 ? (
         <p className="flex items-center gap-2 text-sm text-success">
           <CircleCheck size={16} aria-hidden="true" /> ¡Todo listo!

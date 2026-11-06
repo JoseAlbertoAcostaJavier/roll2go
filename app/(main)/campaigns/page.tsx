@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { secondaryButton } from "@/app/components/ui/formStyles";
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
@@ -23,7 +24,7 @@ function pick<T extends string>(value: string | undefined, allowed: readonly T[]
 }
 
 const field =
-  "h-11 w-full rounded-md border border-line bg-surface px-3 text-fg placeholder:text-muted focus:border-brand focus:outline-none";
+  "h-11 w-full rounded-md border border-line-strong bg-surface px-3 text-fg placeholder:text-muted focus:border-brand focus:outline-none";
 
 export default async function CampaignsPage({
   searchParams,
@@ -96,7 +97,7 @@ export default async function CampaignsPage({
           <div className="flex items-center gap-3">
             <button
               type="submit"
-              className="h-11 flex-1 rounded-md bg-brand px-6 font-heading font-bold text-white transition-colors hover:bg-brand-hover"
+              className={`${secondaryButton} h-11 flex-1`}
             >
               Buscar
             </button>
@@ -153,7 +154,7 @@ export default async function CampaignsPage({
                 </div>
                 <div className="flex flex-1 flex-col p-4">
                   <h2 className="font-heading text-lg font-bold">
-                    <Link href={`/campaigns/${c._id}`} className="outline-none after:absolute after:inset-0 after:content-['']">
+                    <Link href={`/campaigns/${c._id}`} className="outline-none after:absolute after:inset-0 after:rounded-lg after:content-[''] focus-visible:after:outline-2 focus-visible:after:outline-offset-2 focus-visible:after:outline-brand-soft">
                       {c.name}
                     </Link>
                   </h2>

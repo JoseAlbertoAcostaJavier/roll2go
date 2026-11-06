@@ -30,7 +30,7 @@ export type CampaignInitial = {
 };
 
 const field =
-  "w-full rounded-md border border-line bg-surface px-3 py-2.5 text-fg placeholder:text-muted focus:border-brand focus:outline-none";
+  "w-full rounded-md border border-line-strong bg-surface px-3 py-2.5 text-fg placeholder:text-muted focus:border-brand focus:outline-none";
 const labelClass = "mb-1.5 block text-sm font-semibold";
 const sectionClass = "rounded-lg border border-line bg-panel p-5 sm:p-6";
 const sectionTitle = "mb-4 border-l-4 border-brand pl-3 font-heading text-xl font-bold";

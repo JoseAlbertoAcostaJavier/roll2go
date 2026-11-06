@@ -16,7 +16,7 @@ function PersonCard({ p }: { p: Person }) {
   return (
     <li className="flex flex-col items-center rounded-lg border border-line bg-panel p-5 text-center">
       <Avatar url={p.avatarUrl} size={96} />
-      <Link href={`/users/${p.username}`} className="mt-3 max-w-full truncate font-heading font-bold uppercase text-brand-soft hover:underline">
+      <Link href={`/users/${p.username}`} className="mt-3 max-w-full truncate font-heading font-bold uppercase text-fg hover:underline">
         {p.displayName}
       </Link>
       <p className="text-xs text-muted">@{p.username}</p>
