@@ -66,7 +66,7 @@ export function itemDetails(line: InventoryItem, entry: CatalogEntry | undefined
       add("Alcance", ctx.attack?.range ?? attackRange(data, ranged));
       const damage = ctx.attack?.damage ?? w.damage;
       if (damage) add("Daño", damage);
-      if (damage || w.damageType) add("Tipo de daño", capitalize(ctx.attack?.damageType ?? damageTypeName(w.damageType)), damageTypeId(w.damageType));
+      if (damage) add("Tipo de daño", capitalize(ctx.attack?.damageType ?? damageTypeName(w.damageType)), damageTypeId(w.damageType));
       if (ctx.hasMastery && w.mastery) {
         mastery = { name: masteryName(w.mastery), text: MASTERY_TEXTS[w.mastery.toLowerCase()] ?? "" };
       }

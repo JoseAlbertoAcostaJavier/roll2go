@@ -8,8 +8,6 @@ export type Attack = {
   damage: string;
   /** En español. */
   damageType: string;
-  /** Propiedades del arma en español. */
-  properties: string[];
   /** Notas de la tabla: categoría, propiedades, maestría (si la tiene) y alcance de distancia («Sencilla, Sutil, Mellar, Alcance 6/18 m»). */
   notes: string;
   /** Nombre de la maestría si el personaje la tiene con esa arma. */
@@ -120,7 +118,6 @@ export function weaponAttack(
     bonus: mod + (proficient ? profBonus : 0),
     damage,
     damageType: w ? damageTypeName(w.damageType) : "",
-    properties: properties.map(weaponPropertyName),
     notes,
     mastery: masteryLabel,
     kind: weapon.type === RANGED_TYPE ? "ranged" : "melee",
@@ -137,7 +134,6 @@ export function unarmedAttack(mods: Record<Ability, number>, profBonus: number, 
     bonus: mod + profBonus,
     damage: martialArtsDie ? withMod(martialArtsDie, mod) : String(Math.max(0, 1 + mod)),
     damageType: damageTypeName("B"),
-    properties: [],
     notes: "",
     mastery: null,
     kind: "melee",

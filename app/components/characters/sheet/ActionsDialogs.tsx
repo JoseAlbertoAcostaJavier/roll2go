@@ -159,6 +159,7 @@ export function ItemButton({ lineId, name }: { lineId: string; name: string }) {
   return (
     <button
       type="button"
+      data-print="text"
       onClick={(e) => openItem(lineId, e.currentTarget)}
       className="text-left font-semibold text-fg hover:text-brand-soft hover:underline"
     >

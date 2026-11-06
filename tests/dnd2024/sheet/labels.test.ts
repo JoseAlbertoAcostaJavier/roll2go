@@ -62,4 +62,3 @@ describe("featureReference", () => {
     expect(featureReference(undefined)).toBeNull();
   });
 });
-

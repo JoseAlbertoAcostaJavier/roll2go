@@ -273,9 +273,9 @@ export function otherSpells(sheet: Dnd2024SheetV2, entries: Map<string, CatalogE
   const out: OtherSpell[] = [];
   type Grants = { level: number; ref: Ref; ability?: Ability }[] | undefined;
   // `ability`: la elegida con la dote; si no, la de cada concesión y, si no, Inteligencia
-  const addGrants = (grants: Grants, origin: string, innate = false, chosen?: Ability) =>
+  const addGrants = (grants: Grants, origin: string, innate = false, chosen?: Ability, fallback?: Ability) =>
     out.push(...(grants ?? []).filter((g) => g.level <= level).map((g) => {
-      const ability = chosen ?? g.ability;
+      const ability = chosen ?? g.ability ?? fallback;
       return {
         spell: named(g.ref, entries), origin, ...(ability ? { ability } : {}),
         ...(innate ? { innate: true as const } : {}),
@@ -306,13 +306,19 @@ export function otherSpells(sheet: Dnd2024SheetV2, entries: Map<string, CatalogE
       spell, origin, innate: true as const, ...(ability ? { ability } : {}),
     })));
   }
-  // Invocaciones (y demás rasgos opcionales) con conjuros fijos o elegidos (Pacto del tomo, con su nombre de origen)
+  // Invocaciones (y demás rasgos opcionales) con conjuros fijos o elegidos (Pacto del tomo, con su nombre de origen):
+  // se lanzan con la característica del Brujo (o, sin él, la de la primera clase lanzadora)
+  const all = casters(sheet, entries);
+  const invoker = all.find((c) => c.ref.key.startsWith("class:warlock|")) ?? all[0];
+  const invokerAbility = invoker?.casting.ability;
   for (const o of heldOptionalFeatures(sheet.levels)) {
     const data = entries.get(refKey(o.ref))?.data as OptionalFeatureData | undefined;
     const name = o.name || named(o.ref, entries).name;
     const kind = data?.featureType?.includes("EI") ? "Invocación" : "Rasgo";
-    if (data?.spells?.length) addGrants(data.spells, `${kind}: ${name}`);
-    out.push(...(chosen.get(refKey(o.ref)) ?? []).map((spell) => ({ spell, origin: name })));
+    if (data?.spells?.length) addGrants(data.spells, `${kind}: ${name}`, false, undefined, invokerAbility);
+    out.push(...(chosen.get(refKey(o.ref)) ?? []).map((spell) => ({
+      spell, origin: name, ...(invokerAbility ? { ability: invokerAbility } : {}),
+    })));
   }
   return out;
 }

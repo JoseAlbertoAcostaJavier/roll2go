@@ -54,6 +54,7 @@ export default function EquipmentTab({ characterId, isOwner, inventory, info, ca
   const [saving, setSaving] = useState(0);
   const [open, setOpen] = useState<{ id: string; opener: HTMLElement } | null>(null);
   const [manage, setManage] = useState<HTMLElement | null>(null);
+  const manageButton = useRef<HTMLButtonElement>(null);
   const saved = useRef(inventory);
   const queue = useRef<Promise<unknown>>(Promise.resolve());
   const pending = useRef(0);
@@ -131,7 +132,11 @@ export default function EquipmentTab({ characterId, isOwner, inventory, info, ca
       onQuantity: (q) => actions.quantity(openLine.id, q),
       targets,
       onMove: (to) => actions.move(openLine.id, to),
-      onRemove: () => actions.remove(openLine.id),
+      // La línea desaparece con su nombre: el foco pasa al botón «Gestionar inventario» en vez de quedar en el <body>
+      onRemove: () => {
+        actions.remove(openLine.id);
+        requestAnimationFrame(() => manageButton.current?.focus());
+      },
     };
   }
   const carried = inventoryWeights(inv.items, info).carried;
@@ -180,6 +185,7 @@ export default function EquipmentTab({ characterId, isOwner, inventory, info, ca
           base={base} query={query} chips={chips} active={active} q={q}
           action={readOnly ? undefined : (
             <button
+              ref={manageButton}
               type="button"
               onClick={(e) => setManage(e.currentTarget)}
               className="flex shrink-0 items-center gap-2 rounded-md bg-brand px-4 py-2.5 font-heading text-sm font-bold text-white transition-colors hover:bg-brand-hover"

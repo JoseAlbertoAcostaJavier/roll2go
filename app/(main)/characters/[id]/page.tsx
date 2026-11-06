@@ -145,7 +145,7 @@ export default async function CharacterPage({ params, searchParams }: Props) {
     itemCards[line.id] = itemDetails(line, line.ref ? entries.get(refKey(line.ref)) : undefined, {
       capacityText: capacityTexts[line.id],
       location: locationText(line, sheet.inventory.items, itemInfo),
-      attack: d.attacks.find((a) => a.lineId === line.id),
+      attack: d.weaponCards[line.id],
       proficient: data?.weapon ? weaponProficient(data, [line.name, bareName(line.ref!.key)], d.weapons) : undefined,
       hasMastery: !!line.ref && masteryKeys.has(line.ref.key),
       bookName: line.ref ? entries.get(refKey(line.ref))?.bookName : undefined,

@@ -5,7 +5,7 @@ import { actionFilterHref, actionSections, parseActionFilter, sectionVisibility 
 
 const ref = (key: string) => ({ book: "b", key });
 const attack: Attack = {
-  name: "Espada larga", bonus: 5, damage: "1d8+3", damageType: "Cortante", properties: [], notes: "", mastery: null,
+  name: "Espada larga", bonus: 5, damage: "1d8+3", damageType: "Cortante", notes: "", mastery: null,
   kind: "melee", range: "1,5 m", damageTypeId: "slashing",
 };
 const spell = (name: string, group: ActionItem["group"], hit: string | null): ActionItem => ({

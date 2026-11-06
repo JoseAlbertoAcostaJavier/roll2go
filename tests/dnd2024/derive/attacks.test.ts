@@ -49,7 +49,6 @@ describe("weaponAttack", () => {
     expect(a.bonus).toBe(5);
     expect(a.damage).toBe("1d12+3");
     expect(a.damageType).toBe("cortante");
-    expect(a.properties).toEqual(["Pesada", "A dos manos"]);
     expect(a.name).toBe("Hacha a dos manos");
   });
   it("sin competencia no suma el bonificador", () => {

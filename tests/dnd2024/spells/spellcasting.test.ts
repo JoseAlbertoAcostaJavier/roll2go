@@ -294,7 +294,7 @@ describe("otros conjuros", () => {
       ],
     });
     expect(otherSpells(s, entries)).toEqual(["light", "guidance", "thaumaturgy", "find familiar", "alarm"]
-      .map((n) => ({ spell: spell(n), origin: "Pacto del tomo" })));
+      .map((n) => ({ spell: spell(n), origin: "Pacto del tomo", ability: "cha" })));
     // Sustituida por otra invocación, los pierde
     const step: Named = { ref: ref("optionalFeature:ascendant step|xphb"), name: "Paso ascendente" };
     s.levels[1].choices.push({ type: "optionalFeature", source: INVOCATIONS, value: [step], replaced: [tome] });
@@ -314,7 +314,7 @@ describe("otros conjuros", () => {
       5: [{ type: "optionalFeature", source: "progression:eldritch invocations|warlock|xphb", value: [step] }],
     });
     expect(otherSpells(s, entries)).toEqual([
-      { spell: { ref: ref("spell:levitate|xphb"), name: "Levitate" }, origin: "Invocación: Paso ascendente" },
+      { spell: { ref: ref("spell:levitate|xphb"), name: "Levitate" }, origin: "Invocación: Paso ascendente", ability: "cha" },
     ]);
   });
   it("con legado que da conjuros: tiene conjuros", () => {
