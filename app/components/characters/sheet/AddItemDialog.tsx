@@ -162,7 +162,7 @@ export default function AddItemDialog({ systemId, books, onAdd }: Props) {
               />
             </div>
 
-            {error && <p role="alert" className="mb-3 text-sm text-brand-soft">{error}</p>}
+            {error && <p role="alert" className="mb-3 text-sm text-danger">{error}</p>}
 
             <div className="flex flex-wrap justify-end gap-3">
               <button

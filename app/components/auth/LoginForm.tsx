@@ -125,7 +125,7 @@ export default function LoginForm({ redirectTo = "/" }: { redirectTo?: string })
       </div>
 
       {error && (
-        <p className="mb-4 text-sm text-brand-soft" role="alert">
+        <p className="mb-4 text-sm text-danger" role="alert">
           {error}
         </p>
       )}

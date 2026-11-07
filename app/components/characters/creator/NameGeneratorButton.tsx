@@ -44,7 +44,7 @@ export default function NameGeneratorButton({
       >
         {loading ? <LoaderCircle size={18} className="animate-spin" aria-hidden="true" /> : <Dices size={18} aria-hidden="true" />}
       </button>
-      {error && <p role="alert" className="mt-1 w-full text-xs text-brand-soft">{error}</p>}
+      {error && <p role="alert" className="mt-1 w-full text-xs text-danger">{error}</p>}
     </>
   );
 }

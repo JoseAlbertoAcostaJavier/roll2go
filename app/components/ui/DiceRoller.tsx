@@ -73,7 +73,7 @@ export default function DiceRoller() {
         </button>
       </div>
 
-      {error && <p className="mt-2.5 text-sm text-brand-soft" role="alert">{error}</p>}
+      {error && <p className="mt-2.5 text-sm text-danger" role="alert">{error}</p>}
 
       <div
         className={`mt-4 flex min-h-24 flex-col items-center justify-center gap-0.5 rounded-lg border border-dashed p-2 text-center text-muted ${tone.box}`}
@@ -90,7 +90,7 @@ export default function DiceRoller() {
             </span>
           </>
         ) : (
-          <span>Selecciona una de las opciones.</span>
+          <span>Elige un dado o escribe una fórmula.</span>
         )}
       </div>
 

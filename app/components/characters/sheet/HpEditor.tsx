@@ -230,7 +230,7 @@ export default function HpEditor({ characterId, max, current, temp, version }: {
         {hp.temp > 0 && <span className="ml-1 text-base text-success">+{hp.temp}</span>}
       </p>
       {saving && <LoaderCircle size={14} aria-label="Guardando" className="mx-auto animate-spin text-muted print:hidden" />}
-      {error && <p role="alert" className="text-xs text-brand-soft">{error}</p>}
+      {error && <p role="alert" className="text-xs text-danger">{error}</p>}
     </div>
   );
 }

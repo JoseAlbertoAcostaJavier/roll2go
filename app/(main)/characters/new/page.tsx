@@ -55,7 +55,7 @@ export default async function NewCharacterPage({ searchParams }: { searchParams:
             )}
             <Link href={back} className="text-brand-soft hover:underline">Personajes</Link>
             <span aria-hidden="true">/</span>
-            <span aria-current="page">Añadir</span>
+            <span aria-current="page">Crear personaje</span>
           </nav>
         </div>
         <Link href={back} className="flex items-center gap-1 text-sm text-muted hover:text-white">

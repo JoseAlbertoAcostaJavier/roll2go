@@ -127,7 +127,7 @@ export default function SpellsTab({ characterId, isOwner, initial, lists, spells
   const hasSlots = Object.values(state.slots.levels).some((n) => n > 0) || !!state.slots.pact;
   const levels = [...new Set(rows.map((r) => r.level).filter((l) => l > 0))].sort((a, b) => a - b);
   const errorBox = error && (
-    <p role="alert" className="animate-fade-in rounded-md border border-brand-soft/50 bg-surface p-3 text-sm text-brand-soft">{error}</p>
+    <p role="alert" className="animate-fade-in rounded-md border border-danger/50 bg-surface p-3 text-sm text-danger">{error}</p>
   );
 
   if (!manage) {

@@ -169,7 +169,7 @@ export default function RuleSelect({
           className={`${field} pr-9`}
           placeholder={selected ? displayName(selected) : placeholder}
           value={open ? query : selected ? displayName(selected) : ""}
-          onFocus={openList}
+          onFocus={(e) => { if (!e.currentTarget.dataset.skipOpen) openList(); }}
           onClick={openList}
           onChange={(e) => {
             setQuery(e.target.value);

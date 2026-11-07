@@ -118,7 +118,7 @@ export default function DeleteCharacter({
               className="w-full rounded-md border border-line-strong bg-surface px-3 py-2.5 text-fg focus:border-brand focus:outline-none"
             />
             {error && (
-              <p className="mt-2 text-sm text-brand-soft" role="alert">
+              <p className="mt-2 text-sm text-danger" role="alert">
                 {error}
               </p>
             )}

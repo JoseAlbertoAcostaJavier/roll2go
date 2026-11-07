@@ -57,8 +57,8 @@ export default function InventoryTable({ group, shown, info, items, readOnly, ac
       {group.lines.length === 0 ? (
         <p className="text-sm text-muted">Sin objetos.</p>
       ) : (
-        <div className="relative overflow-x-auto">
-          <table className="w-full min-w-176 text-left text-sm">
+        <div className="relative overflow-x-auto print:overflow-visible">
+          <table className="w-full min-w-176 print:min-w-0 text-left text-sm">
             <thead className="text-xs uppercase tracking-wide text-muted">
               <tr>
                 <th className="pb-2 pl-1 pr-3 font-semibold">Activo</th>

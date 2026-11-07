@@ -65,7 +65,7 @@ export default function FeatureUsesControl({ characterId, use, isOwner, classNam
         <span className="text-xs text-muted">/ {recoveryLabel(use)}</span>
       </div>
       <p className="hidden text-xs print:block">{showName && `${use.name}: `}{use.max - spent}/{use.max} · {recoveryLabel(use)}</p>
-      {error && <p role="alert" className="mt-1 print:hidden text-xs text-brand-soft">{error}</p>}
+      {error && <p role="alert" className="mt-1 print:hidden text-xs text-danger">{error}</p>}
     </div>
   );
 }

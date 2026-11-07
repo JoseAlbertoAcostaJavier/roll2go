@@ -71,7 +71,7 @@ export default function DeleteLevel({ characterId, level, redirectTo }: {
       >
         Cancelar
       </button>
-      {error && <span role="alert" className="w-full text-xs text-brand-soft">{error}</span>}
+      {error && <span role="alert" className="w-full text-xs text-danger">{error}</span>}
     </div>
   );
 }

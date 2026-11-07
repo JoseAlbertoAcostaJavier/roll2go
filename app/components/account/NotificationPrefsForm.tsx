@@ -129,7 +129,7 @@ export default function NotificationPrefsForm({ initial }: { initial: Prefs }) {
         <Option checked={prefs.social} onChange={(v) => set("social", v)} title="Social" desc="Solicitudes de amistad y aceptaciones." />
       </div>
 
-      {error && <p className="mt-4 text-sm text-brand-soft" role="alert">{error}</p>}
+      {error && <p className="mt-4 text-sm text-danger" role="alert">{error}</p>}
       <div className="mt-6 flex items-center gap-4">
         <button type="submit" disabled={loading} className={primaryButton}>
           {loading && <LoaderCircle size={18} className="animate-spin" aria-hidden="true" />} Guardar preferencias

@@ -4,6 +4,7 @@ import type { HitDicePool } from "@/lib/rules/dnd2024/sheet/rest";
 import HpEditor from "./HpEditor";
 import InspirationBox from "./InspirationBox";
 import { statButton } from "./statUi";
+import type { ReactNode } from "react";
 import type { SheetData, ShowStat, StatusState } from "./types";
 
 // Marco común de las cajas de la franja: borde neutro; el rojo queda para las acciones y el estado activo
@@ -13,21 +14,24 @@ const boxLabel = "block hyphens-none break-words text-[11px] font-semibold upper
 const statLabel = "block hyphens-none break-words text-[11px] font-semibold uppercase leading-tight tracking-normal text-muted";
 
 // Franja superior (spec de la ficha visual §3.1): las 6 características, competencia, velocidad, inspiración heroica y PG.
-// La franja vive en la columna central de la ficha (a 1280 px mide ~640 px), demasiado estrecha para una sola fila:
-// - ≥ 1536 px: todo en una fila (características ~48 %, competencia/velocidad/inspiración ~27 %, PG ~25 %).
-// - < 1536 px: las características en su propia fila (6 columnas; 3 por debajo de 640 px) y, en la siguiente,
-//   competencia, velocidad e inspiración junto a los PG (apilados en móvil).
-export default function AbilityStrip({ d, characterId, isOwner, version, pools, show, status }: {
+// La franja ocupa todo el ancho de la ficha. Las características van en su propia fila (6 columnas; 3 por debajo de
+// 640 px). Debajo, en la segunda fila:
+// - < 1280 px: competencia, velocidad e inspiración junto a los PG (apilados en móvil) y, al pie, iniciativa y CA.
+// - ≥ 1280 px: dos columnas; a la izquierda competencia, velocidad e inspiración con iniciativa y CA debajo, y a la
+//   derecha los PG ocupando ambas filas.
+export default function AbilityStrip({ d, characterId, isOwner, version, pools, show, status, combat }: {
   d: SheetData; characterId: string; isOwner: boolean; version: number; pools: HitDicePool[]; show: ShowStat;
   status: StatusState;
+  /** Iniciativa y CA (`CombatBox`): bajo la franja en pantallas estrechas y, desde `xl`, bajo Competencia, Velocidad e Inspiración. */
+  combat: ReactNode;
 }) {
   return (
     <section
       aria-label="Características y puntos de golpe"
-      className="grid gap-3 2xl:grid-cols-[minmax(0,48fr)_minmax(0,27fr)_minmax(0,25fr)] 2xl:items-start"
+      className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] xl:items-start"
     >
       {/* Características: modificador grande y puntuación en una píldora sobre el borde inferior; cada una abre su desglose */}
-      <div>
+      <div className="xl:col-span-2">
         <h3 className="sr-only">Características</h3>
           <ul className="grid grid-cols-3 gap-x-2 gap-y-5 pb-3 sm:grid-cols-6">
             {ABILITIES.map((a) => (
@@ -50,10 +54,10 @@ export default function AbilityStrip({ d, characterId, isOwner, version, pools, 
           </ul>
         </div>
 
-      {/* Segunda fila (< 1536 px); en pantallas anchas las dos cajas son columnas de la franja (`contents`) */}
-      <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] 2xl:contents">
+      {/* Segunda fila (< 1280 px); desde `xl` las dos cajas son celdas de la rejilla de la franja (`contents`) */}
+      <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] xl:contents">
         {/* Competencia, velocidad e inspiración: del mismo alto que las características */}
-        <div className="grid grid-cols-3 gap-2 pb-3">
+        <div className="grid grid-cols-3 gap-2 pb-3 xl:col-[1] xl:row-[2]">
           <div className={`${box} flex h-24 flex-col items-center justify-center px-1 text-center`}>
             <span className="font-heading text-2xl font-extrabold leading-none">{fmtMod(d.proficiencyBonus)}</span>
             <span className={`${statLabel} mt-1 w-full`}>Competencia</span>
@@ -77,7 +81,7 @@ export default function AbilityStrip({ d, characterId, isOwner, version, pools, 
         </div>
 
       {/* Puntos de golpe, con los dados de golpe debajo */}
-      <div className={`${box} px-3 py-3 text-center`}>
+      <div className={`${box} px-3 py-3 text-center xl:col-[2] xl:row-[2/span_2]`}>
         <p className={`${boxLabel} mb-2`}>Puntos de golpe</p>
         {isOwner ? (
           // El editor guarda su estado y adopta los PG nuevos cuando cambia `version` (descanso, borrar un nivel) sin
@@ -104,6 +108,9 @@ export default function AbilityStrip({ d, characterId, isOwner, version, pools, 
         )}
         </div>
       </div>
+
+      {/* Combate: tercer bloque de la franja, con el hueco de las filas anteriores en pantallas estrechas */}
+      <div className="max-xl:mt-3 xl:col-[1] xl:row-[3]">{combat}</div>
     </section>
   );
 }

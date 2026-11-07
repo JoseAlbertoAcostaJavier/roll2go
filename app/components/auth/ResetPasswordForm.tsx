@@ -16,7 +16,7 @@ export default function ResetPasswordForm({ token }: { token: string }) {
 
   const inputClass = (hasError: boolean, extra = "pr-11") =>
     `w-full rounded-md border bg-surface py-2.5 pl-10 ${extra} text-fg placeholder:text-muted focus:outline-none transition-colors ${
-      hasError ? "border-brand-soft" : "border-line-strong focus:border-brand"
+      hasError ? "border-danger" : "border-line-strong focus:border-brand"
     }`;
     if (!token) {
       return (
@@ -127,7 +127,7 @@ export default function ResetPasswordForm({ token }: { token: string }) {
         </div>
       </div>
 
-      {error && <p className="mb-4 text-sm text-brand-soft" role="alert">{error}</p>}
+      {error && <p className="mb-4 text-sm text-danger" role="alert">{error}</p>}
 
       <button
         type="submit"

@@ -25,7 +25,7 @@ export default function SubclassStep({ label, className, classLevel, options, va
     <div className="space-y-5">
       <p className="text-sm text-muted">Al llegar a {className} {classLevel} eliges tu {label.toLowerCase()}.</p>
       {options.length === 0 ? (
-        <p role="alert" className="text-sm text-brand-soft">No hay subclases de {className} en los libros de este personaje.</p>
+        <p role="alert" className="text-sm text-danger">No hay subclases de {className} en los libros de este personaje.</p>
       ) : (
         <RuleSelect
           id="level-up-subclass"

@@ -31,6 +31,7 @@ import type { CreationDraft } from "@/lib/rules/dnd2024/creation/recreate";
 import { SKILLS_SOURCE } from "@/lib/rules/dnd2024/sheet/upgrade";
 import AbilityScores from "./AbilityScores";
 import CharacterSummary, { type MissingItem } from "./CharacterSummary";
+import SectionIndex, { type SectionLink } from "./SectionIndex";
 import RoundIcon from "../../ui/RoundIcon";
 import ClassFeaturesSection, { choicesFor, refFromKey, unfinished, type ChoiceValues } from "./ClassFeaturesSection";
 import EquipmentPicks from "./EquipmentPicks";
@@ -131,6 +132,12 @@ const emptyForm = (): FormState => ({
   method: "pointBuy", base: { str: 8, dex: 8, con: 8, int: 8, wis: 8, cha: 8 }, rolls: null,
   alignment: "", appearance: "", age: "", backstory: "", languages: "", languageChoices: [], notes: "", xp: "",
 });
+
+/** El formulario es idéntico al de partida (los valores por defecto no cuentan como datos del usuario). */
+export const isUntouched = (form: FormState, blank: FormState) => JSON.stringify(form) === JSON.stringify(blank);
+
+/** Formulario vacío de una creación nueva, para comparar. */
+export const blankForm = emptyForm;
 
 // En la creación aún no conoce ningún conjuro
 const NO_SPELLS = { cantrips: [], spells: [] };
@@ -347,7 +354,7 @@ export default function CharacterCreator(props: Props) {
     );
   // Al rehacer sin borrador propio, se empieza por la creación actual
   const start = draft ?? (props.recreate ? JSON.stringify(props.recreate.initial) : null);
-  return <CreatorForm {...props} draftKey={draftKey} draft={start} />;
+  return <CreatorForm key={draftKey} {...props} draftKey={draftKey} draft={start} />;
 }
 
 function CreatorForm(props: Props & { draftKey: string; draft: string | null }) {
@@ -366,15 +373,22 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
   // Tras crear con éxito, el borrador ya no se vuelve a escribir
   const submitted = useRef(false);
 
-  // Borrador: se guarda en cada cambio (si el navegador no deja, se sigue sin borrador)
+  // Estado de partida del formulario: el vacío, o la creación actual al rehacer
+  const [blank] = useState<FormState>(() => (recreate ? parseDraft(JSON.stringify(recreate.initial), props) : emptyForm()));
+
+  // Borrador: se guarda en cada cambio (si el navegador no deja, se sigue sin borrador).
+  // Un formulario igual al de partida no deja borrador: se quita la clave. El formulario ya viene del borrador
+  // recuperado, así que nunca se borra uno con datos antes de leerlo. Un borrador cuyas referencias se hayan
+  // descartado todas puede quedar en blanco al leerlo y entonces también se quita.
   useEffect(() => {
     if (submitted.current) return;
     try {
-      localStorage.setItem(draftKey, JSON.stringify(form));
+      if (isUntouched(form, blank)) localStorage.removeItem(draftKey);
+      else localStorage.setItem(draftKey, JSON.stringify(form));
     } catch {
       // almacenamiento no disponible
     }
-  }, [form, draftKey]);
+  }, [form, blank, draftKey]);
 
   // Tras un envío con errores, se lleva la vista al primero
   useEffect(() => {
@@ -570,12 +584,12 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
   // ---- falta por completar ----
   const missing: MissingItem[] = [];
   if (!form.name.trim()) missing.push({ label: "Nombre", href: S.details });
-  if (!form.species) missing.push({ label: "Especie", href: S.details });
-  if (hasLineages && !form.lineage) missing.push({ label: "Legado", href: S.details });
+  if (!form.species) missing.push({ label: "Especie", href: S.details, focusId: "species" });
+  if (hasLineages && !form.lineage) missing.push({ label: "Legado", href: S.details, focusId: "lineage" });
   if (speciesData?.skills.choose && form.speciesSkills.filter(Boolean).length !== speciesData.skills.choose.count)
-    missing.push({ label: "Habilidades de especie", href: S.details });
-  if (speciesData && speciesData.size.length > 1 && !form.size) missing.push({ label: "Tamaño", href: S.details });
-  if (!form.klass) missing.push({ label: "Clase", href: S.details });
+    missing.push({ label: "Habilidades de especie", href: S.details, focusId: "species-skills" });
+  if (speciesData && speciesData.size.length > 1 && !form.size) missing.push({ label: "Tamaño", href: S.details, focusId: "size" });
+  if (!form.klass) missing.push({ label: "Clase", href: S.details, focusId: "class" });
   if (!form.background) missing.push({ label: "Trasfondo", href: S.background });
   else if (!form.bgEquipment && letters(bgData?.equipment).length) missing.push({ label: "Equipo del trasfondo", href: S.background });
   else
@@ -595,6 +609,24 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
     missing.push({ label: "Puntuaciones de característica", href: S.abilities });
   if (bgData && !checkBackgroundBonus(form.bonus, bgData.abilities))
     missing.push({ label: "Bonificación del trasfondo", href: S.abilities });
+
+  // Índice de secciones tal como se pintan; "pendiente" sale de la misma lista que «Falta por completar»
+  const sectionLinks: SectionLink[] = [
+    { label: "Detalles", href: S.details },
+    ...(!recreate ? [{ label: "Estado", href: S.status }] : []),
+    { label: "Trasfondo", href: S.background },
+    { label: "Rasgos de clase", href: S.klass },
+    ...(casting && form.klass ? [{ label: "Conjuros", href: S.spells }] : []),
+    { label: "Idiomas", href: S.languages },
+    { label: "Puntuaciones de característica", href: S.abilities },
+    ...(!recreate ? [{ label: "Información", href: S.info }] : []),
+  ].map((s) => ({
+    ...s,
+    // «Rasgos de clase» no está completa sin clase: la clase falta en Detalles, no aquí
+    pending: s.href === S.status || s.href === S.info ? null
+      : s.href === S.klass ? !form.klass || missing.some((m) => m.href === s.href)
+        : missing.some((m) => m.href === s.href),
+  }));
 
   // ---- cambios con efectos en cadena ----
   // Errores de las elecciones de clase (se borran juntos al cambiar algo que les afecta)
@@ -815,6 +847,14 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
   return (
     <form onSubmit={submit} noValidate className="grid grid-cols-[minmax(0,1fr)] items-start gap-6 lg:grid-cols-[minmax(0,1fr)_18rem]">
       <div className="space-y-6">
+        {/* Índice plegable en móvil; en escritorio va en la columna Resumen */}
+        <details className="rounded-lg border border-line bg-panel px-4 py-3 lg:hidden">
+          <summary className="cursor-pointer text-sm font-semibold">Secciones</summary>
+          <div className="mt-2">
+            <SectionIndex sections={sectionLinks} />
+          </div>
+        </details>
+
         {/* 1. Detalles */}
         <section id="detalles" {...section(0)}>
           <h2 className={cardTitle}>Detalles</h2>
@@ -1095,9 +1135,9 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
             <p key={k} className={errorClass} role="alert" data-field-error>{msg}</p>
           ))}
           {formError && <p className={errorClass} role="alert">{formError}</p>}
-          {!abilitiesValid && <p className="text-sm text-brand-soft">Ninguna característica puede superar 20.</p>}
+          {!abilitiesValid && <p className="text-sm text-danger">Ninguna característica puede superar 20.</p>}
           {confirming && (
-            <p role="alert" className="flex animate-fade-in items-center gap-2 text-sm text-brand-soft">
+            <p role="alert" className="flex animate-fade-in items-center gap-2 text-sm text-danger">
               <TriangleAlert size={16} aria-hidden="true" /> Se reiniciará el inventario con el equipo inicial elegido y se vaciarán los conjuros preparados.
             </p>
           )}
@@ -1118,8 +1158,10 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
         </div>
       </div>
 
-      <div className="lg:sticky lg:top-20">
+      {/* Si índice y resumen no caben en la altura de la ventana, la columna se desplaza por dentro */}
+      <div className="lg:sticky lg:top-20 lg:max-h-[calc(100dvh-6rem)] lg:overflow-y-auto">
         <CharacterSummary
+          sections={sectionLinks}
           sheet={previewSheet}
           entries={entries}
           hasSpecies={!!form.species}

@@ -83,7 +83,7 @@ export default function AddCharacterDialog({ campaignId, characters, isDm, syste
               ))}
             </ul>
           )}
-          {error && <p role="alert" className="mt-4 text-sm text-brand-soft">{error}</p>}
+          {error && <p role="alert" className="mt-4 text-sm text-danger">{error}</p>}
           <div className="mt-5 flex justify-end">
             {/* El foco empieza aquí y no en el primer «Añadir», para no enviar nada con un Intro sin querer */}
             <button

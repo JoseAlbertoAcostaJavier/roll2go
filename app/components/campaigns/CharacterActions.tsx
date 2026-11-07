@@ -27,7 +27,7 @@ export function CharacterNoticeArea() {
       <p role="status" className={notice?.kind === "ok" ? "mb-4 rounded-md border border-success/40 bg-success/10 px-3 py-2 text-sm" : "sr-only"}>
         {notice?.kind === "ok" ? notice.text : ""}
       </p>
-      <p role="alert" className={notice?.kind === "error" ? "mb-4 rounded-md border border-brand/40 bg-brand/10 px-3 py-2 text-sm text-brand-soft" : "sr-only"}>
+      <p role="alert" className={notice?.kind === "error" ? "mb-4 rounded-md border border-brand/40 bg-brand/10 px-3 py-2 text-sm text-danger" : "sr-only"}>
         {notice?.kind === "error" ? notice.text : ""}
       </p>
     </>

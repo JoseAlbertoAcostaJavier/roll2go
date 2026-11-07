@@ -101,7 +101,7 @@ export default function VerifyPending({ initialEmail }: { initialEmail: string }
         </p>
       )}
       {error && (
-        <p className="mt-3 text-sm text-brand-soft" role="alert">
+        <p className="mt-3 text-sm text-danger" role="alert">
           {error}
         </p>
       )}

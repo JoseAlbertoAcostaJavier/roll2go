@@ -86,7 +86,7 @@ export default function UserSearch() {
           className="absolute inset-x-0 top-full z-30 mt-2 animate-pop origin-top max-h-96 overflow-y-auto rounded-lg border border-line bg-panel shadow-[0_12px_30px_rgba(0,0,0,0.6)]"
         >
           {error ? (
-            <p className="px-4 py-3 text-sm text-brand-soft" role="alert">{error}</p>
+            <p className="px-4 py-3 text-sm text-danger" role="alert">{error}</p>
           ) : loading && results.length === 0 ? (
             <p className="px-4 py-3 text-sm text-muted">Buscando...</p>
           ) : results.length === 0 ? (

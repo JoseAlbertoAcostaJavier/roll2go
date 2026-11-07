@@ -104,7 +104,7 @@ export default function ForumPostForm({ campaignId, kind, parent, replyTo, editI
         {errors.content && <p className={errorClass} role="alert">{errors.content}</p>}
       </div>
 
-      {formError && <p className="text-sm text-brand-soft" role="alert">{formError}</p>}
+      {formError && <p className="text-sm text-danger" role="alert">{formError}</p>}
 
       <div className="flex flex-wrap items-center gap-4">
         <button type="submit" disabled={loading} className={primaryButton}>

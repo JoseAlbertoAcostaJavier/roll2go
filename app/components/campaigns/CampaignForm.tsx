@@ -34,7 +34,7 @@ const field =
 const labelClass = "mb-1.5 block text-sm font-semibold";
 const sectionClass = "rounded-lg border border-line bg-panel p-5 sm:p-6";
 const sectionTitle = "mb-4 border-l-4 border-brand pl-3 font-heading text-xl font-bold";
-const errorClass = "mt-1 text-xs text-brand-soft";
+const errorClass = "mt-1 text-xs text-danger";
 const linkButton = "mt-2 flex items-center gap-1 text-sm text-brand-soft hover:underline";
 
 /* Selector de imagen con vista previa y validación de tipo y tamaño.
@@ -460,7 +460,7 @@ export default function CampaignForm({
         )}
       </section>
 
-      {formError && <p className="text-sm text-brand-soft" role="alert">{formError}</p>}
+      {formError && <p className="text-sm text-danger" role="alert">{formError}</p>}
 
       <div className="flex flex-wrap items-center gap-4">
         <button

@@ -64,7 +64,7 @@ export default function NotificationList() {
     }
   }
 
-  if (error) return <p className="text-sm text-brand-soft" role="alert">{error}</p>;
+  if (error) return <p className="text-sm text-danger" role="alert">{error}</p>;
   if (items === null)
     return (
       <ul className="divide-y divide-line overflow-hidden rounded-lg border border-line bg-panel" aria-label="Cargando">

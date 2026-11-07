@@ -74,7 +74,7 @@ export default function ForgotPasswordForm() {
       </div>
 
       {status === "error" && (
-        <p className="mb-4 text-sm text-brand-soft" role="alert">{message}</p>
+        <p className="mb-4 text-sm text-danger" role="alert">{message}</p>
       )}
 
       <button

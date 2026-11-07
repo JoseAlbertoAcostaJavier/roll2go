@@ -133,7 +133,7 @@ export default function InviteLink({
           </div>
         </>
       )}
-      {error && <p className="mt-3 text-sm text-brand-soft" role="alert">{error}</p>}
+      {error && <p className="mt-3 text-sm text-danger" role="alert">{error}</p>}
     </div>
   );
 }

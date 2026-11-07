@@ -44,7 +44,7 @@ function useAction() {
 function Feedback({ error, success }: { error: string; success: string }) {
   return (
     <>
-      {error && <p className="mt-3 text-sm text-brand-soft" role="alert">{error}</p>}
+      {error && <p className="mt-3 text-sm text-danger" role="alert">{error}</p>}
       {success && <p className={`mt-3 ${successClass}`} role="status">{success}</p>}
     </>
   );

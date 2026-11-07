@@ -130,7 +130,7 @@ export default function FriendActions({
         )}
       </div>
 
-      {error && <p className="text-xs text-brand-soft" role="alert">{error}</p>}
+      {error && <p className="text-xs text-danger" role="alert">{error}</p>}
     </div>
   );
 }

@@ -216,7 +216,7 @@ export default function AbilityScores({
             {loadingRolls ? "Tirando…" : "Nuevas tiradas"}
           </button>
           {!rolls && !loadingRolls && <span className="text-sm text-muted">Pulsa para tirar los dados.</span>}
-          {rollsError && <span role="alert" className="text-sm text-brand-soft">{rollsError}</span>}
+          {rollsError && <span role="alert" className="text-sm text-danger">{rollsError}</span>}
         </div>
       )}
 
@@ -308,7 +308,7 @@ export default function AbilityScores({
                       </button>
                     </div>
                   </td>
-                  <td className={`px-3 py-2 text-center font-heading text-lg font-bold ${over ? "text-brand-soft" : ""}`}>
+                  <td className={`px-3 py-2 text-center font-heading text-lg font-bold ${over ? "text-danger" : ""}`}>
                     {total ?? "—"}
                     {over && <span role="alert" className="block text-xs font-normal">Máximo 20</span>}
                   </td>

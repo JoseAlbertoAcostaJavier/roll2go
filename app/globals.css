@@ -14,6 +14,7 @@
   --color-brand-hover: #c22d37;
   --color-brand-dark: #8f1d25;
   --color-brand-soft: #f27474;
+  --color-danger: #f27474;
   --color-success: #6fd08c;
 
   /* Animaciones: animate-fade-up (aparecer subiendo), animate-fade-in, animate-pop (menús y chips) */
@@ -79,6 +80,7 @@
     --color-fg: #111;
     --color-muted: #555;
     --color-brand-soft: #8f1d25;
+    --color-danger: #8f1d25;
     --color-success: #1f6b37;
     --color-white: #111;
   }
@@ -86,7 +88,8 @@
     color-scheme: light;
   }
   /* Barra de navegación, pie y asistente del layout principal */
-  body > :not(main) {
+  body > :not(main):not([data-app-shell]),
+  [data-app-shell] > :not(main) {
     display: none !important;
   }
   /* Los valores de la pestaña Información son botones que abren su detalle: se imprimen como texto */

@@ -38,7 +38,7 @@ export default function AnnouncementForm() {
       <label htmlFor="announce" className={labelClass}>Texto del aviso</label>
       <textarea id="announce" rows={4} maxLength={500} value={text} onChange={(e) => setText(e.target.value)} className={field} />
       <p className="mt-1 text-right text-xs text-muted">{text.length}/500</p>
-      {error && <p className="mt-2 text-sm text-brand-soft" role="alert">{error}</p>}
+      {error && <p className="mt-2 text-sm text-danger" role="alert">{error}</p>}
       <div className="mt-4 flex items-center gap-4">
         <button type="submit" disabled={loading || text.trim().length < 3} className={primaryButton}>
           {loading && <LoaderCircle size={18} className="animate-spin" aria-hidden="true" />} Enviar a todos

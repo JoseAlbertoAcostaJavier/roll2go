@@ -175,7 +175,7 @@ export default function RestButtons({ characterId, pools, conMod, recoversOther 
                   {recoversOther && <p className="text-muted">{ALSO}</p>}
                 </div>
               )}
-              {error && <p role="alert" className="mb-4 text-sm text-brand-soft">{error}</p>}
+              {error && <p role="alert" className="mb-4 text-sm text-danger">{error}</p>}
               <div className="flex flex-wrap justify-end gap-3">
                 <button type="button" data-autofocus onClick={() => setOpen(null)} disabled={loading} className={secondary}>
                   Cancelar

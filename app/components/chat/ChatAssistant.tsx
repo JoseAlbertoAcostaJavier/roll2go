@@ -121,12 +121,12 @@ export default function ChatAssistant() {
     <>
       {!open && (
         <button
-          className="fixed bottom-3 right-3 z-50 flex items-center gap-2 rounded-full bg-brand px-4 py-3 font-heading text-sm font-bold text-white shadow-[0_6px_20px_rgba(0,0,0,0.5)] transition-colors hover:bg-brand-hover sm:bottom-5 sm:right-5"
+          className="fixed bottom-3 right-3 z-50 flex size-12 items-center justify-center gap-2 rounded-full bg-brand font-heading text-sm font-bold text-white shadow-[0_6px_20px_rgba(0,0,0,0.5)] transition-colors hover:bg-brand-hover sm:bottom-5 sm:right-5 sm:size-auto sm:px-4 sm:py-3"
           onClick={() => setOpen(true)}
           aria-label="Abrir asistente de rol"
         >
           <MessageCircle size={22} />
-          <span>Asistente</span>
+          <span className="hidden sm:inline">Asistente</span>
         </button>
       )}
 
@@ -204,7 +204,7 @@ export default function ChatAssistant() {
             )}
           </div>
 
-          {error && <p className="px-3.5 pb-2 text-sm text-brand-soft" role="alert">{error}</p>}
+          {error && <p className="px-3.5 pb-2 text-sm text-danger" role="alert">{error}</p>}
 
           <div className="flex gap-2 border-t border-line p-3">
             <input

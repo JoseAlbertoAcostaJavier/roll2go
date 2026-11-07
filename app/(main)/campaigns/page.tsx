@@ -4,13 +4,11 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { Plus } from "lucide-react";
 import { COOKIE_NAME, verifySession } from "@/lib/server/auth/auth";
-import { listMyCampaigns } from "@/lib/server/campaigns/queries";
-import { system as rpgSystems } from "@/lib/utils/systems";
-import Avatar from "@/app/components/ui/Avatar";
+import { campaignCardOf, listMyCampaigns } from "@/lib/server/campaigns/queries";
+import CampaignCard from "@/app/components/campaigns/CampaignCard";
 import CampaignInvites, { type InviteData } from "@/app/components/campaigns/CampaignInvites";
-import ConfirmAction from "@/app/components/ui/ConfirmAction";
 import { first } from "@/lib/utils/utils";
-import { secondaryButton } from "@/app/components/ui/formStyles";
+import ListFilters from "@/app/components/ui/ListFilters";
 
 export const metadata: Metadata = { title: "Mis campañas" };
 
@@ -22,9 +20,6 @@ const SORTS = ["recent", "new", "name"] as const;
 function pick<T extends string>(value: string | undefined, allowed: readonly T[], fallback: T): T {
   return allowed.find((a) => a === value) ?? fallback;
 }
-
-const field =
-  "h-11 w-full rounded-md border border-line-strong bg-surface px-3 text-fg placeholder:text-muted focus:border-brand focus:outline-none";
 
 export default async function CampaignsPage({
   searchParams,
@@ -60,55 +55,40 @@ export default async function CampaignsPage({
 
       <CampaignInvites invites={inviteData} />
 
-      {/* Buscador: es un formulario GET, así que los filtros quedan en la dirección y funciona sin JavaScript.
-          La key reinicia los campos cuando cambian los filtros (por ejemplo al pulsar "Limpiar"). */}
-      <form
-        key={`${q}|${owner}|${status}|${sort}`}
-        action="/campaigns"
-        method="get"
+      <ListFilters
         className="mb-6 rounded-lg border border-line bg-panel p-5"
-      >
-        <h2 className="mb-4 font-heading text-sm font-bold uppercase tracking-wide text-muted">Buscar campañas</h2>
-        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-[2fr_1fr_1fr_1fr_auto]">
-          <input
-            type="search"
-            name="q"
-            defaultValue={q}
-            maxLength={80}
-            placeholder="Buscar por nombre"
-            aria-label="Buscar por nombre"
-            className={field}
-          />
-          <select name="owner" defaultValue={owner} aria-label="Creadas por" className={field}>
-            <option value="all">Todas</option>
-            <option value="mine">Creadas por mí</option>
-            <option value="others">Creadas por otros</option>
-          </select>
-          <select name="status" defaultValue={status} aria-label="Estado" className={field}>
-            <option value="active">Activas</option>
-            <option value="inactive">Inactivas</option>
-            <option value="all">Todas</option>
-          </select>
-          <select name="sort" defaultValue={sort} aria-label="Ordenar por" className={field}>
-            <option value="recent">Recientes primero</option>
-            <option value="new">Nuevas primero</option>
-            <option value="name">Ordenar por nombre</option>
-          </select>
-          <div className="flex items-center gap-3">
-            <button
-              type="submit"
-              className={`${secondaryButton} h-11 flex-1`}
-            >
-              Buscar
-            </button>
-            {hasFilters && (
-              <Link href="/campaigns" className="text-sm text-muted hover:text-white">
-                Limpiar
-              </Link>
-            )}
-          </div>
-        </div>
-      </form>
+        base="/campaigns"
+        title="Buscar campañas"
+        q={q}
+        searchLabel="Buscar por nombre"
+        placeholder="Buscar por nombre"
+        selects={[
+          {
+            name: "owner", label: "Creadas por", value: owner, defaultValue: "all",
+            options: [
+              { value: "all", label: "Todas" },
+              { value: "mine", label: "Creadas por mí" },
+              { value: "others", label: "Creadas por otros" },
+            ],
+          },
+          {
+            name: "status", label: "Estado", value: status, defaultValue: "active",
+            options: [
+              { value: "active", label: "Activas" },
+              { value: "inactive", label: "Inactivas" },
+              { value: "all", label: "Todas" },
+            ],
+          },
+          {
+            name: "sort", label: "Ordenar por", value: sort, defaultValue: "recent",
+            options: [
+              { value: "recent", label: "Recientes primero" },
+              { value: "new", label: "Nuevas primero" },
+              { value: "name", label: "Ordenar por nombre" },
+            ],
+          },
+        ]}
+      />
 
       {campaigns.length === 0 ? (
         <div className="rounded-lg border border-dashed border-line p-10 text-center text-muted">
@@ -126,71 +106,15 @@ export default async function CampaignsPage({
       ) : (
         <div className="grid grid-cols-[repeat(auto-fill,minmax(min(300px,100%),1fr))] gap-4">
           {campaigns.map((c, i) => {
-            const players = Math.max(0, (c.members?.length ?? 1) - 1); // sin contar al DM
-            const mine = String(c.owner) === session.id;
             const owner = ownerCards.get(String(c.owner));
             return (
-              /* La tarjeta entera abre la campaña gracias al enlace "estirado" del título (after:inset-0).
-                 El pie queda por encima (z-10) para que el enlace al DM y el botón de abandonar funcionen. */
-              <article
+              <CampaignCard
                 key={String(c._id)}
-                style={{ animationDelay: `${Math.min(i, 12) * 40}ms` }}
-                className="group relative flex animate-fade-up flex-col overflow-hidden rounded-lg border border-line bg-panel transition-[border-color,transform,box-shadow] duration-200 hover:-translate-y-0.5 hover:border-brand hover:shadow-[0_10px_30px_rgba(0,0,0,0.45)] has-[a:focus-visible]:border-brand"
-              >
-                <div className="relative h-36 overflow-hidden bg-surface">
-                  {c.imageId && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={`/api/images/${c.imageId}`} alt="" loading="lazy" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
-                  )}
-                  {c.logoId && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={`/api/images/${c.logoId}`} alt="" loading="lazy" className="absolute bottom-2 left-2 h-12 w-12 rounded-md bg-surface object-cover shadow-md" />
-                  )}
-                  {c.status === "inactive" && (
-                    <span className="absolute right-2 top-2 rounded bg-black/70 px-2 py-0.5 text-xs font-semibold text-muted">
-                      Inactiva
-                    </span>
-                  )}
-                </div>
-                <div className="flex flex-1 flex-col p-4">
-                  <h2 className="font-heading text-lg font-bold">
-                    <Link href={`/campaigns/${c._id}`} className="outline-none after:absolute after:inset-0 after:rounded-lg after:content-[''] focus-visible:after:outline-2 focus-visible:after:outline-offset-2 focus-visible:after:outline-brand-soft">
-                      {c.name}
-                    </Link>
-                  </h2>
-                  {c.shortDescription && <p className="mt-1 line-clamp-3 text-sm text-muted">{c.shortDescription}</p>}
-                  <p className="mt-3 text-sm font-semibold">
-                    {rpgSystems.find((s) => s.id === c.systemId)?.name ?? c.systemId}
-                  </p>
-                  <p className="text-sm text-muted">
-                    {players} {players === 1 ? "jugador" : "jugadores"}
-                  </p>
-                  <div className="relative z-10 mt-auto flex flex-wrap items-center justify-between gap-x-3 gap-y-2 pt-3">
-                    {owner ? (
-                      <Link href={`/users/${owner.username}`} className="group/dm flex min-w-0 items-center gap-2 text-sm">
-                        <Avatar url={owner.avatarUrl} size={24} crown />
-                        <span className="truncate font-semibold text-[#6fd08c]">
-                          Creada por <span className="group-hover/dm:underline">{owner.displayName}</span>
-                        </span>
-                      </Link>
-                    ) : (
-                      <span className="flex items-center gap-2 text-sm text-muted">
-                        <Avatar url={null} size={24} crown /> Creada por un usuario eliminado
-                      </span>
-                    )}
-                    {mine ? (
-                      <span className="text-xs text-muted">(tú, DM)</span>
-                    ) : (
-                      <ConfirmAction
-                        url={`/api/campaigns/${c._id}/members/${session.id}`}
-                        label="Abandonar"
-                        question={`¿Abandonar ${c.name}?`}
-                        confirmLabel="Sí, abandonar"
-                      />
-                    )}
-                  </div>
-                </div>
-              </article>
+                index={i}
+                userId={session.id}
+                owner={owner ? { username: owner.username, displayName: owner.displayName, avatarUrl: owner.avatarUrl } : null}
+                campaign={campaignCardOf(c, session.id)}
+              />
             );
           })}
         </div>

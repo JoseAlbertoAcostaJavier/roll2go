@@ -119,7 +119,7 @@ export default function AdminUserActions({
             </span>
           </p>
           {error && (
-            <p className="mt-2 text-sm text-brand-soft" role="alert">
+            <p className="mt-2 text-sm text-danger" role="alert">
               {error}
             </p>
           )}

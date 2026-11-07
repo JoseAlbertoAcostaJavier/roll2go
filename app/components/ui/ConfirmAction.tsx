@@ -75,7 +75,7 @@ export default function ConfirmAction({
         Cancelar
       </button>
       {error && (
-        <span className="w-full text-xs text-brand-soft" role="alert">
+        <span className="w-full text-xs text-danger" role="alert">
           {error}
         </span>
       )}
