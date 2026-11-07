@@ -27,7 +27,6 @@ import { shortRestRestores } from "@/lib/rules/dnd2024/spells/spellOps";
 import { sizeName } from "@/lib/rules/dnd2024/sheet/labels";
 import { itemDetails, locationText, type ItemDetails } from "@/lib/rules/dnd2024/sheet/itemDetails";
 import type { ActionData, BackgroundData, ItemData, SpeciesData } from "@/lib/rules/types";
-import SheetHeader from "@/app/components/characters/sheet/SheetHeader";
 import type { JoinableCampaign } from "@/app/components/characters/sheet/JoinCampaignDialog";
 import SheetTabs from "@/app/components/characters/sheet/SheetTabs";
 import { SHEET_TABS, type SheetTab } from "@/app/components/characters/sheet/sheetTabsList";
@@ -224,7 +223,7 @@ export default async function CharacterPage({ params, searchParams }: Props) {
   const panel = (t: SheetTab) => ({
     id: `panel-${t}`,
     // Margen de desplazamiento: la barra de pestañas fija (≈ 46 px) no tapa el control que recibe el foco con el teclado
-    className: `[&_a]:scroll-mt-14 [&_button]:scroll-mt-14 [&_input]:scroll-mt-14 [&_select]:scroll-mt-14 [&_textarea]:scroll-mt-14 ${t === tab ? "" : "hidden print:block"}`,
+    className: `rounded-xl border border-line bg-panel p-3 sm:p-4 print:border-0 print:p-0 [&_a]:scroll-mt-14 [&_button]:scroll-mt-14 [&_input]:scroll-mt-14 [&_select]:scroll-mt-14 [&_textarea]:scroll-mt-14 ${t === tab ? "" : "hidden print:block"}`,
   });
   const panelTitle = (t: SheetTab) => (
     <h2 className="sr-only print:not-sr-only print:mb-4 print:mt-8 print:font-heading print:text-2xl print:font-bold">
@@ -234,27 +233,6 @@ export default async function CharacterPage({ params, searchParams }: Props) {
 
   return (
     <div className="mx-auto max-w-280 px-4 py-8 sm:px-5 xl:max-w-360">
-      {/* Con otro aviso (p. ej. tras borrar un nivel desde la propia ficha) la cabecera se monta de nuevo para mostrarlo */}
-      <SheetHeader
-        key={String(query.saved ?? "")}
-        id={id}
-        name={c.name}
-        pronouns={pronounsText(parsePronouns(((c.pronouns ?? []) as string[]).join(",")) ?? [])}
-        portraitUrl={c.portraitId ? `/api/images/${c.portraitId}` : null}
-        status={(c.status ?? "active") as CharacterStatus}
-        summary={[species, classes].filter(Boolean).join(" · ")}
-        level={d.level}
-        campaign={campaign}
-        isOwner={isOwner}
-        pools={pools}
-        conMod={d.abilities.con.mod}
-        recoversOther={shortRestRestores(d.spells)}
-        joinable={joinable}
-        systemName={rpgSystems.find((r) => r.id === c.systemId)?.name ?? c.systemId}
-        notice={query.saved ? (NOTICES[String(query.saved)] ?? "Cambios guardados") : null}
-        backHref={isOwner || !campaign ? "/characters" : `/campaigns/${campaign.id}/characters`}
-      />
-
       {d.missing.length > 0 && (
         <p role="status" className="mb-6 flex items-start gap-2 rounded-md border border-line bg-surface p-3 text-sm text-muted">
           <TriangleAlert size={16} className="mt-0.5 shrink-0 text-brand-soft" aria-hidden="true" />
@@ -266,6 +244,27 @@ export default async function CharacterPage({ params, searchParams }: Props) {
           (descansos, borrar un nivel) */}
       <SheetLayout
         d={sheetData}
+        headerKey={String(query.saved ?? "")}
+        header={{
+          id,
+          name: c.name,
+          pronouns: pronounsText(parsePronouns(((c.pronouns ?? []) as string[]).join(",")) ?? []),
+          portraitUrl: c.portraitId ? `/api/images/${c.portraitId}` : null,
+          status: (c.status ?? "active") as CharacterStatus,
+          classes,
+          species,
+          background: background ? (background.nameEs ?? background.name) : sheet.background.name,
+          xp: sheet.xp ?? 0,
+          level: d.level,
+          campaign,
+          isOwner,
+          joinable,
+          systemName: rpgSystems.find((r) => r.id === c.systemId)?.name ?? c.systemId,
+          notice: query.saved ? (NOTICES[String(query.saved)] ?? "Cambios guardados") : null,
+          backHref: isOwner || !campaign ? "/characters" : `/campaigns/${campaign.id}/characters`,
+        }}
+        recoversOther={shortRestRestores(d.spells)}
+        featureUses={d.featureUses}
         characterId={id}
         isOwner={isOwner}
         pools={pools}
@@ -289,6 +288,14 @@ export default async function CharacterPage({ params, searchParams }: Props) {
             basics={basics}
             itemCards={itemCards}
             itemDescriptions={itemDescriptions}
+          />
+          <MasteriesEditor
+            key={d.level}
+            characterId={id}
+            isOwner={isOwner}
+            allowed={allowedMasteries}
+            current={masteryCurrent}
+            options={masteryOptions}
           />
         </section>
         <section {...panel("trasfondo")}>
@@ -315,14 +322,6 @@ export default async function CharacterPage({ params, searchParams }: Props) {
         )}
         <section {...panel("rasgos")}>
           {panelTitle("rasgos")}
-          <MasteriesEditor
-            key={d.level}
-            characterId={id}
-            isOwner={isOwner}
-            allowed={allowedMasteries}
-            current={masteryCurrent}
-            options={masteryOptions}
-          />
           <FeaturesTab
             groups={d.features} entries={entries} base={base} query={query}
             featureUses={d.featureUses} characterId={id} isOwner={isOwner}

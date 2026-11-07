@@ -71,6 +71,13 @@
   }
 }
 
+/* Filas que no coinciden con el buscador de una pestaña de la ficha: solo se ocultan en pantalla, al imprimir salen todas */
+@media screen {
+  [data-filtered] {
+    display: none !important;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, ::before, ::after { transition: none !important; animation: none !important; }
 }

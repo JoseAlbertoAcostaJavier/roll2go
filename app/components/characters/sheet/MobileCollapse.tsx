@@ -2,7 +2,7 @@
 
 import { useId, useState, type ReactNode } from "react";
 import { ChevronDown } from "lucide-react";
-import { cardTitle } from "@/app/components/ui/formStyles";
+import { boxTitle } from "./statUi";
 
 // Título y contenido de una caja de la ficha. Por debajo de `md` (donde la ficha pasa a una columna) el título es un
 // botón con `aria-expanded` y el contenido va plegado; desde `md`, y al imprimir, el título es un encabezado y el
@@ -12,8 +12,8 @@ export default function MobileCollapse({ title, children }: { title: string; chi
   const id = useId();
   return (
     <>
-      <h3 className={`${cardTitle} hidden md:block print:block`}>{title}</h3>
-      <h3 className={`${cardTitle} md:hidden print:hidden ${open ? "" : "mb-0!"}`}>
+      <h3 className={`${boxTitle} mb-3 hidden md:block print:block`}>{title}</h3>
+      <h3 className={`${boxTitle} md:hidden print:hidden ${open ? "mb-3" : ""}`}>
         <button
           type="button"
           aria-expanded={open}

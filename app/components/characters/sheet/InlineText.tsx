@@ -42,7 +42,11 @@ const valueButton =
 //
 // Con `boxed` el dueño ve el campo como un cuadro de texto siempre visible (mismo borde y fondo que los demás
 // formularios), que guarda al salir del campo o con Enter.
-export function InlineText({ characterId, field, label, value, multiline, editable, boxed }: Common & { value: string; multiline?: boolean; boxed?: boolean }) {
+export function InlineText({ characterId, field, label, value, multiline, editable, boxed, hideLabel }: Common & {
+  value: string; multiline?: boolean; boxed?: boolean;
+  /** El título ya está a la vista (la barra de la sección): el rótulo queda solo para lectores de pantalla. */
+  hideLabel?: boolean;
+}) {
   const router = useRouter();
   const max = SHEET_TEXT_LIMITS[field];
   const [shown, setShown] = useShown(value);
@@ -138,7 +142,7 @@ export function InlineText({ characterId, field, label, value, multiline, editab
     <div className="min-w-0">
       {editing ? (
         <>
-          <label htmlFor={inputId} className={`mb-1 block ${labelText}`}>{label}</label>
+          <label htmlFor={inputId} className={hideLabel ? "sr-only" : `mb-1 block ${labelText}`}>{label}</label>
           <Control
             id={inputId}
             autoFocus
@@ -172,7 +176,7 @@ export function InlineText({ characterId, field, label, value, multiline, editab
         </>
       ) : (
         <>
-          <div className={labelText}>{label}</div>
+          <div className={hideLabel ? "sr-only" : labelText}>{label}</div>
           {editable ? (
             <button
               ref={button}

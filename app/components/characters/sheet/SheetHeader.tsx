@@ -2,18 +2,20 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { ChevronLeft, ChevronsUp, CircleCheck, Pencil, Printer, User as UserIcon, X } from "lucide-react";
+import { ChevronsUp, CircleCheck, Pencil, Printer, User as UserIcon, X } from "lucide-react";
 import DeleteLevel from "../levelup/DeleteLevel";
 import StatusBadge, { type CharacterStatus } from "./StatusBadge";
-import RestButtons from "./RestButtons";
-import type { HitDicePool } from "@/lib/rules/dnd2024/sheet/rest";
+import InspirationBox from "./InspirationBox";
+import { fmtMod } from "@/lib/rules/dnd2024/sheet/labels";
+import { sheetBox } from "./statUi";
+import type { ShowStat } from "./types";
 import JoinCampaignDialog, { LeaveCampaignButton, type JoinableCampaign } from "./JoinCampaignDialog";
 import { CharacterNoticeArea, CharacterNotices } from "@/app/components/campaigns/CharacterActions";
 
 // Nivel total máximo (como MAX_LEVEL del servidor)
 const MAX_LEVEL = 20;
-const secondaryButton =
-  "flex items-center justify-center gap-2 rounded-md border border-line px-3 py-2 text-sm font-semibold transition-colors hover:border-brand hover:text-white";
+const iconButton =
+  "rounded p-1.5 text-muted transition-colors hover:bg-surface hover:text-white focus-visible:outline-2 focus-visible:outline-brand";
 
 export type SheetHeaderProps = {
   id: string;
@@ -22,17 +24,16 @@ export type SheetHeaderProps = {
   pronouns: string;
   portraitUrl: string | null;
   status: CharacterStatus;
-  /** «Especie (Legado) Clase N / Clase M». */
-  summary: string;
+  /** «Clase N / Clase M». */
+  classes: string;
+  /** «Especie (Legado)». */
+  species: string;
+  background: string;
+  xp: number;
   level: number;
   /** Campaña del personaje; `pending` mientras el DM no acepte la solicitud, `isDm` si quien mira es su DM. */
   campaign: { id: string; name: string; pending: boolean; isDm: boolean } | null;
   isOwner: boolean;
-  /** Dados de golpe por clase y modificador de Constitución (para el diálogo del descanso corto). */
-  pools: HitDicePool[];
-  conMod: number;
-  /** Si un descanso corto recuperaría algo más ahora (espacios de pacto, usos): para el aviso del diálogo. */
-  recoversOther: boolean;
   /** Para el dueño sin campaña: sus campañas activas del sistema del personaje, con su elegibilidad. */
   joinable: JoinableCampaign[];
   systemName: string;
@@ -41,7 +42,13 @@ export type SheetHeaderProps = {
   backHref: string;
 };
 
-export default function SheetHeader(p: SheetHeaderProps) {
+export default function SheetHeader(p: SheetHeaderProps & {
+  initiative: number;
+  proficiencyBonus: number;
+  /** Inspiración heroica guardada. */
+  inspiration: boolean;
+  show: ShowStat;
+}) {
   const [notice, setNotice] = useState(p.notice);
 
   // Al imprimir (botón o Ctrl+P) se despliegan todos los rasgos plegados; al terminar se vuelven a plegar
@@ -86,10 +93,7 @@ export default function SheetHeader(p: SheetHeaderProps) {
   };
 
   return (
-    <header className="mb-6 animate-fade-up">
-      <Link href={p.backHref} className="mb-3 flex w-max items-center gap-1 text-sm text-muted hover:text-white print:hidden">
-        <ChevronLeft size={16} aria-hidden="true" /> Volver
-      </Link>
+    <header className={`${sheetBox} p-4`}>
       <CharacterNotices>
         {/* Resultado de unir, cancelar o quitar de una campaña */}
         <div className="print:hidden">
@@ -105,94 +109,120 @@ export default function SheetHeader(p: SheetHeaderProps) {
           </p>
         )}
 
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="flex min-w-0 items-center gap-4">
-            <div className="relative shrink-0">
-              <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-md border border-line bg-surface text-muted">
+        <div className="flex gap-4">
+          {/* Retrato, con el nivel en un rombo y el estado encima */}
+          <div className="flex w-28 shrink-0 flex-col gap-5">
+            <div className="relative">
+              <div className="flex h-28 w-28 items-center justify-center overflow-hidden rounded-lg border-2 border-brand bg-surface text-muted">
                 {p.portraitUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={p.portraitUrl} alt="" className="h-full w-full object-cover" />
                 ) : (
-                  <UserIcon size={36} aria-hidden="true" />
+                  <UserIcon size={40} aria-hidden="true" />
                 )}
               </div>
+              <span className="absolute -bottom-3.5 left-1/2 flex h-8 w-8 -translate-x-1/2 rotate-45 items-center justify-center rounded-sm bg-brand">
+                <span className="-rotate-45 font-heading text-sm font-extrabold text-white">
+                  <span className="sr-only">Nivel </span>{p.level}
+                </span>
+              </span>
               <StatusBadge status={p.status} isOwner={p.isOwner} />
             </div>
-            <div className="min-w-0">
-              <h1 className="break-words font-heading text-3xl font-extrabold leading-tight text-white">
-                {p.name}
-                {p.pronouns && <span className="ml-2 align-middle font-body text-base font-normal text-muted">({p.pronouns})</span>}
-              </h1>
-              {p.summary && <p className="text-muted">{p.summary}</p>}
-              <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
-                <span className="rounded-md border border-line bg-surface px-2 py-0.5 font-heading text-xs font-bold text-white">Nivel {p.level}</span>
-                {p.campaign ? (
-                  p.campaign.pending ? (
-                    <span className="text-muted">
-                      Pendiente de aprobación en{" "}
-                      <Link href={`/campaigns/${p.campaign.id}`} className="text-brand-soft hover:underline">
-                        {p.campaign.name}
-                      </Link>
-                    </span>
-                  ) : (
-                    <Link href={`/campaigns/${p.campaign.id}`} className="text-brand-soft hover:underline">
-                      {p.campaign.name}
-                    </Link>
-                  )
-                ) : (
-                  <span className="text-muted">Sin campaña</span>
-                )}
-                {p.isOwner && (
-                  <span ref={campaignControls} className="print:hidden">
-                    {p.campaign ? (
-                      <LeaveCampaignButton
-                        characterId={p.id}
-                        name={p.name}
-                        campaignName={p.campaign.name}
-                        pending={p.campaign.pending}
-                        isDm={p.campaign.isDm}
-                        onDone={onCampaignChange}
-                      />
-                    ) : (
-                      <JoinCampaignDialog
-                        characterId={p.id}
-                        name={p.name}
-                        campaigns={p.joinable}
-                        systemName={p.systemName}
-                        onDone={onCampaignChange}
-                      />
-                    )}
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:items-center print:hidden">
-            {p.isOwner && <RestButtons characterId={p.id} pools={p.pools} conMod={p.conMod} recoversOther={p.recoversOther} />}
             {p.isOwner && p.level < MAX_LEVEL && (
               <Link
                 href={`/characters/${p.id}/level-up`}
-                className="order-first col-span-2 flex items-center justify-center gap-2 rounded-md bg-brand px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand-hover sm:order-none"
+                className="flex items-center justify-center gap-1 rounded-md border border-line-strong px-1 py-2 font-heading text-xs font-bold text-white transition-colors hover:border-brand hover:bg-brand/15 print:hidden"
               >
-                <ChevronsUp size={16} aria-hidden="true" /> Subir de nivel
+                <ChevronsUp size={14} aria-hidden="true" /> Subir nivel
               </Link>
-            )}
-            {p.isOwner && p.level >= 2 && (
-              <DeleteLevel characterId={p.id} level={p.level} redirectTo={`/characters/${p.id}?saved=level-deleted`} />
-            )}
-            {p.isOwner && (
-              <Link href={`/characters/${p.id}/edit`} className={secondaryButton}>
-                <Pencil size={16} aria-hidden="true" /> Editar
-              </Link>
-            )}
-            {p.isOwner && (
-              <button type="button" onClick={() => window.print()} className={secondaryButton}>
-                <Printer size={16} aria-hidden="true" /> Imprimir
-              </button>
             )}
           </div>
+
+          <div className="flex min-w-0 flex-1 flex-col">
+            <div className="flex items-start justify-between gap-2">
+              <h1 className="min-w-0 break-words font-heading text-xl font-extrabold uppercase leading-tight text-brand-soft">
+                {p.name}
+                {p.pronouns && <span className="ml-2 align-middle font-body text-xs font-semibold normal-case text-fg">{p.pronouns}</span>}
+              </h1>
+              {p.isOwner && (
+                <div className="flex shrink-0 items-center print:hidden">
+                  <button type="button" onClick={() => window.print()} aria-label="Imprimir" title="Imprimir" className={iconButton}>
+                    <Printer size={16} aria-hidden="true" />
+                  </button>
+                  <Link href={`/characters/${p.id}/edit`} aria-label="Editar" title="Editar" className={iconButton}>
+                    <Pencil size={16} aria-hidden="true" />
+                  </Link>
+                </div>
+              )}
+            </div>
+            <div className="mt-1 space-y-0.5 text-sm text-fg">
+              {p.classes && <p>{p.classes}</p>}
+              {p.species && <p>{p.species}</p>}
+              {p.background && <p>{p.background}</p>}
+              <p className="text-muted">Experiencia: {p.xp.toLocaleString("es-ES")}</p>
+              <p className="text-muted">
+                Bonificador de competencia <span className="ml-1 rounded bg-surface px-1.5 text-xs font-bold text-fg">{fmtMod(p.proficiencyBonus)}</span>
+              </p>
+            </div>
+            <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+              {p.campaign ? (
+                p.campaign.pending ? (
+                  <span className="text-muted">
+                    Pendiente de aprobación en{" "}
+                    <Link href={`/campaigns/${p.campaign.id}`} className="text-brand-soft hover:underline">
+                      {p.campaign.name}
+                    </Link>
+                  </span>
+                ) : (
+                  <Link href={`/campaigns/${p.campaign.id}`} className="text-brand-soft hover:underline">
+                    {p.campaign.name}
+                  </Link>
+                )
+              ) : (
+                <span className="text-muted">Sin campaña</span>
+              )}
+              {p.isOwner && (
+                <span ref={campaignControls} className="print:hidden">
+                  {p.campaign ? (
+                    <LeaveCampaignButton
+                      characterId={p.id}
+                      name={p.name}
+                      campaignName={p.campaign.name}
+                      pending={p.campaign.pending}
+                      isDm={p.campaign.isDm}
+                      onDone={onCampaignChange}
+                    />
+                  ) : (
+                    <JoinCampaignDialog
+                      characterId={p.id}
+                      name={p.name}
+                      campaigns={p.joinable}
+                      systemName={p.systemName}
+                      onDone={onCampaignChange}
+                    />
+                  )}
+                </span>
+              )}
+            </div>
+            <div className="mt-auto flex flex-wrap items-end justify-end gap-2 pt-3">
+              <InspirationBox characterId={p.id} initial={p.inspiration} isOwner={p.isOwner} className="min-w-36 flex-1 sm:flex-none" />
+              <button
+                type="button"
+                aria-haspopup="dialog"
+                data-print="text"
+                onClick={p.show({ kind: "initiative" })}
+                className="h-10 min-w-36 flex-1 rounded-md bg-brand px-3 font-heading text-sm font-bold uppercase text-white transition-colors hover:bg-brand-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-soft sm:flex-none"
+              >
+                Iniciativa {fmtMod(p.initiative)}
+              </button>
+            </div>
+          </div>
         </div>
+        {p.isOwner && p.level >= 2 && (
+          <div className="mt-3 border-t border-line pt-3 print:hidden">
+            <DeleteLevel characterId={p.id} level={p.level} redirectTo={`/characters/${p.id}?saved=level-deleted`} />
+          </div>
+        )}
       </CharacterNotices>
     </header>
   );

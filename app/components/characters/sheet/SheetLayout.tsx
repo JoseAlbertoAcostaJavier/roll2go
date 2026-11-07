@@ -1,27 +1,40 @@
 "use client";
 
+import Link from "next/link";
 import type { ReactNode } from "react";
+import { ChevronLeft } from "lucide-react";
+import type { FeatureUse } from "@/lib/rules/dnd2024/derive/featureUses";
+import type { HitDicePool } from "@/lib/rules/dnd2024/sheet/rest";
 import AbilityStrip from "./AbilityStrip";
+import CombatBox from "./CombatBox";
+import HpBox from "./HpBox";
 import ProficienciesBox from "./ProficienciesBox";
-import SavesBox from "./SavesBox";
+import ResourcesBox from "./ResourcesBox";
 import SensesBox from "./SensesBox";
+import SheetHeader, { type SheetHeaderProps } from "./SheetHeader";
 import SkillsBox from "./SkillsBox";
 import StatDialog from "./StatDialog";
 import StatusBox from "./StatusBox";
 import { useStatDialog } from "./useStatDialog";
-import type { HitDicePool } from "@/lib/rules/dnd2024/sheet/rest";
 import type { SheetData, StatusState } from "./types";
 
 export type { SheetData } from "./types";
 
-// Maqueta de la ficha: la franja superior y, debajo, las cajas de consulta y el panel de pestañas.
-// - < 768 px: una columna: defensas, salvaciones, habilidades, sentidos, competencias (plegadas) y las pestañas.
-// - 768–1279 px: defensas a todo el ancho; las cajas en dos columnas (izquierda | habilidades) y las pestañas debajo.
-// - 1280–1535 px: las cajas apiladas en una barra lateral, para que el panel de pestañas tenga más anchura.
-// - ≥ 1536 px: las cajas en dos columnas estrechas (izquierda | habilidades) y las pestañas a la derecha.
-// Las filas de la derecha (`auto` y `1fr`) hacen que el panel de pestañas empiece justo debajo de las defensas.
-export default function SheetLayout({ d, characterId, isOwner, version, pools, status, tabs, children }: {
+// Maqueta de la ficha:
+// - Primera fila: identidad y puntos de golpe. Segunda: características (con salvaciones) y CA y velocidad.
+// - Debajo, desde 1280 px, tres columnas: habilidades y competencias | pestañas | recursos, defensas, estados y sentidos.
+// - Por debajo de 1280 px: las dos columnas de cajas a los lados y las pestañas debajo; en móvil, una sola columna con las
+//   cajas plegadas (`MobileCollapse`).
+export default function SheetLayout({ d, header, headerKey, characterId, isOwner, version, pools, recoversOther, featureUses, status, tabs, children }: {
   d: SheetData;
+  /** Datos de la tarjeta de identidad. */
+  header: SheetHeaderProps;
+  /** Con otro aviso (p. ej. tras borrar un nivel desde la propia ficha) la tarjeta se monta de nuevo para mostrarlo. */
+  headerKey: string;
+  /** Si un descanso corto recuperaría algo más ahora (espacios de pacto, usos): para el aviso del diálogo. */
+  recoversOther: boolean;
+  /** Usos de los rasgos, para la caja de recursos. */
+  featureUses: FeatureUse[];
   characterId: string;
   isOwner: boolean;
   /** Cambia con cada escritura del personaje en el servidor (su `updatedAt`); remonta el editor de PG. */
@@ -38,31 +51,40 @@ export default function SheetLayout({ d, characterId, isOwner, version, pools, s
   const { open, show, close, detail } = useStatDialog(d);
 
   return (
-    <div className="space-y-3 md:space-y-6">
-      <div className="animate-fade-up">
-        <AbilityStrip d={d} characterId={characterId} isOwner={isOwner} version={version} pools={pools} show={show} status={status} />
+    <div className="space-y-3">
+      <Link href={header.backHref} className="flex w-max items-center gap-1 text-sm text-muted hover:text-white print:hidden">
+        <ChevronLeft size={16} aria-hidden="true" /> Volver
+      </Link>
+
+      <div className="grid animate-fade-up items-stretch gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+        <SheetHeader key={headerKey} {...header} initiative={d.initiative} proficiencyBonus={d.proficiencyBonus} inspiration={status.heroicInspiration} show={show} />
+        <HpBox d={d} characterId={characterId} isOwner={isOwner} version={version} pools={pools} recoversOther={recoversOther} />
+      </div>
+
+      <div className="grid animate-fade-up items-stretch gap-3 md:grid-cols-[minmax(0,1fr)_14rem]" style={{ animationDelay: "50ms" }}>
+        <AbilityStrip d={d} show={show} />
+        <CombatBox d={d} show={show} />
       </div>
 
       <div
-        className="grid animate-fade-up grid-cols-1 items-start gap-3 md:gap-6 xl:grid-cols-[20rem_minmax(0,1fr)] xl:grid-rows-[auto_1fr] 2xl:grid-cols-[36.5rem_minmax(0,1fr)]"
-        style={{ animationDelay: "50ms" }}
+        className="grid animate-fade-up grid-cols-1 items-start gap-3 md:grid-cols-2 xl:grid-cols-[17rem_minmax(0,1fr)_15rem]"
+        style={{ animationDelay: "100ms" }}
       >
-        <div className="flex min-w-0 flex-col gap-6 xl:col-[2] xl:row-[1]">
-          <StatusBox characterId={characterId} isOwner={isOwner} defenses={d.defenses} status={status} show={show} />
+        <div className="flex min-w-0 flex-col gap-3">
+          <SkillsBox skills={d.skills} show={show} />
+          <ProficienciesBox d={d} />
         </div>
 
-        {/* Cajas de consulta: la colocación por columnas solo actúa donde son una rejilla (de 768 a 1279 px y desde 1536) */}
-        <div className="flex min-w-0 flex-col gap-3 md:grid md:grid-cols-2 md:gap-6 md:grid-rows-[auto_auto_1fr] md:items-start xl:col-[1] xl:row-[1/span_2] xl:flex 2xl:grid 2xl:grid-cols-[15rem_20rem]">
-          <SavesBox saves={d.saves} show={show} className="md:col-[1] md:row-[1]" />
-          <SkillsBox skills={d.skills} show={show} className="min-w-0 md:col-[2] md:row-[1/span_3]" />
-          <SensesBox d={d} className="md:col-[1] md:row-[2]" />
-          <ProficienciesBox d={d} className="md:col-[1] md:row-[3]" />
-        </div>
-
-        {/* Panel de pestañas */}
-        <div className="min-w-0 xl:col-[2] xl:row-[2]">
+        {/* Pestañas: en el centro desde 1280 px; por debajo, a todo el ancho tras las dos columnas de cajas */}
+        <div className="order-last min-w-0 md:col-span-2 xl:order-none xl:col-span-1">
           {tabs}
           {children}
+        </div>
+
+        <div className="flex min-w-0 flex-col gap-3">
+          <ResourcesBox uses={featureUses} characterId={characterId} isOwner={isOwner} />
+          <StatusBox characterId={characterId} isOwner={isOwner} defenses={d.defenses} status={status} show={show} />
+          <SensesBox d={d} />
         </div>
       </div>
 

@@ -49,13 +49,13 @@ export default function InspirationBox({ characterId, initial, isOwner, classNam
     }
   };
 
-  const frame = `flex h-full min-h-24 w-full flex-col items-center justify-center gap-1 rounded-xl border px-1 text-center transition-colors print:hidden ${
-    on ? "border-brand bg-brand/10" : "border-line bg-panel"
+  const frame = `flex h-10 w-full items-center justify-center gap-2 rounded-md border px-3 font-heading text-sm font-bold uppercase transition-colors print:hidden ${
+    on ? "border-brand bg-brand/15 text-white" : "border-line-strong text-fg"
   }`;
   const content = (
     <>
-      <Sparkles size={28} aria-hidden="true" className={on ? "fill-brand-soft text-brand-soft" : "text-muted"} />
-      <span className="text-[11px] font-bold uppercase leading-tight tracking-wide text-muted">Inspiración heroica</span>
+      Inspiración
+      <Sparkles size={16} aria-hidden="true" className={on ? "fill-brand-soft text-brand-soft" : "text-muted"} />
     </>
   );
 
@@ -67,7 +67,8 @@ export default function InspirationBox({ characterId, initial, isOwner, classNam
           type="button"
           aria-pressed={on}
           onClick={toggle}
-          className={`${frame} cursor-pointer hover:border-line-strong focus-visible:outline-2 focus-visible:outline-brand`}
+          aria-label="Inspiración heroica"
+          className={`${frame} cursor-pointer hover:border-fg focus-visible:outline-2 focus-visible:outline-brand`}
         >
           {content}
         </button>
@@ -77,7 +78,7 @@ export default function InspirationBox({ characterId, initial, isOwner, classNam
           <span className="sr-only">: {on ? "sí" : "no"}</span>
         </div>
       )}
-      <p className="hidden h-full rounded-xl border border-line p-3 text-center text-xs font-semibold print:block">Inspiración heroica: {on ? "Sí" : "No"}</p>
+      <p className="hidden text-xs font-semibold print:block">Inspiración heroica: {on ? "Sí" : "No"}</p>
       {error && (
         <p role="alert" className="absolute inset-x-0 top-full z-10 mt-1 rounded-md border border-line bg-surface px-2 py-1 text-xs text-danger">{error}</p>
       )}

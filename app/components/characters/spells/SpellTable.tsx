@@ -9,7 +9,6 @@ import { castOptions } from "@/lib/rules/dnd2024/spells/castOptions";
 import type { SpellRow } from "@/lib/rules/dnd2024/spells/spellTable";
 import { groupByLevel, matchesSpellTable, type SpellTableFilter } from "@/lib/rules/dnd2024/spells/spellTableFilter";
 import { iconSrc } from "@/lib/utils/icons";
-import { sheetCard } from "@/app/components/ui/formStyles";
 import MaskIcon from "@/app/components/ui/MaskIcon";
 import CastButton from "./CastButton";
 import { Uses } from "./LimitedUses";
@@ -98,7 +97,7 @@ function Row({ row, visible, props, search }: { row: SpellRow; visible: boolean;
                   e.preventDefault();
                   props.onOpen(row.ref, e.currentTarget);
                 }}
-                className="inline-block py-0.5 font-semibold text-fg hover:text-brand-soft hover:underline"
+                className="inline-block py-0.5 font-semibold text-white hover:text-brand-soft hover:underline"
               >
                 {row.name}
               </a>
@@ -127,7 +126,7 @@ function Row({ row, visible, props, search }: { row: SpellRow; visible: boolean;
         <span className={inlineLabel}>Alcance</span>
         {row.range}
       </td>
-      <td role="cell" className={`${td} md:whitespace-nowrap font-heading font-bold max-md:not-print:col-start-2 max-md:not-print:row-start-1 ${cardBig}`}>
+      <td role="cell" className={`${td} md:whitespace-nowrap font-heading font-bold text-success max-md:not-print:col-start-2 max-md:not-print:row-start-1 ${cardBig}`}>
         <span className={label}>Golpe</span>
         {row.hit ?? <span className="font-normal text-muted">—</span>}
       </td>
@@ -135,8 +134,8 @@ function Row({ row, visible, props, search }: { row: SpellRow; visible: boolean;
         <span className={label}>Efecto</span>
         {row.effect ? (
           <span className="flex max-md:not-print:flex-wrap items-center gap-1.5 max-md:not-print:justify-end">
-            <MaskIcon src={iconSrc("damageType", row.effect.damageTypeId)} size={16} className="text-muted" />
-            <span className="max-md:not-print:text-base">{row.effect.label}</span>
+            <MaskIcon src={iconSrc("damageType", row.effect.damageTypeId)} size={16} className="text-brand-soft" />
+            <span className="font-semibold text-brand-soft max-md:not-print:text-base">{row.effect.label}</span>
           </span>
         ) : (
           <span className="font-normal text-muted">—</span>
@@ -176,10 +175,10 @@ export default function SpellTable(props: Props) {
           <Link href={clearHref} scroll={false} className="font-semibold text-brand-soft hover:underline">Quitar filtros</Link>
         </p>
       )}
-      <div className={`${sheetCard} animate-fade-up md:overflow-x-auto !p-0 ${anyVisible || rows.length === 0 ? "" : "hidden print:block"}`}>
+      <div className={`animate-fade-up md:overflow-x-auto ${anyVisible || rows.length === 0 ? "" : "hidden print:block"}`}>
         <table role="table" className="w-full text-left text-sm max-md:not-print:block md:min-w-[40rem]">
           <caption className="sr-only">Conjuros</caption>
-          <thead role="rowgroup" className="text-xs uppercase tracking-wide text-muted max-md:not-print:sr-only">
+          <thead role="rowgroup" className="text-xs text-muted max-md:not-print:sr-only">
             <tr role="row" className="border-b border-line">
               {isOwner && <th role="columnheader" scope="col" className={`${th} w-28 print:hidden`}>Lanzar</th>}
               <th role="columnheader" scope="col" className={th}>Nombre</th>
@@ -200,7 +199,7 @@ export default function SpellTable(props: Props) {
                 <tr role="row" className="bg-surface max-md:not-print:block">
                   <th role="rowheader" scope="rowgroup" colSpan={isOwner ? 6 : 5} className="px-3 py-2 text-left max-md:not-print:block">
                     <span className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
-                      <span className="border-l-4 border-brand pl-3 font-heading text-base font-bold">
+                      <span className="font-heading text-sm font-extrabold uppercase tracking-wide text-brand-soft">
                         {g.level === 0 ? "Trucos" : `Nivel ${g.level}`}
                       </span>
                       <span className="flex flex-wrap items-center gap-x-4 gap-y-4">

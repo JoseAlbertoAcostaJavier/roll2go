@@ -61,7 +61,7 @@ export default function InventoryFilters({ base, query, chips, active, q: urlQ, 
             onChange={(e) => onSearch(e.target.value)}
             aria-label="Buscar en el inventario"
             placeholder="Buscar por nombre, tipo, rareza o propiedades"
-            className={`${field} pl-9`}
+            className={`${field} py-2! pl-9 text-sm`}
           />
         </div>
         {action}

@@ -1,10 +1,11 @@
 "use client";
 
-import { TriangleAlert } from "lucide-react";
+import { Minus, Plus, TriangleAlert } from "lucide-react";
 import type { InventoryItem } from "@/lib/rules/dnd2024/sheet/sheet";
 import { effectiveContainer } from "@/lib/rules/dnd2024/sheet/inventory";
 import type { InventoryGroup, ItemInfo } from "@/lib/rules/dnd2024/sheet/inventoryTable";
 import { itemTypeName, rarityName, weaponPropertyName } from "@/lib/rules/dnd2024/sheet/labels";
+import { SectionBar, switchThumb, switchTrack, tagChip } from "./statUi";
 
 const LB_TO_KG = 0.4536;
 export const fmt = (n: number) => n.toLocaleString("es-ES", { maximumFractionDigits: 2 });
@@ -19,6 +20,10 @@ export type InventoryActions = {
 };
 
 const goldText = (copper: number) => `${fmt(copper / 100)} po`;
+// Columnas de las filas y de la barra de su grupo: objeto | peso | cantidad
+const columns = "w-16 shrink-0 text-center";
+const qtyColumn = "w-24 shrink-0 text-center";
+const qtyButton = "flex h-7 w-7 items-center justify-center bg-line/60 text-fg transition-colors enabled:hover:bg-line disabled:opacity-40";
 
 // Texto del encabezado de un contenedor: «Mochila (3) — 12 lb (12/30 lb)»; sin capacidad en peso, la que trae el catálogo
 export function containerTitle(g: InventoryGroup) {
@@ -28,7 +33,7 @@ export function containerTitle(g: InventoryGroup) {
   return `${g.title} (${g.lines.length}) — ${used}${capacity}`;
 }
 
-// Un grupo de la tabla: «Equipo» o un contenedor. Lo que el filtro oculta sigue en el DOM (`hidden print:…`) para imprimir.
+// Un grupo del inventario: «Equipo» o un contenedor. Lo que el filtro oculta sigue en el DOM (`hidden print:…`) para imprimir.
 export default function InventoryTable({ group, shown, info, items, readOnly, actions, onOpen }: {
   group: InventoryGroup;
   /** Si el grupo pasa el filtro y los ids de sus líneas visibles. */
@@ -36,55 +41,48 @@ export default function InventoryTable({ group, shown, info, items, readOnly, ac
   info: Record<string, ItemInfo | undefined>;
   items: InventoryItem[];
   readOnly: boolean;
-  actions: Pick<InventoryActions, "equip">;
+  actions: Pick<InventoryActions, "equip" | "quantity">;
   /** Abre la ficha del objeto; `from` es el botón del nombre (recibe el foco al cerrarla). */
   onOpen: (id: string, from: HTMLElement) => void;
 }) {
   const c = group.container;
+  const total = group.lines.reduce((sum, l) => sum + (info[l.id]?.weight ?? 0) * l.quantity, 0);
   return (
     <section aria-label={group.title} className={shown ? "" : "hidden print:block"}>
-      <h4 className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 font-heading text-sm font-bold text-brand-soft">
-        {c ? containerTitle(group) : group.title}
-        {c?.over && (
-          <span className="inline-flex items-center gap-1 text-xs font-semibold text-brand-soft">
-            <TriangleAlert size={14} aria-hidden="true" /> Sobrecargado
-          </span>
+      <SectionBar
+        title={c ? containerTitle(group) : group.title}
+        extra={(
+          <>
+            {!c && `${fmt(total)} lb`}
+            {c?.over && (
+              <span className="inline-flex items-center gap-1 font-semibold text-brand-soft">
+                <TriangleAlert size={14} aria-hidden="true" /> Sobrecargado
+              </span>
+            )}
+            {c && info[c.line.id]?.container?.weightless && "No cuenta para el peso cargado"}
+          </>
         )}
-        {c && info[c.line.id]?.container?.weightless && (
-          <span className="text-xs font-normal text-muted">No cuenta para el peso cargado</span>
-        )}
-      </h4>
+      >
+        <span className={`${columns} hidden sm:block`}>Peso</span>
+        <span className={`${qtyColumn} hidden sm:block`}>Cant.</span>
+      </SectionBar>
       {group.lines.length === 0 ? (
-        <p className="text-sm text-muted">Sin objetos.</p>
+        <p className="px-3 py-3 text-sm text-muted">Sin objetos.</p>
       ) : (
-        <div className="relative overflow-x-auto print:overflow-visible">
-          <table className="w-full min-w-176 print:min-w-0 text-left text-sm">
-            <thead className="text-xs uppercase tracking-wide text-muted">
-              <tr>
-                <th className="pb-2 pl-1 pr-3 font-semibold">Activo</th>
-                <th className="pb-2 pr-3 font-semibold">Nombre</th>
-                <th className="pb-2 pr-3 font-semibold">Peso</th>
-                <th className="pb-2 pr-3 font-semibold">Cant.</th>
-                <th className="pb-2 pr-3 font-semibold">Coste</th>
-                <th className="pb-2 pr-3 font-semibold">Notas</th>
-              </tr>
-            </thead>
-            <tbody>
-              {group.lines.map((l) => (
-                <Row
-                  key={l.id}
-                  line={l}
-                  data={info[l.id]}
-                  where={effectiveContainer(l, items, info)}
-                  visible={shown?.has(l.id) ?? false}
-                  readOnly={readOnly}
-                  actions={actions}
-                  onOpen={onOpen}
-                />
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <ul className="divide-y divide-line">
+          {group.lines.map((l) => (
+            <Row
+              key={l.id}
+              line={l}
+              data={info[l.id]}
+              where={effectiveContainer(l, items, info)}
+              visible={shown?.has(l.id) ?? false}
+              readOnly={readOnly}
+              actions={actions}
+              onOpen={onOpen}
+            />
+          ))}
+        </ul>
       )}
     </section>
   );
@@ -97,56 +95,67 @@ function Row({ line: l, data, where, visible, readOnly, actions, onOpen }: {
   where: string | null;
   visible: boolean;
   readOnly: boolean;
-  actions: Pick<InventoryActions, "equip">;
+  actions: Pick<InventoryActions, "equip" | "quantity">;
   onOpen: (id: string, from: HTMLElement) => void;
 }) {
-  const props = data?.properties.map(weaponPropertyName).join(", ");
-  const details = [props, data?.rarity ? rarityName(data.rarity) : ""].filter(Boolean).join(" · ");
-  const inContainer = where !== null;
+  const tags = [
+    ...(data?.properties.map(weaponPropertyName) ?? []),
+    ...(data?.rarity ? [rarityName(data.rarity)] : []),
+    ...(data && data.value > 0 ? [goldText(data.value)] : []),
+  ];
+  const canEquip = where === null && !!data?.equippable;
+  const weight = data ? data.weight * l.quantity : 0;
   return (
-    <tr className={`border-t border-line align-middle ${visible ? "" : "hidden print:table-row"}`}>
-      <td className="py-2 pl-1 pr-3">
-        {inContainer || !data?.equippable ? (
-          <span className="text-muted" aria-hidden="true">{inContainer ? "—" : "-"}</span>
-        ) : readOnly ? (
-          <span className={l.equipped ? "" : "text-muted"}>{l.equipped ? "Sí" : "—"}</span>
-        ) : (
-          // Casilla de 16 px con zona pulsable de 24 × 32 px (la etiqueta la reenvía a la casilla)
-          <label className="relative inline-flex h-4 w-4 after:absolute after:left-1/2 after:top-1/2 after:h-8 after:w-6 after:-translate-x-1/2 after:-translate-y-1/2">
-            <input
-              type="checkbox"
-              className="h-4 w-4 accent-brand"
-              checked={l.equipped}
-              aria-label={`Equipar ${l.name}`}
-              onChange={(e) => actions.equip(l.id, e.target.checked)}
-            />
-          </label>
-        )}
-      </td>
-      <td className="py-2 pr-3">
+    <li className={`flex flex-wrap items-center gap-x-3 gap-y-2 px-3 py-3 ${visible ? "" : "hidden print:flex"}`}>
+      {canEquip && (readOnly ? (
+        <span className={`shrink-0 text-xs font-semibold ${l.equipped ? "text-success" : "text-muted"}`}>{l.equipped ? "Equipado" : "—"}</span>
+      ) : (
+        <label className={`${switchTrack} print:hidden`}>
+          <input
+            type="checkbox"
+            className="peer sr-only"
+            checked={l.equipped}
+            aria-label={`Equipar ${l.name}`}
+            onChange={(e) => actions.equip(l.id, e.target.checked)}
+          />
+          <span aria-hidden="true" className={switchThumb} />
+        </label>
+      ))}
+      <div className="min-w-40 flex-1">
         <button
           type="button"
           onClick={(e) => onOpen(l.id, e.currentTarget)}
-          className="inline-block rounded-sm py-0.5 text-left font-semibold underline-offset-2 hover:text-brand-soft hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+          className="inline-block rounded-sm text-left font-semibold text-white underline-offset-2 hover:text-brand-soft hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
         >
           {l.name}
         </button>
         {data?.type && <span className="block text-xs text-muted">{itemTypeName(data.type)}</span>}
-      </td>
-      <td className="whitespace-nowrap py-2 pr-3 text-muted">
-        {data ? (
+        {tags.length > 0 && (
+          <span className="mt-1 flex flex-wrap gap-1">
+            {tags.map((t) => <span key={t} className={tagChip}>{t}</span>)}
+          </span>
+        )}
+        {l.notes && <span className="mt-1 block text-xs text-muted">{l.notes}</span>}
+      </div>
+      <span title={data ? weightText(weight) : undefined} className={`${columns} text-sm font-semibold text-muted`}>
+        {data && data.weight > 0 ? `${fmt(weight)} lb` : "—"}
+      </span>
+      <div className={qtyColumn}>
+        {readOnly ? <span className="font-semibold">{l.quantity}</span> : (
           <>
-            {weightText(data.weight)}
-            {l.quantity > 1 && data.weight > 0 && <span className="block text-xs">total {weightText(data.weight * l.quantity)}</span>}
+            <span className="inline-flex items-center overflow-hidden rounded-md border border-line print:hidden">
+              <button type="button" className={qtyButton} disabled={l.quantity <= 1} aria-label={`Quitar una unidad de ${l.name}`} onClick={() => actions.quantity(l.id, l.quantity - 1)}>
+                <Minus size={14} aria-hidden="true" />
+              </button>
+              <span className="w-9 text-center text-sm font-semibold text-white" aria-label={`Cantidad de ${l.name}`}>{l.quantity}</span>
+              <button type="button" className={qtyButton} aria-label={`Añadir una unidad de ${l.name}`} onClick={() => actions.quantity(l.id, l.quantity + 1)}>
+                <Plus size={14} aria-hidden="true" />
+              </button>
+            </span>
+            <span className="hidden font-semibold print:inline">{l.quantity}</span>
           </>
-        ) : "-"}
-      </td>
-      <td className="py-2 pr-3">{l.quantity}</td>
-      <td className="whitespace-nowrap py-2 pr-3 text-muted">{data && data.value > 0 ? goldText(data.value) : "—"}</td>
-      <td className="py-2 pr-3">
-        {details && <span className="mb-1 block text-xs text-muted">{details}</span>}
-        <span className="text-muted">{l.notes}</span>
-      </td>
-    </tr>
+        )}
+      </div>
+    </li>
   );
 }

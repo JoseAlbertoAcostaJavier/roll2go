@@ -7,12 +7,12 @@ import { refKey } from "@/lib/rules/dnd2024/sheet/equipmentRefs";
 import type { ItemDetails } from "@/lib/rules/dnd2024/sheet/itemDetails";
 import { DAMAGE_TYPE_NAMES, fmtMod } from "@/lib/rules/dnd2024/sheet/labels";
 import { iconSrc } from "@/lib/utils/icons";
-import { sheetCard } from "@/app/components/ui/formStyles";
 import MaskIcon from "@/app/components/ui/MaskIcon";
 import UntranslatedTag from "@/app/components/ui/UntranslatedTag";
 import ActionsDialogs, { BasicActionButton, FeatureButton, ItemButton, SpellLink, type BasicActionInfo, type FeatureInfo } from "./ActionsDialogs";
 import ActionsFilters from "./ActionsFilters";
 import FeatureUsesControl from "./FeatureUsesControl";
+import { SectionBar, plainText } from "./statUi";
 
 type Props = {
   characterId: string;
@@ -54,10 +54,10 @@ const cardRange = "max-md:not-print:col-span-2 max-md:not-print:col-start-2 max-
 function AttackTable({ rows }: { rows: ActionSection["attacks"] }) {
   return (
     <div className="md:overflow-x-auto">
-      <table role="table" className="w-full text-left text-sm max-md:not-print:block md:min-w-[30rem]">
-        <thead role="rowgroup" className="text-xs uppercase tracking-wide text-muted max-md:not-print:sr-only">
+      <table role="table" className="w-full text-left text-sm max-md:not-print:block md:min-w-[28rem]">
+        <thead role="rowgroup" className="text-xs text-muted max-md:not-print:sr-only">
           <tr role="row">
-            <th role="columnheader" scope="col" className="py-2 pr-3 font-semibold">Ataque</th>
+            <th role="columnheader" scope="col" className="px-3 py-2 font-semibold">Ataque</th>
             <th role="columnheader" scope="col" className="py-2 pr-3 font-semibold">Alcance</th>
             <th role="columnheader" scope="col" className="py-2 pr-3 font-semibold">Golpe/CD</th>
             <th role="columnheader" scope="col" className="py-2 font-semibold">Daño</th>
@@ -68,8 +68,8 @@ function AttackTable({ rows }: { rows: ActionSection["attacks"] }) {
             if (r.kind === "attack") {
               const a = r.attack;
               return (
-                <tr role="row" key={`${a.name}-${i}`} className={card}>
-                  <th role="rowheader" scope="row" className={`py-2 pr-3 font-semibold ${cardName} max-md:not-print:p-0`}>
+                <tr role="row" key={`${a.name}-${i}`} data-search={a.name} className={card}>
+                  <th role="rowheader" scope="row" className={`px-3 py-2 font-semibold text-white ${cardName} max-md:not-print:p-0`}>
                     <span className="flex items-center gap-2">
                       <span className="relative inline-flex shrink-0">
                         <MaskIcon
@@ -89,21 +89,21 @@ function AttackTable({ rows }: { rows: ActionSection["attacks"] }) {
                       </span>
                       {a.lineId ? <ItemButton lineId={a.lineId} name={a.name} /> : <span>{a.name}</span>}
                     </span>
-                    {a.notes && <span className="mt-0.5 block text-xs font-normal text-muted">{a.notes}</span>}
+                    <span className="block text-xs font-normal text-muted">{[a.kind === "ranged" ? "A distancia" : "Cuerpo a cuerpo", a.notes].filter(Boolean).join(" · ")}</span>
                   </th>
                   <td role="cell" className={`py-2 pr-3 md:whitespace-nowrap ${cardRange}`}>
                     <span className={`${label} max-md:not-print:mr-1 max-md:not-print:inline`}>Alcance</span>
                     {a.range}
                   </td>
-                  <td role="cell" className={`py-2 pr-3 font-heading font-bold ${cardHit}`}>
+                  <td role="cell" className={`py-2 pr-3 font-heading font-bold text-success ${cardHit}`}>
                     <span className={label}>Golpe</span>
                     {fmtMod(a.bonus)}
                   </td>
-                  <td role="cell" className={`py-2 ${cardDamage}`}>
+                  <td role="cell" className={`py-2 font-semibold text-brand-soft ${cardDamage}`}>
                     <span className={label}>Daño</span>
                     <span className="flex max-md:not-print:flex-wrap items-center gap-x-1.5 max-md:not-print:justify-end md:whitespace-nowrap">
                       {a.damage}
-                      <MaskIcon src={iconSrc("damageType", a.damageTypeId)} size={16} className="text-muted" />
+                      <MaskIcon src={iconSrc("damageType", a.damageTypeId)} size={16} className="text-brand-soft" />
                       {a.damageType && <span className="font-sans text-xs font-normal text-muted">{a.damageType}</span>}
                     </span>
                   </td>
@@ -111,8 +111,8 @@ function AttackTable({ rows }: { rows: ActionSection["attacks"] }) {
               );
             }
             return (
-              <tr role="row" key={refKey(r.ref)} className={card}>
-                <th role="rowheader" scope="row" className={`py-2 pr-3 font-semibold ${cardName} max-md:not-print:p-0`}>
+              <tr role="row" key={refKey(r.ref)} data-search={r.name} className={card}>
+                <th role="rowheader" scope="row" className={`px-3 py-2 font-semibold text-white ${cardName} max-md:not-print:p-0`}>
                   <span className="flex items-center gap-2">
                     <MaskIcon src={schoolIcon(r.school)} size={18} label="Conjuro" className="text-muted" />
                     <span>
@@ -126,11 +126,11 @@ function AttackTable({ rows }: { rows: ActionSection["attacks"] }) {
                   <span className={`${label} max-md:not-print:mr-1 max-md:not-print:inline`}>Alcance</span>
                   {r.range}
                 </td>
-                <td role="cell" className={`py-2 pr-3 font-heading font-bold md:whitespace-nowrap ${cardHit}`}>
+                <td role="cell" className={`py-2 pr-3 font-heading font-bold text-success md:whitespace-nowrap ${cardHit}`}>
                   <span className={label}>Golpe</span>
                   {r.hit ?? <span className="font-normal text-muted">—</span>}
                 </td>
-                <td role="cell" className={`py-2 ${cardDamage}`}>
+                <td role="cell" className={`py-2 font-semibold text-brand-soft ${cardDamage}`}>
                   <span className={label}>Daño</span>
                   {r.damage || r.damageTypeId ? (
                     <span className="flex max-md:not-print:flex-wrap items-center gap-x-1.5 max-md:not-print:justify-end md:whitespace-nowrap">
@@ -163,13 +163,8 @@ function Section({ section, vis, attacksPerAction, characterId, isOwner, entries
 }) {
   const { attacks, spells, features, basics } = section;
   return (
-    <section className={`${sheetCard} animate-fade-up space-y-4 ${hide(vis.section)}`}>
-      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <h3 className="border-l-4 border-brand pl-3 font-heading text-xl font-bold">{section.title}</h3>
-        {section.group === "action" && (
-          <p className="text-sm text-muted">Ataques por acción: <span className="font-heading font-bold text-fg">{attacksPerAction}</span></p>
-        )}
-      </div>
+    <section data-search-group className={`animate-fade-up space-y-1 ${hide(vis.section)}`}>
+      <SectionBar title={section.title} extra={section.group === "action" ? <>Ataques por acción: <span className="font-heading font-bold text-fg">{attacksPerAction}</span></> : undefined} />
 
       {attacks.length > 0 && (
         <div className={hide(vis.attacks)}>
@@ -179,9 +174,9 @@ function Section({ section, vis, attacksPerAction, characterId, isOwner, entries
 
       {/* Conjuros sin tirada: nombre (abre su ficha), nivel, alcance y de dónde salen */}
       {spells.length > 0 && (
-        <ul className={`divide-y divide-line border-y border-line ${hide(vis.spells)}`}>
+        <ul className={`divide-y divide-line ${hide(vis.spells)}`}>
           {spells.map((s) => (
-            <li key={refKey(s.ref)} className="flex items-center gap-3 py-2 text-sm">
+            <li key={refKey(s.ref)} data-search={s.name} className="flex items-center gap-3 px-3 py-2 text-sm">
               <MaskIcon src={schoolIcon(s.school)} size={18} label="Conjuro" className="text-muted" />
               <span className="min-w-0 flex-1">
                 <SpellLink spellRef={s.ref} name={s.name} />
@@ -196,26 +191,28 @@ function Section({ section, vis, attacksPerAction, characterId, isOwner, entries
 
       {/* Rasgos: el nombre abre su descripción; con usos, los cuadrados debajo */}
       {features.length > 0 && (
-        <ul className={`divide-y divide-line border-y border-line ${hide(vis.features)}`}>
+        <ul className={`divide-y divide-line ${hide(vis.features)}`}>
           {features.map((f, i) => (
-            <li key={`${refKey(f.ref)}-${i}`} className="py-3">
-              <div className="flex items-baseline gap-3">
-                <span className="min-w-0 flex-1">
-                  <FeatureButton featureKey={f.uses?.key ?? refKey(f.ref)} name={f.name} />
-                  {entries.has(refKey(f.ref)) && !entries.get(refKey(f.ref))!.nameEs && <UntranslatedTag className="ml-2" />}
-                  {f.special && <span className="ml-2 text-sm text-muted">(Especial)</span>}
-                </span>
-                <span className="shrink-0 text-xs uppercase tracking-wide text-muted">{f.source}</span>
+            <li key={`${refKey(f.ref)}-${i}`} data-search={f.name} className="grid gap-x-4 gap-y-1 px-3 py-2.5 text-sm sm:grid-cols-[minmax(0,13rem)_minmax(0,1fr)]">
+              <div className="min-w-0">
+                <FeatureButton featureKey={f.uses?.key ?? refKey(f.ref)} name={f.name} />
+                {entries.has(refKey(f.ref)) && !entries.get(refKey(f.ref))!.nameEs && <UntranslatedTag className="ml-2" />}
+                {f.special && <span className="ml-2 text-muted">(Especial)</span>}
+                <span className="block text-xs text-brand-soft">{f.source}</span>
+                {f.uses && <FeatureUsesControl characterId={characterId} use={f.uses} isOwner={isOwner} className="mt-1.5" />}
               </div>
-              {f.uses && <FeatureUsesControl characterId={characterId} use={f.uses} isOwner={isOwner} className="mt-2" />}
+              <p className="line-clamp-2 min-w-0 text-muted print:hidden">{(() => {
+                const e = entries.get(refKey(f.ref));
+                return e ? plainText(e.descriptionEs || e.description) : "";
+              })()}</p>
             </li>
           ))}
         </ul>
       )}
 
       {basics.length > 0 && (
-        <div className={`text-sm ${hide(vis.basics)}`}>
-          <h4 className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted">Acciones en combate</h4>
+        <div data-search="acciones en combate" className={`grid gap-x-4 gap-y-1 px-3 py-2.5 text-sm sm:grid-cols-[minmax(0,13rem)_minmax(0,1fr)] ${hide(vis.basics)}`}>
+          <h4 className="font-semibold text-white">Acciones en combate</h4>
           <p>
             {basics.map((b, i) => (
               <Fragment key={refKey(b.ref)}>
@@ -247,7 +244,7 @@ export default function ActionsTab({ characterId, isOwner, active, summary, filt
       {sections.length === 0 ? (
         <p className="text-sm text-muted">No hay acciones que mostrar.</p>
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-5">
           {!shown && <p className="text-sm text-muted print:hidden">No hay acciones que mostrar.</p>}
           {sections.map((s) => (
             <Section key={s.group} section={s} vis={sectionVisibility(s, filter)} attacksPerAction={summary.attacksPerAction} characterId={characterId} isOwner={isOwner} entries={entries} />

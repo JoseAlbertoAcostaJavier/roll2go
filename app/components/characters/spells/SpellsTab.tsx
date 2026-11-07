@@ -138,10 +138,10 @@ export default function SpellsTab({ characterId, isOwner, initial, lists, spells
           <div className="space-y-0.5 text-sm">
             {state.blocks.map((b) => (
               <p key={refKey(b.class)}>
-                {state.blocks.length > 1 && <span className="font-heading font-bold">{b.name}: </span>}
-                <span className="text-muted">Modificador </span><span className="font-heading font-bold">{fmtMod(b.attack - proficiencyBonus)}</span>
-                <span className="text-muted"> · Ataque </span><span className="font-heading font-bold">{fmtMod(b.attack)}</span>
-                <span className="text-muted"> · CD </span><span className="font-heading font-bold">{b.dc}</span>
+                <span className="font-heading font-bold text-brand-soft">{b.name}</span>
+                <span className="text-muted"> · CD </span><span className="font-heading font-bold text-white">{b.dc}</span>
+                <span className="text-muted"> · Modificador </span><span className="font-heading font-bold text-white">{fmtMod(b.attack - proficiencyBonus)}</span>
+                <span className="text-muted"> · Ataque </span><span className="font-heading font-bold text-white">{fmtMod(b.attack)}</span>
               </p>
             ))}
           </div>

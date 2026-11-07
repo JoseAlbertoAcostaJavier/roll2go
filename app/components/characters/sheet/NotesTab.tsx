@@ -1,6 +1,6 @@
 import type { Dnd2024SheetV2 } from "@/lib/rules/dnd2024/sheet/sheet";
-import { sheetCard } from "@/app/components/ui/formStyles";
 import { InlineText } from "./InlineText";
+import { SectionBar } from "./statUi";
 
 // Pestaña Notas (spec de rasgos §5): organizaciones, aliados, enemigos y otras notas, editables en el sitio por el dueño
 export default function NotesTab({ characterId, isOwner, sheet }: { characterId: string; isOwner: boolean; sheet: Dnd2024SheetV2 }) {
@@ -12,20 +12,23 @@ export default function NotesTab({ characterId, isOwner, sheet }: { characterId:
   ] as const;
 
   return (
-    <section className={`${sheetCard} animate-fade-up`}>
-      <div className="space-y-5">
-        {fields.map((f) => (
-          <InlineText
-            key={f.field}
-            characterId={characterId}
-            field={f.field}
-            label={f.label}
-            value={f.value ?? ""}
-            multiline
-            editable={isOwner}
-          />
-        ))}
-      </div>
-    </section>
+    <div className="animate-fade-up space-y-4">
+      {fields.map((f) => (
+        <section key={f.field} aria-label={f.label} className="space-y-2">
+          <SectionBar title={f.label} />
+          <div className="px-3">
+            <InlineText
+              characterId={characterId}
+              field={f.field}
+              label={f.label}
+              value={f.value ?? ""}
+              multiline
+              editable={isOwner}
+              hideLabel
+            />
+          </div>
+        </section>
+      ))}
+    </div>
   );
 }

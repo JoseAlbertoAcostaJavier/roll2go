@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Heart, LoaderCircle, Minus, Plus, Swords } from "lucide-react";
+import { Heart, HeartCrack, LoaderCircle } from "lucide-react";
+import type { ReactNode } from "react";
 import { MAX_TEMP_HP } from "@/lib/rules/dnd2024/sheet/edits";
 
 type Hp = { current: number; temp: number };
@@ -20,25 +21,24 @@ export function HpBar({ current, max, temp }: Hp & { max: number }) {
   const ratio = max > 0 ? current / max : 0;
   const color = ratio <= 0.25 ? "bg-brand" : ratio <= 0.5 ? "bg-yellow-500" : "bg-success";
   return (
-    <div aria-hidden="true" className="mt-1.5 flex h-2 overflow-hidden rounded-full bg-surface print:hidden">
+    <div aria-hidden="true" className="flex h-1 overflow-hidden bg-surface print:hidden">
       <div className={`transition-[width] duration-300 ${color}`} style={{ width: `${(current / total) * 100}%` }} />
       {temp > 0 && <div className="bg-sky-400 transition-[width] duration-300" style={{ width: `${(temp / total) * 100}%` }} />}
     </div>
   );
 }
 
-const stepButton =
-  "flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-line bg-surface transition-colors enabled:hover:border-brand enabled:hover:text-white disabled:opacity-40";
 const numberField =
-  "h-8 w-16 rounded-md border border-line-strong bg-surface px-1 text-center font-heading font-bold focus:border-brand focus:outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none";
+  "h-12 w-14 rounded-md border border-line-strong bg-surface px-1 text-center font-heading text-lg font-bold text-white focus:border-brand focus:outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none";
 const bigField =
-  "h-11 min-w-8 rounded-md border border-transparent bg-transparent px-1 text-center font-heading text-4xl font-extrabold text-white hover:border-line focus:border-brand focus:outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none";
+  "h-9 min-w-8 rounded border border-transparent bg-transparent px-1 text-center font-heading text-xl font-bold text-white hover:border-line focus:border-brand focus:outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none";
 const actionButton =
-  "flex h-9 flex-1 items-center justify-center gap-1.5 rounded-md border bg-surface px-2.5 text-xs font-bold transition-colors disabled:opacity-50 sm:flex-none";
+  "flex h-12 w-11 shrink-0 items-center justify-center bg-line/60 transition-colors enabled:hover:bg-line disabled:opacity-40";
+const caption = "mt-1 text-center text-xs font-medium text-fg";
 
 function Stepper({ label, value, max, onChange, big = false }: {
   label: string; value: number; max: number; onChange: (v: number) => void;
-  /** Solo el campo, grande (PG actuales); sin botones de ±1 */
+  /** Dentro del recuadro de actuales / máximos: mide lo que sus cifras */
   big?: boolean;
 }) {
   const [draft, setDraft] = useState(String(value));
@@ -54,32 +54,19 @@ function Stepper({ label, value, max, onChange, big = false }: {
     if (v !== value) onChange(v);
   };
   return (
-    <div className="flex items-center justify-center gap-1">
-      {!big && (
-        <button type="button" className={stepButton} onClick={() => onChange(clamp(value - 1, max))} disabled={value <= 0} aria-label={`${label}: restar 1`}>
-          <Minus size={14} aria-hidden="true" />
-        </button>
-      )}
-      <input
-        type="number"
-        inputMode="numeric"
-        min={0}
-        max={max}
-        value={draft}
-        aria-label={label}
-        onChange={(e) => setDraft(e.target.value)}
-        onBlur={commit}
-        onKeyDown={(e) => e.key === "Enter" && commit()}
-        className={big ? bigField : numberField}
-        // Grande, mide lo que sus cifras: la barra «/ máximos» queda pegada al número
-        style={big ? { width: `calc(${Math.max(draft.length, 1)}ch + 0.75rem)` } : undefined}
-      />
-      {!big && (
-        <button type="button" className={stepButton} onClick={() => onChange(clamp(value + 1, max))} disabled={value >= max} aria-label={`${label}: sumar 1`}>
-          <Plus size={14} aria-hidden="true" />
-        </button>
-      )}
-    </div>
+    <input
+      type="number"
+      inputMode="numeric"
+      min={0}
+      max={max}
+      value={draft}
+      aria-label={label}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => e.key === "Enter" && commit()}
+      className={big ? bigField : numberField}
+      style={big ? { width: `calc(${Math.max(draft.length, 1)}ch + 0.75rem)` } : undefined}
+    />
   );
 }
 
@@ -87,12 +74,16 @@ function Stepper({ label, value, max, onChange, big = false }: {
 // `version` cambia cuando el personaje cambia en el servidor (descanso, borrar un nivel, otras cajas de la franja):
 // si no hay cambios propios sin guardar, el editor adopta entonces los PG que llegan; si los hay, se quedan los suyos,
 // salvo que los PG del servidor hayan cambiado por otra vía (un descanso): entonces ganan y el cambio pendiente se descarta
-export default function HpEditor({ characterId, max, current, temp, version }: { characterId: string; max: number; version: number } & Hp) {
+export default function HpEditor({ characterId, max, current, temp, version, rest }: {
+  characterId: string; max: number; version: number;
+  /** Botones de descanso, a la derecha de Daño y Curar. */
+  rest?: ReactNode;
+} & Hp) {
   const [hp, setHp] = useState<Hp>({ current: Math.min(current, max), temp });
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [error, setError] = useState("");
-  const [amount, setAmount] = useState("");
+  const [amount, setAmount] = useState("1");
   const saved = useRef<Hp>(hp);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Último cambio aún sin enviar: si el editor se desmonta antes de que venza el temporizador, se envía al desmontar
@@ -194,48 +185,57 @@ export default function HpEditor({ characterId, max, current, temp, version }: {
   const delta = clamp(Number(amount), Number.MAX_SAFE_INTEGER);
   const heal = () => {
     update({ current: Math.min(max, hp.current + delta) });
-    setAmount("");
+    setAmount("1");
   };
   const damage = () => {
     const fromTemp = Math.min(hp.temp, delta);
     update({ temp: hp.temp - fromTemp, current: Math.max(0, hp.current - (delta - fromTemp)) });
-    setAmount("");
+    setAmount("1");
   };
 
   return (
     <div>
-      <div className="print:hidden">
-        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-          <div className="flex items-baseline">
+      <div className="flex flex-wrap items-start gap-x-5 gap-y-3 print:hidden">
+        {/* Actuales / Máximos y Temporales */}
+        <div className="grid grid-cols-[minmax(10rem,auto)_auto] gap-x-2">
+          <div className="relative flex h-12 items-center justify-center gap-3 overflow-hidden rounded-md border border-line-strong bg-surface pb-1">
             <Stepper big label="PG actuales" value={hp.current} max={max} onChange={(v) => update({ current: v })} />
-            <span className="ml-1 font-heading text-xl font-bold text-muted">/ <span className="sr-only">máximos: </span>{max}</span>
-            {hp.temp > 0 && <span className="ml-2 font-heading text-base font-bold text-sky-400">+{hp.temp}</span>}
+            <span aria-hidden="true" className="text-muted">/</span>
+            <span className="min-w-8 text-center font-heading text-xl font-bold text-white"><span className="sr-only">máximos: </span>{max}</span>
+            <div className="absolute inset-x-0 bottom-0"><HpBar current={hp.current} max={max} temp={hp.temp} /></div>
           </div>
-          {/* Cantidad · Curar · Daño */}
-          <div className="flex w-full items-center gap-1.5 sm:w-auto">
+          <Stepper label="PG temporales" value={hp.temp} max={MAX_TEMP_HP} onChange={(v) => update({ temp: v })} />
+          <div aria-hidden="true" className="flex justify-around">
+            <span className={caption}>Actuales</span>
+            <span className={caption}>Máx.</span>
+          </div>
+          <span aria-hidden="true" className={caption}>Temp.</span>
+        </div>
+        {/* Daño · cantidad · Curar */}
+        <div>
+          <div className="flex overflow-hidden rounded-md border border-line-strong">
+            <button type="button" aria-label="Daño" title="Daño" className={actionButton} onClick={damage} disabled={delta === 0 || (hp.current === 0 && hp.temp === 0)}>
+              <HeartCrack size={18} aria-hidden="true" className="text-brand-soft" />
+            </button>
             <input
               type="number"
               inputMode="numeric"
               min={0}
               value={amount}
-              placeholder="Cant."
               aria-label="Cantidad de curación o daño"
               onChange={(e) => setAmount(e.target.value)}
-              className={`${numberField} h-9! w-14! shrink-0 placeholder:text-xs placeholder:font-normal placeholder:text-muted`}
+              className={`${numberField} rounded-none! border-0!`}
             />
-            <button type="button" className={`${actionButton} border-success/50 text-success enabled:hover:bg-success/10`} onClick={heal} disabled={delta === 0 || hp.current >= max}>
-              <Heart size={13} aria-hidden="true" /> Curar
-            </button>
-            <button type="button" className={`${actionButton} border-brand/60 text-brand-soft enabled:hover:bg-brand/15`} onClick={damage} disabled={delta === 0 || (hp.current === 0 && hp.temp === 0)}>
-              <Swords size={13} aria-hidden="true" /> Daño
+            <button type="button" aria-label="Curar" title="Curar" className={actionButton} onClick={heal} disabled={delta === 0 || hp.current >= max}>
+              <Heart size={18} aria-hidden="true" className="text-success" />
             </button>
           </div>
+          <div aria-hidden="true" className="flex justify-between px-1">
+            <span className={caption}>Daño</span>
+            <span className={caption}>Curar</span>
+          </div>
         </div>
-        <HpBar current={hp.current} max={max} temp={hp.temp} />
-        <div className="mt-2 flex items-center justify-between gap-2">
-          <p className="text-[11px] font-bold uppercase tracking-wide text-muted">Temporales</p>
-          <Stepper label="PG temporales" value={hp.temp} max={MAX_TEMP_HP} onChange={(v) => update({ temp: v })} />
-        </div>
+        {rest && <div className="flex flex-col gap-1.5">{rest}</div>}
       </div>
       {/* Impresión: solo el texto */}
       <p className="hidden font-heading text-2xl font-extrabold print:block">

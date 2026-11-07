@@ -24,9 +24,9 @@ export default function SheetTabs({ base, active, tabs }: { base: string; active
     <nav
       ref={nav}
       aria-label="Secciones de la ficha"
-      className="sticky top-0 z-30 mb-4 flex gap-1 max-md:mt-3 md:mb-6 overflow-x-auto overflow-y-hidden border-b border-line bg-surface [scrollbar-width:none] print:hidden [&::-webkit-scrollbar]:hidden"
+      className="sticky top-0 z-30 mb-3 flex gap-1 overflow-x-auto overflow-y-hidden border-b border-line bg-surface [scrollbar-width:none] print:hidden [&::-webkit-scrollbar]:hidden"
     >
-      {SHEET_TABS.filter((t) => tabs.includes(t.id)).map(({ id, label, icon: Icon }) => {
+      {SHEET_TABS.filter((t) => tabs.includes(t.id)).map(({ id, label }) => {
         const current = id === active;
         return (
           <Link
@@ -34,11 +34,10 @@ export default function SheetTabs({ base, active, tabs }: { base: string; active
             href={id === "acciones" ? base : `${base}?tab=${id}`}
             scroll={false}
             aria-current={current ? "page" : undefined}
-            className={`group -mb-px flex items-center gap-2 whitespace-nowrap border-b-[3px] px-4 py-3 text-sm font-semibold transition-colors ${
+            className={`-mb-px whitespace-nowrap border-b-[3px] px-3 py-2.5 font-heading text-sm font-bold uppercase transition-colors ${
               current ? "border-brand text-white" : "border-transparent text-muted hover:text-white"
             }`}
           >
-            <Icon size={16} aria-hidden="true" className={`transition-transform ${current ? "" : "group-hover:-translate-y-0.5"}`} />
             {label}
           </Link>
         );

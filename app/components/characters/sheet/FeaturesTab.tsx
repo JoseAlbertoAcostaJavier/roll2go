@@ -7,12 +7,13 @@ import { featureReference } from "@/lib/rules/dnd2024/sheet/labels";
 import { FEATURE_SECTION_CHIPS, featureSections, parseSection } from "@/lib/rules/dnd2024/sheet/sheetSections";
 import type { Ref } from "@/lib/rules/types";
 import Bbcode from "@/app/components/ui/Bbcode";
-import { sheetCard } from "@/app/components/ui/formStyles";
 import RoundIcon from "@/app/components/ui/RoundIcon";
 import UntranslatedTag from "@/app/components/ui/UntranslatedTag";
 import Collapsible from "./Collapsible";
 import FeatureUsesControl from "./FeatureUsesControl";
+import PanelSearch from "./PanelSearch";
 import SectionChips from "./SectionChips";
+import { SectionBar, plainText } from "./statUi";
 
 type Query = Record<string, string | string[] | undefined>;
 type Props = {
@@ -40,29 +41,29 @@ function GroupHeading({ group, entry }: { group: FeatureGroup; entry: CatalogEnt
   if (group.source === "class") {
     return (
       <div className="flex items-center gap-3">
-        <RoundIcon kind="class" id={idOf(entry, group.ref)} label={title} size={48} />
+        <RoundIcon kind="class" id={idOf(entry, group.ref)} label={title} size={32} />
         <div>
-          <h3 className="font-heading text-xl font-bold">{title} <span className="text-muted">Nivel {group.level}</span></h3>
+          <h4 className="font-heading text-base font-bold text-white">{title} <span className="text-muted">Nivel {group.level}</span></h4>
           <Reference text={reference} />
         </div>
       </div>
     );
   }
   const kind = { species: "Especie", lineage: "Legado", subclass: "Subclase", option: "", feat: "", class: "" }[group.source];
-  const icon = group.source === "species" ? <RoundIcon kind="species" id={idOf(entry, group.ref)} label={title} size={40} />
-    : group.source === "lineage" && entry?.parent ? <RoundIcon kind="species" id={bareName(entry.parent.key)} label={title} size={40} />
-    : group.source === "subclass" && entry?.parent ? <RoundIcon kind="class" id={bareName(entry.parent.key)} label={title} size={40} />
+  const icon = group.source === "species" ? <RoundIcon kind="species" id={idOf(entry, group.ref)} label={title} size={32} />
+    : group.source === "lineage" && entry?.parent ? <RoundIcon kind="species" id={bareName(entry.parent.key)} label={title} size={32} />
+    : group.source === "subclass" && entry?.parent ? <RoundIcon kind="class" id={bareName(entry.parent.key)} label={title} size={32} />
     : null;
   // Dotes, invocaciones y el resto: iconos de grupo
   const feature = group.source === "feat" ? "feats" : group.progression?.includes("invocation") ? "invocations" : "others";
   return (
     <div className="flex items-center gap-3">
-      {icon ?? <RoundIcon kind="feature" id={feature} label={title} size={40} />}
+      {icon ?? <RoundIcon kind="feature" id={feature} label={title} size={32} />}
       <div>
-        <h3 className="font-heading text-xl font-bold">
+        <h4 className="font-heading text-base font-bold text-white">
           {title}
-          {kind && <span className="ml-2 text-sm font-semibold uppercase tracking-wide text-muted">{kind}</span>}
-        </h3>
+          {kind && <span className="ml-2 text-xs font-semibold uppercase tracking-wide text-muted">{kind}</span>}
+        </h4>
         <Reference text={reference} />
       </div>
     </div>
@@ -85,12 +86,15 @@ export default function FeaturesTab({ groups, entries, base, query, featureUses,
 
   return (
     <div>
-      <SectionChips chips={FEATURE_SECTION_CHIPS} active={active} base={base} query={query} label="Filtrar rasgos" />
-      <div className="space-y-8">
+      <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-2 print:hidden">
+        <PanelSearch label="Buscar rasgos" />
+        <div className="[&>nav]:mb-0"><SectionChips chips={FEATURE_SECTION_CHIPS} active={active} base={base} query={query} label="Filtrar rasgos" /></div>
+      </div>
+      <div className="space-y-5">
         {featureSections(groups, "todo").map((sec) => (
-          <section key={sec.id} aria-label={sec.title} className={visible.has(sec.id) ? "" : "hidden print:block"}>
-            <h2 className="mb-3 font-heading text-sm font-bold uppercase tracking-wide text-brand-soft">{sec.title}</h2>
-            <div className="space-y-6">
+          <section key={sec.id} data-search-group aria-label={sec.title} className={visible.has(sec.id) ? "" : "hidden print:block"}>
+            <SectionBar title={sec.title} />
+            <div className="mt-2 space-y-4">
               {sec.groups.map((g) => {
                 const entry = get(g.ref);
                 const n = gi++;
@@ -98,7 +102,7 @@ export default function FeaturesTab({ groups, entries, base, query, featureUses,
                 const groupUses = g.features.length === 0 && g.ref
                   ? featureUses.filter((u) => u.key === refKey(g.ref!) || u.owner === refKey(g.ref!)) : [];
                 return (
-                  <article key={`${g.source}-${g.ref ? refKey(g.ref) : n}`} className={`${sheetCard} animate-fade-up`} style={{ animationDelay: `${Math.min(n, 6) * 50}ms` }}>
+                  <article key={`${g.source}-${g.ref ? refKey(g.ref) : n}`} data-search-group data-search={g.features.length === 0 ? (entry ? (entry.nameEs ?? entry.name) : g.title) : undefined} className="animate-fade-up px-3" style={{ animationDelay: `${Math.min(n, 6) * 50}ms` }}>
                     <GroupHeading group={g} entry={entry} />
                     {groupUses.length > 0 && (
                       <div className="mt-3 space-y-2">
@@ -109,29 +113,35 @@ export default function FeaturesTab({ groups, entries, base, query, featureUses,
                     )}
                     {g.ref && !entry && <p className="mt-4 text-sm text-muted">Contenido no disponible.</p>}
                     {g.ref && descriptionOf(entry) && (
-                      <Collapsible className="mt-4" header={<span key="header" className="text-sm font-semibold text-brand-soft">Descripción{!entry?.descriptionEs && <UntranslatedTag className="ml-2" />}</span>}>
+                      <Collapsible className="mt-2" header={<span key="header" className="text-sm font-semibold text-brand-soft">Descripción{!entry?.descriptionEs && <UntranslatedTag className="ml-2" />}</span>}>
                         <Description key="description" entry={entry} />
                       </Collapsible>
                     )}
 
                     {g.features.length > 0 && (
-                      <ul className="mt-4 divide-y divide-line border-y border-line">
+                      <ul className="mt-1 divide-y divide-line">
                         {g.features.map((f, i) => (
-                          <li key={`${refKey(f.ref)}-${i}`} className="py-3">
+                          <li key={`${refKey(f.ref)}-${i}`} data-search={f.name} className="py-2.5">
                             <Collapsible
                               header={
                                 // Con `key`: React comprueba los elementos que se pasan a un componente de cliente dentro de un `map`
                                 <Fragment key="header">
-                                  <span className="flex items-baseline gap-3">
-                                    <span className="flex-1 font-semibold">
-                                      {f.name}
-                                      {get(f.ref) && !get(f.ref)!.nameEs && <UntranslatedTag className="ml-2" />}
+                                  <span className="grid gap-x-4 gap-y-1 text-sm sm:grid-cols-[minmax(0,13rem)_minmax(0,1fr)]">
+                                    <span className="min-w-0">
+                                      <span className="font-semibold text-white">
+                                        {f.name}
+                                        {get(f.ref) && !get(f.ref)!.nameEs && <UntranslatedTag className="ml-2" />}
+                                      </span>
                                       {f.chosen && <span className="ml-2 font-normal text-brand-soft">{f.chosen.join(", ")}</span>}
+                                      {f.value && <span className="ml-2 text-success">{f.value}</span>}
+                                      <span className="block text-xs text-brand-soft">{g.title} · Nivel {f.level}</span>
+                                      <Reference text={featureReference(get(f.ref))} />
                                     </span>
-                                    {f.value && <span className="text-sm text-success">{f.value}</span>}
-                                    <span className="shrink-0 text-xs uppercase tracking-wide text-muted">· Nivel {f.level}</span>
+                                    {/* Resumen de la descripción: desaparece al desplegarla */}
+                                    <span className="line-clamp-2 min-w-0 text-muted group-aria-expanded:hidden print:hidden">
+                                      {plainText(descriptionOf(get(f.ref)))}
+                                    </span>
                                   </span>
-                                  <Reference text={featureReference(get(f.ref))} />
                                 </Fragment>
                               }
                               aside={usesOf(f.ref) && (
