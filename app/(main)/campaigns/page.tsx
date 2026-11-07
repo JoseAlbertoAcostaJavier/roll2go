@@ -2,13 +2,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { Plus } from "lucide-react";
+import { Map as MapIcon, Plus } from "lucide-react";
 import { COOKIE_NAME, verifySession } from "@/lib/server/auth/auth";
 import { campaignCardOf, listMyCampaigns } from "@/lib/server/campaigns/queries";
 import CampaignCard from "@/app/components/campaigns/CampaignCard";
 import CampaignInvites, { type InviteData } from "@/app/components/campaigns/CampaignInvites";
 import { first } from "@/lib/utils/utils";
 import ListFilters from "@/app/components/ui/ListFilters";
+import { primaryButton } from "@/app/components/ui/formStyles";
 
 export const metadata: Metadata = { title: "Mis campañas" };
 
@@ -44,11 +45,8 @@ export default async function CampaignsPage({
   return (
     <div className="mx-auto max-w-280 px-5 py-10">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-        <h1 className="font-heading text-3xl font-extrabold">Mis campañas</h1>
-        <Link
-          href="/campaigns/new"
-          className="flex items-center gap-2 rounded-md bg-brand px-4 py-2 font-heading text-sm font-bold text-white transition-colors hover:bg-brand-hover"
-        >
+        <h1 className="font-heading text-3xl font-extrabold text-white">Mis campañas</h1>
+        <Link href="/campaigns/new" className={primaryButton}>
           <Plus size={16} aria-hidden="true" /> Crear campaña
         </Link>
       </div>
@@ -56,9 +54,9 @@ export default async function CampaignsPage({
       <CampaignInvites invites={inviteData} />
 
       <ListFilters
-        className="mb-6 rounded-lg border border-line bg-panel p-5"
+        className="mb-8 rounded-xl border border-line bg-surface/50 p-5 shadow-sm"
         base="/campaigns"
-        title="Buscar campañas"
+        title="Filtros de búsqueda"
         q={q}
         searchLabel="Buscar por nombre"
         placeholder="Buscar por nombre"
@@ -91,20 +89,26 @@ export default async function CampaignsPage({
       />
 
       {campaigns.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-line p-10 text-center text-muted">
-          {hasFilters ? (
-            <p>No se han encontrado campañas con esos filtros.</p>
-          ) : (
-            <>
-              <p className="mb-4">No tienes campañas activas.</p>
-              <Link href="/campaigns/new" className="font-semibold text-brand-soft hover:underline">
-                Crea tu primera campaña
+        hasFilters ? (
+          <div className="rounded-xl border border-dashed border-line p-12 text-center text-muted">
+            <p className="font-medium">No se han encontrado campañas con esos filtros.</p>
+          </div>
+        ) : (
+          <div className="animate-fade-up rounded-xl border border-dashed border-line bg-surface/30 p-12 text-center shadow-sm">
+            <MapIcon size={56} className="mx-auto mb-6 text-line" aria-hidden="true" />
+            <h2 className="mb-3 font-heading text-2xl font-bold text-white">No tienes campañas activas</h2>
+            <p className="mx-auto mb-8 max-w-lg text-sm text-muted">
+              Crea una campaña para reunir a tu grupo, o pide a tu DM un enlace de invitación para unirte a la suya.
+            </p>
+            <div className="flex justify-center">
+              <Link href="/campaigns/new" className={primaryButton}>
+                <Plus size={16} aria-hidden="true" /> Crear campaña
               </Link>
-            </>
-          )}
-        </div>
+            </div>
+          </div>
+        )
       ) : (
-        <div className="grid grid-cols-[repeat(auto-fill,minmax(min(300px,100%),1fr))] gap-4">
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(min(320px,100%),1fr))] gap-5">
           {campaigns.map((c, i) => {
             const owner = ownerCards.get(String(c.owner));
             return (

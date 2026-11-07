@@ -22,10 +22,13 @@ export default function FriendActions({
   username,
   initialRelation,
   showStatus = false,
+  align = "center",
 }: {
   username: string;
   initialRelation: Relation;
   showStatus?: boolean;
+  /** `start`: alineadas a la izquierda, para las tarjetas con el avatar al lado. */
+  align?: "center" | "start";
 }) {
   const router = useRouter();
   const [relation, setRelation] = useState<Relation>(initialRelation);
@@ -79,10 +82,10 @@ export default function FriendActions({
   const spinner = loading && <LoaderCircle size={14} className="animate-spin" aria-hidden="true" />;
 
   return (
-    <div className="flex flex-col items-center gap-2">
+    <div className={`flex flex-col gap-2 ${align === "start" ? "items-start" : "items-center"}`}>
       {showStatus && STATUS[relation] && <p className="text-sm text-muted">{STATUS[relation]}</p>}
 
-      <div className="flex flex-wrap items-center justify-center gap-2">
+      <div className={`flex flex-wrap items-center gap-2 ${align === "start" ? "justify-start" : "justify-center"}`}>
         {relation === "none" && (
           <button type="button" onClick={send} disabled={loading} className={solid}>
             {spinner || <UserPlus size={14} aria-hidden="true" />} Enviar solicitud
