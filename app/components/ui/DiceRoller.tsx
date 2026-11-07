@@ -90,7 +90,7 @@ export default function DiceRoller() {
             </span>
           </>
         ) : (
-          <span>Selecciona una de las opciones.</span>
+          <span>Elige un dado o escribe una fórmula.</span>
         )}
       </div>
 
