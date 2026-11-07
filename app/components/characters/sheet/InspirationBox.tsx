@@ -62,7 +62,7 @@ export default function InspirationBox({ characterId, initial, isOwner, classNam
   return (
     // El error va fuera de la caja (de alto fijo): flota justo debajo
     <div className="relative">
-    <div className={`flex flex-col items-center justify-center gap-1 rounded-lg border-2 border-brand/40 bg-panel px-2 py-3 text-center ${className}`}>
+    <div className={`flex flex-col items-center justify-center gap-1 rounded-lg border border-line bg-panel px-2 py-3 text-center ${className}`}>
       {isOwner ? (
         <button
           type="button"

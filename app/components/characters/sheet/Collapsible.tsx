@@ -15,6 +15,7 @@ export default function Collapsible({ header, aside, children, className = "" }:
     <div className={className}>
       <button
         type="button"
+        data-print="text"
         aria-expanded={open}
         aria-controls={id}
         onClick={() => setOpen((o) => !o)}

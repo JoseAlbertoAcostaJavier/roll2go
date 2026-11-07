@@ -166,7 +166,7 @@ export default function RestButtons({ characterId, pools, conMod, recoversOther 
                         max={range.max}
                         value={healing}
                         onChange={(e) => setHealing(e.target.value)}
-                        className="w-28 rounded-md border border-line bg-surface px-3 py-2"
+                        className="w-28 rounded-md border border-line-strong bg-surface px-3 py-2"
                         aria-describedby="rest-healing-range"
                       />
                       <span id="rest-healing-range" className="ml-3 text-muted">entre {range.min} y {range.max}</span>

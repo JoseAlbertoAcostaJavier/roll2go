@@ -77,7 +77,7 @@ function Row({ row, visible, props, search }: { row: SpellRow; visible: boolean;
     <tr role="row" className={hideRow(visible)}>
       {/* Quien no es el dueño no lanza: sin columna, y los usos (solo lectura) van bajo el nombre */}
       {isOwner && (
-        <td role="cell" className={`${td} print:hidden max-md:not-print:col-span-full max-md:not-print:col-start-1 max-md:not-print:row-start-4 max-md:not-print:p-0`}>
+        <td role="cell" className={`${td} print:hidden max-md:not-print:col-span-full max-md:not-print:col-start-1 max-md:not-print:row-start-4 max-md:not-print:p-0 max-md:not-print:has-[>span:empty]:hidden`}>
           <span className="flex flex-wrap items-center gap-2">
             {row.level > 0 && (
               <CastButton options={options} disabled={busy} name={row.name} onCast={(o) => props.onCast(row, o)} />
@@ -203,7 +203,7 @@ export default function SpellTable(props: Props) {
                       <span className="border-l-4 border-brand pl-3 font-heading text-base font-bold">
                         {g.level === 0 ? "Trucos" : `Nivel ${g.level}`}
                       </span>
-                      <span className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                      <span className="flex flex-wrap items-center gap-x-4 gap-y-4">
                         {count > 0 && (
                           <SpellSlotBoxes
                             level={String(g.level)} spellLevel={g.level} count={count} used={used[String(g.level)] ?? 0}

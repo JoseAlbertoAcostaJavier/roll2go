@@ -7,7 +7,7 @@ import { labelClass } from "@/app/components/ui/formStyles";
 export type PickerOption = { id: string; label: string; disabled?: string };
 
 const select =
-  "min-w-0 flex-1 basis-40 rounded-md border border-line bg-surface px-3 py-2.5 text-fg focus:border-brand focus:outline-none disabled:opacity-60";
+  "min-w-0 flex-1 basis-40 rounded-md border border-line-strong bg-surface px-3 py-2.5 text-fg focus:border-brand focus:outline-none disabled:opacity-60";
 
 /* Una fila de desplegables, uno por elección (habilidades, pericias, maestrías…). Lo elegido en uno no aparece en los
    demás. `value` guarda una posición por desplegable ("" = sin elegir). */

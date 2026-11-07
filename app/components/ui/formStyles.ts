@@ -13,6 +13,6 @@ export const secondaryButton =
   "flex items-center justify-center gap-2 rounded-md border border-line-strong bg-panel px-5 py-2.5 font-heading font-bold text-fg transition-colors enabled:hover:border-fg disabled:opacity-50";
 /** Variante compacta de `secondaryButton` para las acciones en línea. */
 export const secondaryButtonSm =
-  "flex items-center gap-1.5 rounded-md border border-line-strong bg-panel px-3 py-1.5 text-sm font-semibold text-fg transition-colors enabled:hover:border-fg disabled:opacity-50";
+  "flex items-center gap-1.5 rounded-md border border-line-strong bg-panel px-3 py-1.5 text-sm font-semibold text-fg transition-colors hover:border-fg disabled:hover:border-line-strong disabled:opacity-50";
 export const errorClass = "mt-1 text-xs text-brand-soft";
 export const successClass = "text-sm text-success";

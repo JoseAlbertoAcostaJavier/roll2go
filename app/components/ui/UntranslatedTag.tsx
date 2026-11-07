@@ -3,6 +3,7 @@ export default function UntranslatedTag({ className = "" }: { className?: string
   return (
     <span
       title="Solo disponible en inglés"
+      role="img"
       aria-label="Solo disponible en inglés"
       className={`inline-block rounded border border-line px-1 align-middle text-xs font-normal normal-case leading-tight tracking-normal text-muted print:hidden ${className}`}
     >

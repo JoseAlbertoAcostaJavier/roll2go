@@ -131,6 +131,7 @@ export function BasicActionButton({ actionKey, name }: { actionKey: string; name
   return (
     <button
       type="button"
+      data-print="text"
       onClick={(e) => openBasic(actionKey, e.currentTarget)}
       className="inline-block py-0.5 font-semibold text-fg hover:text-brand-soft hover:underline"
     >
@@ -145,6 +146,7 @@ export function FeatureButton({ featureKey, name }: { featureKey: string; name: 
   return (
     <button
       type="button"
+      data-print="text"
       onClick={(e) => openFeature(featureKey, e.currentTarget)}
       className="inline-block py-0.5 text-left font-semibold text-fg hover:text-brand-soft hover:underline"
     >

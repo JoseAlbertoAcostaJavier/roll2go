@@ -132,7 +132,7 @@ export default function SpellTableFilters({ base, query, filter, levels }: {
               <select
                 value={filter[key]}
                 onChange={(e) => go({ [key]: e.target.value as Tri })}
-                className="rounded-md border border-line bg-surface px-2 py-1 text-sm text-fg focus:border-brand focus:outline-none"
+                className="rounded-md border border-line-strong bg-surface px-2 py-1 text-sm text-fg focus:border-brand focus:outline-none"
               >
                 {TRI_OPTIONS.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
               </select>

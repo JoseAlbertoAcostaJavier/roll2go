@@ -17,7 +17,7 @@ export default function CombatBox({ d, show, className = "" }: {
         aria-haspopup="dialog"
         data-print="text"
         onClick={show({ kind: "initiative" })}
-        className={`${statButton} flex h-24 w-32 flex-col items-center justify-center rounded-lg border-2 border-brand/40 bg-panel text-center`}
+        className={`${statButton} flex h-24 w-32 flex-col items-center justify-center rounded-lg border border-line bg-panel text-center`}
       >
         <span className="text-[11px] font-semibold uppercase tracking-wide text-muted">Iniciativa</span>
         <span className="font-heading text-3xl font-extrabold leading-tight">{fmtMod(d.initiative)}</span>

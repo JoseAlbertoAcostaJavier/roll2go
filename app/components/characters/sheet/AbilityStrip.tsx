@@ -6,11 +6,11 @@ import InspirationBox from "./InspirationBox";
 import { statButton } from "./statUi";
 import type { SheetData, ShowStat, StatusState } from "./types";
 
-// Marco común de las cajas de la franja: el rojo de marca atenuado sobre el fondo oscuro
-const box = "rounded-lg border-2 border-brand/40 bg-panel";
-const boxLabel = "block break-words text-[11px] font-semibold uppercase leading-tight tracking-wide text-muted";
-// Rótulos de Competencia y Velocidad: 11 px en mayúsculas; si la caja es muy estrecha parten la palabra en vez de desbordar
-const statLabel = "block break-words text-[11px] font-semibold uppercase leading-tight tracking-wide text-muted";
+// Marco común de las cajas de la franja: borde neutro; el rojo queda para las acciones y el estado activo
+const box = "rounded-lg border border-line bg-panel";
+const boxLabel = "block hyphens-none break-words text-[11px] font-semibold uppercase leading-tight tracking-normal text-muted";
+// Rótulos de Competencia y Velocidad: 11 px en mayúsculas; no se guionizan; solo si la caja es muy estrecha parten la palabra en vez de desbordar
+const statLabel = "block hyphens-none break-words text-[11px] font-semibold uppercase leading-tight tracking-normal text-muted";
 
 // Franja superior (spec de la ficha visual §3.1): las 6 características, competencia, velocidad, inspiración heroica y PG.
 // La franja vive en la columna central de la ficha (a 1280 px mide ~640 px), demasiado estrecha para una sola fila:
@@ -41,7 +41,7 @@ export default function AbilityStrip({ d, characterId, isOwner, version, pools, 
                 >
                   <span className={`${boxLabel} w-full`}>{ABILITY_NAMES[a]}</span>
                   <span className="mt-1 block font-heading text-3xl font-extrabold leading-none">{fmtMod(d.abilities[a].mod)}</span>
-                  <span className="absolute -bottom-3 left-1/2 w-10 -translate-x-1/2 rounded-full border-2 border-brand/60 bg-surface text-sm font-bold">
+                  <span className="absolute -bottom-3 left-1/2 w-10 -translate-x-1/2 rounded-full border border-line bg-surface text-sm font-bold">
                     {d.abilities[a].score}
                   </span>
                 </button>

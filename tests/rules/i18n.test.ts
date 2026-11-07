@@ -57,7 +57,7 @@ describe("diccionario es.json", () => {
     expect(early.filter((e) => !dict[e.key]?.trim()).map((e) => e.key)).toEqual([]);
     // 12 clases de XPHB con rasgos de nivel 1 a 5, todos con la clave que construye el normalizador
     const own = Object.keys(dict).filter((k) => k.startsWith("classFeature:"));
-    expect(own.length).toBeGreaterThanOrEqual(110);
+    expect(own.length).toBe(116);
     expect(own.filter((k) => !/^classFeature:[^|]+\|[a-z]+\|xphb\|[1-5]$/.test(k))).toEqual([]);
     expect(dict["classFeature:rage|barbarian|xphb|1"]).toBe("Furia");
   });

@@ -22,7 +22,7 @@ export function FeatResistField({ id, count, from, value, onChange }: {
           key={i}
           id={`${id}-${i}`}
           aria-label={`Tipo de daño ${i + 1}`}
-          className="w-full rounded-md border border-line bg-panel px-3 py-2.5 text-fg focus:border-brand focus:outline-none"
+          className="w-full rounded-md border border-line-strong bg-panel px-3 py-2.5 text-fg focus:border-brand focus:outline-none"
           value={value[i] ?? ""}
           onChange={(e) => set(i, e.target.value)}
         >

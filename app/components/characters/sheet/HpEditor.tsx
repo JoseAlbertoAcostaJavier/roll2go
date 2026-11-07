@@ -17,7 +17,7 @@ export const REST_EVENT = "roll2go:rest";
 const stepButton =
   "flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-line bg-surface transition-colors enabled:hover:border-brand enabled:hover:text-white disabled:opacity-40";
 const numberField =
-  "h-8 w-16 rounded-md border border-line bg-surface px-1 text-center font-heading font-bold focus:border-brand focus:outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none";
+  "h-8 w-16 rounded-md border border-line-strong bg-surface px-1 text-center font-heading font-bold focus:border-brand focus:outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none";
 const bigField =
   "h-12 w-16 rounded-md border border-transparent bg-transparent px-1 text-center font-heading text-3xl font-extrabold hover:border-line focus:border-brand focus:outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none";
 const actionButton =

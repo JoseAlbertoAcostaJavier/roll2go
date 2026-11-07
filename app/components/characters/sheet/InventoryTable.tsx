@@ -61,7 +61,7 @@ export default function InventoryTable({ group, shown, info, items, readOnly, ac
           <table className="w-full min-w-176 text-left text-sm">
             <thead className="text-xs uppercase tracking-wide text-muted">
               <tr>
-                <th className="pb-2 pr-3 font-semibold">Activo</th>
+                <th className="pb-2 pl-1 pr-3 font-semibold">Activo</th>
                 <th className="pb-2 pr-3 font-semibold">Nombre</th>
                 <th className="pb-2 pr-3 font-semibold">Peso</th>
                 <th className="pb-2 pr-3 font-semibold">Cant.</th>
@@ -105,7 +105,7 @@ function Row({ line: l, data, where, visible, readOnly, actions, onOpen }: {
   const inContainer = where !== null;
   return (
     <tr className={`border-t border-line align-middle ${visible ? "" : "hidden print:table-row"}`}>
-      <td className="py-2 pr-3">
+      <td className="py-2 pl-1 pr-3">
         {inContainer || !data?.equippable ? (
           <span className="text-muted" aria-hidden="true">{inContainer ? "—" : "-"}</span>
         ) : readOnly ? (

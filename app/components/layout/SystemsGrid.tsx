@@ -23,7 +23,7 @@ export default function SystemsGrid() {
               {body}
             </Link>
           ) : (
-            <div className="rounded-lg border border-line bg-panel p-5 opacity-70" key={s.id}>
+            <div className="rounded-lg border border-line bg-panel p-5" key={s.id}>
               <span className="mb-1.5 inline-block rounded border border-line px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-muted">
                 Próximamente
               </span>

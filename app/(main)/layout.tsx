@@ -14,7 +14,6 @@ export default async function MainLayout({ children }: { children: React.ReactNo
     <>
       <Navbar user={user} unread={unread} />      <main>{children}</main>
       <footer className="border-t border-line bg-[#111] py-7 text-sm text-muted">
-        {/* Footer de la página principal. Añadire contenido aquí más tarde. */}
         <div className="mx-auto max-w-280 px-5">
           <p>Roll2Go</p>
         </div>

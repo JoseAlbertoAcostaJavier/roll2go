@@ -53,7 +53,7 @@ export default function PickStep({
           </label>
           <select
             id={`replace-${p.source}`}
-            className="w-full rounded-md border border-line bg-surface px-3 py-2.5 text-fg focus:border-brand focus:outline-none"
+            className="w-full rounded-md border border-line-strong bg-surface px-3 py-2.5 text-fg focus:border-brand focus:outline-none"
             value={replaced}
             onChange={(e) => onReplace(e.target.value)}
           >

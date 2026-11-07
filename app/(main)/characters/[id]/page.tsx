@@ -223,7 +223,8 @@ export default async function CharacterPage({ params, searchParams }: Props) {
   // Las pestañas inactivas se ocultan en pantalla, pero se imprimen todas seguidas
   const panel = (t: SheetTab) => ({
     id: `panel-${t}`,
-    className: t === tab ? "" : "hidden print:block",
+    // Margen de desplazamiento: la barra de pestañas fija (≈ 46 px) no tapa el control que recibe el foco con el teclado
+    className: `[&_a]:scroll-mt-14 [&_button]:scroll-mt-14 [&_input]:scroll-mt-14 [&_select]:scroll-mt-14 [&_textarea]:scroll-mt-14 ${t === tab ? "" : "hidden print:block"}`,
   });
   const panelTitle = (t: SheetTab) => (
     <h2 className="sr-only print:not-sr-only print:mb-4 print:mt-8 print:font-heading print:text-2xl print:font-bold">

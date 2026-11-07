@@ -35,7 +35,7 @@ export function FeatAbilityField({ id, feat, value, scores, onChange }: {
       <label htmlFor={id} className={labelClass}>Característica que mejora (+1)</label>
       <select
         id={id}
-        className="w-full rounded-md border border-line bg-panel px-3 py-2.5 text-fg focus:border-brand focus:outline-none"
+        className="w-full rounded-md border border-line-strong bg-panel px-3 py-2.5 text-fg focus:border-brand focus:outline-none"
         value={fa.ability ?? ""}
         onChange={(e) => onChange(e.target.value as Ability)}
       >

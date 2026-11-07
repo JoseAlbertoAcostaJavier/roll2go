@@ -61,16 +61,19 @@ function Row({ item, onOpen, href }: { item: SpellRowItem; onOpen: SpellOpener; 
     <li className={`flex gap-3 py-3 ${item.dimmed ? "opacity-50" : ""}`}>
       {item.check && (
         <span className="pt-0.5" title={item.check.disabled ? item.check.reason : undefined}>
-          <input
-            id={checkId}
-            type="checkbox"
-            className="h-4 w-4 accent-brand disabled:cursor-not-allowed"
-            checked={item.check.checked}
-            disabled={item.check.disabled}
-            onChange={item.check.onChange}
-            aria-label={item.check.label ?? `${item.check.checked ? "Dejar de preparar" : "Preparar"} ${name}`}
-            aria-describedby={item.check.disabled && item.check.reason ? `${checkId}-why` : undefined}
-          />
+          {/* Casilla de 16 px con zona pulsable de 24 × 32 px (la etiqueta la reenvía a la casilla) */}
+          <label className="relative inline-flex h-4 w-4 after:absolute after:left-1/2 after:top-1/2 after:h-8 after:w-6 after:-translate-x-1/2 after:-translate-y-1/2">
+            <input
+              id={checkId}
+              type="checkbox"
+              className="h-4 w-4 accent-brand disabled:cursor-not-allowed"
+              checked={item.check.checked}
+              disabled={item.check.disabled}
+              onChange={item.check.onChange}
+              aria-label={item.check.label ?? `${item.check.checked ? "Dejar de preparar" : "Preparar"} ${name}`}
+              aria-describedby={item.check.disabled && item.check.reason ? `${checkId}-why` : undefined}
+            />
+          </label>
           {item.check.disabled && item.check.reason && <span id={`${checkId}-why`} className="sr-only">{item.check.reason}</span>}
         </span>
       )}
@@ -84,7 +87,7 @@ function Row({ item, onOpen, href }: { item: SpellRowItem; onOpen: SpellOpener; 
               e.preventDefault();
               onOpen(item.ref, e.currentTarget);
             }}
-            className="font-semibold text-fg hover:text-brand-soft hover:underline"
+            className="inline-block py-0.5 font-semibold text-fg hover:text-brand-soft hover:underline"
           >
             {name}
           </a>
