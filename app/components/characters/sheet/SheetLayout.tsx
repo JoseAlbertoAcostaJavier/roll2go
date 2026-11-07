@@ -16,12 +16,13 @@ import type { SheetData, StatusState } from "./types";
 export type { SheetData } from "./types";
 
 // Maqueta de la ficha (spec §4): la franja superior y, debajo, una rejilla con las cajas y el panel de pestañas.
-// - ≥ 1280 px: tres columnas (salvaciones, sentidos y competencias | habilidades | combate, defensas y pestañas).
-// - 768–1279 px: combate y defensas a todo el ancho, dos columnas (izquierda | habilidades) y las pestañas debajo.
+// - ≥ 1280 px: tres columnas (salvaciones, sentidos y competencias | habilidades | defensas y pestañas); iniciativa y CA
+//   van en la franja, bajo competencia, velocidad e inspiración.
+// - 768–1279 px: combate (al pie de la franja) y defensas a todo el ancho, dos columnas (izquierda | habilidades) y las pestañas debajo.
 // - < 768 px: una columna en el orden de §4.4; la columna izquierda se deshace (`contents`) para que las habilidades
 //   queden entre las salvaciones y los sentidos (`order-*`). Cada caja se pinta una sola vez.
 // En escritorio la columna izquierda y la central ocupan las dos filas; la segunda es flexible (`1fr`), así que la
-// primera mide lo que combate y defensas, y el panel de pestañas empieza justo debajo de ellas.
+// primera mide lo que defensas y estados, y el panel de pestañas empieza justo debajo de ellas.
 export default function SheetLayout({ d, characterId, isOwner, version, pools, status, tabs, children }: {
   d: SheetData;
   characterId: string;
@@ -42,16 +43,15 @@ export default function SheetLayout({ d, characterId, isOwner, version, pools, s
   return (
     <div className="space-y-6">
       <div className="animate-fade-up">
-        <AbilityStrip d={d} characterId={characterId} isOwner={isOwner} version={version} pools={pools} show={show} status={status} />
+        <AbilityStrip d={d} characterId={characterId} isOwner={isOwner} version={version} pools={pools} show={show} status={status} combat={<CombatBox d={d} show={show} />} />
       </div>
 
       <div
-        className="grid animate-fade-up grid-cols-1 items-start gap-6 md:grid-cols-2 xl:grid-cols-[minmax(0,15rem)_minmax(0,18rem)_minmax(0,1fr)] xl:grid-rows-[auto_1fr]"
+        className="grid animate-fade-up grid-cols-1 items-start gap-6 md:grid-cols-2 xl:grid-cols-[minmax(0,15rem)_minmax(0,20rem)_minmax(0,1fr)] xl:grid-rows-[auto_1fr]"
         style={{ animationDelay: "50ms" }}
       >
-        {/* Combate y defensas: arriba a todo el ancho; en escritorio, en la columna derecha */}
+        {/* Defensas y estados: arriba a todo el ancho; en escritorio, en la columna derecha (el combate vive en la franja) */}
         <div className="order-1 flex min-w-0 flex-col gap-6 md:col-span-2 xl:col-[3] xl:row-[1]">
-          <CombatBox d={d} show={show} />
           <StatusBox characterId={characterId} isOwner={isOwner} defenses={d.defenses} status={status} show={show} />
         </div>
 
@@ -68,7 +68,7 @@ export default function SheetLayout({ d, characterId, isOwner, version, pools, s
           className="order-3 min-w-0 xl:col-[2] xl:row-[1/span_2]"
         />
 
-        {/* Panel de pestañas: a todo el ancho debajo; en escritorio, en la columna derecha bajo combate y defensas */}
+        {/* Panel de pestañas: a todo el ancho debajo; en escritorio, en la columna derecha bajo defensas y estados */}
         <div className="order-6 min-w-0 md:col-span-2 xl:col-[3] xl:row-[2]">
           {tabs}
           {children}

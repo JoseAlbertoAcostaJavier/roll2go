@@ -32,7 +32,7 @@ export default function SkillsBox({ skills, show, className = "" }: {
               >
                 <span className="flex w-7 shrink-0"><ProficiencyDot level={s.proficiency} /></span>
                 <span className="w-8 shrink-0 text-xs text-muted">{ABILITY_ABBR[s.ability]}</span>
-                <span className="min-w-0 flex-1 truncate">{skillName(s.id)}</span>
+                <span className="min-w-0 flex-1 leading-tight">{skillName(s.id)}</span>
                 <span className="font-heading font-bold">{fmtMod(s.total)}</span>
               </button>
             </li>
