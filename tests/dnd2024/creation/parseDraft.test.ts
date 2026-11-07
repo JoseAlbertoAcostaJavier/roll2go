@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseDraft } from "@/app/components/characters/creator/CharacterCreator";
+import { blankForm, isUntouched, parseDraft } from "@/app/components/characters/creator/CharacterCreator";
 
 const props = { species: [], lineages: {}, classes: [], backgrounds: [], languages: [], choiceItems: [] } as unknown as Parameters<typeof parseDraft>[1];
 
@@ -51,5 +51,26 @@ describe("parseDraft: objetos a elegir e idiomas", () => {
     expect(form.bgEquipmentPicks).toEqual({ "0": r("item:dice set|xphb") });
     expect(form.classEquipmentPicks).toEqual({});
     expect(form.languageChoices).toEqual([r("language:elvish|xphb"), null, r("language:dwarvish|xphb")]);
+  });
+});
+
+describe("isUntouched: borrador vacío", () => {
+  it("el formulario recién abierto y el de un borrador ausente o corrupto no cuentan como datos", () => {
+    expect(isUntouched(parseDraft(null, props), blankForm())).toBe(true);
+    expect(isUntouched(parseDraft("{no es json", props), blankForm())).toBe(true);
+  });
+
+  it("un cambio del usuario (nombre, método, tiradas) sí cuenta, y volver al inicio deja de contar", () => {
+    const base = blankForm();
+    expect(isUntouched({ ...base, name: "Ana" }, base)).toBe(false);
+    expect(isUntouched({ ...base, method: "manual" }, base)).toBe(false);
+    expect(isUntouched({ ...base, base: { ...base.base, str: 9 } }, base)).toBe(false);
+    expect(isUntouched({ ...base, name: "" }, base)).toBe(true);
+  });
+
+  it("un borrador con datos se recupera y no es el formulario vacío", () => {
+    const form = parseDraft(JSON.stringify({ name: "Ana" }), props);
+    expect(form.name).toBe("Ana");
+    expect(isUntouched(form, blankForm())).toBe(false);
   });
 });

@@ -6,13 +6,14 @@ import type { CatalogEntry } from "@/lib/rules/catalog/types";
 import { derive } from "@/lib/rules/dnd2024/derive";
 import type { Dnd2024Sheet } from "@/lib/rules/dnd2024/sheet/sheet";
 import { fmtMod } from "@/lib/rules/dnd2024/sheet/labels";
+import SectionIndex, { SectionLinkAnchor, type SectionLink } from "./SectionIndex";
 
 export type MissingItem = { label: string; href: string };
 
 /* Resumen lateral del asistente: valores derivados de lo elegido hasta ahora y lo que falta por completar.
    `entries` son las entradas del catálogo ya cargadas, por "libro:clave". */
 export default function CharacterSummary({
-  sheet, entries, hasSpecies, hasClass, equipmentLoading, missing,
+  sheet, entries, hasSpecies, hasClass, equipmentLoading, missing, sections,
 }: {
   sheet: Dnd2024Sheet;
   entries: Map<string, CatalogEntry>;
@@ -21,6 +22,8 @@ export default function CharacterSummary({
   /** Mientras se cargan los objetos del equipo, la CA se calcula sin armadura. */
   equipmentLoading: boolean;
   missing: MissingItem[];
+  /** Índice de secciones (en escritorio; en móvil lo muestra el creador plegado al principio). */
+  sections: SectionLink[];
 }) {
   const d = useMemo(() => derive(sheet, entries), [sheet, entries]);
 
@@ -49,6 +52,11 @@ export default function CharacterSummary({
         </p>
       )}
 
+      <div className="hidden lg:block">
+        <h3 className="mb-2 mt-5 text-sm font-semibold">Secciones</h3>
+        <SectionIndex sections={sections} />
+      </div>
+
       <h3 className="mb-2 mt-5 flex items-center gap-2 text-sm font-semibold">
         {missing.length > 0 && <CircleAlert size={16} className="text-brand-soft" aria-hidden="true" />}
         Falta por completar
@@ -61,7 +69,7 @@ export default function CharacterSummary({
         <ul className="space-y-1 text-sm">
           {missing.map((m) => (
             <li key={m.label}>
-              <a href={m.href} className="text-brand-soft hover:underline">{m.label}</a>
+              <SectionLinkAnchor href={m.href} className="text-brand-soft hover:underline">{m.label}</SectionLinkAnchor>
             </li>
           ))}
         </ul>
