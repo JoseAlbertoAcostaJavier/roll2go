@@ -86,8 +86,8 @@
     color-scheme: light;
   }
   /* Barra de navegación, pie y asistente del layout principal */
-  body > :not(main),
-  body > div > :not(main) {
+  body > :not(main):not([data-app-shell]),
+  [data-app-shell] > :not(main) {
     display: none !important;
   }
   /* Los valores de la pestaña Información son botones que abren su detalle: se imprimen como texto */

@@ -10,7 +10,7 @@ export default async function MainLayout({ children }: { children: React.ReactNo
   const user = await getCurrentUser();
   const unread = user ? await countUnread(user.id) : 0;
   return (
-    <div className="flex min-h-dvh flex-col">
+    <div data-app-shell className="flex min-h-dvh flex-col print:block print:min-h-0">
       <a
         href="#main"
         className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-60 focus:bg-brand focus:px-4 focus:py-2 focus:text-sm focus:font-bold focus:text-white"
