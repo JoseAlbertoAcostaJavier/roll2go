@@ -7,12 +7,19 @@ export type SectionLink = { label: string; href: string; pending: boolean | null
 
 const FOCUSABLE = "input:not([type=hidden]):not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not([disabled])";
 
-/* Al seguir un enlace a una sección, lleva el foco a su primer control (el desplazamiento lo hace el enlace con
-   su `scroll-mt`). Sirve para controles nativos y para el combo de RuleSelect, que es un input. Sin controles,
-   el foco va a la propia sección. */
+/* Al seguir un enlace a una sección, la desplaza a la vista (con su `scroll-mt`) y lleva el foco a su primer control.
+   Sirve para controles nativos y para el combo de RuleSelect, que es un input. Sin controles, el foco va a la
+   propia sección. */
 export function focusSection(href: string, focusId?: string) {
-  const section = document.getElementById(href.replace(/^#/, ""));
+  const id = href.replace(/^#/, "");
+  const section = document.getElementById(id);
   if (!section) return;
+  // En móvil el índice es un `<details>`: se pliega al seguir un enlace
+  document.querySelectorAll<HTMLDetailsElement>("details[open]").forEach((d) => {
+    if (d.contains(document.activeElement) || d.querySelector(`a[href="#${id}"]`)) d.open = false;
+  });
+  section.scrollIntoView();
+  history.replaceState(null, "", href);
   const byId = focusId ? document.getElementById(focusId) : null;
   const target = byId && section.contains(byId) ? byId : section.querySelector<HTMLElement>(FOCUSABLE);
   if (target) {
@@ -20,8 +27,10 @@ export function focusSection(href: string, focusId?: string) {
     target.dataset.skipOpen = "1";
     target.focus({ preventScroll: true });
     delete target.dataset.skipOpen;
-  }
-  else {
+    // Clase o Tamaño pueden quedar abajo de la sección: se asegura que el control se vea, bajo la cabecera
+    const r = target.getBoundingClientRect();
+    if (r.top < 96 || r.bottom > window.innerHeight) target.scrollIntoView({ block: "center" });
+  } else {
     section.tabIndex = -1;
     section.focus({ preventScroll: true });
   }
@@ -29,7 +38,17 @@ export function focusSection(href: string, focusId?: string) {
 
 export function SectionLinkAnchor({ href, focusId, className, children }: { href: string; focusId?: string; className?: string; children: React.ReactNode }) {
   return (
-    <a href={href} className={className} onClick={() => focusSection(href, focusId)}>
+    <a
+      href={href}
+      className={className}
+      onClick={(e) => {
+        // Con ctrl, meta, mayús o botón central se deja al navegador (pestaña nueva…)
+        if (e.defaultPrevented || e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
+        // La navegación por fragmento del enlace correría después y quitaría el foco
+        e.preventDefault();
+        focusSection(href, focusId);
+      }}
+    >
       {children}
     </a>
   );

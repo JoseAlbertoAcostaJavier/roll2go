@@ -378,7 +378,8 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
 
   // Borrador: se guarda en cada cambio (si el navegador no deja, se sigue sin borrador).
   // Un formulario igual al de partida no deja borrador: se quita la clave. El formulario ya viene del borrador
-  // recuperado, así que nunca se borra uno con datos antes de leerlo.
+  // recuperado, así que nunca se borra uno con datos antes de leerlo. Un borrador cuyas referencias se hayan
+  // descartado todas puede quedar en blanco al leerlo y entonces también se quita.
   useEffect(() => {
     if (submitted.current) return;
     try {
@@ -621,7 +622,10 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
     ...(!recreate ? [{ label: "Información", href: S.info }] : []),
   ].map((s) => ({
     ...s,
-    pending: s.href === S.status || s.href === S.info ? null : missing.some((m) => m.href === s.href),
+    // «Rasgos de clase» no está completa sin clase: la clase falta en Detalles, no aquí
+    pending: s.href === S.status || s.href === S.info ? null
+      : s.href === S.klass ? !form.klass || missing.some((m) => m.href === s.href)
+        : missing.some((m) => m.href === s.href),
   }));
 
   // ---- cambios con efectos en cadena ----

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { field } from "@/app/components/ui/formStyles";
+import { nextListQuery } from "@/lib/utils/listQuery";
 
 export type FilterSelect = {
   /** Nombre del parámetro de la URL. */
@@ -44,15 +45,16 @@ export default function ListFilters({ base, title, q: urlQ, searchLabel, placeho
   }
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
   useEffect(() => () => clearTimeout(timer.current), []);
+  // Últimos parámetros pedidos: Next solo actualiza la URL al confirmar la navegación, y hasta entonces
+  // `window.location.search` no los refleja. Los cambios seguidos parten de aquí; se suelta cuando la URL cambia.
+  const requested = useRef<URLSearchParams | null>(null);
+  useEffect(() => {
+    requested.current = null;
+  }, [urlKey]);
 
-  // Parte de la URL del momento (no de la del render), para no pisar un selector cambiado durante la espera
-  function apply(changes: Record<string, { value: string; defaultValue: string }>) {
-    const params = new URLSearchParams(window.location.search);
-    for (const [name, { value, defaultValue }] of Object.entries(changes)) {
-      if (value === defaultValue) params.delete(name);
-      else params.set(name, value);
-    }
-    params.delete("page");
+  function apply(change: { name: string; value: string; defaultValue: string }) {
+    const params = nextListQuery(requested.current ?? new URLSearchParams(window.location.search), change);
+    requested.current = params;
     const qs = params.toString();
     router.replace(qs ? `${base}?${qs}` : base, { scroll: false });
   }
@@ -63,13 +65,22 @@ export default function ListFilters({ base, title, q: urlQ, searchLabel, placeho
     clearTimeout(timer.current);
     timer.current = setTimeout(() => {
       setTyping(false);
-      apply({ q: { value: value.trim(), defaultValue: "" } });
+      apply({ name: "q", value: value.trim(), defaultValue: "" });
     }, 300);
   }
 
   function onSelect(s: FilterSelect, value: string) {
     setVals((v) => ({ ...v, [s.name]: value }));
-    apply({ [s.name]: { value, defaultValue: s.defaultValue } });
+    apply({ name: s.name, value, defaultValue: s.defaultValue });
+  }
+
+  // «Limpiar» descarta también la búsqueda pendiente para que no se vuelva a aplicar
+  function onClear() {
+    clearTimeout(timer.current);
+    setTyping(false);
+    setQ("");
+    setVals(Object.fromEntries(selects.map((s) => [s.name, s.defaultValue])));
+    requested.current = null;
   }
 
   const hasFilters = urlQ !== "" || selects.some((s) => s.value !== s.defaultValue);
@@ -84,7 +95,7 @@ export default function ListFilters({ base, title, q: urlQ, searchLabel, placeho
           maxLength={80}
           placeholder={placeholder}
           aria-label={searchLabel}
-          className={`${field} h-11 min-w-0 flex-[2_1_14rem]`}
+          className={`${field} min-w-0 flex-[2_1_14rem]`}
         />
         {selects.map((s) => (
           <select
@@ -92,7 +103,7 @@ export default function ListFilters({ base, title, q: urlQ, searchLabel, placeho
             value={vals[s.name] ?? s.value}
             onChange={(e) => onSelect(s, e.target.value)}
             aria-label={s.label}
-            className={`${field} h-11 min-w-0 flex-[1_1_9rem]`}
+            className={`${field} min-w-0 flex-[1_1_9rem]`}
           >
             {s.options.map((o) => (
               <option key={o.value} value={o.value}>{o.label}</option>
@@ -100,7 +111,7 @@ export default function ListFilters({ base, title, q: urlQ, searchLabel, placeho
           </select>
         ))}
         {hasFilters && (
-          <Link href={base} className="text-sm text-muted hover:text-white">
+          <Link href={base} onClick={onClear} className="text-sm text-muted hover:text-white">
             Limpiar
           </Link>
         )}

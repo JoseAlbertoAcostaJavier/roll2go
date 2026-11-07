@@ -46,14 +46,14 @@ export default async function Page() {
   return (
     <div className="mx-auto max-w-280 px-5">
       <section className="py-9 md:pb-6 md:pt-14">
-        <h1 className="mb-8 font-heading text-[clamp(2rem,4.5vw,3.2rem)] font-extrabold leading-[1.1]">
+        <h1 className="mb-8 wrap-anywhere font-heading text-[clamp(2rem,4.5vw,3.2rem)] font-extrabold leading-[1.1]">
           Hola, {user.displayName}
         </h1>
 
         <h2 className={cardTitle}>Continuar</h2>
         {empty ? (
           <div className="rounded-lg border border-dashed border-line p-8 text-center">
-            <p className="mb-5 text-muted">Aún no tienes personajes ni campañas. Empieza por aquí.</p>
+            <p className="mb-5 text-muted">No tienes personajes ni campañas activos.</p>
             <div className="flex flex-wrap justify-center gap-3">
               <Link href="/characters/new?system=dnd-2024" className={primaryButton}>
                 Crear personaje
