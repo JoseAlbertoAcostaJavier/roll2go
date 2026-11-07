@@ -19,13 +19,12 @@ export type CharacterFilters = {
   q: string;
   status: "active" | "retired" | "dead" | "npc" | "all";
   sort: "recent" | "name";
-  limit?: number; // por defecto 100; la portada pide solo los últimos
 };
 
 /* «Mis personajes»: las tarjetas de los personajes del usuario con los filtros (la búsqueda mira el nombre, la
    especie, el legado, la clase y el nombre de la campaña), las campañas activas que admiten crear personajes desde
    ellas y los libros que ve el usuario (para el diálogo de «Nuevo personaje»). */
-export async function listMyCharacters(userId: string, { q, status, sort, limit = 100 }: CharacterFilters) {
+export async function listMyCharacters(userId: string, { q, status, sort }: CharacterFilters) {
   await connectDB();
 
   // Campañas del usuario: alimentan el diálogo y los enlaces de las tarjetas
@@ -56,7 +55,7 @@ export async function listMyCharacters(userId: string, { q, status, sort, limit 
       .select("name systemId status campaign campaignStatus portraitId sheet.species sheet.lineage sheet.classes sheet.classesSummary")
       .sort(sort === "name" ? { name: 1 } : { updatedAt: -1 })
       .collation({ locale: "es", strength: 2 })
-      .limit(limit)
+      .limit(100)
       .lean(),
     visibleBooksOf(userId),
   ]);

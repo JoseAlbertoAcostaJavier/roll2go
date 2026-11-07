@@ -24,11 +24,10 @@ export type CampaignFilters = {
   owner: "all" | "mine" | "others";
   status: "active" | "inactive" | "all";
   sort: "recent" | "new" | "name";
-  limit?: number; // por defecto 100; la portada pide solo las últimas
 };
 
 // «Mis campañas»: siempre solo las campañas de las que el usuario es miembro, y las invitaciones que le han enviado
-export async function listMyCampaigns(userId: string, { q, owner, status, sort, limit = 100 }: CampaignFilters) {
+export async function listMyCampaigns(userId: string, { q, owner, status, sort }: CampaignFilters) {
   await connectDB();
 
   const filter: Record<string, unknown> = { members: userId };
@@ -46,7 +45,7 @@ export async function listMyCampaigns(userId: string, { q, owner, status, sort, 
       .select("name systemId status owner members imageId logoId shortDescription")
       .sort(sortBy)
       .collation({ locale: "es", strength: 2 }) // ordena por nombre sin distinguir mayúsculas ni tildes
-      .limit(limit)
+      .limit(100)
       .lean(),
     CampaignInvite.find({ user: userId }).sort({ createdAt: -1 }).limit(20).lean(),
   ]);
