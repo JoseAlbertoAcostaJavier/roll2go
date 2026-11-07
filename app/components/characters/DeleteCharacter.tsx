@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { LoaderCircle, Trash2, TriangleAlert } from "lucide-react";
 
@@ -8,9 +9,15 @@ import { LoaderCircle, Trash2, TriangleAlert } from "lucide-react";
 export default function DeleteCharacter({
   characterId,
   characterName,
+  trigger,
+  onClosed,
 }: {
   characterId: string;
   characterName: string;
+  /** Sustituye al botón por defecto (el menú de la tarjeta de personaje). */
+  trigger?: (open: () => void) => ReactNode;
+  /** Al cerrar el cuadro sin borrar: para devolver el foco. */
+  onClosed?: () => void;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -26,6 +33,7 @@ export default function DeleteCharacter({
     setOpen(false);
     setTyped("");
     setError("");
+    onClosed?.();
   }
 
   // Con el cuadro abierto: foco en el campo y la tecla Escape lo cierra
@@ -37,11 +45,12 @@ export default function DeleteCharacter({
         setOpen(false);
         setTyped("");
         setError("");
+        onClosed?.();
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open, loading]);
+  }, [open, loading, onClosed]);
 
   async function confirmDelete() {
     if (!matches || loading) return;
@@ -65,15 +74,18 @@ export default function DeleteCharacter({
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="flex w-max items-center gap-1.5 rounded-md bg-brand px-3 py-1.5 text-xs font-bold text-white transition-colors hover:bg-brand-hover"
-      >
-        <Trash2 size={14} aria-hidden="true" /> Borrar personaje
-      </button>
+      {trigger ? trigger(() => setOpen(true)) : (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="flex w-max items-center gap-1.5 rounded-md bg-brand px-3 py-1.5 text-xs font-bold text-white transition-colors hover:bg-brand-hover"
+        >
+          <Trash2 size={14} aria-hidden="true" /> Borrar personaje
+        </button>
+      )}
 
-      {open && (
+      {/* En el cuerpo de la página: dentro de una tarjeta, su `position: fixed` y sus clics quedarían atrapados */}
+      {open && createPortal(
         <div
           className="fixed inset-0 z-50 flex animate-fade-in items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
           onMouseDown={(e) => {
@@ -104,7 +116,7 @@ export default function DeleteCharacter({
 
             <label htmlFor="confirm-name" className="mb-1.5 block text-sm">
               Para confirmar, escribe el nombre del personaje:{" "}
-              <strong className="break-all font-semibold text-white">{characterName}</strong>
+              <strong className="wrap-anywhere font-semibold text-white">{characterName}</strong>
             </label>
             <input
               id="confirm-name"
@@ -143,7 +155,8 @@ export default function DeleteCharacter({
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </>
   );
