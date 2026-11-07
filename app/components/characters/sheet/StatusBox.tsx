@@ -20,7 +20,7 @@ export const DEFENSE_GROUPS: { kind: DefenseKind; title: string }[] = [
 ];
 export const defenseLabel = (r: DefenseRow) => (r.type === null ? "a elegir" : defenseTypeName(r.kind, r.type));
 
-const title = "mb-1 text-xs font-semibold uppercase tracking-wide text-muted";
+const title = "mb-1 text-[11px] font-bold uppercase tracking-wide text-muted";
 
 // Defensas y estados: resistencias, inmunidades y vulnerabilidades; los estados activos (cada uno abre su texto) y el
 // agotamiento. El dueño los gestiona en un diálogo y cada cambio se guarda al momento (optimista, con vuelta atrás si falla).
@@ -91,8 +91,8 @@ export default function StatusBox({ characterId, isOwner, defenses, status, show
   const hasStatus = conditions.length > 0 || exhaustion > 0;
 
   return (
-    <section aria-label="Defensas y estados" className={`rounded-lg border border-line bg-panel p-4 ${className}`}>
-      <div className="grid gap-4 sm:grid-cols-2">
+    <section aria-label="Defensas y estados" className={`rounded-xl border border-line bg-panel p-4 ${className}`}>
+      <div className="grid grid-cols-2 gap-4">
         <div className="min-w-0">
           <h3 className={title}>Defensas</h3>
           {defenses.length === 0 ? (

@@ -7,7 +7,11 @@ export const abbr = (a: Ability) => ABILITY_ABBR[a][0] + ABILITY_ABBR[a].slice(1
 // Valores que abren su detalle: el área entera se puede pulsar, sin parecer un botón de acción. Al imprimir se ven
 // como texto (`data-print`, ver globals.css)
 export const statButton =
-  "cursor-pointer transition-colors hover:bg-surface focus-visible:outline-2 focus-visible:outline-brand";
+  "cursor-pointer transition-colors hover:border-line-strong hover:bg-surface focus-visible:outline-2 focus-visible:outline-brand";
+// Tarjeta de la franja superior (características, CA, iniciativa, velocidad, competencia): valor grande y rótulo debajo
+export const tile = "rounded-xl border border-line bg-panel";
+export const tileValue = "font-heading text-3xl font-extrabold leading-tight text-white";
+export const tileLabel = "mt-1 flex items-center justify-center gap-1 text-[11px] font-bold uppercase leading-tight tracking-wide text-muted";
 export const chip = "flex h-14 flex-col items-center justify-center rounded-md border border-line bg-surface px-2 text-center";
 export const chipLabel = "flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-muted";
 export const chipValue = "font-heading text-xl font-extrabold leading-tight";

@@ -24,7 +24,7 @@ export default function SheetTabs({ base, active, tabs }: { base: string; active
     <nav
       ref={nav}
       aria-label="Secciones de la ficha"
-      className="sticky top-0 z-30 mb-6 flex gap-1 overflow-x-auto overflow-y-hidden border-b border-line bg-surface [scrollbar-width:none] print:hidden [&::-webkit-scrollbar]:hidden"
+      className="sticky top-0 z-30 mb-4 flex gap-1 max-md:mt-3 md:mb-6 overflow-x-auto overflow-y-hidden border-b border-line bg-surface [scrollbar-width:none] print:hidden [&::-webkit-scrollbar]:hidden"
     >
       {SHEET_TABS.filter((t) => tabs.includes(t.id)).map(({ id, label, icon: Icon }) => {
         const current = id === active;

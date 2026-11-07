@@ -1,10 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { flushSync } from "react-dom";
 import { useRouter } from "next/navigation";
-import { LoaderCircle, TriangleAlert } from "lucide-react";
+import {
+  ChevronLeft, ChevronRight, Dices, Dna, FileText, Globe, LoaderCircle, Package, Shield, Sword, TriangleAlert, User, Wand2,
+} from "lucide-react";
 import Bbcode from "@/app/components/ui/Bbcode";
-import { card, cardTitle, errorClass, field, labelClass, primaryButton } from "@/app/components/ui/formStyles";
+import { field, labelClass, primaryButton, secondaryButton } from "@/app/components/ui/formStyles";
 import type { CatalogEntry, EntryOption } from "@/lib/rules/catalog/types";
 import {
   ABILITIES, type Ability, type BackgroundData, type ClassData, type Equipment, type FeatData, type FeatureData,
@@ -31,8 +34,8 @@ import type { CreationDraft } from "@/lib/rules/dnd2024/creation/recreate";
 import { SKILLS_SOURCE } from "@/lib/rules/dnd2024/sheet/upgrade";
 import AbilityScores from "./AbilityScores";
 import CharacterSummary, { type MissingItem } from "./CharacterSummary";
-import SectionIndex, { type SectionLink } from "./SectionIndex";
-import RoundIcon from "../../ui/RoundIcon";
+import CreatorStepper, { StepAnchor, StepSection, focusSection, type CreatorStep } from "./CreatorSteps";
+import OptionCards from "./OptionCards";
 import ClassFeaturesSection, { choicesFor, refFromKey, unfinished, type ChoiceValues } from "./ClassFeaturesSection";
 import EquipmentPicks from "./EquipmentPicks";
 import LanguagesSection from "./LanguagesSection";
@@ -151,11 +154,14 @@ const nameOf = (e: { nameEs: string | null; name: string }) => e.nameEs ?? e.nam
 const letters = (eq: Equipment | undefined) => Object.keys(eq ?? {}).sort();
 const fmtGold = (copper: number) => `${(copper / 100).toLocaleString("es-ES", { maximumFractionDigits: 2 })} po`;
 
-// Las secciones del formulario, para los enlaces de "Falta por completar"
+// Los pasos del asistente, para la barra de progreso y los enlaces de "Falta por completar"
 const S = {
-  details: "#detalles", status: "#estado", background: "#trasfondo",
+  identity: "#identidad", species: "#especie", background: "#trasfondo",
   klass: "#clase", spells: "#conjuros", languages: "#idiomas", abilities: "#caracteristicas", info: "#informacion",
 } as const;
+const stepId = (href: string) => href.slice(1);
+
+const subheading = "mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-white";
 
 // ---------- borrador ----------
 
@@ -280,13 +286,13 @@ const asEntry = (o: EntryOption): CatalogEntry => ({
 function Description({ entry }: { entry: CatalogEntry | null | undefined }) {
   if (entry === undefined)
     return (
-      <p className="mt-2 flex items-center gap-2 text-sm text-muted">
-        <LoaderCircle size={14} className="animate-spin" aria-hidden="true" /> Cargando descripción…
+      <p className="mt-3 flex items-center gap-2 text-sm text-muted">
+        <LoaderCircle size={14} className="animate-spin text-brand-soft" aria-hidden="true" /> Cargando descripción…
       </p>
     );
   const text = entry ? entry.descriptionEs || entry.description : "";
   return (
-    <div className="mt-2 max-h-56 overflow-y-auto rounded-md border border-line bg-surface p-3 text-sm text-muted">
+    <div className="mt-3 max-h-56 overflow-y-auto rounded-xl border border-line bg-surface/60 p-4 text-sm leading-relaxed text-muted">
       {entry === null ? "Contenido no disponible." : text ? <Bbcode source={text} /> : "Sin descripción."}
     </div>
   );
@@ -318,18 +324,20 @@ function EquipmentChoice({
   const options = letters(equipment);
   if (options.length === 0) return <p className="text-sm text-muted">Sin equipo inicial.</p>;
   return (
-    <div role="radiogroup" aria-label="Equipo inicial" className="space-y-2">
+    <div role="radiogroup" aria-label="Equipo inicial" className="grid gap-2.5">
       {options.map((l) => (
         <label
           key={l}
-          className={`flex cursor-pointer items-start gap-3 rounded-md border p-3 text-sm transition-colors ${value === l ? "border-brand bg-brand/10" : "border-line hover:border-brand"}`}
+          className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3.5 text-sm transition-colors ${value === l ? "border-brand bg-brand/10" : "border-line bg-surface/30 hover:border-line-strong hover:bg-surface/60"}`}
         >
-          <input type="radio" name={name} value={l} checked={value === l} onChange={() => onChange(l)} className="mt-0.5 accent-brand" />
+          <input type="radio" name={name} value={l} checked={value === l} onChange={() => onChange(l)} className="mt-0.5 h-4 w-4 accent-brand" />
           <span>
-            <span className="font-semibold">Opción {l}:</span>{" "}
-            {equipment![l]
-              .map((p, i) => packText(p, cache, value === l && p.choose ? findOption(items, picks[String(i)] ?? null) : null))
-              .filter(Boolean).join(", ") || "—"}
+            <span className="font-extrabold text-white">Opción {l}:</span>{" "}
+            <span className="text-muted">
+              {equipment![l]
+                .map((p, i) => packText(p, cache, value === l && p.choose ? findOption(items, picks[String(i)] ?? null) : null))
+                .filter(Boolean).join(", ") || "—"}
+            </span>
           </span>
         </label>
       ))}
@@ -373,6 +381,11 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
   // Tras crear con éxito, el borrador ya no se vuelve a escribir
   const submitted = useRef(false);
 
+  // Paso visible (al recargar se sigue en el de la dirección) y pasos vistos; con un borrador o al rehacer, todos
+  const formRef = useRef<HTMLFormElement>(null);
+  const [activeStep, setActiveStep] = useState(() => window.location.hash.slice(1));
+  const [seenSteps, setSeenSteps] = useState<Set<string> | null>(() => (props.draft ? null : new Set([window.location.hash.slice(1)])));
+
   // Estado de partida del formulario: el vacío, o la creación actual al rehacer
   const [blank] = useState<FormState>(() => (recreate ? parseDraft(JSON.stringify(recreate.initial), props) : emptyForm()));
 
@@ -393,7 +406,9 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
   // Tras un envío con errores, se lleva la vista al primero
   useEffect(() => {
     if (scrollTick === 0) return;
-    document.querySelector("[data-field-error]")?.scrollIntoView({ behavior: "smooth", block: "center" });
+    // (los pasos ocultos también tienen sus errores en la página: se busca el primero que se vea)
+    const visible = [...document.querySelectorAll<HTMLElement>("[data-field-error]")].find((el) => el.offsetParent !== null);
+    visible?.scrollIntoView({ behavior: "smooth", block: "center" });
   }, [scrollTick]);
 
   // Cambia campos y borra los errores del servidor que ya no aplican
@@ -583,13 +598,13 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
 
   // ---- falta por completar ----
   const missing: MissingItem[] = [];
-  if (!form.name.trim()) missing.push({ label: "Nombre", href: S.details });
-  if (!form.species) missing.push({ label: "Especie", href: S.details, focusId: "species" });
-  if (hasLineages && !form.lineage) missing.push({ label: "Legado", href: S.details, focusId: "lineage" });
+  if (!form.name.trim()) missing.push({ label: "Nombre", href: S.identity });
+  if (!form.species) missing.push({ label: "Especie", href: S.species, focusId: "species" });
+  if (hasLineages && !form.lineage) missing.push({ label: "Legado", href: S.species, focusId: "lineage" });
   if (speciesData?.skills.choose && form.speciesSkills.filter(Boolean).length !== speciesData.skills.choose.count)
-    missing.push({ label: "Habilidades de especie", href: S.details, focusId: "species-skills" });
-  if (speciesData && speciesData.size.length > 1 && !form.size) missing.push({ label: "Tamaño", href: S.details, focusId: "size" });
-  if (!form.klass) missing.push({ label: "Clase", href: S.details, focusId: "class" });
+    missing.push({ label: "Habilidades de especie", href: S.species, focusId: "species-skills" });
+  if (speciesData && speciesData.size.length > 1 && !form.size) missing.push({ label: "Tamaño", href: S.species, focusId: "size" });
+  if (!form.klass) missing.push({ label: "Clase", href: S.klass, focusId: "class" });
   if (!form.background) missing.push({ label: "Trasfondo", href: S.background });
   else if (!form.bgEquipment && letters(bgData?.equipment).length) missing.push({ label: "Equipo del trasfondo", href: S.background });
   else
@@ -610,23 +625,55 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
   if (bgData && !checkBackgroundBonus(form.bonus, bgData.abilities))
     missing.push({ label: "Bonificación del trasfondo", href: S.abilities });
 
-  // Índice de secciones tal como se pintan; "pendiente" sale de la misma lista que «Falta por completar»
-  const sectionLinks: SectionLink[] = [
-    { label: "Detalles", href: S.details },
-    ...(!recreate ? [{ label: "Estado", href: S.status }] : []),
-    { label: "Trasfondo", href: S.background },
-    { label: "Rasgos de clase", href: S.klass },
-    ...(casting && form.klass ? [{ label: "Conjuros", href: S.spells }] : []),
-    { label: "Idiomas", href: S.languages },
-    { label: "Puntuaciones de característica", href: S.abilities },
-    ...(!recreate ? [{ label: "Información", href: S.info }] : []),
-  ].map((s) => ({
+  // ---- pasos ----
+  // Paso de cada error del servidor (los de la dote del trasfondo y los conjuros de clase tienen su propio paso)
+  const errorStep = (k: string): string | null => {
+    if (["name", "pronouns", "campaign", "portrait", "image", "status"].includes(k)) return S.identity;
+    if (k === "species" || k === "lineage" || k.startsWith("speciesChoices")) return S.species;
+    if (k.startsWith("background.abilities")) return S.abilities;
+    if (k.startsWith("background") || (bgFeatPending && k === `levels.0.choices.${bgFeatPending.source}`)) return S.background;
+    if (spellPending && k === `levels.0.choices.${spellPending.source}`) return S.spells;
+    if (k.startsWith("classes") || k.startsWith("levels.0.choices")) return S.klass;
+    if (k === "languageChoices") return S.languages;
+    if (["abilityMethod", "baseAbilities", "rolls"].includes(k)) return S.abilities;
+    if (["alignment", "age", "xp", "appearance", "backstory", "notes"].includes(k)) return S.info;
+    return null;
+  };
+  const steps: CreatorStep[] = [
+    { href: S.identity, label: "Identidad", title: "Identidad", description: "Cómo se llama tu personaje y cómo se presenta.", icon: User, optional: false },
+    { href: S.species, label: "Especie", title: "Especie", description: "Su origen: tamaño, velocidad y rasgos innatos.", icon: Dna, optional: false },
+    { href: S.background, label: "Trasfondo", title: "Trasfondo", description: "De dónde viene: características, dote, habilidades y equipo.", icon: Shield, optional: false },
+    { href: S.klass, label: "Clase", title: "Clase", description: "Su oficio: rasgos de nivel 1, habilidades y equipo inicial.", icon: Sword, optional: false },
+    ...(casting && form.klass ? [{ href: S.spells, label: "Conjuros", title: "Conjuros iniciales", description: "Prepararás tus conjuros desde la pestaña Conjuros de la ficha.", icon: Wand2, optional: false }] : []),
+    { href: S.languages, label: "Idiomas", title: "Idiomas", description: "Las lenguas que conoce tu personaje.", icon: Globe, optional: false },
+    { href: S.abilities, label: "Características", title: "Puntuaciones de característica", description: "Reparte sus puntuaciones y la bonificación del trasfondo.", icon: Dices, optional: false },
+    ...(!recreate ? [{ href: S.info, label: "Información", title: "Biografía e información", description: "Opcional: podrás completarla más adelante desde la ficha.", icon: FileText, optional: true }] : []),
+  ].map(({ href, optional, ...s }) => ({
     ...s,
-    // «Rasgos de clase» no está completa sin clase: la clase falta en Detalles, no aquí
-    pending: s.href === S.status || s.href === S.info ? null
-      : s.href === S.klass ? !form.klass || missing.some((m) => m.href === s.href)
-        : missing.some((m) => m.href === s.href),
+    id: stepId(href),
+    pending: optional ? null : missing.some((m) => m.href === href) || Object.keys(errors).some((k) => errorStep(k) === href),
+    seen: !seenSteps || seenSteps.has(stepId(href)) || activeStep === stepId(href),
   }));
+  // (el paso de la dirección puede no existir: sin clase lanzadora no hay Conjuros)
+  const current = steps.find((s) => s.id === activeStep) ?? steps[0];
+
+  function showStep(id: string) {
+    setActiveStep(id);
+    // Al salir de un paso también cuenta como visto el primero, que no está en la dirección al entrar
+    setSeenSteps((seen) => seen && new Set(seen).add(id).add(current.id));
+    history.replaceState(null, "", `#${id}`);
+  }
+  // Muestra el paso, sube a la barra de progreso y deja el foco en su título (sin abrir ningún desplegable)
+  function goToStep(id: string) {
+    flushSync(() => showStep(id));
+    formRef.current?.scrollIntoView();
+    document.getElementById(`${id}-title`)?.focus({ preventScroll: true });
+  }
+  // Muestra el paso de lo que falta y lleva el foco a ese control
+  function goToMissing(item: MissingItem) {
+    flushSync(() => showStep(stepId(item.href)));
+    focusSection(item.href, item.focusId);
+  }
 
   // ---- cambios con efectos en cadena ----
   // Errores de las elecciones de clase (se borran juntos al cambiar algo que les afecta)
@@ -706,12 +753,8 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
     ev.preventDefault();
     if (!abilitiesValid || loading) return;
     setFormError("");
-    // Con huecos de idioma sin elegir no se envía: las posiciones de lo elegido se desplazarían
-    if (form.languageChoices.filter(Boolean).length < languageTotal(slots)) {
-      setErrors((e) => ({ ...e, languageChoices: "Faltan idiomas por elegir." }));
-      document.getElementById("idiomas")?.scrollIntoView({ behavior: "smooth", block: "start" });
-      return;
-    }
+    // Con algo pendiente no se envía (con huecos de idioma, además, las posiciones de lo elegido se desplazarían)
+    if (missing.length > 0) return;
     if (recreate && !confirming) {
       setConfirming(true);
       return;
@@ -778,6 +821,10 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
         setConfirming(false);
         if (data?.errors) {
           setErrors(data.errors);
+          // Al paso del primer error, en el orden del asistente (los errores generales se ven desde cualquiera)
+          const failed = Object.keys(data.errors).map(errorStep);
+          const first = steps.find((s) => failed.includes(`#${s.id}`));
+          if (first) showStep(first.id);
           setScrollTick((t) => t + 1);
         } else setFormError(data?.error ?? `El servidor ha respondido con un error (${res.status}).`);
         return;
@@ -812,8 +859,10 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
     const errorKey = `levels.0.choices.${p.source}`;
     const ready = spellStatus(pendingSpellLists(p));
     return (
-      <div key={p.source} className="mt-5 animate-fade-in">
-        <h3 className="mb-3 font-heading text-lg font-bold">{p.label}</h3>
+      <div key={p.source} className="mt-6 animate-fade-in rounded-xl border border-line bg-surface/30 p-5">
+        <h3 className="mb-4 flex items-center gap-2 font-heading text-lg font-bold text-white">
+          <Wand2 size={18} className="text-brand-soft" aria-hidden="true" /> {p.label}
+        </h3>
         {ready !== "ready" ? <SpellListsStatus error={ready === "error"} onRetry={retrySpells} /> : <FeatSpellsStep
           id={id}
           p={p}
@@ -842,333 +891,372 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
   const errorCount = Object.keys(errors).length;
   const classIdentifier = form.klass ? (cache[refKey(form.klass)]?.identifier || bareName(form.klass.key)) : null;
   const speciesIdentifier = form.species ? (cache[refKey(form.species)]?.identifier || bareName(form.species.key)) : "";
-  const section = (i: number) => ({ className: `${card} animate-fade-up scroll-mt-24`, style: { animationDelay: `${i * 50}ms` } });
+  const stepProps = (href: string) => {
+    const i = steps.findIndex((s) => `#${s.id}` === href);
+    return { step: steps[i], number: i + 1, total: steps.length, active: steps[i].id === current.id };
+  };
+  const currentIndex = steps.indexOf(current);
+  const isLast = currentIndex === steps.length - 1;
+  const complete = missing.length === 0;
 
   return (
-    <form onSubmit={submit} noValidate className="grid grid-cols-[minmax(0,1fr)] items-start gap-6 lg:grid-cols-[minmax(0,1fr)_18rem]">
-      <div className="space-y-6">
-        {/* Índice plegable en móvil; en escritorio va en la columna Resumen */}
-        <details className="rounded-lg border border-line bg-panel px-4 py-3 lg:hidden">
-          <summary className="cursor-pointer text-sm font-semibold">Secciones</summary>
-          <div className="mt-2">
-            <SectionIndex sections={sectionLinks} />
-          </div>
-        </details>
+    <form ref={formRef} onSubmit={submit} noValidate className="scroll-mt-24 space-y-6">
+      <CreatorStepper steps={steps} current={current.id} onGo={goToStep} />
 
-        {/* 1. Detalles */}
-        <section id="detalles" {...section(0)}>
-          <h2 className={cardTitle}>Detalles</h2>
-          <div className="space-y-5">
-            <div>
-              <label htmlFor="name" className={labelClass}>Nombre *</label>
-              <div className="flex flex-wrap items-start gap-2">
-                <input
-                  id="name"
-                  className={`${field} min-w-0 flex-1`}
-                  maxLength={LIMITS.name}
-                  value={form.name}
-                  onChange={(e) => update({ name: e.target.value }, "name")}
-                />
-                <NameGeneratorButton
-                  species={speciesIdentifier}
-                  pronouns={form.pronouns}
-                  onName={(name) => update({ name }, "name")}
-                />
-              </div>
-              <FieldError errors={errors} keys={["name"]} />
-            </div>
-
-            <div>
-              <PronounsField value={form.pronouns} onChange={(pronouns) => update({ pronouns }, "pronouns")} />
-              <FieldError errors={errors} keys={["pronouns"]} />
-            </div>
-
-            <div>
-              <RuleSelect id="species" label="Especie" options={props.species} value={form.species} onChange={chooseSpecies} />
-              <FieldError errors={errors} keys={["species"]} />
-              {form.species && <Description entry={cache[refKey(form.species)]} />}
-            </div>
-
-            {hasLineages && (
-              <div className="animate-fade-in">
-                <RuleSelect
-                  id="lineage"
-                  label="Legado"
-                  options={lineageOptions}
-                  value={form.lineage}
-                  onChange={(ref) => update({ lineage: ref }, "lineage")}
-                />
-                <FieldError errors={errors} keys={["lineage"]} />
-                {form.lineage && <Description entry={cache[refKey(form.lineage)]} />}
-              </div>
-            )}
-
-            {speciesData?.skills.choose && (
+      <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
+        <div className="space-y-6">
+          {/* Identidad */}
+          <StepSection {...stepProps(S.identity)}>
+            <div className="space-y-6">
               <div>
-                <SkillPicker
-                  id="species-skills"
-                  label="Habilidades de especie"
-                  count={speciesData.skills.choose.count}
-                  options={speciesData.skills.choose.from
-                    .filter((s) => fixedLocked[s] === undefined)
-                    .map((s) => ({ id: s, label: skillName(s) }))}
-                  value={form.speciesSkills}
-                  onChange={chooseSpeciesSkills}
-                  hint={Object.keys(fixedLocked).length ? `Ya tienes: ${lockedHint(fixedLocked)}.` : undefined}
-                />
-                <FieldError errors={errors} keys={["speciesChoices.skills"]} />
-              </div>
-            )}
-
-            {speciesData && speciesData.size.length > 1 && (
-              <div>
-                <label htmlFor="size" className={labelClass}>Tamaño</label>
-                <select
-                  id="size"
-                  className={field}
-                  value={form.size ?? ""}
-                  onChange={(e) => update({ size: (e.target.value || null) as Size | null }, "speciesChoices.size")}
-                >
-                  <option value="">Elige un tamaño…</option>
-                  {speciesData.size.map((s) => <option key={s} value={s}>{sizeName(s)}</option>)}
-                </select>
-                <FieldError errors={errors} keys={["speciesChoices.size"]} />
-              </div>
-            )}
-
-            <div>
-              <div className="flex items-end gap-3">
-                <div className="min-w-0 flex-1">
-                  <RuleSelect id="class" label="Escoger clase inicial" options={props.classes} value={form.klass} onChange={chooseClass} />
+                <label htmlFor="name" className={labelClass}>Nombre *</label>
+                <div className="flex flex-wrap items-start gap-2">
+                  <input
+                    id="name"
+                    className={`${field} min-w-0 flex-1`}
+                    maxLength={LIMITS.name}
+                    value={form.name}
+                    placeholder="¿Cómo se llama tu personaje?"
+                    onChange={(e) => update({ name: e.target.value }, "name")}
+                  />
+                  <NameGeneratorButton
+                    species={speciesIdentifier}
+                    pronouns={form.pronouns}
+                    onName={(name) => update({ name }, "name")}
+                  />
                 </div>
-                <RoundIcon kind="class" id={classIdentifier} label={classOpt ? (classOpt.nameEs ?? classOpt.name) : ""} size={46} />
+                <FieldError errors={errors} keys={["name"]} />
               </div>
-              <FieldError errors={errors} keys={["classes", "classes.0", "classes.0.level", "classes.0.subclass"]} />
-              {form.klass && <Description entry={cache[refKey(form.klass)]} />}
-            </div>
 
-            {!recreate && (
-              <>
-                <div>
-                  <label htmlFor="campaign" className={labelClass}>Campaña</label>
-                  <input id="campaign" className={field} value={campaign?.name ?? "Sin campaña"} readOnly disabled />
+              <div>
+                <PronounsField value={form.pronouns} onChange={(pronouns) => update({ pronouns }, "pronouns")} />
+                <FieldError errors={errors} keys={["pronouns"]} />
+              </div>
+
+              {!recreate && (
+                <>
+                  {campaign && (
+                    <div>
+                      <label htmlFor="campaign" className={labelClass}>Campaña</label>
+                      <input id="campaign" className={`${field} cursor-not-allowed`} value={campaign.name} readOnly disabled />
+                    </div>
+                  )}
                   <FieldError errors={errors} keys={["campaign"]} />
-                </div>
 
-                <ImageFields errors={errors} onPortrait={setPortrait} onImage={setImage} />
-              </>
-            )}
-          </div>
-        </section>
+                  <ImageFields errors={errors} onPortrait={setPortrait} onImage={setImage} />
 
-        {/* 2. Estado */}
-        {!recreate && (
-          <section id="estado" {...section(1)}>
-            <h2 className={cardTitle}>Estado</h2>
-            <StatusField value={form.status} onChange={(status) => update({ status }, "status")} errors={errors} />
-          </section>
-        )}
+                  <div>
+                    <h3 className={labelClass}>Estado</h3>
+                    <StatusField value={form.status} onChange={(status) => update({ status }, "status")} errors={errors} />
+                  </div>
+                </>
+              )}
+            </div>
+          </StepSection>
 
-        {/* 3. Trasfondo */}
-        <section id="trasfondo" {...section(2)}>
-          <h2 className={cardTitle}>Trasfondo</h2>
-          <RuleSelect id="background" label="Trasfondo" options={props.backgrounds} value={form.background} onChange={chooseBackground} />
-          <FieldError errors={errors} keys={["background"]} />
-          {form.background && <Description entry={cache[refKey(form.background)]} />}
-          {bgData && (
-            <>
-              <dl className="mt-4 grid gap-x-4 gap-y-2 text-sm sm:grid-cols-[auto_1fr]">
-                <dt className="font-semibold">Características</dt>
-                <dd className="text-muted">{bgData.abilities.map((a) => ABILITY_NAMES[a]).join(", ") || "—"}</dd>
-                <dt className="font-semibold">Dote</dt>
-                <dd className="text-muted">
-                  {(() => {
-                    const feat = cache[refKey(bgData.feat)];
-                    return feat ? nameOf(feat) : bareName(bgData.feat.key);
-                  })()}
-                </dd>
-                <dt className="font-semibold">Habilidades</dt>
-                <dd className="text-muted">{bgData.skills.map(skillName).join(", ") || "—"}</dd>
-                <dt className="font-semibold">Herramientas</dt>
-                <dd className="text-muted">{bgData.tools.map(toolName).join(", ") || "—"}</dd>
-              </dl>
-              <h3 className="mb-2 mt-5 text-sm font-semibold">Equipo inicial</h3>
-              <EquipmentChoice
-                name="bg-equipment"
-                equipment={bgData.equipment}
-                value={form.bgEquipment}
-                onChange={(l) => update({ bgEquipment: l, bgEquipmentPicks: {} }, "background.equipment", "background.equipmentPicks")}
-                cache={cache}
-                picks={form.bgEquipmentPicks}
-                items={props.choiceItems}
-              />
-              <EquipmentPicks
-                idPrefix="bg-pick"
-                equipment={bgData.equipment}
-                letter={form.bgEquipment}
-                picks={form.bgEquipmentPicks}
-                onChange={(bgEquipmentPicks) => update({ bgEquipmentPicks }, "background.equipmentPicks")}
-                items={props.choiceItems}
-              />
-            </>
-          )}
-          <FieldError errors={errors} keys={["background.equipment", "background.equipmentPicks"]} />
-          {bgFeatPending && featSpellsSection(bgFeatPending, "creator-feat-spells")}
-        </section>
-
-        {/* 4. Clase */}
-        <section id="clase" {...section(3)}>
-          <h2 className={cardTitle}>Rasgos de clase</h2>
-          {!classData ? (
-            <p className="text-sm text-muted">
-              Elige una clase en <a href={S.details} className="text-brand-soft hover:underline">Detalles</a>.
-            </p>
-          ) : (
-            <div className="space-y-5">
-              <ClassFeaturesSection
-                classData={classData}
-                pending={pending}
-                values={form.classChoices}
-                onChange={chooseClassOption}
-                cache={cache}
-                takenSkills={classLocked}
-                feats={props.feats}
-                optionalFeatures={props.optionalFeatures}
-                weapons={props.weapons}
-                errors={errors}
-              />
-              {invocationPending.map((p, i) => featSpellsSection(p, `creator-invocation-spells-${i}`))}
+          {/* Especie */}
+          <StepSection {...stepProps(S.species)}>
+            <div className="space-y-6">
               <div>
-                <h3 className="mb-2 text-sm font-semibold">Equipo inicial</h3>
-                <EquipmentChoice
-                  name="class-equipment"
-                  equipment={classData.equipment}
-                  value={form.classEquipment}
-                  onChange={(l) => update({ classEquipment: l, classEquipmentPicks: {} }, "classes.0.equipment", "classes.0.equipmentPicks")}
+                <OptionCards id="species" label="Especie" kind="species" options={props.species} value={form.species} onChange={chooseSpecies} />
+                <FieldError errors={errors} keys={["species"]} />
+                {form.species && <Description entry={cache[refKey(form.species)]} />}
+              </div>
+
+              {hasLineages && (
+                <div className="animate-fade-in">
+                  <RuleSelect
+                    id="lineage"
+                    label="Legado"
+                    options={lineageOptions}
+                    value={form.lineage}
+                    onChange={(ref) => update({ lineage: ref }, "lineage")}
+                  />
+                  <FieldError errors={errors} keys={["lineage"]} />
+                  {form.lineage && <Description entry={cache[refKey(form.lineage)]} />}
+                </div>
+              )}
+
+              {speciesData?.skills.choose && (
+                <div className="rounded-xl border border-line bg-surface/30 p-5">
+                  <SkillPicker
+                    id="species-skills"
+                    label="Habilidades de especie"
+                    count={speciesData.skills.choose.count}
+                    options={speciesData.skills.choose.from
+                      .filter((s) => fixedLocked[s] === undefined)
+                      .map((s) => ({ id: s, label: skillName(s) }))}
+                    value={form.speciesSkills}
+                    onChange={chooseSpeciesSkills}
+                    hint={Object.keys(fixedLocked).length ? `Ya tienes: ${lockedHint(fixedLocked)}.` : undefined}
+                  />
+                  <FieldError errors={errors} keys={["speciesChoices.skills"]} />
+                </div>
+              )}
+
+              {speciesData && speciesData.size.length > 1 && (
+                <div>
+                  <label htmlFor="size" className={labelClass}>Tamaño</label>
+                  <select
+                    id="size"
+                    className={field}
+                    value={form.size ?? ""}
+                    onChange={(e) => update({ size: (e.target.value || null) as Size | null }, "speciesChoices.size")}
+                  >
+                    <option value="">Elige un tamaño…</option>
+                    {speciesData.size.map((s) => <option key={s} value={s}>{sizeName(s)}</option>)}
+                  </select>
+                  <FieldError errors={errors} keys={["speciesChoices.size"]} />
+                </div>
+              )}
+            </div>
+          </StepSection>
+
+          {/* Trasfondo */}
+          <StepSection {...stepProps(S.background)}>
+            <RuleSelect id="background" label="Trasfondo" options={props.backgrounds} value={form.background} onChange={chooseBackground} />
+            <FieldError errors={errors} keys={["background"]} />
+            {form.background && <Description entry={cache[refKey(form.background)]} />}
+            {bgData && (
+              <div className="mt-6 space-y-6">
+                <div className="rounded-xl border border-line bg-surface/40 p-4">
+                  <h3 className={subheading}>Rasgos del trasfondo</h3>
+                  <dl className="grid gap-x-6 gap-y-2.5 text-sm sm:grid-cols-[auto_1fr]">
+                    <dt className="font-bold text-fg">Características</dt>
+                    <dd className="text-muted">{bgData.abilities.map((a) => ABILITY_NAMES[a]).join(", ") || "—"}</dd>
+                    <dt className="font-bold text-fg">Dote</dt>
+                    <dd className="text-muted">
+                      {(() => {
+                        const feat = cache[refKey(bgData.feat)];
+                        return feat ? nameOf(feat) : bareName(bgData.feat.key);
+                      })()}
+                    </dd>
+                    <dt className="font-bold text-fg">Habilidades</dt>
+                    <dd className="text-muted">{bgData.skills.map(skillName).join(", ") || "—"}</dd>
+                    <dt className="font-bold text-fg">Herramientas</dt>
+                    <dd className="text-muted">{bgData.tools.map(toolName).join(", ") || "—"}</dd>
+                  </dl>
+                </div>
+                <div>
+                  <h3 className={subheading}>
+                    <Package size={16} className="text-brand-soft" aria-hidden="true" /> Equipo inicial del trasfondo
+                  </h3>
+                  <EquipmentChoice
+                    name="bg-equipment"
+                    equipment={bgData.equipment}
+                    value={form.bgEquipment}
+                    onChange={(l) => update({ bgEquipment: l, bgEquipmentPicks: {} }, "background.equipment", "background.equipmentPicks")}
+                    cache={cache}
+                    picks={form.bgEquipmentPicks}
+                    items={props.choiceItems}
+                  />
+                  <EquipmentPicks
+                    idPrefix="bg-pick"
+                    equipment={bgData.equipment}
+                    letter={form.bgEquipment}
+                    picks={form.bgEquipmentPicks}
+                    onChange={(bgEquipmentPicks) => update({ bgEquipmentPicks }, "background.equipmentPicks")}
+                    items={props.choiceItems}
+                  />
+                </div>
+              </div>
+            )}
+            <FieldError errors={errors} keys={["background.equipment", "background.equipmentPicks"]} />
+            {bgFeatPending && featSpellsSection(bgFeatPending, "creator-feat-spells")}
+          </StepSection>
+
+          {/* Clase */}
+          <StepSection {...stepProps(S.klass)}>
+            <OptionCards id="class" label="Clase inicial" kind="class" options={props.classes} value={form.klass} onChange={chooseClass} />
+            <FieldError errors={errors} keys={["classes", "classes.0", "classes.0.level", "classes.0.subclass"]} />
+            {form.klass && <Description entry={cache[refKey(form.klass)]} />}
+            {classData && (
+              <div className="mt-6 space-y-6">
+                <ClassFeaturesSection
+                  classData={classData}
+                  pending={pending}
+                  values={form.classChoices}
+                  onChange={chooseClassOption}
                   cache={cache}
-                  picks={form.classEquipmentPicks}
-                  items={props.choiceItems}
+                  takenSkills={classLocked}
+                  feats={props.feats}
+                  optionalFeatures={props.optionalFeatures}
+                  weapons={props.weapons}
+                  errors={errors}
                 />
-                <EquipmentPicks
-                  idPrefix="class-pick"
-                  equipment={classData.equipment}
-                  letter={form.classEquipment}
-                  picks={form.classEquipmentPicks}
-                  onChange={(classEquipmentPicks) => update({ classEquipmentPicks }, "classes.0.equipmentPicks")}
-                  items={props.choiceItems}
-                />
+                {invocationPending.map((p, i) => featSpellsSection(p, `creator-invocation-spells-${i}`))}
+                <div>
+                  <h3 className={subheading}>
+                    <Package size={16} className="text-brand-soft" aria-hidden="true" /> Equipo inicial de clase
+                  </h3>
+                  <EquipmentChoice
+                    name="class-equipment"
+                    equipment={classData.equipment}
+                    value={form.classEquipment}
+                    onChange={(l) => update({ classEquipment: l, classEquipmentPicks: {} }, "classes.0.equipment", "classes.0.equipmentPicks")}
+                    cache={cache}
+                    picks={form.classEquipmentPicks}
+                    items={props.choiceItems}
+                  />
+                  <EquipmentPicks
+                    idPrefix="class-pick"
+                    equipment={classData.equipment}
+                    letter={form.classEquipment}
+                    picks={form.classEquipmentPicks}
+                    onChange={(classEquipmentPicks) => update({ classEquipmentPicks }, "classes.0.equipmentPicks")}
+                    items={props.choiceItems}
+                  />
+                </div>
+              </div>
+            )}
+            <FieldError errors={errors} keys={["classes.0.equipment", "classes.0.equipmentPicks"]} />
+          </StepSection>
+
+          {/* Conjuros */}
+          {casting && form.klass && (
+            <StepSection {...stepProps(S.spells)}>
+              {spellPending && (spellStatus([casting.listId]) !== "ready" ? (
+                <SpellListsStatus error={spellStatus([casting.listId]) === "error"} onRetry={retrySpells} />
+              ) : <SpellsStep
+                id="creator-spells"
+                casterName={casting.name}
+                mode={casting.mode}
+                listId={casting.listId}
+                maxLevel={casting.maxLevel}
+                pending={spellPending}
+                spells={spells}
+                held={NO_SPELLS}
+                granted={grantedFor("class")}
+                value={form.spells}
+                onChange={(spells) => update({ spells }, ...spellErrorKeys())}
+                characterId={recreate?.characterId ?? null}
+                campaignId={campaign?.id ?? null}
+              />)}
+              <FieldError errors={errors} keys={spellPending ? [`levels.0.choices.${spellPending.source}`] : []} />
+            </StepSection>
+          )}
+
+          {/* Idiomas */}
+          <StepSection {...stepProps(S.languages)}>
+            <LanguagesSection
+              fixed={fixed}
+              slots={slots}
+              languages={props.languages}
+              choices={form.languageChoices}
+              onChange={(languageChoices) => update({ languageChoices }, "languageChoices")}
+              legacyText={form.languages}
+            />
+            <FieldError errors={errors} keys={["languageChoices"]} />
+          </StepSection>
+
+          {/* Características */}
+          <StepSection {...stepProps(S.abilities)}>
+            <AbilityScores
+              method={form.method}
+              base={form.base}
+              rolls={form.rolls?.values ?? null}
+              rollDice={form.rolls?.dice ?? null}
+              backgroundAbilities={bgData?.abilities ?? []}
+              backgroundBonus={form.bonus}
+              onChange={(n) =>
+                update({ method: n.method, base: n.base, bonus: n.backgroundBonus }, "abilityMethod", "baseAbilities", "rolls", "background.abilities")
+              }
+              onRequestRolls={requestRolls}
+            />
+            {!bgData && (
+              <p className="mt-3 text-sm text-muted">
+                Elige un{" "}
+                <StepAnchor href={S.background} onGo={() => goToStep(stepId(S.background))} className="font-semibold text-brand-soft hover:underline">trasfondo</StepAnchor>{" "}
+                para repartir su bonificación.
+              </p>
+            )}
+            <FieldError errors={errors} keys={["abilityMethod", "baseAbilities", "rolls", "background.abilities"]} />
+          </StepSection>
+
+          {/* Información */}
+          {!recreate && (
+            <StepSection {...stepProps(S.info)}>
+              <InfoFields values={form} errors={errors} onChange={update} hideLanguages />
+            </StepSection>
+          )}
+
+          {/* Avisos y navegación entre pasos */}
+          <div className="rounded-xl border border-line bg-panel p-4">
+            {(generalErrors.length > 0 || formError || !abilitiesValid || confirming) && (
+              <div className="mb-4 space-y-2">
+                {generalErrors.map(([k, msg]) => (
+                  <p key={k} className="text-sm font-medium text-danger" role="alert" data-field-error>{msg}</p>
+                ))}
+                {formError && <p className="text-sm font-medium text-danger" role="alert">{formError}</p>}
+                {!abilitiesValid && <p className="text-sm font-medium text-danger">Ninguna característica puede superar 20.</p>}
+                {confirming && (
+                  <p role="alert" className="flex animate-fade-in items-center gap-2 rounded-lg border border-yellow-500/30 bg-yellow-500/10 p-3 text-sm font-medium text-yellow-500">
+                    <TriangleAlert size={18} className="shrink-0" aria-hidden="true" />
+                    Se reiniciará el inventario con el equipo inicial elegido y se vaciarán los conjuros preparados.
+                  </p>
+                )}
+              </div>
+            )}
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              {currentIndex > 0 ? (
+                <button type="button" onClick={() => goToStep(steps[currentIndex - 1].id)} className={secondaryButton}>
+                  <ChevronLeft size={16} aria-hidden="true" /> Anterior
+                </button>
+              ) : <span />}
+              <div className="flex flex-wrap items-center justify-end gap-3">
+                {confirming && (
+                  <button type="button" onClick={() => setConfirming(false)} disabled={loading} className="text-sm font-semibold text-muted hover:text-white disabled:opacity-50">
+                    Cancelar
+                  </button>
+                )}
+                {!isLast && (
+                  <button type="button" onClick={() => goToStep(steps[currentIndex + 1].id)} className={complete ? secondaryButton : primaryButton}>
+                    Siguiente <ChevronRight size={16} aria-hidden="true" />
+                  </button>
+                )}
+                {/* Con cosas pendientes, el botón lleva a la primera en vez de enviar. No puede ser un envío que cambie de
+                    paso: el botón desaparecería en mitad de su propio evento, y React necesita que siga en el formulario */}
+                {(isLast || complete) && (
+                  <button
+                    type={complete ? "submit" : "button"}
+                    onClick={complete ? undefined : () => goToMissing(missing[0])}
+                    disabled={loading || !abilitiesValid}
+                    className={complete ? primaryButton : secondaryButton}
+                  >
+                    {loading && <LoaderCircle size={16} className="animate-spin" aria-hidden="true" />}
+                    {!recreate ? "Crear personaje" : confirming ? "Sí, rehacer" : "Rehacer creación"}
+                    {!complete && (
+                      <span className="rounded-full bg-line px-2 py-0.5 text-xs font-extrabold text-fg">
+                        {missing.length} {missing.length === 1 ? "pendiente" : "pendientes"}
+                      </span>
+                    )}
+                    {complete && errorCount > 0 && (
+                      <span className="rounded-full bg-white/20 px-2 text-xs">
+                        {errorCount} {errorCount === 1 ? "problema" : "problemas"}
+                      </span>
+                    )}
+                  </button>
+                )}
               </div>
             </div>
-          )}
-          <FieldError errors={errors} keys={["classes.0.equipment", "classes.0.equipmentPicks"]} />
-        </section>
-
-        {/* 5. Conjuros */}
-        {casting && form.klass && (
-          <section id="conjuros" {...section(4)}>
-            <h2 className={cardTitle}>Conjuros</h2>
-            <p className="mb-3 text-sm text-muted">Prepararás tus conjuros desde la pestaña Conjuros de la ficha.</p>
-            {spellPending && (spellStatus([casting.listId]) !== "ready" ? (
-              <SpellListsStatus error={spellStatus([casting.listId]) === "error"} onRetry={retrySpells} />
-            ) : <SpellsStep
-              id="creator-spells"
-              casterName={casting.name}
-              mode={casting.mode}
-              listId={casting.listId}
-              maxLevel={casting.maxLevel}
-              pending={spellPending}
-              spells={spells}
-              held={NO_SPELLS}
-              granted={grantedFor("class")}
-              value={form.spells}
-              onChange={(spells) => update({ spells }, ...spellErrorKeys())}
-              characterId={recreate?.characterId ?? null}
-              campaignId={campaign?.id ?? null}
-            />)}
-            <FieldError errors={errors} keys={spellPending ? [`levels.0.choices.${spellPending.source}`] : []} />
-          </section>
-        )}
-
-        {/* 6. Idiomas */}
-        <section id="idiomas" {...section(5)}>
-          <h2 className={cardTitle}>Idiomas</h2>
-          <LanguagesSection
-            fixed={fixed}
-            slots={slots}
-            languages={props.languages}
-            choices={form.languageChoices}
-            onChange={(languageChoices) => update({ languageChoices }, "languageChoices")}
-            legacyText={form.languages}
-          />
-          <FieldError errors={errors} keys={["languageChoices"]} />
-        </section>
-
-        {/* 7. Puntuaciones de característica */}
-        <section id="caracteristicas" {...section(6)}>
-          <h2 className={cardTitle}>Puntuaciones de característica</h2>
-          <AbilityScores
-            method={form.method}
-            base={form.base}
-            rolls={form.rolls?.values ?? null}
-            rollDice={form.rolls?.dice ?? null}
-            backgroundAbilities={bgData?.abilities ?? []}
-            backgroundBonus={form.bonus}
-            onChange={(n) =>
-              update({ method: n.method, base: n.base, bonus: n.backgroundBonus }, "abilityMethod", "baseAbilities", "rolls", "background.abilities")
-            }
-            onRequestRolls={requestRolls}
-          />
-          {!bgData && <p className="mt-2 text-xs text-muted">Elige un trasfondo para repartir su bonificación.</p>}
-          <FieldError errors={errors} keys={["abilityMethod", "baseAbilities", "rolls", "background.abilities"]} />
-        </section>
-
-        {/* 8. Información */}
-        {!recreate && (
-          <section id="informacion" {...section(7)}>
-            <h2 className={cardTitle}>Información</h2>
-            <InfoFields values={form} errors={errors} onChange={update} hideLanguages />
-          </section>
-        )}
-
-        <div className="flex flex-wrap items-center justify-end gap-3">
-          {generalErrors.map(([k, msg]) => (
-            <p key={k} className={errorClass} role="alert" data-field-error>{msg}</p>
-          ))}
-          {formError && <p className={errorClass} role="alert">{formError}</p>}
-          {!abilitiesValid && <p className="text-sm text-danger">Ninguna característica puede superar 20.</p>}
-          {confirming && (
-            <p role="alert" className="flex animate-fade-in items-center gap-2 text-sm text-danger">
-              <TriangleAlert size={16} aria-hidden="true" /> Se reiniciará el inventario con el equipo inicial elegido y se vaciarán los conjuros preparados.
-            </p>
-          )}
-          {confirming && (
-            <button type="button" onClick={() => setConfirming(false)} disabled={loading} className="text-sm text-muted hover:text-white disabled:opacity-50">
-              Cancelar
-            </button>
-          )}
-          <button type="submit" disabled={loading || !abilitiesValid} className={primaryButton}>
-            {loading && <LoaderCircle size={16} className="animate-spin" aria-hidden="true" />}
-            {!recreate ? "Crear personaje" : confirming ? "Sí, rehacer" : "Rehacer creación"}
-            {errorCount > 0 && (
-              <span className="rounded-full bg-white/20 px-2 text-xs">
-                {errorCount} {errorCount === 1 ? "problema" : "problemas"}
-              </span>
-            )}
-          </button>
+          </div>
         </div>
-      </div>
 
-      {/* Si índice y resumen no caben en la altura de la ventana, la columna se desplaza por dentro */}
-      <div className="lg:sticky lg:top-20 lg:max-h-[calc(100dvh-6rem)] lg:overflow-y-auto">
-        <CharacterSummary
-          sections={sectionLinks}
-          sheet={previewSheet}
-          entries={entries}
-          hasSpecies={!!form.species}
-          hasClass={!!form.klass}
-          equipmentLoading={equipmentLoading && !!(form.bgEquipment || form.classEquipment)}
-          missing={missing}
-        />
+        {/* Si el resumen no cabe en la altura de la ventana, la columna se desplaza por dentro */}
+        <div className="lg:sticky lg:top-24 lg:max-h-[calc(100dvh-7rem)] lg:overflow-y-auto">
+          <CharacterSummary
+            name={form.name}
+            classIcon={classIdentifier}
+            line={[speciesOpt, classOpt, bgOpt].filter((o) => !!o).map((o) => nameOf(o)).join(" · ")}
+            sheet={previewSheet}
+            entries={entries}
+            hasSpecies={!!form.species}
+            hasClass={!!form.klass}
+            equipmentLoading={equipmentLoading && !!(form.bgEquipment || form.classEquipment)}
+            missing={missing}
+            onMissing={goToMissing}
+          />
+        </div>
       </div>
     </form>
   );

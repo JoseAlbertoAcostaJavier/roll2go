@@ -2,7 +2,7 @@
 
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Check } from "lucide-react";
+import { Sparkles } from "lucide-react";
 
 // Inspiración heroica: el dueño la marca o desmarca (optimista, con vuelta atrás si falla); los demás la ven en solo lectura
 export default function InspirationBox({ characterId, initial, isOwner, className = "" }: {
@@ -49,40 +49,35 @@ export default function InspirationBox({ characterId, initial, isOwner, classNam
     }
   };
 
-  const mark = (
-    <span
-      aria-hidden="true"
-      className={`flex h-10 w-10 items-center justify-center rounded-md border-2 ${on ? "border-brand bg-brand text-white" : "border-brand/50"}`}
-    >
-      {on && <Check size={24} strokeWidth={3} />}
-    </span>
+  const frame = `flex h-full min-h-24 w-full flex-col items-center justify-center gap-1 rounded-xl border px-1 text-center transition-colors print:hidden ${
+    on ? "border-brand bg-brand/10" : "border-line bg-panel"
+  }`;
+  const content = (
+    <>
+      <Sparkles size={28} aria-hidden="true" className={on ? "fill-brand-soft text-brand-soft" : "text-muted"} />
+      <span className="text-[11px] font-bold uppercase leading-tight tracking-wide text-muted">Inspiración heroica</span>
+    </>
   );
-  const label = "text-[11px] font-semibold uppercase tracking-wide text-muted";
 
   return (
-    // El error va fuera de la caja (de alto fijo): flota justo debajo
-    <div className="relative">
-    <div className={`flex flex-col items-center justify-center gap-1 rounded-lg border border-line bg-panel px-2 py-3 text-center ${className}`}>
+    // El error va fuera de la caja: flota justo debajo
+    <div className={`relative ${className}`}>
       {isOwner ? (
         <button
           type="button"
           aria-pressed={on}
           onClick={toggle}
-          className="flex flex-col items-center gap-1 rounded-md focus-visible:outline-2 focus-visible:outline-brand print:hidden"
+          className={`${frame} cursor-pointer hover:border-line-strong focus-visible:outline-2 focus-visible:outline-brand`}
         >
-          {mark}
-          <span className={label}>Inspiración heroica</span>
+          {content}
         </button>
       ) : (
-        <div className="flex flex-col items-center gap-1 print:hidden">
-          {mark}
-          <span className={label}>
-            Inspiración heroica<span className="sr-only">: {on ? "sí" : "no"}</span>
-          </span>
+        <div className={frame}>
+          {content}
+          <span className="sr-only">: {on ? "sí" : "no"}</span>
         </div>
       )}
-      <p className="hidden text-xs font-semibold print:block">Inspiración heroica: {on ? "Sí" : "No"}</p>
-    </div>
+      <p className="hidden h-full rounded-xl border border-line p-3 text-center text-xs font-semibold print:block">Inspiración heroica: {on ? "Sí" : "No"}</p>
       {error && (
         <p role="alert" className="absolute inset-x-0 top-full z-10 mt-1 rounded-md border border-line bg-surface px-2 py-1 text-xs text-danger">{error}</p>
       )}

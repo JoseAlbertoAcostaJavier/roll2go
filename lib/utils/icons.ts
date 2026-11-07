@@ -13,6 +13,10 @@ const SCHOOLS: Record<string, string> = {
   V: "evocation", I: "illusion", N: "necromancy", T: "transmutation",
 };
 
+// Clases y especies con icono (public/assets/icons): las demás muestran su inicial sin pedir una imagen que no existe
+const CLASSES = ["artificer", "barbarian", "bard", "cleric", "druid", "fighter", "monk", "paladin", "ranger", "rogue", "sorcerer", "warlock", "wizard"];
+const SPECIES = ["dragonborn", "dwarf", "elf", "gnome", "goliath", "halfling", "human", "orc", "tiefling"];
+
 // Iconos oscuros (public/assets/icons/dark): SVG blancos que se pintan como máscara (MaskIcon).
 // Listas cerradas para que un id desconocido dé null en vez de una ruta rota.
 const DAMAGE_TYPES = ["acid", "bludgeoning", "cold", "fire", "force", "lightning", "necrotic", "piercing", "poison", "psychic", "radiant", "slashing", "thunder"];
@@ -27,12 +31,21 @@ const CONDITIONS = [
 ];
 const ENVIRONMENT = ["bright-light", "darkness"];
 
+/**
+ * Silueta de la clase sin fondo (public/assets/icons/classes/no-background), o null si no hay. Es casi negra: se pinta como
+ * máscara (MaskIcon) con el color del texto para que se vea sobre fondos oscuros.
+ */
+export function classGlyphSrc(id: string | null | undefined): string | null {
+  if (!id || !CLASSES.includes(id)) return null;
+  return encodeURI(`/assets/icons/classes/no-background/Class Icon - ${id[0].toUpperCase()}${id.slice(1)}.svg`);
+}
+
 /** Ruta pública del icono (`id` es el identificador, o la letra de escuela de 5etools), o null si no hay. */
 export function iconSrc(kind: IconKind, id: string | null | undefined): string | null {
   if (!id) return null;
   switch (kind) {
-    case "class": return `/assets/icons/classes/${id}.svg`;
-    case "species": return `/assets/icons/species/${id}.png`;
+    case "class": return CLASSES.includes(id) ? `/assets/icons/classes/${id}.svg` : null;
+    case "species": return SPECIES.includes(id) ? `/assets/icons/species/${id}.png` : null;
     case "school": return SCHOOLS[id] ? `/assets/icons/schools/${SCHOOLS[id]}.svg` : null;
     case "status": return `/assets/icons/status/${id}.svg`;
     case "feature": return `/assets/icons/features/${id}.svg`;

@@ -1,5 +1,6 @@
 "use client";
 
+import { PackageOpen } from "lucide-react";
 import type { EntryOption } from "@/lib/rules/catalog/types";
 import { choosePacks } from "@/lib/rules/dnd2024/creation/creatorPicks";
 import { choiceMatches } from "@/lib/rules/dnd2024/sheet/equipmentRefs";
@@ -21,7 +22,11 @@ export default function EquipmentPicks({
   const chosen = choosePacks(equipment, letter);
   if (chosen.length === 0) return null;
   return (
-    <div className="mt-3 animate-fade-in space-y-3">
+    <div className="mt-4 animate-fade-in rounded-xl border border-line bg-surface/40 p-4">
+      <h4 className="mb-3 flex items-center gap-2 border-b border-line pb-2.5 text-xs font-bold uppercase tracking-wider text-white">
+        <PackageOpen size={16} className="text-brand-soft" aria-hidden="true" /> Personaliza tu equipo
+      </h4>
+      <div className="space-y-3">
       {chosen.map(({ index, pack }) => (
         <RuleSelect
           key={index}
@@ -40,6 +45,7 @@ export default function EquipmentPicks({
           }}
         />
       ))}
+      </div>
     </div>
   );
 }

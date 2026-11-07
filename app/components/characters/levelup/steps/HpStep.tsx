@@ -12,8 +12,8 @@ const ROLL_MS = 700;
 const FACE_MS = 70;
 
 const option = (active: boolean) =>
-  `flex flex-1 basis-40 items-center justify-center gap-2 rounded-md border px-4 py-3 font-heading font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
-    active ? "border-brand bg-brand/10 text-white" : "border-line bg-surface enabled:hover:border-brand"
+  `flex flex-1 basis-40 items-center justify-center gap-2 rounded-xl border px-4 py-3 font-heading font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+    active ? "border-brand bg-brand/10 text-white" : "border-line bg-surface/40 enabled:hover:border-line-strong enabled:hover:bg-surface"
   }`;
 
 /* Puntos de golpe del nivel: la media del dado o una tirada firmada por el servidor (con animación). Una vez tirado,
@@ -101,7 +101,7 @@ export default function HpStep({ characterId, die, value, onChange, conMod, prev
       </div>
       {error && <p role="alert" className="text-sm text-danger">{error}</p>}
 
-      <div className="flex flex-wrap items-center gap-5 rounded-md border border-line bg-surface p-4">
+      <div className="flex flex-wrap items-center gap-5 rounded-xl border border-line bg-surface/40 p-4">
         <span
           key={rolling ? "rolling" : `${value?.method}-${value?.value}`}
           aria-live="polite"

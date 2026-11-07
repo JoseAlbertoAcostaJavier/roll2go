@@ -40,9 +40,9 @@ export default function NameGeneratorButton({
         disabled={loading}
         title="Generar un nombre al azar"
         aria-label="Generar un nombre al azar"
-        className="flex h-11.5 w-11.5 shrink-0 items-center justify-center rounded-md border border-line bg-surface text-brand-soft transition-colors enabled:hover:border-brand enabled:hover:text-white disabled:opacity-60"
+        className="group flex h-11.5 w-11.5 shrink-0 items-center justify-center rounded-md border border-line-strong bg-surface text-brand-soft transition-colors enabled:hover:border-brand enabled:hover:text-white disabled:opacity-60"
       >
-        {loading ? <LoaderCircle size={18} className="animate-spin" aria-hidden="true" /> : <Dices size={18} aria-hidden="true" />}
+        {loading ? <LoaderCircle size={18} className="animate-spin" aria-hidden="true" /> : <Dices size={18} aria-hidden="true" className="transition-transform duration-300 group-hover:rotate-45" />}
       </button>
       {error && <p role="alert" className="mt-1 w-full text-xs text-danger">{error}</p>}
     </>

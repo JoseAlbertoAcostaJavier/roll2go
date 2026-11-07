@@ -72,7 +72,37 @@ describe("listMyCharacters", () => {
     await queries.listMyCharacters(OWNER, { q: "", status: "dead", sort: "recent" });
     expect(db.callsOf("Character", "find")[0][0]).toEqual({ owner: OWNER, status: "dead" });
     await queries.listMyCharacters(OWNER, { q: "", status: "all", sort: "name" });
-    expect(db.callsOf("Character", "find")[1][0]).toEqual({ owner: OWNER });
+    // (la primera llamada de cada listado es la de las tarjetas; la segunda, la de contar por estado)
+    expect(db.callsOf("Character", "find")[2][0]).toEqual({ owner: OWNER });
+  });
+
+  it("cuenta por estado sin filtrar por el estado elegido, pero sí por la búsqueda", async () => {
+    db.results["Character.find"] = [{ _id: CHAR, name: "A", status: "active" }, { _id: OTHER_CAMPAIGN, name: "B", status: "dead" }];
+    const r = await queries.listMyCharacters(OWNER, { q: "elfo", status: "dead", sort: "recent" });
+    const [cards, counts] = db.callsOf("Character", "find").map((c) => c[0] as Record<string, unknown>);
+    expect(cards.status).toBe("dead");
+    expect(counts.status).toBeUndefined();
+    expect(counts.$or).toBeDefined();
+    expect(r.counts).toEqual({ active: 1, retired: 0, dead: 1, npc: 0, all: 2 });
+  });
+
+  it("la tarjeta muestra todas las clases y solo deja subir de nivel por debajo del máximo", async () => {
+    const summary = (fighter: number, wizard: number) => [
+      { class: { ref: { book: "b", key: "class:fighter|xphb" }, name: "Guerrero" }, level: fighter },
+      { class: { ref: { book: "b", key: "class:wizard|xphb" }, name: "Mago" }, level: wizard },
+    ];
+    db.results["Character.find"] = [
+      { _id: CHAR, name: "A", status: "active", sheet: { version: 2, species: { name: "Elfo" }, lineage: { name: "Alto elfo" }, classesSummary: summary(3, 2) } },
+      { _id: OTHER_CAMPAIGN, name: "B", status: "active", sheet: { version: 2, classesSummary: summary(15, 5) } },
+    ];
+    const { cards } = await queries.listMyCharacters(OWNER, { q: "", status: "active", sort: "recent" });
+    expect(cards[0].species).toBe("Elfo (Alto elfo)");
+    expect(cards[0].classes).toEqual([
+      { name: "Guerrero", level: 3, icon: "fighter" },
+      { name: "Mago", level: 2, icon: "wizard" },
+    ]);
+    expect(cards[0].canLevelUp).toBe(true);
+    expect(cards[1].canLevelUp).toBe(false);
   });
 
   it("la búsqueda mira nombre, especie, legado, clase y el nombre de sus campañas", async () => {

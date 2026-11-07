@@ -3,9 +3,9 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
-import { Plus } from "lucide-react";
+import { BookOpen, Info, Map as MapIcon, Plus } from "lucide-react";
 import type { BookOption } from "@/lib/rules/catalog/types";
-import { field, labelClass, primaryButton } from "@/app/components/ui/formStyles";
+import { field, labelClass, primaryButton, secondaryButton } from "@/app/components/ui/formStyles";
 
 type Props = {
   systems: { id: string; name: string; creator: boolean }[];
@@ -58,9 +58,6 @@ export default function NewCharacterDialog({ systems, campaigns, books }: Props)
     router.push(`/characters/new?${params.toString()}`);
   }
 
-  const secondary =
-    "rounded-md border border-line px-4 py-2.5 text-sm font-semibold text-muted transition-colors hover:text-white";
-
   return (
     <>
       <button
@@ -79,53 +76,66 @@ export default function NewCharacterDialog({ systems, campaigns, books }: Props)
             aria-modal="true"
             aria-labelledby={`${uid}-title`}
             onSubmit={submit}
-            className="max-h-full w-full max-w-lg animate-pop overflow-y-auto rounded-xl border border-line bg-panel p-6 shadow-[0_12px_40px_rgba(0,0,0,0.6)]"
+            className="flex max-h-full w-full max-w-lg animate-pop flex-col overflow-hidden rounded-2xl border border-line bg-panel shadow-[0_12px_40px_rgba(0,0,0,0.6)]"
           >
-            <h3 id={`${uid}-title`} className="mb-5 font-heading text-xl font-bold">
-              Preparar nuevo personaje
-            </h3>
-
-            <div className="mb-4">
-              <label htmlFor={`${uid}-system`} className={labelClass}>Juego</label>
-              <select
-                id={`${uid}-system`}
-                ref={systemRef}
-                value={systemId}
-                onChange={(e) => changeSystem(e.target.value)}
-                className={field}
-              >
-                {systems.map((s) => (
-                  <option key={s.id} value={s.id} disabled={!s.creator}>
-                    {s.name}{s.creator ? "" : " (Próximamente)"}
-                  </option>
-                ))}
-              </select>
+            <div className="border-b border-line bg-surface/50 p-6">
+              <h3 id={`${uid}-title`} className="font-heading text-2xl font-extrabold text-white">
+                Preparar nuevo personaje
+              </h3>
+              <p className="mt-1 text-sm text-muted">Elige las reglas antes de empezar a crearlo.</p>
             </div>
 
-            <div className="mb-4">
-              <label htmlFor={`${uid}-campaign`} className={labelClass}>Campaña</label>
-              <select
-                id={`${uid}-campaign`}
-                value={campaignId}
-                onChange={(e) => setCampaignId(e.target.value)}
-                className={field}
-              >
-                <option value="">-</option>
-                {systemCampaigns.map((c) => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
-              </select>
+            <div className="space-y-5 overflow-y-auto p-6">
+            <div className="grid gap-5 sm:grid-cols-2">
+              <div>
+                <label htmlFor={`${uid}-system`} className={`${labelClass} flex items-center gap-2`}>
+                  <BookOpen size={14} className="text-brand-soft" aria-hidden="true" /> Juego
+                </label>
+                <select
+                  id={`${uid}-system`}
+                  ref={systemRef}
+                  value={systemId}
+                  onChange={(e) => changeSystem(e.target.value)}
+                  className={field}
+                >
+                  {systems.map((s) => (
+                    <option key={s.id} value={s.id} disabled={!s.creator}>
+                      {s.name}{s.creator ? "" : " (Próximamente)"}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label htmlFor={`${uid}-campaign`} className={`${labelClass} flex items-center gap-2`}>
+                  <MapIcon size={14} className="text-brand-soft" aria-hidden="true" /> Campaña
+                </label>
+                <select
+                  id={`${uid}-campaign`}
+                  value={campaignId}
+                  onChange={(e) => setCampaignId(e.target.value)}
+                  className={field}
+                >
+                  <option value="">Sin campaña</option>
+                  {systemCampaigns.map((c) => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+              </div>
             </div>
 
-            <p className="mb-4 rounded-md border border-line bg-surface p-3 text-sm text-muted">
-              Puedes determinar el contenido disponible para un personaje{" "}
-              <strong className="text-white">si lo asignas a una campaña</strong> o si añades un{" "}
-              <strong className="text-white">filtro por libros de reglas</strong>. Si el filtro por libros de reglas
-              está activo en la campaña o en el personaje,{" "}
-              <strong className="text-white">solo se usará el contenido habilitado</strong>, ignorando el resto.
+            <p className="flex gap-3 rounded-xl border border-line bg-surface/60 p-4 text-sm text-muted">
+              <Info size={18} className="mt-0.5 shrink-0 text-brand-soft" aria-hidden="true" />
+              <span>
+                Puedes determinar el contenido disponible para un personaje{" "}
+                <strong className="text-white">si lo asignas a una campaña</strong> o si añades un{" "}
+                <strong className="text-white">filtro por libros de reglas</strong>. Si el filtro por libros de reglas
+                está activo en la campaña o en el personaje,{" "}
+                <strong className="text-white">solo se usará el contenido habilitado</strong>, ignorando el resto.
+              </span>
             </p>
 
-            <label className="mb-1 flex cursor-pointer items-start gap-3 text-sm has-disabled:cursor-not-allowed has-disabled:opacity-60">
+            <label className="flex cursor-pointer items-start gap-3 text-sm has-disabled:cursor-not-allowed has-disabled:opacity-60">
               <input
                 type="checkbox"
                 checked={filter && !campaignRestricts}
@@ -144,7 +154,7 @@ export default function NewCharacterDialog({ systems, campaigns, books }: Props)
             </label>
 
             {filter && !campaignRestricts && (
-              <fieldset className="mt-3 max-h-48 space-y-2 overflow-y-auto rounded-md border border-line bg-surface p-3">
+              <fieldset className="max-h-48 space-y-2 overflow-y-auto rounded-xl border border-line bg-surface p-3">
                 <legend className="px-1 text-sm font-semibold">Libros de reglas</legend>
                 {systemBooks.length === 0 ? (
                   <p className="text-sm text-muted">No hay libros disponibles para este juego.</p>
@@ -164,8 +174,10 @@ export default function NewCharacterDialog({ systems, campaigns, books }: Props)
               </fieldset>
             )}
 
-            <div className="mt-6 flex flex-wrap justify-end gap-3">
-              <button type="button" onClick={() => setOpen(false)} className={secondary}>Cancelar</button>
+            </div>
+
+            <div className="flex flex-wrap justify-end gap-3 border-t border-line bg-surface/50 p-4">
+              <button type="button" onClick={() => setOpen(false)} className={secondaryButton}>Cancelar</button>
               <button type="submit" disabled={!systemId} className={primaryButton}>Continuar</button>
             </div>
           </form>

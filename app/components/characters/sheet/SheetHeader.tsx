@@ -13,7 +13,7 @@ import { CharacterNoticeArea, CharacterNotices } from "@/app/components/campaign
 // Nivel total máximo (como MAX_LEVEL del servidor)
 const MAX_LEVEL = 20;
 const secondaryButton =
-  "flex items-center gap-2 rounded-md border border-line px-3 py-2 text-sm font-semibold transition-colors hover:border-brand hover:text-white";
+  "flex items-center justify-center gap-2 rounded-md border border-line px-3 py-2 text-sm font-semibold transition-colors hover:border-brand hover:text-white";
 
 export type SheetHeaderProps = {
   id: string;
@@ -87,6 +87,9 @@ export default function SheetHeader(p: SheetHeaderProps) {
 
   return (
     <header className="mb-6 animate-fade-up">
+      <Link href={p.backHref} className="mb-3 flex w-max items-center gap-1 text-sm text-muted hover:text-white print:hidden">
+        <ChevronLeft size={16} aria-hidden="true" /> Volver
+      </Link>
       <CharacterNotices>
         {/* Resultado de unir, cancelar o quitar de una campaña */}
         <div className="print:hidden">
@@ -116,12 +119,13 @@ export default function SheetHeader(p: SheetHeaderProps) {
               <StatusBadge status={p.status} isOwner={p.isOwner} />
             </div>
             <div className="min-w-0">
-              <h1 className="break-words font-heading text-3xl font-extrabold">
+              <h1 className="break-words font-heading text-3xl font-extrabold leading-tight text-white">
                 {p.name}
                 {p.pronouns && <span className="ml-2 align-middle font-body text-base font-normal text-muted">({p.pronouns})</span>}
               </h1>
               {p.summary && <p className="text-muted">{p.summary}</p>}
               <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+                <span className="rounded-md border border-line bg-surface px-2 py-0.5 font-heading text-xs font-bold text-white">Nivel {p.level}</span>
                 {p.campaign ? (
                   p.campaign.pending ? (
                     <span className="text-muted">
@@ -160,17 +164,16 @@ export default function SheetHeader(p: SheetHeaderProps) {
                     )}
                   </span>
                 )}
-                <span className="rounded bg-surface px-2 py-0.5 font-heading font-bold">Nivel {p.level}</span>
               </div>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 print:hidden">
+          <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:items-center print:hidden">
             {p.isOwner && <RestButtons characterId={p.id} pools={p.pools} conMod={p.conMod} recoversOther={p.recoversOther} />}
             {p.isOwner && p.level < MAX_LEVEL && (
               <Link
                 href={`/characters/${p.id}/level-up`}
-                className="flex items-center gap-2 rounded-md bg-brand px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand-hover"
+                className="order-first col-span-2 flex items-center justify-center gap-2 rounded-md bg-brand px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand-hover sm:order-none"
               >
                 <ChevronsUp size={16} aria-hidden="true" /> Subir de nivel
               </Link>
@@ -188,9 +191,6 @@ export default function SheetHeader(p: SheetHeaderProps) {
                 <Printer size={16} aria-hidden="true" /> Imprimir
               </button>
             )}
-            <Link href={p.backHref} className="flex items-center gap-1 px-2 py-2 text-sm text-muted hover:text-white">
-              <ChevronLeft size={16} aria-hidden="true" /> Volver
-            </Link>
           </div>
         </div>
       </CharacterNotices>

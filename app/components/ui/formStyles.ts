@@ -3,7 +3,7 @@ export const field =
 export const labelClass = "mb-1.5 block text-sm font-semibold";
 export const card = "rounded-lg border border-line bg-panel p-5 sm:p-6";
 /** Caja de la ficha visual: borde neutro; la marca queda en la barra roja de los títulos. */
-export const sheetCard = "rounded-lg border border-line bg-panel p-5 sm:p-6";
+export const sheetCard = "rounded-xl border border-line bg-panel p-4 sm:p-6";
 export const cardTitle =
   "mb-4 border-l-4 border-brand pl-3 font-heading text-xl font-bold";
 export const primaryButton =

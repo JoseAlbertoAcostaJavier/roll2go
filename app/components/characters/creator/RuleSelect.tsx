@@ -2,11 +2,11 @@
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Check, ChevronDown } from "lucide-react";
+import { Check, ChevronDown, LoaderCircle, SearchX, X } from "lucide-react";
 import type { EntryOption } from "@/lib/rules/catalog/types";
 import type { Ref } from "@/lib/rules/types";
 import { normalizeName } from "@/lib/rules/schemas";
-import { field, labelClass } from "../../ui/formStyles";
+import { labelClass } from "../../ui/formStyles";
 import useDismiss from "../../ui/useDismiss";
 
 const sameRef = (a: Ref | null, b: Ref) => !!a && a.book === b.book && a.key === b.key;
@@ -123,6 +123,13 @@ export default function RuleSelect({
     inputRef.current?.focus();
   }
 
+  function clearSelection() {
+    setPicked(null);
+    onChange(null);
+    setQuery("");
+    inputRef.current?.focus();
+  }
+
   function onKeyDown(e: React.KeyboardEvent) {
     if (e.key === "ArrowDown") {
       e.preventDefault();
@@ -166,7 +173,9 @@ export default function RuleSelect({
           aria-activedescendant={open && filtered[active] ? optionId(active) : undefined}
           autoComplete="off"
           disabled={disabled}
-          className={`${field} pr-9`}
+          className={`w-full rounded-lg border bg-surface py-2.5 pl-3 pr-10 text-fg transition-colors placeholder:text-muted focus:border-brand focus:outline-none disabled:cursor-not-allowed disabled:opacity-60 ${
+            selected && !open ? "border-brand-soft/50 bg-brand-soft/5 font-medium" : "border-line-strong"
+          }`}
           placeholder={selected ? displayName(selected) : placeholder}
           value={open ? query : selected ? displayName(selected) : ""}
           onFocus={(e) => { if (!e.currentTarget.dataset.skipOpen) openList(); }}
@@ -178,11 +187,22 @@ export default function RuleSelect({
           }}
           onKeyDown={onKeyDown}
         />
-        <ChevronDown
-          size={16}
-          aria-hidden="true"
-          className={`pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted transition-transform ${open ? "rotate-180" : ""}`}
-        />
+        {selected && !disabled && !open ? (
+          <button
+            type="button"
+            onClick={clearSelection}
+            aria-label={`Quitar ${displayName(selected)}`}
+            className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1.5 text-muted transition-colors hover:bg-line hover:text-white"
+          >
+            <X size={14} strokeWidth={3} aria-hidden="true" />
+          </button>
+        ) : (
+          <ChevronDown
+            size={16}
+            aria-hidden="true"
+            className={`pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted transition-transform ${open ? "rotate-180 text-brand-soft" : ""}`}
+          />
+        )}
       </div>
       {open && place && createPortal(
         <ul
@@ -191,12 +211,22 @@ export default function RuleSelect({
           role="listbox"
           aria-label={label}
           style={{ left: place.left, width: place.width, top: place.top, bottom: place.bottom, maxHeight: place.maxHeight }}
-          className="animate-pop fixed z-[60] overflow-y-auto rounded-md border border-line bg-panel py-1 shadow-lg"
+          className="animate-pop fixed z-[60] overflow-y-auto rounded-xl border border-line bg-panel py-2 shadow-[0_10px_40px_rgba(0,0,0,0.5)]"
         >
-          {loading && filtered.length === 0 && <li className="px-3 py-2 text-sm text-muted">Buscando…</li>}
+          {loading && filtered.length === 0 && (
+            <li className="flex items-center gap-2 px-4 py-3 text-sm font-medium text-muted">
+              <LoaderCircle size={16} className="animate-spin text-brand-soft" aria-hidden="true" /> Buscando…
+            </li>
+          )}
           {!loading && filtered.length === 0 && (
-            <li className="px-3 py-2 text-sm text-muted">
-              {loadOptions && remote?.failed ? "No se pudo buscar. Inténtalo de nuevo." : "Sin resultados"}
+            <li className="flex items-center gap-2 px-4 py-3 text-sm text-muted">
+              {loadOptions && remote?.failed ? (
+                <span className="text-brand-soft">No se pudo buscar. Inténtalo de nuevo.</span>
+              ) : (
+                <>
+                  <SearchX size={16} aria-hidden="true" /> Sin resultados
+                </>
+              )}
             </li>
           )}
           {filtered.map((o, i) => (
@@ -208,17 +238,18 @@ export default function RuleSelect({
               onPointerDown={(e) => e.preventDefault()}
               onClick={() => choose(o)}
               onMouseEnter={() => setActive(i)}
-              className={`flex cursor-pointer items-center gap-2 px-3 py-2 text-sm ${i === active ? "bg-surface" : ""}`}
+              className={`flex cursor-pointer items-center justify-between gap-3 px-4 py-2 text-sm transition-colors ${i === active ? "bg-surface text-white" : "text-muted"}`}
             >
-              <span className="min-w-0 flex-1 truncate">
-                {displayName(o)} {o.bookName && <span className="text-muted">· {o.bookName}</span>}
+              <span className="min-w-0 flex-1">
+                <span className="block truncate font-medium">{displayName(o)}</span>
+                {o.bookName && <span className="block truncate text-xs text-muted">{o.bookName}</span>}
               </span>
               {o.srd52 && (
-                <span className="rounded border border-line px-1.5 text-[10px] font-bold text-muted" title="Incluido en el SRD 5.2">
+                <span className="rounded bg-line/50 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-muted" title="Incluido en el SRD 5.2">
                   SRD
                 </span>
               )}
-              {sameRef(value, o.ref) && <Check size={14} aria-hidden="true" className="text-brand-soft" />}
+              {sameRef(value, o.ref) && <Check size={16} strokeWidth={3} aria-hidden="true" className="shrink-0 text-brand-soft" />}
             </li>
           ))}
         </ul>,

@@ -1,4 +1,7 @@
 import Link from "next/link";
+import { Map as MapIcon } from "lucide-react";
+import MaskIcon from "@/app/components/ui/MaskIcon";
+import { classGlyphSrc } from "@/lib/utils/icons";
 import { initialsOf } from "@/lib/utils/initials";
 import CharacterCardMenu from "./CharacterCardMenu";
 
@@ -6,7 +9,11 @@ export type CharacterCardData = {
   id: string;
   name: string;
   portraitUrl: string | null;
-  summary: string; // "Especie (Legado) · Clase N"
+  /** «Especie (Legado)»; vacío si aún no tiene. */
+  species: string;
+  /** Todas sus clases, con el identificador de su icono. */
+  classes: { name: string; level: number; icon: string | null }[];
+  canLevelUp: boolean;
   systemName: string;
   status: "active" | "retired" | "dead" | "npc";
   campaign: { id: string; name: string } | null;
@@ -52,26 +59,37 @@ export default function CharacterCard({ character: c, index }: { character: Char
           </Link>
         </h2>
 
-        {c.summary && <p title={c.summary} className="mt-0.5 truncate text-sm font-medium text-muted">{c.summary}</p>}
-        <p className="mt-1.5 text-[11px] font-bold uppercase tracking-wider text-muted">{c.systemName}</p>
+        {c.species && <p title={c.species} className="mt-0.5 truncate text-sm font-medium text-muted">{c.species}</p>}
+        {c.classes.length > 0 && (
+          <ul className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
+            {c.classes.map((k) => (
+              <li key={k.name} className="flex items-center gap-1.5 text-sm font-semibold text-fg">
+                <MaskIcon src={classGlyphSrc(k.icon)} size={22} />
+                {k.name} {k.level > 0 && k.level}
+              </li>
+            ))}
+          </ul>
+        )}
 
-        <div className="pointer-events-none relative z-10 mt-auto flex flex-wrap items-center gap-x-3 gap-y-2 pt-3 text-sm">
+        <div className="pointer-events-none relative z-10 mt-auto flex flex-wrap items-center gap-x-2 gap-y-2 pt-3 text-sm">
           {c.campaign ? (
             <Link
               href={`/campaigns/${c.campaign.id}`}
-              className="pointer-events-auto truncate font-semibold text-brand-soft transition-colors hover:text-brand hover:underline"
+              className="pointer-events-auto flex min-w-0 items-center gap-1.5 font-semibold text-brand-soft transition-colors hover:text-brand hover:underline"
             >
-              {c.campaign.name}
+              <MapIcon size={14} className="shrink-0" aria-hidden="true" />
+              <span className="truncate">{c.campaign.name}</span>
             </Link>
           ) : (
             <span className={`${badge} border border-dashed border-line font-medium text-muted`}>Sin campaña</span>
           )}
           {c.campaign && c.pending && <span className={`${badge} bg-yellow-500/10 text-yellow-400`}>Pendiente</span>}
           {c.status !== "active" && <span className={`${badge} ${STATUS_COLORS[c.status]}`}>{STATUS_LABEL[c.status]}</span>}
+          <span className="ml-auto text-[11px] font-medium text-muted">{c.systemName}</span>
         </div>
       </div>
 
-      <CharacterCardMenu characterId={c.id} characterName={c.name} />
+      <CharacterCardMenu characterId={c.id} characterName={c.name} canLevelUp={c.canLevelUp} />
     </article>
   );
 }

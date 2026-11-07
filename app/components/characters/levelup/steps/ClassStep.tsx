@@ -1,6 +1,6 @@
 "use client";
 
-import { Lock } from "lucide-react";
+import { Check, Lock } from "lucide-react";
 import type { CatalogEntry } from "@/lib/rules/catalog/types";
 import { bareName } from "@/lib/rules/dnd2024/sheet/equipmentRefs";
 import RoundIcon from "@/app/components/ui/RoundIcon";
@@ -29,16 +29,17 @@ export default function ClassStep({ options, value, onChange }: {
   const owned = options.filter((o) => o.nextLevel > 1);
   const others = options.filter((o) => o.nextLevel === 1);
   const group = (title: string, list: ClassChoice[]) => list.length > 0 && (
-    <fieldset className="space-y-2">
-      <legend className="mb-2 text-sm font-semibold">{title}</legend>
+    <fieldset className="min-w-0">
+      <legend className="mb-3 text-xs font-bold uppercase tracking-wider text-white">{title}</legend>
+      <div className="grid gap-2.5 sm:grid-cols-2">
       {list.map((o) => {
         const selected = o.key === value;
         return (
           <label
             key={o.key}
-            className={`flex items-center gap-3 rounded-md border px-3 py-2.5 transition-colors has-focus-visible:ring-2 has-focus-visible:ring-brand-soft ${
+            className={`flex items-center gap-3 rounded-xl border p-3 transition-colors has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-brand-soft ${
               o.blocked ? "cursor-not-allowed border-line opacity-60"
-                : selected ? "cursor-pointer border-brand bg-brand/10" : "cursor-pointer border-line hover:border-brand"
+                : selected ? "cursor-pointer border-brand bg-brand/10" : "cursor-pointer border-line bg-surface/40 hover:border-line-strong hover:bg-surface"
             }`}
           >
             <input
@@ -52,9 +53,9 @@ export default function ClassStep({ options, value, onChange }: {
               onChange={() => onChange(o.key)}
               className="sr-only"
             />
-            <ClassIcon entry={o.entry} size={40} />
+            <ClassIcon entry={o.entry} size={44} />
             <span className="min-w-0 flex-1">
-              <span className="block font-semibold">{o.entry.nameEs ?? o.entry.name}</span>
+              <span className="block truncate font-heading text-sm font-bold text-white">{o.entry.nameEs ?? o.entry.name}</span>
               <span className="block text-xs text-muted">
                 {o.nextLevel > 1 ? `Nivel ${o.nextLevel - 1} → ${o.nextLevel}` : "Nueva clase (multiclase)"}
               </span>
@@ -64,13 +65,11 @@ export default function ClassStep({ options, value, onChange }: {
                 </span>
               )}
             </span>
-            <span
-              aria-hidden="true"
-              className={`h-4 w-4 shrink-0 rounded-full border-2 ${selected ? "border-brand bg-brand" : "border-line"}`}
-            />
+            {selected && <Check size={16} strokeWidth={3} aria-hidden="true" className="shrink-0 text-brand-soft" />}
           </label>
         );
       })}
+      </div>
     </fieldset>
   );
 

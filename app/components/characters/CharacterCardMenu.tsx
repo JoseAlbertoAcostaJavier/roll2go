@@ -2,15 +2,19 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { EllipsisVertical, Pencil, Trash2 } from "lucide-react";
+import { ChevronsUp, EllipsisVertical, Pencil, Trash2 } from "lucide-react";
 import DeleteCharacter from "./DeleteCharacter";
 
 const item =
   "flex w-full items-center gap-2 rounded px-3 py-2 text-left text-sm outline-none hover:bg-surface focus-visible:bg-surface";
 
-// Acciones rápidas de la tarjeta de personaje: editar y borrar. Se cierra con Escape, al pulsar fuera y al elegir;
+// Acciones rápidas de la tarjeta de personaje: subir de nivel, editar y borrar. Se cierra con Escape, al pulsar fuera y al elegir;
 // las flechas recorren las opciones.
-export default function CharacterCardMenu({ characterId, characterName }: { characterId: string; characterName: string }) {
+export default function CharacterCardMenu({ characterId, characterName, canLevelUp }: {
+  characterId: string;
+  characterName: string;
+  canLevelUp: boolean;
+}) {
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLDivElement>(null);
   const button = useRef<HTMLButtonElement>(null);
@@ -66,8 +70,13 @@ export default function CharacterCardMenu({ characterId, characterName }: { char
             role="menu"
             aria-label={`Acciones de ${characterName}`}
             onKeyDown={onKeyDown}
-            className="absolute right-0 top-10 w-36 animate-pop rounded-md border border-line-strong bg-panel p-1 shadow-[0_12px_30px_rgba(0,0,0,0.5)]"
+            className="absolute right-0 top-10 w-44 animate-pop rounded-md border border-line-strong bg-panel p-1 shadow-[0_12px_30px_rgba(0,0,0,0.5)]"
           >
+            {canLevelUp && (
+              <Link role="menuitem" href={`/characters/${characterId}/level-up`} className={item}>
+                <ChevronsUp size={15} aria-hidden="true" /> Subir de nivel
+              </Link>
+            )}
             <Link role="menuitem" href={`/characters/${characterId}/edit`} className={item}>
               <Pencil size={15} aria-hidden="true" /> Editar
             </Link>

@@ -1,116 +1,96 @@
+import { Footprints, Star } from "lucide-react";
 import { ABILITY_NAMES, fmtMod } from "@/lib/rules/dnd2024/sheet/labels";
 import { ABILITIES } from "@/lib/rules/types";
 import type { HitDicePool } from "@/lib/rules/dnd2024/sheet/rest";
-import HpEditor from "./HpEditor";
+import CombatBox from "./CombatBox";
+import HpEditor, { HpBar } from "./HpEditor";
 import InspirationBox from "./InspirationBox";
-import { statButton } from "./statUi";
-import type { ReactNode } from "react";
+import { statButton, tile, tileLabel, tileValue } from "./statUi";
 import type { SheetData, ShowStat, StatusState } from "./types";
 
-// Marco común de las cajas de la franja: borde neutro; el rojo queda para las acciones y el estado activo
-const box = "rounded-lg border border-line bg-panel";
-const boxLabel = "block hyphens-none break-words text-[11px] font-semibold uppercase leading-tight tracking-normal text-muted";
-// Rótulos de Competencia y Velocidad: 11 px en mayúsculas; no se guionizan; solo si la caja es muy estrecha parten la palabra en vez de desbordar
-const statLabel = "block hyphens-none break-words text-[11px] font-semibold uppercase leading-tight tracking-normal text-muted";
+const boxLabel = "block hyphens-none break-words text-[11px] font-bold uppercase leading-tight tracking-wide text-muted";
 
-// Franja superior (spec de la ficha visual §3.1): las 6 características, competencia, velocidad, inspiración heroica y PG.
-// La franja ocupa todo el ancho de la ficha. Las características van en su propia fila (6 columnas; 3 por debajo de
-// 640 px). Debajo, en la segunda fila:
-// - < 1280 px: competencia, velocidad e inspiración junto a los PG (apilados en móvil) y, al pie, iniciativa y CA.
-// - ≥ 1280 px: dos columnas; a la izquierda competencia, velocidad e inspiración con iniciativa y CA debajo, y a la
-//   derecha los PG ocupando ambas filas.
-export default function AbilityStrip({ d, characterId, isOwner, version, pools, show, status, combat }: {
+// Franja superior: las 6 características y una fila con los PG y los valores de combate.
+// - < 768 px: primero los PG y los valores de combate (lo que más se consulta en la mesa) y después las características.
+// - ≥ 768 px: las características en una fila; debajo, los PG a todo el ancho y los cinco valores en otra.
+// - ≥ 1280 px: los PG y los cinco valores en una sola fila.
+export default function AbilityStrip({ d, characterId, isOwner, version, pools, show, status }: {
   d: SheetData; characterId: string; isOwner: boolean; version: number; pools: HitDicePool[]; show: ShowStat;
   status: StatusState;
-  /** Iniciativa y CA (`CombatBox`): bajo la franja en pantallas estrechas y, desde `xl`, bajo Competencia, Velocidad e Inspiración. */
-  combat: ReactNode;
 }) {
   return (
-    <section
-      aria-label="Características y puntos de golpe"
-      className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] xl:items-start"
-    >
-      {/* Características: modificador grande y puntuación en una píldora sobre el borde inferior; cada una abre su desglose */}
-      <div className="xl:col-span-2">
+    <section aria-label="Características y puntos de golpe" className="flex flex-col gap-2.5">
+      {/* Características: modificador grande y puntuación debajo; cada una abre su desglose */}
+      <div>
         <h3 className="sr-only">Características</h3>
-          <ul className="grid grid-cols-3 gap-x-2 gap-y-5 pb-3 sm:grid-cols-6">
-            {ABILITIES.map((a) => (
+        <ul className="grid grid-cols-3 gap-2.5 sm:grid-cols-6">
+          {ABILITIES.map((a) => {
+            const mod = d.abilities[a].mod;
+            return (
               <li key={a}>
                 <button
                   type="button"
                   aria-haspopup="dialog"
                   data-print="text"
                   onClick={show({ kind: "ability", ability: a })}
-                  className={`${statButton} ${box} relative flex h-24 w-full flex-col items-center justify-start px-1 pt-2 text-center`}
+                  className={`${statButton} ${tile} flex h-24 w-full flex-col items-center justify-between px-1 py-2 text-center md:h-28 md:py-2.5`}
                 >
                   <span className={`${boxLabel} w-full`}>{ABILITY_NAMES[a]}</span>
-                  <span className="mt-1 block font-heading text-3xl font-extrabold leading-none">{fmtMod(d.abilities[a].mod)}</span>
-                  <span className="absolute -bottom-3 left-1/2 w-10 -translate-x-1/2 rounded-full border border-line bg-surface text-sm font-bold">
-                    {d.abilities[a].score}
-                  </span>
+                  <span className={`font-heading text-3xl font-extrabold leading-none ${mod < 0 ? "text-brand-soft" : "text-white"}`}>{fmtMod(mod)}</span>
+                  <span className="rounded-md border border-line bg-surface px-2 text-xs font-bold text-muted">{d.abilities[a].score}</span>
                 </button>
               </li>
-            ))}
-          </ul>
-        </div>
-
-      {/* Segunda fila (< 1280 px); desde `xl` las dos cajas son celdas de la rejilla de la franja (`contents`) */}
-      <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] xl:contents">
-        {/* Competencia, velocidad e inspiración: del mismo alto que las características */}
-        <div className="grid grid-cols-3 gap-2 pb-3 xl:col-[1] xl:row-[2]">
-          <div className={`${box} flex h-24 flex-col items-center justify-center px-1 text-center`}>
-            <span className="font-heading text-2xl font-extrabold leading-none">{fmtMod(d.proficiencyBonus)}</span>
-            <span className={`${statLabel} mt-1 w-full`}>Competencia</span>
-          </div>
-          <button
-            type="button"
-            aria-haspopup="dialog"
-            data-print="text"
-            onClick={show({ kind: "speed" })}
-            className={`${statButton} ${box} flex h-24 flex-col items-center justify-center px-1 text-center`}
-          >
-            <span className="font-heading text-2xl font-extrabold leading-none">{d.speed}<span className="text-xs font-bold text-muted"> pies</span></span>
-            <span className={`${statLabel} mt-1 w-full`}>Velocidad</span>
-          </button>
-          <InspirationBox
-            characterId={characterId}
-            initial={status.heroicInspiration}
-            isOwner={isOwner}
-            className="h-24 !py-1"
-          />
-        </div>
-
-      {/* Puntos de golpe, con los dados de golpe debajo */}
-      <div className={`${box} px-3 py-3 text-center xl:col-[2] xl:row-[2/span_2]`}>
-        <p className={`${boxLabel} mb-2`}>Puntos de golpe</p>
-        {isOwner ? (
-          // El editor guarda su estado y adopta los PG nuevos cuando cambia `version` (descanso, borrar un nivel) sin
-          // remontarse: así un cambio de PG pendiente no se pierde cuando otra caja de la franja refresca la página.
-          // Hace falta `version` y no solo los PG: tras un descanso los PG vuelven al valor de la carga
-          <HpEditor
-            version={version}
-            characterId={characterId}
-            max={d.hp.max}
-            current={d.hp.current}
-            temp={d.hp.temp}
-          />
-        ) : (
-          <p className="font-heading text-3xl font-extrabold">
-            {Math.min(d.hp.current, d.hp.max)}
-            <span className="text-xl font-bold text-muted"> / {d.hp.max}</span>
-            {d.hp.temp > 0 && <span className="ml-1 text-base text-success">+{d.hp.temp}</span>}
-          </p>
-        )}
-        {pools.length > 0 && (
-          <p className="mt-2 text-xs text-muted">
-            Dados de golpe: {pools.map((p) => `${p.total - p.used}d${p.die}`).join(" · ")}
-          </p>
-        )}
-        </div>
+            );
+          })}
+        </ul>
       </div>
 
-      {/* Combate: tercer bloque de la franja, con el hueco de las filas anteriores en pantallas estrechas */}
-      <div className="max-xl:mt-3 xl:col-[1] xl:row-[3]">{combat}</div>
+      <div className="order-first grid grid-cols-6 gap-2.5 md:order-none md:grid-cols-5 xl:grid-cols-[minmax(0,2.6fr)_repeat(5,minmax(0,1fr))] print:order-none">
+        {/* Puntos de golpe */}
+        <div className={`${tile} col-span-6 p-3 md:col-span-5 xl:col-span-1`}>
+          <div className="mb-1 flex flex-wrap items-baseline justify-between gap-x-3">
+            <p className={boxLabel}>Puntos de golpe</p>
+            {pools.length > 0 && (
+              <p className="text-xs text-muted">Dados de golpe: {pools.map((p) => `${p.total - p.used}d${p.die}`).join(" · ")}</p>
+            )}
+          </div>
+          {isOwner ? (
+            // El editor guarda su estado y adopta los PG nuevos cuando cambia `version` (descanso, borrar un nivel) sin
+            // remontarse: así un cambio de PG pendiente no se pierde cuando otra caja de la franja refresca la página.
+            // Hace falta `version` y no solo los PG: tras un descanso los PG vuelven al valor de la carga
+            <HpEditor version={version} characterId={characterId} max={d.hp.max} current={d.hp.current} temp={d.hp.temp} />
+          ) : (
+            <>
+              <p className="font-heading text-3xl font-extrabold text-white">
+                {Math.min(d.hp.current, d.hp.max)}
+                <span className="text-xl font-bold text-muted"> / {d.hp.max}</span>
+                {d.hp.temp > 0 && <span className="ml-1 text-base text-success">+{d.hp.temp}</span>}
+              </p>
+              <HpBar current={Math.min(d.hp.current, d.hp.max)} max={d.hp.max} temp={d.hp.temp} />
+            </>
+          )}
+        </div>
+
+        <CombatBox d={d} show={show} />
+
+        <button
+          type="button"
+          aria-haspopup="dialog"
+          data-print="text"
+          onClick={show({ kind: "speed" })}
+          className={`${statButton} ${tile} col-span-2 flex min-h-24 flex-col items-center justify-center px-1 text-center md:col-span-1`}
+        >
+          <span className={tileValue}>{d.speed}<span className="text-xs font-bold text-muted"> pies</span></span>
+          <span className={tileLabel}><Footprints size={13} aria-hidden="true" className="shrink-0" /> Velocidad</span>
+        </button>
+
+        <div className={`${tile} col-span-3 flex min-h-24 flex-col items-center justify-center px-1 text-center md:col-span-1`}>
+          <span className={tileValue}>{fmtMod(d.proficiencyBonus)}</span>
+          <span className={tileLabel}><Star size={13} aria-hidden="true" className="shrink-0" /> Competencia</span>
+        </div>
+
+        <InspirationBox characterId={characterId} initial={status.heroicInspiration} isOwner={isOwner} className="col-span-3 md:col-span-1" />
+      </div>
     </section>
   );
 }

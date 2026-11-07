@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { LoaderCircle, Trash2 } from "lucide-react";
 
 const secondaryButton =
-  "flex items-center gap-2 rounded-md border border-line px-3 py-2 text-sm font-semibold transition-colors hover:border-brand hover:text-white disabled:opacity-50";
+  "flex items-center justify-center gap-2 rounded-md border border-line px-3 py-2 text-sm font-semibold transition-colors hover:border-brand hover:text-white disabled:opacity-50";
 
 /* Borra el último nivel del personaje tras confirmarlo (`DELETE /api/characters/[id]/levels/last`). */
 export default function DeleteLevel({ characterId, level, redirectTo }: {

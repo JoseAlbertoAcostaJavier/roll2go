@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronDown, Search } from "lucide-react";
+import { ChevronDown, LoaderCircle, Search } from "lucide-react";
 import { field } from "@/app/components/ui/formStyles";
 import { nextListQuery } from "@/lib/utils/listQuery";
 
@@ -15,14 +15,17 @@ export type FilterSelect = {
   value: string;
   /** Valor por defecto: no se escribe en la URL. */
   defaultValue: string;
-  options: { value: string; label: string }[];
+  options: { value: string; label: string; count?: number }[];
+  /** Pestañas a la vista en vez de un desplegable (para el filtro principal, con pocas opciones). */
+  tabs?: boolean;
 };
 
 // Buscador de las listas (personajes, campañas): `?q=` espera 300 ms tras teclear y los selectores aplican al cambiar.
 // Cualquier cambio de filtro vuelve a la primera página (se quita `page`).
 export default function ListFilters({ base, title, q: urlQ, searchLabel, placeholder, selects, className }: {
   base: string;
-  title: string;
+  /** Encabezado visible del panel; sin él, el panel se nombra con `searchLabel`. */
+  title?: string;
   /** Búsqueda que viene de la URL. */
   q: string;
   searchLabel: string;
@@ -31,6 +34,8 @@ export default function ListFilters({ base, title, q: urlQ, searchLabel, placeho
   className?: string;
 }) {
   const router = useRouter();
+  // Mientras llegan los resultados, el buscador lo indica
+  const [pending, startTransition] = useTransition();
   const [q, setQ] = useState(urlQ);
   // Hay una búsqueda tecleada que aún no se ha enviado a la URL
   const [typing, setTyping] = useState(false);
@@ -57,7 +62,7 @@ export default function ListFilters({ base, title, q: urlQ, searchLabel, placeho
     const params = nextListQuery(requested.current ?? new URLSearchParams(window.location.search), change);
     requested.current = params;
     const qs = params.toString();
-    router.replace(qs ? `${base}?${qs}` : base, { scroll: false });
+    startTransition(() => router.replace(qs ? `${base}?${qs}` : base, { scroll: false }));
   }
 
   function onSearch(value: string) {
@@ -85,12 +90,22 @@ export default function ListFilters({ base, title, q: urlQ, searchLabel, placeho
   }
 
   const hasFilters = urlQ !== "" || selects.some((s) => s.value !== s.defaultValue);
+  const tabs = selects.filter((s) => s.tabs);
+  const clear = hasFilters && (
+    <Link href={base} onClick={onClear} className="ml-auto text-sm font-medium text-muted hover:text-white">
+      Limpiar
+    </Link>
+  );
   return (
-    <div className={className}>
-      <h2 className="mb-4 font-heading text-xs font-bold uppercase tracking-widest text-muted">{title}</h2>
+    <div role="search" aria-label={title ? undefined : searchLabel} aria-busy={pending} className={className}>
+      {title && <h2 className="mb-4 font-heading text-xs font-bold uppercase tracking-widest text-muted">{title}</h2>}
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative min-w-0 flex-[2_1_14rem]">
-          <Search size={18} aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+          {pending ? (
+            <LoaderCircle size={18} aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 animate-spin text-brand-soft" />
+          ) : (
+            <Search size={18} aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+          )}
           <input
             type="search"
             value={q}
@@ -101,7 +116,7 @@ export default function ListFilters({ base, title, q: urlQ, searchLabel, placeho
             className={`${field} pl-10`}
           />
         </div>
-        {selects.map((s) => (
+        {selects.filter((s) => !s.tabs).map((s) => (
           <div key={s.name} className="relative min-w-0 flex-[1_1_9rem]">
             <select
               value={vals[s.name] ?? s.value}
@@ -116,12 +131,30 @@ export default function ListFilters({ base, title, q: urlQ, searchLabel, placeho
             <ChevronDown size={16} aria-hidden="true" className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted" />
           </div>
         ))}
-        {hasFilters && (
-          <Link href={base} onClick={onClear} className="text-sm text-muted hover:text-white">
-            Limpiar
-          </Link>
-        )}
+        {tabs.length === 0 && clear}
       </div>
+      {tabs.map((s) => (
+        <div key={s.name} className="mt-3 flex flex-wrap items-center gap-2">
+          <div role="radiogroup" aria-label={s.label} className="flex flex-wrap gap-1.5">
+            {s.options.map((o) => {
+              const active = (vals[s.name] ?? s.value) === o.value;
+              return (
+                <label
+                  key={o.value}
+                  className={`flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1 text-sm font-semibold transition-colors has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-brand-soft ${
+                    active ? "border-brand bg-brand/10 text-white" : "border-line text-muted hover:border-line-strong hover:text-white"
+                  }`}
+                >
+                  <input type="radio" name={s.name} className="sr-only" checked={active} onChange={() => onSelect(s, o.value)} />
+                  {o.label}
+                  {o.count !== undefined && <span className={`text-xs font-bold ${active ? "text-brand-soft" : "text-muted"}`}>{o.count}</span>}
+                </label>
+              );
+            })}
+          </div>
+          {clear}
+        </div>
+      ))}
     </div>
   );
 }

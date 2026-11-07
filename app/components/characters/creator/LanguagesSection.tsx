@@ -1,5 +1,6 @@
 "use client";
 
+import { Check, Globe, Languages } from "lucide-react";
 import type { EntryOption } from "@/lib/rules/catalog/types";
 import type { LanguageSlot } from "@/lib/rules/dnd2024/creation/languages";
 import { FIXED_LANGUAGE_NAMES_ES, languageName } from "@/lib/rules/dnd2024/creation/languages";
@@ -9,6 +10,7 @@ import SkillPicker from "../fields/SkillPicker";
 import { refFromKey } from "./ClassFeaturesSection";
 
 const nameOf = (o: EntryOption) => o.nameEs ?? o.name;
+const heading = "mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-white";
 
 /* Idiomas del personaje: los que da la clase (chips) y un desplegable por cada hueco. `choices` lleva una posición por
    idioma a elegir, en el orden de los huecos; lo elegido en un desplegable no se ofrece en los demás. */
@@ -29,18 +31,27 @@ export default function LanguagesSection({
 
   const starts = slots.map((_, i) => slots.slice(0, i).reduce((n, x) => n + x.count, 0));
   return (
-    <div className="space-y-4">
-      <ul className="flex flex-wrap gap-2" aria-label="Idiomas que ya conoces">
-        {fixed.map((key) => (
-          <li key={key} className="rounded-full border border-line bg-surface px-3 py-1 text-sm">
-            {(() => {
+    <div className="space-y-6">
+      {fixed.length > 0 && (
+        <div>
+          <h3 className={heading}><Globe size={16} className="text-brand-soft" aria-hidden="true" /> Idiomas conocidos</h3>
+          <ul className="flex flex-wrap gap-2" aria-label="Idiomas que ya conoces">
+            {fixed.map((key) => {
               const found = languages.find((l) => languageName(l.ref.key) === languageName(key));
-              return found ? nameOf(found) : (FIXED_LANGUAGE_NAMES_ES[languageName(key)] ?? languageName(key));
-            })()}
-          </li>
-        ))}
-      </ul>
-      {legacyText && <p className="text-sm text-muted">Anotados antes: {legacyText}</p>}
+              return (
+                <li key={key} className="flex items-center gap-1.5 rounded-lg border border-line bg-surface/50 px-3 py-1.5 text-sm font-medium text-white">
+                  <Check size={14} strokeWidth={3} className="text-brand-soft" aria-hidden="true" />
+                  {found ? nameOf(found) : (FIXED_LANGUAGE_NAMES_ES[languageName(key)] ?? languageName(key))}
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
+      {legacyText && <p className="rounded-lg border border-line bg-surface/50 p-3 text-sm text-muted">Anotados antes: {legacyText}</p>}
+      {slots.some((s) => s.count > 0) && (
+        <h3 className={`${heading} -mb-3`}><Languages size={16} className="text-brand-soft" aria-hidden="true" /> Idiomas adicionales</h3>
+      )}
       {slots.map((slot, si) => {
         if (slot.count === 0) return null;
         const start = starts[si];
@@ -52,8 +63,8 @@ export default function LanguagesSection({
           .filter((l) => !slot.standardOnly || (l.data as LanguageData | null)?.type === "standard")
           .map((l) => ({ id: refKey(l.ref), label: nameOf(l) }));
         return (
+          <div key={slot.source} className="rounded-xl border border-line bg-surface/30 p-5">
           <SkillPicker
-            key={slot.source}
             id={`language-${slot.source}`}
             label={slot.label}
             count={slot.count}
@@ -67,6 +78,7 @@ export default function LanguagesSection({
             }}
             hint={slot.standardOnly ? "Solo idiomas estándar." : undefined}
           />
+          </div>
         );
       })}
     </div>

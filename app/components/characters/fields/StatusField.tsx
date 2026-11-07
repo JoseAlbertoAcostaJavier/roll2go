@@ -12,11 +12,11 @@ export default function StatusField({
 }) {
   return (
     <>
-      <div role="radiogroup" aria-label="Estado" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div role="radiogroup" aria-label="Estado" className="grid gap-2.5 sm:grid-cols-2">
         {STATUSES.map((s) => (
           <label
             key={s.id}
-            className={`flex cursor-pointer flex-col gap-1 rounded-md border p-3 text-sm transition-colors ${value === s.id ? "border-brand bg-brand/10" : "border-line hover:border-brand"}`}
+            className={`flex cursor-pointer flex-col gap-1 rounded-xl border p-3.5 text-sm transition-colors ${value === s.id ? "border-brand bg-brand/10" : "border-line bg-surface/30 hover:border-line-strong hover:bg-surface/60"}`}
           >
             <span className="flex items-center gap-2 font-semibold">
               <input type="radio" name="status" value={s.id} checked={value === s.id} onChange={() => onChange(s.id)} className="accent-brand" />
