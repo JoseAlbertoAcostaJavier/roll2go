@@ -9,6 +9,7 @@ import type { Ref } from "@/lib/rules/types";
 import Bbcode from "@/app/components/ui/Bbcode";
 import { sheetCard } from "@/app/components/ui/formStyles";
 import RoundIcon from "@/app/components/ui/RoundIcon";
+import UntranslatedTag from "@/app/components/ui/UntranslatedTag";
 import Collapsible from "./Collapsible";
 import FeatureUsesControl from "./FeatureUsesControl";
 import SectionChips from "./SectionChips";
@@ -108,7 +109,7 @@ export default function FeaturesTab({ groups, entries, base, query, featureUses,
                     )}
                     {g.ref && !entry && <p className="mt-4 text-sm text-muted">Contenido no disponible.</p>}
                     {g.ref && descriptionOf(entry) && (
-                      <Collapsible className="mt-4" header={<span key="header" className="text-sm font-semibold text-brand-soft">Descripción</span>}>
+                      <Collapsible className="mt-4" header={<span key="header" className="text-sm font-semibold text-brand-soft">Descripción{!entry?.descriptionEs && <UntranslatedTag className="ml-2" />}</span>}>
                         <Description key="description" entry={entry} />
                       </Collapsible>
                     )}
@@ -124,6 +125,7 @@ export default function FeaturesTab({ groups, entries, base, query, featureUses,
                                   <span className="flex items-baseline gap-3">
                                     <span className="flex-1 font-semibold">
                                       {f.name}
+                                      {get(f.ref) && !get(f.ref)!.nameEs && <UntranslatedTag className="ml-2" />}
                                       {f.chosen && <span className="ml-2 font-normal text-brand-soft">{f.chosen.join(", ")}</span>}
                                     </span>
                                     {f.value && <span className="text-sm text-success">{f.value}</span>}

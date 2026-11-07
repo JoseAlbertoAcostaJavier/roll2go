@@ -49,4 +49,16 @@ describe("diccionario es.json", () => {
     const sample = entryKeys.filter((k) => known.has(k));
     expect(sample).toEqual(expect.arrayContaining(["species:elf|xphb", "lineage:drow|xphb", "class:barbarian|xphb"]));
   });
+
+  test("rasgos de clase de nivel 1 a 5 del XPHB: los del catálogo normalizado tienen nombre y las claves nuevas tienen el formato del normalizador", () => {
+    const features = normalizeAll(files, "XPHB").entries.filter((e) => e.kind === "classFeature" && e.key.includes("|xphb|"));
+    const early = features.filter((e) => Number(e.key.split("|")[3]) <= 5);
+    expect(early.length).toBeGreaterThan(0);
+    expect(early.filter((e) => !dict[e.key]?.trim()).map((e) => e.key)).toEqual([]);
+    // 12 clases de XPHB con rasgos de nivel 1 a 5, todos con la clave que construye el normalizador
+    const own = Object.keys(dict).filter((k) => k.startsWith("classFeature:"));
+    expect(own.length).toBeGreaterThanOrEqual(110);
+    expect(own.filter((k) => !/^classFeature:[^|]+\|[a-z]+\|xphb\|[1-5]$/.test(k))).toEqual([]);
+    expect(dict["classFeature:rage|barbarian|xphb|1"]).toBe("Furia");
+  });
 });

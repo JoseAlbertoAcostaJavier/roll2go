@@ -9,6 +9,7 @@ import { DAMAGE_TYPE_NAMES, fmtMod } from "@/lib/rules/dnd2024/sheet/labels";
 import { iconSrc } from "@/lib/utils/icons";
 import { sheetCard } from "@/app/components/ui/formStyles";
 import MaskIcon from "@/app/components/ui/MaskIcon";
+import UntranslatedTag from "@/app/components/ui/UntranslatedTag";
 import ActionsDialogs, { BasicActionButton, FeatureButton, ItemButton, SpellLink, type BasicActionInfo, type FeatureInfo } from "./ActionsDialogs";
 import ActionsFilters from "./ActionsFilters";
 import FeatureUsesControl from "./FeatureUsesControl";
@@ -157,8 +158,8 @@ function AttackTable({ rows }: { rows: ActionSection["attacks"] }) {
 // Lo que el filtro oculta en pantalla sigue en el documento y sale al imprimir
 const hide = (visible: boolean) => (visible ? "" : "hidden print:block");
 
-function Section({ section, vis, attacksPerAction, characterId, isOwner }: {
-  section: ActionSection; vis: SectionVisibility; attacksPerAction: number; characterId: string; isOwner: boolean;
+function Section({ section, vis, attacksPerAction, characterId, isOwner, entries }: {
+  section: ActionSection; vis: SectionVisibility; attacksPerAction: number; characterId: string; isOwner: boolean; entries: Map<string, CatalogEntry>;
 }) {
   const { attacks, spells, features, basics } = section;
   return (
@@ -201,6 +202,7 @@ function Section({ section, vis, attacksPerAction, characterId, isOwner }: {
               <div className="flex items-baseline gap-3">
                 <span className="min-w-0 flex-1">
                   <FeatureButton featureKey={f.uses?.key ?? refKey(f.ref)} name={f.name} />
+                  {entries.has(refKey(f.ref)) && !entries.get(refKey(f.ref))!.nameEs && <UntranslatedTag className="ml-2" />}
                   {f.special && <span className="ml-2 text-sm text-muted">(Especial)</span>}
                 </span>
                 <span className="shrink-0 text-xs uppercase tracking-wide text-muted">{f.source}</span>
@@ -248,7 +250,7 @@ export default function ActionsTab({ characterId, isOwner, active, summary, filt
         <div className="space-y-6">
           {!shown && <p className="text-sm text-muted print:hidden">No hay acciones que mostrar.</p>}
           {sections.map((s) => (
-            <Section key={s.group} section={s} vis={sectionVisibility(s, filter)} attacksPerAction={summary.attacksPerAction} characterId={characterId} isOwner={isOwner} />
+            <Section key={s.group} section={s} vis={sectionVisibility(s, filter)} attacksPerAction={summary.attacksPerAction} characterId={characterId} isOwner={isOwner} entries={entries} />
           ))}
         </div>
       )}
