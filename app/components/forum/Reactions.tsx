@@ -149,7 +149,7 @@ export default function Reactions({
         )}
       </div>
 
-      {error && <span className="w-full text-xs text-brand-soft" role="alert">{error}</span>}
+      {error && <span className="w-full text-xs text-danger" role="alert">{error}</span>}
     </div>
   );
 }

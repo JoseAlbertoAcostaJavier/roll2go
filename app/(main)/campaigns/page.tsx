@@ -8,7 +8,7 @@ import { campaignCardOf, listMyCampaigns } from "@/lib/server/campaigns/queries"
 import CampaignCard from "@/app/components/campaigns/CampaignCard";
 import CampaignInvites, { type InviteData } from "@/app/components/campaigns/CampaignInvites";
 import { first } from "@/lib/utils/utils";
-import { secondaryButton } from "@/app/components/ui/formStyles";
+import ListFilters from "@/app/components/ui/ListFilters";
 
 export const metadata: Metadata = { title: "Mis campañas" };
 
@@ -20,9 +20,6 @@ const SORTS = ["recent", "new", "name"] as const;
 function pick<T extends string>(value: string | undefined, allowed: readonly T[], fallback: T): T {
   return allowed.find((a) => a === value) ?? fallback;
 }
-
-const field =
-  "h-11 w-full rounded-md border border-line-strong bg-surface px-3 text-fg placeholder:text-muted focus:border-brand focus:outline-none";
 
 export default async function CampaignsPage({
   searchParams,
@@ -58,55 +55,40 @@ export default async function CampaignsPage({
 
       <CampaignInvites invites={inviteData} />
 
-      {/* Buscador: es un formulario GET, así que los filtros quedan en la dirección y funciona sin JavaScript.
-          La key reinicia los campos cuando cambian los filtros (por ejemplo al pulsar "Limpiar"). */}
-      <form
-        key={`${q}|${owner}|${status}|${sort}`}
-        action="/campaigns"
-        method="get"
+      <ListFilters
         className="mb-6 rounded-lg border border-line bg-panel p-5"
-      >
-        <h2 className="mb-4 font-heading text-sm font-bold uppercase tracking-wide text-muted">Buscar campañas</h2>
-        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-[2fr_1fr_1fr_1fr_auto]">
-          <input
-            type="search"
-            name="q"
-            defaultValue={q}
-            maxLength={80}
-            placeholder="Buscar por nombre"
-            aria-label="Buscar por nombre"
-            className={field}
-          />
-          <select name="owner" defaultValue={owner} aria-label="Creadas por" className={field}>
-            <option value="all">Todas</option>
-            <option value="mine">Creadas por mí</option>
-            <option value="others">Creadas por otros</option>
-          </select>
-          <select name="status" defaultValue={status} aria-label="Estado" className={field}>
-            <option value="active">Activas</option>
-            <option value="inactive">Inactivas</option>
-            <option value="all">Todas</option>
-          </select>
-          <select name="sort" defaultValue={sort} aria-label="Ordenar por" className={field}>
-            <option value="recent">Recientes primero</option>
-            <option value="new">Nuevas primero</option>
-            <option value="name">Ordenar por nombre</option>
-          </select>
-          <div className="flex items-center gap-3">
-            <button
-              type="submit"
-              className={`${secondaryButton} h-11 flex-1`}
-            >
-              Buscar
-            </button>
-            {hasFilters && (
-              <Link href="/campaigns" className="text-sm text-muted hover:text-white">
-                Limpiar
-              </Link>
-            )}
-          </div>
-        </div>
-      </form>
+        base="/campaigns"
+        title="Buscar campañas"
+        q={q}
+        searchLabel="Buscar por nombre"
+        placeholder="Buscar por nombre"
+        selects={[
+          {
+            name: "owner", label: "Creadas por", value: owner, defaultValue: "all",
+            options: [
+              { value: "all", label: "Todas" },
+              { value: "mine", label: "Creadas por mí" },
+              { value: "others", label: "Creadas por otros" },
+            ],
+          },
+          {
+            name: "status", label: "Estado", value: status, defaultValue: "active",
+            options: [
+              { value: "active", label: "Activas" },
+              { value: "inactive", label: "Inactivas" },
+              { value: "all", label: "Todas" },
+            ],
+          },
+          {
+            name: "sort", label: "Ordenar por", value: sort, defaultValue: "recent",
+            options: [
+              { value: "recent", label: "Recientes primero" },
+              { value: "new", label: "Nuevas primero" },
+              { value: "name", label: "Ordenar por nombre" },
+            ],
+          },
+        ]}
+      />
 
       {campaigns.length === 0 ? (
         <div className="rounded-lg border border-dashed border-line p-10 text-center text-muted">

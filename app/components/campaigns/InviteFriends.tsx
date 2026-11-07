@@ -93,7 +93,7 @@ export default function InviteFriends({ campaignId, friends }: { campaignId: str
           ))}
         </ul>
       )}
-      {error && <p className="mt-3 text-sm text-brand-soft" role="alert">{error}</p>}
+      {error && <p className="mt-3 text-sm text-danger" role="alert">{error}</p>}
     </div>
   );
 }

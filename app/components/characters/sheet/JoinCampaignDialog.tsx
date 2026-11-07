@@ -99,7 +99,7 @@ export default function JoinCampaignDialog({ characterId, name, campaigns, syste
               ))}
             </ul>
           )}
-          {error && <p role="alert" className="mt-4 text-sm text-brand-soft">{error}</p>}
+          {error && <p role="alert" className="mt-4 text-sm text-danger">{error}</p>}
           <div className="mt-5 flex justify-end">
             {/* El foco empieza aquí y no en el primer «Unir», para no enviar nada con un Intro sin querer */}
             <button type="button" data-autofocus onClick={() => setOpener(null)} disabled={loading} className={secondary}>

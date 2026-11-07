@@ -127,7 +127,7 @@ export default function ChatThread({
         })}
       </div>
 
-      {error && <p className="px-4 pb-2 text-sm text-brand-soft" role="alert">{error}</p>}
+      {error && <p className="px-4 pb-2 text-sm text-danger" role="alert">{error}</p>}
 
       {canSend ? (
         <div className="flex items-end gap-2 border-t border-line p-3">

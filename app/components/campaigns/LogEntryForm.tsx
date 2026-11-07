@@ -12,7 +12,7 @@ type Errors = Partial<Record<"title" | "content" | "visibility", string>>;
 const field =
   "w-full rounded-md border border-line-strong bg-surface px-3 py-2.5 text-fg placeholder:text-muted focus:border-brand focus:outline-none";
 const labelClass = "mb-1.5 block text-sm font-semibold";
-const errorClass = "mt-1 text-xs text-brand-soft";
+const errorClass = "mt-1 text-xs text-danger";
 
 export default function LogEntryForm({
   campaignId,
@@ -115,7 +115,7 @@ export default function LogEntryForm({
         {errors.content && <p className={errorClass} role="alert">{errors.content}</p>}
       </div>
 
-      {formError && <p className="text-sm text-brand-soft" role="alert">{formError}</p>}
+      {formError && <p className="text-sm text-danger" role="alert">{formError}</p>}
 
       <div className="flex flex-wrap items-center gap-4">
         <button

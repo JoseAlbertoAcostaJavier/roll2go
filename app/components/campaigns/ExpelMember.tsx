@@ -121,7 +121,7 @@ export default function ExpelMember({
                     <span className="block text-muted">No podrá volver a unirse por ningún enlace ni invitación.</span>
                   </span>
                 </label>
-                {error && <p className="mb-4 text-sm text-brand-soft" role="alert">{error}</p>}
+                {error && <p className="mb-4 text-sm text-danger" role="alert">{error}</p>}
                 <div className="flex flex-wrap justify-end gap-3">
                   <button type="button" onClick={() => { setStep("closed"); setError(""); }} disabled={loading} className={secondary}>
                     Cancelar
@@ -138,7 +138,7 @@ export default function ExpelMember({
                   Tenía <strong className="text-white">{notes}</strong> {notes === 1 ? "nota" : "notas"} en el diario de
                   la campaña. Por defecto se mantienen, pero puedes borrarlas ahora.
                 </p>
-                {error && <p className="mb-4 text-sm text-brand-soft" role="alert">{error}</p>}
+                {error && <p className="mb-4 text-sm text-danger" role="alert">{error}</p>}
                 <div className="flex flex-wrap justify-end gap-3">
                   <button type="button" onClick={deleteNotes} disabled={loading} className={secondary}>
                     {loading ? "Borrando..." : `Borrar ${notes === 1 ? "su nota" : "sus notas"}`}

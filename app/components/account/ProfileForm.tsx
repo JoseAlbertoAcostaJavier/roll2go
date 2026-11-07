@@ -184,7 +184,7 @@ export default function ProfileForm({
         {errors.bio && <p className={errorClass} role="alert">{errors.bio}</p>}
       </div>
 
-      {formError && <p className="mb-4 text-sm text-brand-soft" role="alert">{formError}</p>}
+      {formError && <p className="mb-4 text-sm text-danger" role="alert">{formError}</p>}
 
       <div className="flex flex-wrap items-center gap-4">
         <button type="submit" disabled={loading} className={primaryButton}>

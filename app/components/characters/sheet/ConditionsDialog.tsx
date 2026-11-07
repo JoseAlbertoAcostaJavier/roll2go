@@ -117,7 +117,7 @@ export default function ConditionsDialog({ conditions, exhaustion, onCondition, 
           <p className="mt-2 text-sm text-muted">{exhaustion === 0 ? "Sin agotamiento." : exhaustionEffect(exhaustion)}</p>
         </div>
 
-        {error && <p role="alert" className="mt-3 text-sm text-brand-soft">{error}</p>}
+        {error && <p role="alert" className="mt-3 text-sm text-danger">{error}</p>}
       </div>
     </div>
   );

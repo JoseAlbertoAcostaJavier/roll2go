@@ -8,7 +8,8 @@ import type { Dnd2024Sheet } from "@/lib/rules/dnd2024/sheet/sheet";
 import { fmtMod } from "@/lib/rules/dnd2024/sheet/labels";
 import SectionIndex, { SectionLinkAnchor, type SectionLink } from "./SectionIndex";
 
-export type MissingItem = { label: string; href: string };
+/** `focusId`: control concreto que falta; sin él, el foco va al primer control de la sección. */
+export type MissingItem = { label: string; href: string; focusId?: string };
 
 /* Resumen lateral del asistente: valores derivados de lo elegido hasta ahora y lo que falta por completar.
    `entries` son las entradas del catálogo ya cargadas, por "libro:clave". */
@@ -69,7 +70,7 @@ export default function CharacterSummary({
         <ul className="space-y-1 text-sm">
           {missing.map((m) => (
             <li key={m.label}>
-              <SectionLinkAnchor href={m.href} className="text-brand-soft hover:underline">{m.label}</SectionLinkAnchor>
+              <SectionLinkAnchor href={m.href} focusId={m.focusId} className="text-brand-soft hover:underline">{m.label}</SectionLinkAnchor>
             </li>
           ))}
         </ul>

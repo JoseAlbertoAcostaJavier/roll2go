@@ -12,7 +12,7 @@ export const metadata: Metadata = { title: "Social" };
 type Person = SocialPerson;
 
 function PersonCard({ p }: { p: Person }) {
-  const status = { friend: "Tu amigo", outgoing: "Solicitud enviada", incoming: "Te ha enviado una solicitud", none: "" }[p.relation];
+  const status = { friend: "", outgoing: "Solicitud enviada", incoming: "Te ha enviado una solicitud", none: "" }[p.relation];
   return (
     <li className="flex flex-col items-center rounded-lg border border-line bg-panel p-5 text-center">
       <Avatar url={p.avatarUrl} size={96} />
@@ -20,8 +20,10 @@ function PersonCard({ p }: { p: Person }) {
         {p.displayName}
       </Link>
       <p className="text-xs text-muted">@{p.username}</p>
-      <p className="mb-3 mt-1 text-sm text-muted">{status}</p>
-      <FriendActions username={p.username} initialRelation={p.relation} />
+      {status ? <p className="mt-1 text-sm text-muted">{status}</p> : null}
+      <div className="mt-3">
+        <FriendActions username={p.username} initialRelation={p.relation} />
+      </div>
     </li>
   );
 }
@@ -49,7 +51,7 @@ export default async function SocialPage() {
   const pick = (rel: Relation) => people.filter((p) => p.relation === rel);
   return (
     <div className="mx-auto max-w-280 px-5 py-10">
-      <h1 className="mb-6 font-heading text-3xl font-extrabold">Lista de Amigos</h1>
+      <h1 className="mb-6 font-heading text-3xl font-extrabold">Lista de amigos</h1>
 
       <div className="rounded-lg border border-line bg-panel p-5 sm:p-6">
         <UserSearch />

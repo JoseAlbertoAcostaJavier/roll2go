@@ -10,20 +10,26 @@ const FOCUSABLE = "input:not([type=hidden]):not([disabled]), select:not([disable
 /* Al seguir un enlace a una sección, lleva el foco a su primer control (el desplazamiento lo hace el enlace con
    su `scroll-mt`). Sirve para controles nativos y para el combo de RuleSelect, que es un input. Sin controles,
    el foco va a la propia sección. */
-export function focusSection(href: string) {
+export function focusSection(href: string, focusId?: string) {
   const section = document.getElementById(href.replace(/^#/, ""));
   if (!section) return;
-  const target = section.querySelector<HTMLElement>(FOCUSABLE);
-  if (target) target.focus({ preventScroll: true });
+  const byId = focusId ? document.getElementById(focusId) : null;
+  const target = byId && section.contains(byId) ? byId : section.querySelector<HTMLElement>(FOCUSABLE);
+  if (target) {
+    // RuleSelect abre su lista al recibir el foco; un foco programático no debe abrirla
+    target.dataset.skipOpen = "1";
+    target.focus({ preventScroll: true });
+    delete target.dataset.skipOpen;
+  }
   else {
     section.tabIndex = -1;
     section.focus({ preventScroll: true });
   }
 }
 
-export function SectionLinkAnchor({ href, className, children }: { href: string; className?: string; children: React.ReactNode }) {
+export function SectionLinkAnchor({ href, focusId, className, children }: { href: string; focusId?: string; className?: string; children: React.ReactNode }) {
   return (
-    <a href={href} className={className} onClick={() => focusSection(href)}>
+    <a href={href} className={className} onClick={() => focusSection(href, focusId)}>
       {children}
     </a>
   );

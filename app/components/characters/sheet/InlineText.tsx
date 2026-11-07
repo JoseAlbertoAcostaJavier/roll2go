@@ -129,7 +129,7 @@ export function InlineText({ characterId, field, label, value, multiline, editab
             }
           }}
         />
-        <p id={`${inputId}-error`} role="alert" className={error ? "mt-1 text-xs text-brand-soft" : ""}>{error}</p>
+        <p id={`${inputId}-error`} role="alert" className={error ? "mt-1 text-xs text-danger" : ""}>{error}</p>
       </div>
     );
   }
@@ -272,7 +272,7 @@ export function InlineSelect({ characterId, field, label, value, options, editab
             {!known && shown && <option value={shown}>{shown}</option>}
             {options.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
           </select>
-          <p id={`${inputId}-error`} role="alert" className={error ? "mt-1 text-xs text-brand-soft" : ""}>{error}</p>
+          <p id={`${inputId}-error`} role="alert" className={error ? "mt-1 text-xs text-danger" : ""}>{error}</p>
           <p className="hidden text-sm text-fg print:block">{shown ? nameOf(shown) : "—"}</p>
         </>
       ) : (

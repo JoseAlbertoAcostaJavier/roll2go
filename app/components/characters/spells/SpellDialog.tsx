@@ -169,7 +169,7 @@ export default function SpellDialog({ characterId, campaignId = null, spells, op
             <LoaderCircle size={16} className="animate-spin" aria-hidden="true" /> Cargando…
           </p>
         ) : current.error ? (
-          <p className="text-sm text-brand-soft" role="alert">{current.error}</p>
+          <p className="text-sm text-danger" role="alert">{current.error}</p>
         ) : description ? (
           <Bbcode source={description} className="text-sm" />
         ) : (

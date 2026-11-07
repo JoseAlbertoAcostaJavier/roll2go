@@ -37,7 +37,7 @@ export default async function LevelUpPage({ params }: { params: Promise<{ id: st
     return (
       <div className="mx-auto max-w-3xl px-5 py-10">
         {back}
-        <p role="alert" className="rounded-md border border-line bg-surface p-4 text-sm text-brand-soft">{OUTDATED_SHEET_ERROR}</p>
+        <p role="alert" className="rounded-md border border-line bg-surface p-4 text-sm text-danger">{OUTDATED_SHEET_ERROR}</p>
       </div>
     );
   }

@@ -99,7 +99,7 @@ export default function HpStep({ characterId, die, value, onChange, conMod, prev
           Lanzar d{die}
         </button>
       </div>
-      {error && <p role="alert" className="text-sm text-brand-soft">{error}</p>}
+      {error && <p role="alert" className="text-sm text-danger">{error}</p>}
 
       <div className="flex flex-wrap items-center gap-5 rounded-md border border-line bg-surface p-4">
         <span

@@ -116,7 +116,7 @@ export default function NotificationBell({ initialUnread }: { initialUnread: num
 
           <div className="max-h-96 overflow-y-auto">
             {error ? (
-              <p className="px-4 py-6 text-center text-sm text-brand-soft">{error}</p>
+              <p className="px-4 py-6 text-center text-sm text-danger">{error}</p>
             ) : items === null ? (
               <p className="px-4 py-6 text-center text-sm text-muted">Cargando...</p>
             ) : items.length === 0 ? (

@@ -148,7 +148,7 @@ export default function ForumMessage({ campaignId, data }: { campaignId: string;
               )}
             </div>
           </div>
-          {pinError && <p className="text-xs text-brand-soft" role="alert">{pinError}</p>}
+          {pinError && <p className="text-xs text-danger" role="alert">{pinError}</p>}
 
           {replying && (
             <div className="rounded-md border border-line bg-panel p-4">

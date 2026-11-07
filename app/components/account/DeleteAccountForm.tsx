@@ -60,7 +60,7 @@ export default function DeleteAccountForm({ username }: { username: string }) {
         <input id="del-user" type="text" autoComplete="off" spellCheck={false} value={typed} onChange={(e) => setTyped(e.target.value)} className={field} />
       </div>
 
-      {error && <p className="mb-4 text-sm text-brand-soft" role="alert">{error}</p>}
+      {error && <p className="mb-4 text-sm text-danger" role="alert">{error}</p>}
       <button
         type="submit"
         disabled={loading || !password || typed.trim() !== username}

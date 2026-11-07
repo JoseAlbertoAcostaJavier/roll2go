@@ -354,7 +354,7 @@ export default function CharacterCreator(props: Props) {
     );
   // Al rehacer sin borrador propio, se empieza por la creación actual
   const start = draft ?? (props.recreate ? JSON.stringify(props.recreate.initial) : null);
-  return <CreatorForm {...props} draftKey={draftKey} draft={start} />;
+  return <CreatorForm key={draftKey} {...props} draftKey={draftKey} draft={start} />;
 }
 
 function CreatorForm(props: Props & { draftKey: string; draft: string | null }) {
@@ -583,12 +583,12 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
   // ---- falta por completar ----
   const missing: MissingItem[] = [];
   if (!form.name.trim()) missing.push({ label: "Nombre", href: S.details });
-  if (!form.species) missing.push({ label: "Especie", href: S.details });
-  if (hasLineages && !form.lineage) missing.push({ label: "Legado", href: S.details });
+  if (!form.species) missing.push({ label: "Especie", href: S.details, focusId: "species" });
+  if (hasLineages && !form.lineage) missing.push({ label: "Legado", href: S.details, focusId: "lineage" });
   if (speciesData?.skills.choose && form.speciesSkills.filter(Boolean).length !== speciesData.skills.choose.count)
-    missing.push({ label: "Habilidades de especie", href: S.details });
-  if (speciesData && speciesData.size.length > 1 && !form.size) missing.push({ label: "Tamaño", href: S.details });
-  if (!form.klass) missing.push({ label: "Clase", href: S.details });
+    missing.push({ label: "Habilidades de especie", href: S.details, focusId: "species-skills" });
+  if (speciesData && speciesData.size.length > 1 && !form.size) missing.push({ label: "Tamaño", href: S.details, focusId: "size" });
+  if (!form.klass) missing.push({ label: "Clase", href: S.details, focusId: "class" });
   if (!form.background) missing.push({ label: "Trasfondo", href: S.background });
   else if (!form.bgEquipment && letters(bgData?.equipment).length) missing.push({ label: "Equipo del trasfondo", href: S.background });
   else
@@ -1131,9 +1131,9 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
             <p key={k} className={errorClass} role="alert" data-field-error>{msg}</p>
           ))}
           {formError && <p className={errorClass} role="alert">{formError}</p>}
-          {!abilitiesValid && <p className="text-sm text-brand-soft">Ninguna característica puede superar 20.</p>}
+          {!abilitiesValid && <p className="text-sm text-danger">Ninguna característica puede superar 20.</p>}
           {confirming && (
-            <p role="alert" className="flex animate-fade-in items-center gap-2 text-sm text-brand-soft">
+            <p role="alert" className="flex animate-fade-in items-center gap-2 text-sm text-danger">
               <TriangleAlert size={16} aria-hidden="true" /> Se reiniciará el inventario con el equipo inicial elegido y se vaciarán los conjuros preparados.
             </p>
           )}

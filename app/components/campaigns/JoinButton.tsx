@@ -43,7 +43,7 @@ export default function JoinButton({ code }: { code: string }) {
         {loading && <LoaderCircle size={18} className="animate-spin" aria-hidden="true" />}
         Unirme a la campaña
       </button>
-      {error && <p className="mt-3 text-sm text-brand-soft" role="alert">{error}</p>}
+      {error && <p className="mt-3 text-sm text-danger" role="alert">{error}</p>}
     </div>
   );
 }

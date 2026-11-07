@@ -204,7 +204,7 @@ export default function ChatAssistant() {
             )}
           </div>
 
-          {error && <p className="px-3.5 pb-2 text-sm text-brand-soft" role="alert">{error}</p>}
+          {error && <p className="px-3.5 pb-2 text-sm text-danger" role="alert">{error}</p>}
 
           <div className="flex gap-2 border-t border-line p-3">
             <input

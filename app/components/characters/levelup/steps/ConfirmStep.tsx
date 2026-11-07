@@ -37,7 +37,7 @@ export default function ConfirmStep({ level, rows, errors, conflict }: {
         </div>
       )}
       {errors.length > 0 && (
-        <ul role="alert" className="space-y-1 rounded-md border border-brand/50 bg-brand/10 p-3 text-sm text-brand-soft">
+        <ul role="alert" className="space-y-1 rounded-md border border-brand/50 bg-brand/10 p-3 text-sm text-danger">
           {errors.map((e) => <li key={e}>{e}</li>)}
         </ul>
       )}

@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { ArrowUp, Files } from "lucide-react";
 import { requireUser } from "@/lib/server/auth/currentUser";
 import { listMyCharacters } from "@/lib/server/characters/queries";
@@ -7,7 +6,7 @@ import { system as rpgSystems } from "@/lib/utils/systems";
 import { first } from "@/lib/utils/utils";
 import CharacterCard, { type CharacterCardData } from "@/app/components/characters/CharacterCard";
 import NewCharacterDialog from "@/app/components/characters/creator/NewCharacterDialog";
-import { secondaryButton } from "@/app/components/ui/formStyles";
+import ListFilters from "@/app/components/ui/ListFilters";
 
 export const metadata: Metadata = { title: "Mis personajes" };
 
@@ -18,9 +17,6 @@ const SORTS = ["recent", "name"] as const;
 function pick<T extends string>(value: string | undefined, allowed: readonly T[], fallback: T): T {
   return allowed.find((a) => a === value) ?? fallback;
 }
-
-const field =
-  "h-11 w-full rounded-md border border-line-strong bg-surface px-3 text-fg placeholder:text-muted focus:border-brand focus:outline-none";
 
 export default async function CharactersPage({
   searchParams,
@@ -48,50 +44,33 @@ export default async function CharactersPage({
         <NewCharacterDialog systems={systems} campaigns={dialogCampaigns} books={books} />
       </div>
 
-      {/* Buscador: formulario GET, los filtros quedan en la dirección */}
-      <form
-        key={`${q}|${status}|${sort}`}
-        action="/characters"
-        method="get"
+      <ListFilters
         className="mb-6 rounded-lg border border-line bg-panel p-5"
-      >
-        <h2 className="mb-4 font-heading text-sm font-bold uppercase tracking-wide text-muted">Buscar personajes</h2>
-        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-[2fr_1fr_1fr_auto]">
-          <input
-            type="search"
-            name="q"
-            defaultValue={q}
-            maxLength={80}
-            placeholder="Nombre, especie, clase o campaña"
-            aria-label="Buscar personajes"
-            className={field}
-          />
-          <select name="status" defaultValue={status} aria-label="Estado" className={field}>
-            <option value="active">Activos</option>
-            <option value="retired">Retirados</option>
-            <option value="dead">Fallecidos</option>
-            <option value="npc">PNJ</option>
-            <option value="all">Todos</option>
-          </select>
-          <select name="sort" defaultValue={sort} aria-label="Ordenar por" className={field}>
-            <option value="recent">Recientes primero</option>
-            <option value="name">Ordenar por nombre</option>
-          </select>
-          <div className="flex items-center gap-3">
-            <button
-              type="submit"
-              className={`${secondaryButton} h-11 flex-1`}
-            >
-              Buscar
-            </button>
-            {hasFilters && (
-              <Link href="/characters" className="text-sm text-muted hover:text-white">
-                Limpiar
-              </Link>
-            )}
-          </div>
-        </div>
-      </form>
+        base="/characters"
+        title="Buscar personajes"
+        q={q}
+        searchLabel="Buscar personajes"
+        placeholder="Nombre, especie, clase o campaña"
+        selects={[
+          {
+            name: "status", label: "Estado", value: status, defaultValue: "active",
+            options: [
+              { value: "active", label: "Activos" },
+              { value: "retired", label: "Retirados" },
+              { value: "dead", label: "Fallecidos" },
+              { value: "npc", label: "PNJ" },
+              { value: "all", label: "Todos" },
+            ],
+          },
+          {
+            name: "sort", label: "Ordenar por", value: sort, defaultValue: "recent",
+            options: [
+              { value: "recent", label: "Recientes primero" },
+              { value: "name", label: "Ordenar por nombre" },
+            ],
+          },
+        ]}
+      />
 
       {cards.length === 0 ? (
         hasFilters ? (

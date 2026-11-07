@@ -84,7 +84,7 @@ export default function InspirationBox({ characterId, initial, isOwner, classNam
       <p className="hidden text-xs font-semibold print:block">Inspiración heroica: {on ? "Sí" : "No"}</p>
     </div>
       {error && (
-        <p role="alert" className="absolute inset-x-0 top-full z-10 mt-1 rounded-md border border-line bg-surface px-2 py-1 text-xs text-brand-soft">{error}</p>
+        <p role="alert" className="absolute inset-x-0 top-full z-10 mt-1 rounded-md border border-line bg-surface px-2 py-1 text-xs text-danger">{error}</p>
       )}
     </div>
   );

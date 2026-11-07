@@ -194,7 +194,7 @@ export default function EquipmentTab({ characterId, isOwner, inventory, info, ca
             </button>
           )}
         />
-        {error && <p role="alert" className="mb-3 text-sm text-brand-soft">{error}</p>}
+        {error && <p role="alert" className="mb-3 text-sm text-danger">{error}</p>}
 
         <div className={`space-y-6 ${section(active !== "otras")}`}>
           {nothing && active !== "otras" && <p className="text-sm text-muted print:hidden">Sin objetos.</p>}
