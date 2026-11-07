@@ -86,9 +86,7 @@ export default function SheetHeader(p: SheetHeaderProps) {
   };
 
   return (
-    /* La animación crea un contexto de apilado propio: mientras se ve el tooltip del estado, la cabecera sube por encima
-       de las características, que van después */
-    <header className="relative mb-6 animate-fade-up has-[[aria-describedby=status-tip]:hover]:z-40 has-[[aria-describedby=status-tip]:focus-visible]:z-40">
+    <header className="mb-6 animate-fade-up">
       <CharacterNotices>
         {/* Resultado de unir, cancelar o quitar de una campaña */}
         <div className="print:hidden">
