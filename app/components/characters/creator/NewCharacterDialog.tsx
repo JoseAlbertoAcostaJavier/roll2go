@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { Plus } from "lucide-react";
 import type { BookOption } from "@/lib/rules/catalog/types";
@@ -70,7 +71,8 @@ export default function NewCharacterDialog({ systems, campaigns, books }: Props)
         <Plus size={16} aria-hidden="true" /> Crear personaje
       </button>
 
-      {open && (
+      {/* En el cuerpo de la página: dentro de un contenedor animado (el estado vacío), `position: fixed` queda atrapado en él */}
+      {open && createPortal(
         <div className="fixed inset-0 z-50 flex animate-fade-in items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
           <form
             role="dialog"
@@ -167,7 +169,8 @@ export default function NewCharacterDialog({ systems, campaigns, books }: Props)
               <button type="submit" disabled={!systemId} className={primaryButton}>Continuar</button>
             </div>
           </form>
-        </div>
+        </div>,
+        document.body,
       )}
     </>
   );
