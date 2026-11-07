@@ -121,6 +121,7 @@ const checks: { [K in EntryKind]: Check } = {
     skills: shape({ fixed: strings, "choose?": shape({ count: int(1, 20), from: strings }) }),
     spells: arrayOf(spellGrant),
     hasLineages: bool,
+    "naturalArmor?": bool,
   }),
   lineage: shape({ "darkvision?": num, "speed?": num, spells: arrayOf(spellGrant), traitName: str }),
   class: shape({

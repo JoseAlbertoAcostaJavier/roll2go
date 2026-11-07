@@ -373,8 +373,9 @@ function toPack(p: unknown): Pack | null {
 function toEquipment(raw: unknown): Equipment {
   const opts = isObj(raw) ? raw : {};
   return Object.fromEntries(Object.entries(opts)
-    .filter(([letter]) => /^[A-Z]$/.test(letter))
-    .map(([letter, items]) => [letter, asArr(items).map(toPack).filter((x): x is Pack => x !== null)]));
+    // Algunos libros (Forja del Artífice) escriben las letras en minúscula
+    .filter(([letter]) => /^[A-Za-z]$/.test(letter))
+    .map(([letter, items]) => [letter.toUpperCase(), asArr(items).map(toPack).filter((x): x is Pack => x !== null)]));
 }
 
 /**
@@ -467,6 +468,7 @@ export function normalizeSpecies(raw: Rec, ctx: NormalizeContext): NormalizedEnt
     skills,
     spells: spellGrants(ownSpells),
     hasLineages: asArr(raw._versions).length > 0,
+    ...(asArr(raw.traitTags).includes("Natural Armor") ? { naturalArmor: true } : {}),
     ...withDefenses(raw),
   });
 }
@@ -540,8 +542,8 @@ function prerequisiteText(pre: unknown): string | undefined {
 
 export function normalizeFeat(raw: Rec): NormalizedEntry {
   const data: EntryData["feat"] = {
-    // Las dotes de libros anteriores a 2024 no traen categoría: son generales
-    category: raw.category === undefined ? "general" : FEAT_CATEGORIES[str(raw.category)] ?? (str(raw.category) as EntryData["feat"]["category"]),
+    // Sin categoría (libros anteriores a 2024) o con una propia de su libro (marcas de dragón de Eberron): generales
+    category: (FEAT_CATEGORIES[str(raw.category)] ?? "general") as EntryData["feat"]["category"],
     ...(str(raw.category) ? { categoryCode: str(raw.category) } : {}),
     repeatable: raw.repeatable === true,
     ...withDefenses(raw),
@@ -951,7 +953,7 @@ export function normalizeClass(raw: Rec, ctx: NormalizeContext): NormalizedEntry
     primaryAbility: ABILITIES.filter((a) => asArr(raw.primaryAbility).some((p) => isObj(p) && p[a] === true)),
     saves: asArr(raw.proficiency).map(str) as Ability[],
     armor: asArr(prof.armor).map((a) => plainText(str(a))),
-    weapons: asArr(prof.weapons).map((w) => plainText(str(w))),
+    weapons: asArr(prof.weapons).map((w) => plainText(str(w))).filter(Boolean),
     tools: asArr(prof.tools).map((t) => plainText(str(t))),
     skills,
     equipment: classEquipment(raw.startingEquipment),

@@ -36,6 +36,11 @@ const BOOK_NAMES: Record<string, string> = {
   MPMM: "Mordenkainen presenta: Monstruos del multiverso",
   ERLW: "Eberron: Renacer tras la Última Guerra",
   VRGR: "Guía de Van Richten sobre Ravenloft",
+  EFA: "Eberron: Forja del Artífice",
+  BMT: "El Libro de las Muchas Cosas",
+  DSOTDQ: "Dragonlance: La sombra de la Reina de los Dragones",
+  COS: "La maldición de Strahd",
+  BGDIA: "Baldur's Gate: Descenso a Avernus",
 };
 // Libros de apoyo que no se ofrecen como libros de reglas
 const UNLISTED = new Set<string>();

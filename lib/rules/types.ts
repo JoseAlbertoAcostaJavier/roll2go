@@ -58,6 +58,8 @@ export type SpeciesData = {
   skills: { fixed: string[]; choose?: { count: number; from: string[] } };
   spells: SpellGrant[];
   hasLineages: boolean;
+  /** Su cuerpo le da una CA propia (Tortle, Forjado…). */
+  naturalArmor?: boolean;
   defenses?: Defenses;
 };
 

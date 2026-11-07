@@ -115,6 +115,11 @@ describe("libros anteriores a 2024", () => {
     expect(validateEntryData("feat", e.data).ok).toBe(true);
   });
 
+  it("una dote con categoría propia de su libro también es general y conserva su código", () => {
+    const e = normalizeFeat({ name: "Mark of Making", source: "EFA", category: "D", entries: ["x"] });
+    expect(e.data).toMatchObject({ category: "general", categoryCode: "D" });
+  });
+
   it("los idiomas exóticos, secretos o sin tipo son raros", () => {
     for (const type of ["exotic", "secret", undefined]) {
       expect(normalizeLanguage({ name: "Quori", source: "ERLW", type }).data).toEqual({ type: "rare" });

@@ -156,13 +156,9 @@ export function StepSection({ step, number, total, active, children }: {
   active: boolean;
   children: React.ReactNode;
 }) {
-  const Icon = step.icon;
   return (
     <section id={step.id} hidden={!active} aria-labelledby={`${step.id}-title`} className="animate-fade-up rounded-xl border border-line bg-panel p-5 sm:p-7">
       <header className="mb-6 flex items-start gap-3 border-b border-line pb-4">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-line bg-surface text-brand-soft">
-          <Icon size={20} aria-hidden="true" />
-        </span>
         <div className="min-w-0 flex-1">
           <h2 id={`${step.id}-title`} tabIndex={-1} className="font-heading text-xl font-extrabold text-white outline-none">
             {step.title}

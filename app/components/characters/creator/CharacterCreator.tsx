@@ -958,7 +958,7 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
           <StepSection {...stepProps(S.species)}>
             <div className="space-y-6">
               <div>
-                <OptionCards id="species" label="Especie" kind="species" options={props.species} value={form.species} onChange={chooseSpecies} />
+                <OptionCards id="species" label="Especie" kind="species" options={props.species} lineages={props.lineages} value={form.species} onChange={chooseSpecies} />
                 <FieldError errors={errors} keys={["species"]} />
                 {form.species && <Description entry={cache[refKey(form.species)]} />}
               </div>
