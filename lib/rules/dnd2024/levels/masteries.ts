@@ -74,11 +74,13 @@ export function validateMasteries(
     entries: Map<string, CatalogEntry>;
     proficientWith: (item: CatalogEntry) => boolean;
     meleeOnly?: boolean;
+    /** Se admiten menos de las permitidas (los interruptores de la ficha las cambian de una en una). */
+    partial?: boolean;
   },
 ): { ok: true } | { ok: false; error: string } {
   if (!Array.isArray(refs) || !refs.every(isRef)) return { ok: false, error: "Maestrías no válidas." };
   if (new Set(refs.map(refKey)).size !== refs.length) return { ok: false, error: "Hay un arma repetida." };
-  if (refs.length !== ctx.allowed) return { ok: false, error: `Elige ${ctx.allowed} armas con maestría.` };
+  if (ctx.partial ? refs.length > ctx.allowed : refs.length !== ctx.allowed) return { ok: false, error: `Elige ${ctx.allowed} armas con maestría.` };
   for (const r of refs) {
     const item = r.key.startsWith("item:") ? ctx.entries.get(refKey(r)) : undefined;
     const data = item?.data as ItemData | undefined;

@@ -27,9 +27,18 @@ import type { SpellData } from "../lib/rules/types";
 
 const SRD_ATTRIBUTION =
   'This work includes material from the System Reference Document 5.2 ("SRD 5.2") by Wizards of the Coast LLC, available at https://www.dndbeyond.com/srd. The SRD 5.2 is licensed under the Creative Commons Attribution 4.0 International License, available at https://creativecommons.org/licenses/by/4.0/legalcode.';
-const BOOK_NAMES: Record<string, string> = { XPHB: "Manual del Jugador 2024", XGE: "Guía de Xanathar para todo" };
-// Libros de apoyo que no se ofrecen como libros de reglas (de la Guía de Xanathar solo se importan las tablas de nombres)
-const UNLISTED = new Set(["XGE"]);
+const BOOK_NAMES: Record<string, string> = {
+  XPHB: "Manual del Jugador 2024",
+  XDMG: "Manual del Dungeon Master 2024",
+  XMM: "Manual de Monstruos 2025",
+  XGE: "Guía de Xanathar para todo",
+  TCE: "El caldero de Tasha para todo",
+  MPMM: "Mordenkainen presenta: Monstruos del multiverso",
+  ERLW: "Eberron: Renacer tras la Última Guerra",
+  VRGR: "Guía de Van Richten sobre Ravenloft",
+};
+// Libros de apoyo que no se ofrecen como libros de reglas
+const UNLISTED = new Set<string>();
 const BATCH = 500;
 
 function fail(msg: string): never {
@@ -89,6 +98,7 @@ function loadRaw(data: string, srdOnly: boolean): RawFiles {
     optionalFeatures: j("optionalfeatures.json"),
     names: j("names.json"),
     actions: j("actions.json"),
+    bestiary: readAll(path.join(data, "bestiary"), "bestiary-"),
   };
 }
 

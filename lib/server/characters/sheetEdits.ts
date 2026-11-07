@@ -12,6 +12,7 @@ import { fail, type Result } from "@/lib/server/result";
 import { unchangedFilter } from "@/lib/utils/unchangedFilter";
 import { derive } from "@/lib/rules/dnd2024/derive";
 import { weaponProficient } from "@/lib/rules/dnd2024/derive/attacks";
+import { applyCustom } from "@/lib/rules/dnd2024/sheet/custom";
 import { applyHp, applyInventoryOp } from "@/lib/rules/dnd2024/sheet/edits";
 import { bareName, isRef, refKey } from "@/lib/rules/dnd2024/sheet/equipmentRefs";
 import { LEVEL_CHANGED } from "@/lib/rules/dnd2024/levels/levelOps";
@@ -99,6 +100,7 @@ export async function saveMasteries(
     allowed: masteryCount(found.sheet, entries),
     entries,
     meleeOnly: masteryMeleeOnly(found.sheet, entries),
+    partial: (body as { partial?: unknown }).partial === true,
     proficientWith: (item) => weaponProficient(item.data as ItemData, [item.name, bareName(item.ref.key)], weapons),
   });
   if (!result.ok) return fail(400, result.error);
@@ -209,10 +211,31 @@ export async function applyRestOperation(
 }
 
 // Campo de la hoja que cambia cada operación de estado
-const STATUS_FIELDS = { inspiration: "heroicInspiration", condition: "conditions", exhaustion: "exhaustion", featureUse: "featureUses" } as const;
+const STATUS_FIELDS = { hitDice: "hitDiceUsed", inspiration: "heroicInspiration", condition: "conditions", exhaustion: "exhaustion", featureUse: "featureUses" } as const;
 
 /* Inspiración heroica, estados y agotamiento (spec de la ficha visual §2). Solo se escribe el campo que cambia, y solo
    si sigue como se leyó. */
+// Una operación sobre lo personalizado (`CustomOp`). Como las de estado, solo escribe su campo y solo si no ha cambiado.
+export async function applyCustomOperation(
+  userId: string,
+  id: string,
+  body: unknown,
+): Promise<Result<{ custom: NonNullable<Dnd2024SheetV2["custom"]> }>> {
+  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+    const { found, failure } = await loadForWrite(userId, id);
+    if (failure) return failure;
+    const result = applyCustom(found.sheet, body, newId);
+    if (!result.ok) return fail(400, result.error);
+    const stored = found.character.sheet as Record<string, unknown> | undefined;
+    const res = await Character.updateOne(
+      { _id: id, "sheet.version": 2, "sheet.custom": unchangedFilter(stored?.custom) },
+      { $set: { "sheet.custom": result.custom } },
+    );
+    if (res.matchedCount === 1) return { ok: true, custom: result.custom };
+  }
+  return fail(409, "La ficha ha cambiado; recarga la página.");
+}
+
 export async function applyStatusOperation(
   userId: string,
   id: string,
@@ -226,7 +249,8 @@ export async function applyStatusOperation(
     if (failure) return failure;
 
     const max = new Map(derive(found.sheet, found.entries).featureUses.map((u) => [u.key, u.max]));
-    const result = applyStatus(found.sheet, body, { useMax: (key) => max.get(key) ?? null });
+    const pools = new Map(hitDicePools(found.sheet, found.entries).map((p) => [p.classKey, p.total]));
+    const result = applyStatus(found.sheet, body, { useMax: (key) => max.get(key) ?? null, hitDiceTotal: (key) => pools.get(key) ?? null });
     if (!result.ok || !field) return fail(400, result.ok ? "Petición no válida." : result.error);
 
     const stored = found.character.sheet as Record<string, unknown> | undefined;

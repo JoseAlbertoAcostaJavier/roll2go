@@ -12,7 +12,7 @@ export type Ref = { book: string; key: string };
 
 export type EntryKind =
   | "species" | "lineage" | "class" | "subclass" | "classFeature" | "subclassFeature"
-  | "background" | "feat" | "spell" | "item" | "language" | "skill" | "optionalFeature" | "nameTable" | "action";
+  | "background" | "feat" | "spell" | "item" | "language" | "skill" | "optionalFeature" | "nameTable" | "action" | "monster";
 // Todos los tipos de entrada, en el orden de EntryKind
 export const ENTRY_KINDS: readonly EntryKind[] = [
   "species",
@@ -30,6 +30,7 @@ export const ENTRY_KINDS: readonly EntryKind[] = [
   "optionalFeature",
   "nameTable",
   "action",
+  "monster",
 ];
 
 /** Elemento de equipo: una entrada del catálogo, monedas (pc) o un texto libre. */
@@ -255,6 +256,42 @@ export type ItemData = {
 
 export type LanguageData = { type: "standard" | "rare" };
 
+/** Bloque de texto de un monstruo (rasgo, acción…), con su texto en BBCode. */
+export type MonsterBlock = { name: string; text: string };
+
+/** Monstruo del bestiario. Sin estadística fija (invocaciones que dependen del nivel), 0 y el texto en la nota. */
+export type MonsterData = {
+  size: string[];
+  /** Tipo de criatura de 5etools: `fey`, `undead`… */
+  type: string;
+  tags: string[];
+  alignment: string[];
+  ac: number;
+  acNote: string;
+  hp: number;
+  hpFormula: string;
+  /** Pies por tipo de movimiento. */
+  speed: Record<string, number>;
+  abilities: Record<Ability, number>;
+  saves: Record<string, string>;
+  skills: Record<string, string>;
+  senses: string[];
+  passive: number;
+  languages: string[];
+  /** Valor de desafío en texto: `1/4`, `5`; vacío si no tiene. */
+  cr: string;
+  resist: string[];
+  immune: string[];
+  vulnerable: string[];
+  conditionImmune: string[];
+  traits: MonsterBlock[];
+  actions: MonsterBlock[];
+  bonus: MonsterBlock[];
+  reactions: MonsterBlock[];
+  legendary: MonsterBlock[];
+  environment: string[];
+};
+
 /** Género de una tabla de nombres; `family` son apellidos o clanes y `other`, el resto (niños, virtudes…). */
 export type NameGender = "male" | "female" | "family" | "other";
 /** Tablas de nombres de una especie (`species` es su identificador: `dwarf`, `half-orc`…). */
@@ -274,6 +311,7 @@ export type EntryData = {
   feat: FeatData;
   spell: SpellData;
   item: ItemData;
+  monster: MonsterData;
   language: LanguageData;
   skill: SkillData;
   optionalFeature: OptionalFeatureData;

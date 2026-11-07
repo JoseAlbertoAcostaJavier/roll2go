@@ -17,7 +17,7 @@ const primary =
   "flex items-center gap-2 rounded-md bg-brand px-4 py-2 text-sm font-bold text-white transition-colors enabled:hover:bg-brand-hover disabled:opacity-50";
 const die = (on: boolean) =>
   `flex size-9 items-center justify-center rounded-full border transition-colors disabled:opacity-30 ${
-    on ? "border-brand bg-brand/25 text-white" : "border-line-strong text-muted enabled:hover:border-fg enabled:hover:text-white"
+    on ? "border-brand bg-brand text-white" : "border-line-strong text-fg enabled:hover:border-brand"
   }`;
 
 const TITLE: Record<Rest, string> = { long: "Descanso largo", short: "Descanso corto" };
@@ -40,6 +40,9 @@ export default function RestButtons({ characterId, pools, conMod, recoversOther,
   const [error, setError] = useState("");
   const [spend, setSpend] = useState<Record<string, number>>({});
   const [auto, setAuto] = useState(true);
+  // Opciones: quitar los PG temporales (corto: no; largo: sí, como dicen las reglas) e ir a Conjuros al terminar el largo
+  const [resetTemp, setResetTemp] = useState(false);
+  const [toSpells, setToSpells] = useState(false);
   const [healing, setHealing] = useState("");
   const [result, setResult] = useState<string | null>(null);
 
@@ -47,6 +50,8 @@ export default function RestButtons({ characterId, pools, conMod, recoversOther,
     setError("");
     setSpend({});
     setAuto(true);
+    setResetTemp(rest === "long");
+    setToSpells(false);
     setHealing("");
     setResult(null);
     setOpen({ rest, opener: e.currentTarget });
@@ -66,9 +71,10 @@ export default function RestButtons({ characterId, pools, conMod, recoversOther,
     setError("");
     try {
       const body = rest === "long"
-        ? { op: "longRest" }
+        ? { op: "longRest", keepTemp: !resetTemp }
         : {
             op: "shortRest",
+            clearTemp: resetTemp,
             spend: Object.fromEntries(chosen.map(({ pool, n }) => [pool.classKey, n])),
             ...(!auto && dice.length > 0 ? { healing: Number(healing) } : {}),
           };
@@ -84,7 +90,8 @@ export default function RestButtons({ characterId, pools, conMod, recoversOther,
       }
       // Los PG que el editor aún no ha enviado se calcularon antes del descanso: el descanso gana
       window.dispatchEvent(new Event(REST_EVENT));
-      router.refresh();
+      if (rest === "long" && toSpells) router.push(`/characters/${characterId}?tab=conjuros`, { scroll: false });
+      else router.refresh();
       const rolls: number[] = Array.isArray(data?.rolls) ? data.rolls : [];
       if (rest === "short" && rolls.length > 0) {
         // Agrupa las tiradas por dado en el orden en que se gastaron
@@ -141,6 +148,14 @@ export default function RestButtons({ characterId, pools, conMod, recoversOther,
                 <div className="mb-5 space-y-3 text-sm">
                   <p className="text-muted">{LONG_INTRO}</p>
                   <p><span className="font-semibold text-muted">Recuperas: </span>{LONG_RECOVERY}</p>
+                  <label className="flex items-center gap-2">
+                    <input type="checkbox" checked={resetTemp} onChange={(e) => setResetTemp(e.target.checked)} className="size-4 accent-brand" />
+                    Quitar los puntos de golpe temporales
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <input type="checkbox" checked={toSpells} onChange={(e) => setToSpells(e.target.checked)} className="size-4 accent-brand" />
+                    Ir a Conjuros después del descanso
+                  </label>
                 </div>
               ) : (
                 <div className="mb-5 space-y-4 text-sm">
@@ -171,7 +186,7 @@ export default function RestButtons({ characterId, pools, conMod, recoversOther,
                                   onClick={() => toggle(p, i)}
                                   className={die(i < n)}
                                 >
-                                  <Hexagon size={18} aria-hidden="true" className={i < n ? "fill-brand" : ""} />
+                                  <Hexagon size={18} aria-hidden="true" />
                                 </button>
                               ))}
                             </span>
@@ -186,6 +201,10 @@ export default function RestButtons({ characterId, pools, conMod, recoversOther,
                       Aplicar automáticamente la tirada
                     </label>
                   )}
+                  <label className="flex items-center gap-2">
+                    <input type="checkbox" checked={resetTemp} onChange={(e) => setResetTemp(e.target.checked)} className="size-4 accent-brand" />
+                    Quitar los puntos de golpe temporales
+                  </label>
                   {manual && (
                     <label className="block">
                       <span className="mb-1 block font-semibold">PG recuperados</span>

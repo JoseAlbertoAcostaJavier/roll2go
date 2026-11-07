@@ -148,9 +148,37 @@ export type InventoryItem = {
   notes: string;
   /** Id de la línea contenedora donde va guardado; sin campo = suelto. */
   container?: string | null;
+  /** Sintonizado (máximo 3 objetos; ver `MAX_ATTUNED`). */
+  attuned?: boolean;
 };
 
 export type Inventory = { items: InventoryItem[]; coins: Coins; other: string };
+
+/** Ataque, acción o rasgo añadido a mano en la ficha. */
+export type CustomItem =
+  | { id: string; kind: "attack"; name: string; range: string; hit: string; damage: string; notes: string }
+  | { id: string; kind: "action"; group: "action" | "bonus" | "reaction" | "other"; name: string; details: string }
+  | { id: string; kind: "feature"; section: "clase" | "especie" | "dotes" | "otros"; name: string; source: string; description: string };
+
+/** Categoría propia de la pestaña Notas. */
+export type NoteCategory = { id: string; title: string; text: string };
+
+/** Estado creado por el jugador. */
+export type CustomCondition = { id: string; name: string; description: string; active: boolean };
+
+/** Lo que el jugador añade o reordena a mano (ver `custom.ts`). */
+export type SheetCustom = {
+  items: CustomItem[];
+  notes: NoteCategory[];
+  /** Defensas añadidas a mano, además de las calculadas. */
+  defenses: { kind: "resist" | "immune" | "vulnerable" | "conditionImmune"; type: string }[];
+  /** Estados creados por el jugador. */
+  conditions: CustomCondition[];
+  /** Orden de las filas de cada sección, por id de sección. */
+  order: Record<string, string[]>;
+  /** Filas ocultas, por su clave. */
+  hidden: string[];
+};
 
 /** Hoja v2: las clases salen del historial de niveles y el equipo inicial se vuelca al inventario. */
 export type Dnd2024SheetV2 = Omit<Dnd2024Sheet, "version" | "classes"> & {
@@ -199,6 +227,8 @@ export type Dnd2024SheetV2 = Omit<Dnd2024Sheet, "version" | "classes"> & {
   conditions?: string[];
   /** Nivel de agotamiento (0–6). */
   exhaustion?: number;
+  /** Lo añadido o reordenado a mano; las hojas guardadas antes no lo tienen: ver `customOf`. */
+  custom?: SheetCustom;
 };
 
 export type AnySheet = Dnd2024Sheet | Dnd2024SheetV2;

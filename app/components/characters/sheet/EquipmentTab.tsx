@@ -4,18 +4,20 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { LoaderCircle, SlidersHorizontal, TriangleAlert } from "lucide-react";
 import type { Coins, Inventory } from "@/lib/rules/dnd2024/sheet/sheet";
-import { MAX_COINS, MAX_OTHER, type InventoryOp } from "@/lib/rules/dnd2024/sheet/edits";
+import { MAX_ATTUNED, MAX_COINS, MAX_OTHER, type InventoryOp } from "@/lib/rules/dnd2024/sheet/edits";
 import { effectiveContainer, inventoryWeights } from "@/lib/rules/dnd2024/sheet/inventory";
 import { itemDetails, locationText, type ItemDetails } from "@/lib/rules/dnd2024/sheet/itemDetails";
 import { inventoryChips, inventoryGroups, type ItemInfo } from "@/lib/rules/dnd2024/sheet/inventoryTable";
+import { rarityName } from "@/lib/rules/dnd2024/sheet/labels";
 import { parseSection } from "@/lib/rules/dnd2024/sheet/sheetSections";
 import type { NewItem } from "./AddItemDialog";
 import InventoryFilters from "./InventoryFilters";
 import { clampInt, smallInput } from "./InventoryFields";
 import ItemDialog, { type ItemOwnerControls } from "./ItemDialog";
 import ManageInventory from "./ManageInventory";
+import type { SheetCustom } from "@/lib/rules/dnd2024/sheet/custom";
 import InventoryTable, { fmt, weightText, type InventoryActions } from "./InventoryTable";
-import { SectionBar } from "./statUi";
+import { SectionBar, switchThumb, switchTrack, tagChip } from "./statUi";
 
 export type { ItemInfo };
 
@@ -37,6 +39,7 @@ type Props = {
   /** Datos y descripción de cada línea (clave: id de la línea) para su ficha. */
   details: Record<string, ItemDetails>;
   descriptions: Record<string, string>;
+  custom: SheetCustom;
 };
 
 const COINS: { key: keyof Coins; label: string }[] = [
@@ -47,7 +50,7 @@ const toDraft = (c: Coins) => ({ cp: String(c.cp), sp: String(c.sp), ep: String(
 const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v) ?? "";
 
 // Pestaña Equipo: inventario, monedas, peso y otras posesiones. Edita el dueño; el resto solo lee.
-export default function EquipmentTab({ characterId, isOwner, inventory, info, capacity, armorWarning, systemId, books, base, query, details, descriptions }: Props) {
+export default function EquipmentTab({ characterId, isOwner, inventory, info, capacity, armorWarning, systemId, books, base, query, details, descriptions, custom }: Props) {
   const router = useRouter();
   const [inv, setInv] = useState(inventory);
   const [error, setError] = useState("");
@@ -139,6 +142,8 @@ export default function EquipmentTab({ characterId, isOwner, inventory, info, ca
       },
     };
   }
+  const magic = inv.items.filter((l) => info[l.id]?.rarity && info[l.id]?.rarity !== "none");
+  const attuned = inv.items.filter((l) => l.attuned).length;
   const carried = inventoryWeights(inv.items, info).carried;
   const over = carried > capacity;
 
@@ -203,6 +208,9 @@ export default function EquipmentTab({ characterId, isOwner, inventory, info, ca
                 readOnly={readOnly}
                 actions={actions}
                 onOpen={(id, opener) => setOpen({ id, opener })}
+                custom={custom}
+                characterId={characterId}
+                onAdd={readOnly ? undefined : (e) => setManage(e.currentTarget)}
               />
             );
           })}
@@ -233,6 +241,34 @@ export default function EquipmentTab({ characterId, isOwner, inventory, info, ca
           owner={owner}
         />
       )}
+
+      {/* Sintonización: los objetos mágicos del inventario, con su interruptor */}
+      <section className={`animate-fade-up space-y-1 ${section(active === "todo")}`} aria-label="Sintonización">
+        <SectionBar title="Sintonización" extra={`${attuned}/${MAX_ATTUNED}`} />
+        {magic.length === 0 ? <p className="px-3 py-2 text-sm text-muted">Sin objetos mágicos.</p> : (
+          <ul className="divide-y divide-line">
+            {magic.map((l) => (
+              <li key={l.id} className="flex flex-wrap items-center gap-3 px-3 py-2 text-sm">
+                {readOnly ? <span className={`text-xs font-semibold ${l.attuned ? "text-success" : "text-muted"}`}>{l.attuned ? "Sintonizado" : "—"}</span> : (
+                  <label className={`${switchTrack} print:hidden`} title={!l.attuned && attuned >= MAX_ATTUNED ? `Solo puedes sintonizar ${MAX_ATTUNED} objetos a la vez` : undefined}>
+                    <input
+                      type="checkbox"
+                      className="peer sr-only"
+                      checked={!!l.attuned}
+                      disabled={!l.attuned && attuned >= MAX_ATTUNED}
+                      aria-label={`Sintonizar ${l.name}`}
+                      onChange={(e) => send({ op: "update", id: l.id, attuned: e.target.checked }, patchLine(l.id, { attuned: e.target.checked }))}
+                    />
+                    <span aria-hidden="true" className={switchThumb} />
+                  </label>
+                )}
+                <span className="font-semibold text-white">{l.name}</span>
+                {info[l.id]?.rarity && <span className={tagChip}>{rarityName(info[l.id]!.rarity!)}</span>}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
 
       <section className={`animate-fade-up space-y-2 ${section(active === "todo" || active === "otras")}`} aria-label="Otras posesiones">
         <SectionBar title="Otras posesiones" />

@@ -199,6 +199,13 @@ const checks: { [K in EntryKind]: Check } = {
     "contents?": arrayOf(shape({ ref, quantity: num })),
     "container?": shape({ weight: nullable(num), volume: nullable(num), items: arrayOf(shape({ ref, count: num })), weightless: bool }),
   }),
+  monster: shape({
+    size: strings, type: str, tags: strings, alignment: strings, ac: num, acNote: str, hp: num, hpFormula: str,
+    abilities: shape({ str: num, dex: num, con: num, int: num, wis: num, cha: num }),
+    senses: strings, passive: num, languages: strings, cr: str, resist: strings, immune: strings, vulnerable: strings, conditionImmune: strings,
+    traits: arrayOf(shape({ name: str, text: str })), actions: arrayOf(shape({ name: str, text: str })), bonus: arrayOf(shape({ name: str, text: str })),
+    reactions: arrayOf(shape({ name: str, text: str })), legendary: arrayOf(shape({ name: str, text: str })), environment: strings,
+  }),
   language: shape({ type: oneOf("standard", "rare") }),
   skill: shape({ ability }),
   optionalFeature: shape({

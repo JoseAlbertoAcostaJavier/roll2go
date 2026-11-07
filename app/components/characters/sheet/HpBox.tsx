@@ -1,7 +1,8 @@
 import type { HitDicePool } from "@/lib/rules/dnd2024/sheet/rest";
+import HitDiceField from "./HitDiceField";
 import HpEditor, { HpBar } from "./HpEditor";
 import RestButtons from "./RestButtons";
-import { boxTitle, sheetBox, tagChip } from "./statUi";
+import { boxTitle, sheetBox } from "./statUi";
 import type { SheetData } from "./types";
 
 // Puntos de golpe: actuales, máximos y temporales; daño y curación; descansos (el dueño) y dados de golpe disponibles
@@ -36,12 +37,7 @@ export default function HpBox({ d, characterId, isOwner, version, pools, recover
       {pools.length > 0 && (
         <div className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-line pt-3 max-lg:mt-3 lg:mt-auto">
           <span className="text-sm text-muted">Dados de golpe</span>
-          {pools.map((p) => (
-            <span key={p.classKey} className="flex items-center gap-2 text-sm">
-              <span className={tagChip}>D{p.die} ({p.name})</span>
-              <span className="font-heading font-bold text-white">{p.total - p.used} / {p.total}</span>
-            </span>
-          ))}
+          {pools.map((p) => <HitDiceField key={p.classKey} characterId={characterId} pool={p} isOwner={isOwner} />)}
         </div>
       )}
     </section>

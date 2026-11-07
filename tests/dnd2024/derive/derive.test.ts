@@ -229,9 +229,10 @@ describe("derive", () => {
 
   describe("ataques", () => {
     it("una fila por arma equipada y el ataque sin armas siempre", () => {
-      expect(d.attacks.map((a) => a.name)).toEqual(["Greataxe", "Handaxe", "Ataque sin armas"]);
+      expect(d.attacks.map((a) => a.name)).toEqual(["Greataxe", "Handaxe", "Handaxe (otra mano)", "Ataque sin armas"]);
       expect(d.attacks[0]).toMatchObject({ bonus: 4, damage: "1d12+2", damageType: "cortante", mastery: null });
-      expect(d.attacks[2]).toMatchObject({ bonus: 4, damage: "3", damageType: "contundente" });
+      expect(d.attacks[2]).toMatchObject({ bonus: 4, damage: "1d6", variant: "offhand" });
+      expect(d.attacks[3]).toMatchObject({ bonus: 4, damage: "3", damageType: "contundente" });
       const s = v2();
       for (const i of s.inventory.items) i.equipped = false;
       expect(derive(s, build()).attacks.map((a) => a.name)).toEqual(["Ataque sin armas"]);

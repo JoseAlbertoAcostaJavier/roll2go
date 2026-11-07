@@ -35,6 +35,7 @@ type Rec = Record<string, unknown>;
 
 /** JSON de 5etools ya leídos, agrupados por archivo. */
 export type RawFiles = {
+  bestiary?: { monster?: unknown[] }[];
   races?: { race?: unknown[] };
   backgrounds?: { background?: unknown[] };
   feats?: { feat?: unknown[] };
@@ -376,6 +377,20 @@ function toEquipment(raw: unknown): Equipment {
     .map(([letter, items]) => [letter, asArr(items).map(toPack).filter((x): x is Pack => x !== null)]));
 }
 
+/**
+ * Equipo inicial de una clase. El formato de antes de 2024 (lista de elecciones sueltas, como el del artífice de Tasha) no
+ * tiene opciones A/B: se ofrece solo el oro alternativo, con su media.
+ */
+function classEquipment(raw: unknown): Equipment {
+  const start = isObj(raw) ? raw : {};
+  const equipment = toEquipment(asArr(start.defaultData)[0]);
+  if (Object.keys(equipment).length) return equipment;
+  const dice = /(\d+)d(\d+) × (\d+)/.exec(str(start.goldAlternative));
+  if (!dice) return equipment;
+  const gold = Number(dice[1]) * ((Number(dice[2]) + 1) / 2) * Number(dice[3]);
+  return { A: [{ value: gold * 100 }] } as unknown as Equipment;
+}
+
 /** `[{ a: true, b: true }]` → `["a", "b"]` (las claves `any…`/`choose` también se conservan como texto). */
 const trueKeys = (v: unknown): string[] =>
   asArr(v).flatMap((o) => (isObj(o) ? Object.keys(o).filter((k) => k !== "choose") : typeof o === "string" ? [o] : []));
@@ -525,7 +540,8 @@ function prerequisiteText(pre: unknown): string | undefined {
 
 export function normalizeFeat(raw: Rec): NormalizedEntry {
   const data: EntryData["feat"] = {
-    category: FEAT_CATEGORIES[str(raw.category)] ?? (str(raw.category) as EntryData["feat"]["category"]),
+    // Las dotes de libros anteriores a 2024 no traen categoría: son generales
+    category: raw.category === undefined ? "general" : FEAT_CATEGORIES[str(raw.category)] ?? (str(raw.category) as EntryData["feat"]["category"]),
     ...(str(raw.category) ? { categoryCode: str(raw.category) } : {}),
     repeatable: raw.repeatable === true,
     ...withDefenses(raw),
@@ -657,9 +673,60 @@ export function normalizeItem(raw: Rec): NormalizedEntry {
   return entry<"item">(header("item", raw, keyOf("item", str(raw.name), str(raw.source))), data);
 }
 
+// Lista de defensas de 5etools («fire», o { immune: ["poison"], note }) en texto plano
+const defenseList = (v: unknown, field: string): string[] => asArr(v).flatMap((x) => {
+  if (typeof x === "string") return [x];
+  if (!isObj(x)) return [];
+  if (typeof x.special === "string") return [x.special];
+  return defenseList(x[field], field);
+});
+const monsterBlocks = (v: unknown) => asArr(v).flatMap((b) => (isObj(b) ? [{ name: str(b.name), text: entriesToBbcode(asArr(b.entries)) }] : []));
+const stringMap = (v: unknown) => (isObj(v) ? Object.fromEntries(Object.entries(v).filter(([, x]) => typeof x === "string")) as Record<string, string> : {});
+
+export function normalizeMonster(raw: Rec): NormalizedEntry {
+  const type = isObj(raw.type) ? raw.type : { type: raw.type };
+  const ac = asArr(raw.ac)[0];
+  const hp = isObj(raw.hp) ? raw.hp : {};
+  const speed = Object.fromEntries(Object.entries(isObj(raw.speed) ? raw.speed : {}).flatMap(([k, v]) => {
+    if (typeof v === "number") return [[k, v]];
+    return isObj(v) && typeof v.number === "number" ? [[k, v.number]] : [];
+  }));
+  const score = (a: string) => (typeof raw[a] === "number" ? (raw[a] as number) : 0);
+  const data: EntryData["monster"] = {
+    size: asArr(raw.size).map(str),
+    type: isObj(type.type) ? asArr(type.type.choose).map(str).join("/") : str(type.type),
+    tags: asArr(type.tags).map((t) => (isObj(t) ? str(t.tag) : str(t))),
+    alignment: asArr(raw.alignment).flatMap((a) => (typeof a === "string" ? [a] : [])),
+    ac: typeof ac === "number" ? ac : isObj(ac) && typeof ac.ac === "number" ? ac.ac : 0,
+    acNote: isObj(ac) ? (typeof ac.special === "string" ? ac.special : asArr(ac.from).map(str).join(", ")) : "",
+    hp: typeof hp.average === "number" ? hp.average : 0,
+    hpFormula: typeof hp.formula === "string" ? hp.formula : typeof hp.special === "string" ? hp.special : "",
+    speed,
+    abilities: { str: score("str"), dex: score("dex"), con: score("con"), int: score("int"), wis: score("wis"), cha: score("cha") },
+    saves: stringMap(raw.save),
+    skills: stringMap(raw.skill),
+    senses: asArr(raw.senses).map(str),
+    passive: typeof raw.passive === "number" ? raw.passive : 0,
+    languages: asArr(raw.languages).map(str),
+    cr: isObj(raw.cr) ? str(raw.cr.cr) : str(raw.cr),
+    resist: defenseList(raw.resist, "resist"),
+    immune: defenseList(raw.immune, "immune"),
+    vulnerable: defenseList(raw.vulnerable, "vulnerable"),
+    conditionImmune: defenseList(raw.conditionImmune, "conditionImmune"),
+    traits: monsterBlocks(raw.trait),
+    actions: monsterBlocks(raw.action),
+    bonus: monsterBlocks(raw.bonus),
+    reactions: monsterBlocks(raw.reaction),
+    legendary: monsterBlocks(raw.legendary),
+    environment: asArr(raw.environment).map(str),
+  };
+  return entry<"monster">(header("monster", raw, keyOf("monster", str(raw.name), str(raw.source))), data);
+}
+
 export function normalizeLanguage(raw: Rec): NormalizedEntry {
   return entry<"language">(header("language", raw, keyOf("language", str(raw.name), str(raw.source))),
-    { type: raw.type as "standard" | "rare" });
+    // Los libros anteriores a 2024 dicen «exotic» o «secret», o no dicen nada: todo eso es lo que ahora se llama rara
+    { type: raw.type === "standard" ? "standard" : "rare" });
 }
 
 export function normalizeSkill(raw: Rec): NormalizedEntry {
@@ -887,7 +954,7 @@ export function normalizeClass(raw: Rec, ctx: NormalizeContext): NormalizedEntry
     weapons: asArr(prof.weapons).map((w) => plainText(str(w))),
     tools: asArr(prof.tools).map((t) => plainText(str(t))),
     skills,
-    equipment: toEquipment(asArr(isObj(raw.startingEquipment) ? raw.startingEquipment.defaultData : [])[0]),
+    equipment: classEquipment(raw.startingEquipment),
     subclassLevel: subclassAt?.level ?? 3,
     asiLevels: features.filter((f) => f.ref.key.startsWith("classFeature:ability score improvement|")).map((f) => f.level),
     spellcasting: spellcasting(raw, key),
@@ -1221,6 +1288,9 @@ export function normalizeAll(files: RawFiles, source: string): {
   // Los `itemGroup` (Símbolo sagrado, Canalizador druídico…) son entradas de equipo como las demás
   const itemPool = [...(files.itemsBase?.baseitem ?? []), ...(files.items?.item ?? []), ...(files.items?.itemGroup ?? [])];
   for (const i of fromSource("item", itemPool)) run("item", i, () => normalizeItem(i));
+  // Bestiario: las copias («_copy») pueden venir de cualquier libro
+  const monsterPool = (files.bestiary ?? []).flatMap((f) => f.monster ?? []);
+  for (const m of fromSource("monster", monsterPool)) run("monster", m, () => normalizeMonster(m));
   for (const l of fromSource("language", files.languages?.language)) run("language", l, () => normalizeLanguage(l));
   for (const s of skills) run("skill", s, () => normalizeSkill(s));
   for (const a of fromSource("action", files.actions?.action)) run("action", a, () => normalizeAction(a));

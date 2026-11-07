@@ -4,8 +4,7 @@ import { Check, Minus, Plus } from "lucide-react";
 
 const MAX_BOXES = 10;
 
-// Cuadrados de uso (espacios de conjuro y usos de rasgos), como en D&D Beyond: hueco = disponible, marcado (fondo de
-// marca con ✓) = gastado. Pulsar un hueco gasta hasta él; pulsar uno marcado lo recupera (y los siguientes). Con más
+// Cuadrados de uso (espacios de conjuro y usos de rasgos): rojo = disponible, negro = gastado (al imprimir, con ✓). Pulsar un hueco gasta hasta él; pulsar uno marcado lo recupera (y los siguientes). Con más
 // de 10, «n / máx» con − y +. Sin `onSet`, solo lectura.
 export default function UseBoxes({ count, used, onSet, busy, label, itemLabel, size = "sm", tag, className = "", diamond = false }: {
   count: number;
@@ -60,10 +59,10 @@ export default function UseBoxes({ count, used, onSet, busy, label, itemLabel, s
       {Array.from({ length: count }, (_, i) => {
         const isSpent = i < spent;
         const box = `flex ${side} shrink-0 items-center justify-center rounded-sm border-2 text-white transition-colors ${diamond ? "rotate-45" : ""} ${
-          // Al imprimir sin fondos, la marca sale en negro para que se distinga de los libres
-          isSpent ? "border-brand bg-brand print:text-black" : "border-brand/60 bg-transparent"
+          isSpent ? "border-line-strong bg-surface" : "border-brand bg-brand"
         }`;
-        const mark = isSpent ? <Check size={iconSize} strokeWidth={3} aria-hidden="true" className={diamond ? "-rotate-45" : ""} /> : null;
+        // Sin fondos en papel, la marca distingue los gastados
+        const mark = isSpent ? <Check size={iconSize} strokeWidth={3} aria-hidden="true" className={`hidden text-black print:block ${diamond ? "-rotate-45" : ""}`} /> : null;
         if (!onSet) return <span key={i} className={box} aria-hidden="true">{mark}</span>;
         return (
           <button

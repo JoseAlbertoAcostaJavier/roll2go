@@ -68,7 +68,7 @@ export function applyRest(sheet: Dnd2024SheetV2, op: unknown, ctx: RestCtx): Res
   // baja 1 (la inspiración y los estados no cambian)
   if (op.op === "longRest") {
     const next: Dnd2024SheetV2 = {
-      ...sheet, slotsUsed: {}, limitedUsed: {}, hitDiceUsed: {}, hp: { ...sheet.hp, current: null, temp: 0 },
+      ...sheet, slotsUsed: {}, limitedUsed: {}, hitDiceUsed: {}, hp: { ...sheet.hp, current: null, temp: op.keepTemp === true ? sheet.hp.temp : 0 },
     };
     if (sheet.featureUses) next.featureUses = {};
     if (sheet.exhaustion !== undefined) next.exhaustion = Math.max(0, sheet.exhaustion - 1);
@@ -119,12 +119,15 @@ export function applyRest(sheet: Dnd2024SheetV2, op: unknown, ctx: RestCtx): Res
     next.featureUses = left;
   }
 
+  // Opción del diálogo: quitar los PG temporales al terminar
+  if (op.clearTemp === true) next.hp = { ...sheet.hp, temp: 0 };
+
   let healed = 0;
   if (dice.length > 0) {
     const before = sheet.hp.current ?? ctx.maxHp;
     const current = Math.min(ctx.maxHp, before + amount);
     healed = Math.max(0, current - before);
-    next.hp = { ...sheet.hp, current: current >= ctx.maxHp ? null : current };
+    next.hp = { ...next.hp, current: current >= ctx.maxHp ? null : current };
     next.hitDiceUsed = { ...sheet.hitDiceUsed };
     for (const { pool, n } of spent) next.hitDiceUsed[pool.classKey] = (sheet.hitDiceUsed?.[pool.classKey] ?? 0) + n;
   }
