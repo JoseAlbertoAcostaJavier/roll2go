@@ -80,7 +80,7 @@ export default function LoginForm({ redirectTo = "/" }: { redirectTo?: string })
           spellCheck={false}
           value={identifier}
           onChange={(e) => setIdentifier(e.target.value)}
-          className="w-full rounded-md border border-line bg-surface py-2.5 pl-10 pr-3 text-fg placeholder:text-muted focus:border-brand focus:outline-none"
+          className="w-full rounded-md border border-line-strong bg-surface py-2.5 pl-10 pr-3 text-fg placeholder:text-muted focus:border-brand focus:outline-none"
         />
       </div>
 
@@ -96,7 +96,7 @@ export default function LoginForm({ redirectTo = "/" }: { redirectTo?: string })
           autoComplete="current-password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="w-full rounded-md border border-line bg-surface py-2.5 pl-10 pr-11 text-fg placeholder:text-muted focus:border-brand focus:outline-none"
+          className="w-full rounded-md border border-line-strong bg-surface py-2.5 pl-10 pr-11 text-fg placeholder:text-muted focus:border-brand focus:outline-none"
         />
         <button
           type="button"

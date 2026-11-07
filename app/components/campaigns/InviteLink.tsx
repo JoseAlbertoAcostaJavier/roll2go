@@ -77,7 +77,7 @@ export default function InviteLink({
       value={expiresIn}
       onChange={(e) => setExpiresIn(e.target.value as (typeof OPTIONS)[number][0])}
       aria-label="Caducidad del enlace"
-      className="h-10 rounded-md border border-line bg-surface px-3 text-sm text-fg focus:border-brand focus:outline-none"
+      className="h-10 rounded-md border border-line-strong bg-surface px-3 text-sm text-fg focus:border-brand focus:outline-none"
     >
       {OPTIONS.map(([value, label]) => (
         <option key={value} value={value}>{label}</option>
@@ -98,7 +98,7 @@ export default function InviteLink({
               readOnly
               value={link}
               onFocus={(e) => e.currentTarget.select()}
-              className="h-10 min-w-0 flex-1 rounded-md border border-line bg-surface px-3 text-sm text-fg"
+              className="h-10 min-w-0 flex-1 rounded-md border border-line-strong bg-surface px-3 text-sm text-fg"
             />
             <button type="button" onClick={copy} className={primary}>
               {copied ? <Check size={16} aria-hidden="true" /> : <Copy size={16} aria-hidden="true" />}

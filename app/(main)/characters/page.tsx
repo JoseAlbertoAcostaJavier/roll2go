@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { secondaryButton } from "@/app/components/ui/formStyles";
 import Link from "next/link";
 import { ArrowUp, Files } from "lucide-react";
 import { requireUser } from "@/lib/server/auth/currentUser";
@@ -8,6 +7,7 @@ import { system as rpgSystems } from "@/lib/utils/systems";
 import { first } from "@/lib/utils/utils";
 import CharacterCard, { type CharacterCardData } from "@/app/components/characters/CharacterCard";
 import NewCharacterDialog from "@/app/components/characters/creator/NewCharacterDialog";
+import { secondaryButton } from "@/app/components/ui/formStyles";
 
 export const metadata: Metadata = { title: "Mis personajes" };
 

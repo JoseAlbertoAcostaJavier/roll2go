@@ -64,7 +64,7 @@ export default function InviteFriends({ campaignId, friends }: { campaignId: str
           onChange={(e) => setQ(e.target.value)}
           placeholder="Filtrar amigos"
           aria-label="Filtrar amigos"
-          className="mb-3 h-10 w-full rounded-md border border-line bg-surface px-3 text-sm text-fg placeholder:text-muted focus:border-brand focus:outline-none"
+          className="mb-3 h-10 w-full rounded-md border border-line-strong bg-surface px-3 text-sm text-fg placeholder:text-muted focus:border-brand focus:outline-none"
         />
       )}
       {list.length === 0 ? (

@@ -69,7 +69,7 @@ export default function ForgotPasswordForm() {
           autoComplete="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="w-full rounded-md border border-line bg-surface py-2.5 pl-10 pr-3 text-fg placeholder:text-muted focus:border-brand focus:outline-none"
+          className="w-full rounded-md border border-line-strong bg-surface py-2.5 pl-10 pr-3 text-fg placeholder:text-muted focus:border-brand focus:outline-none"
         />
       </div>
 
