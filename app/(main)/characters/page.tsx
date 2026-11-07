@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { Files } from "lucide-react";
 import { requireUser } from "@/lib/server/auth/currentUser";
 import { listMyCharacters } from "@/lib/server/characters/queries";
@@ -41,14 +40,14 @@ export default async function CharactersPage({
   return (
     <div className="mx-auto max-w-280 px-5 py-10">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-        <h1 className="font-heading text-3xl font-extrabold">Mis personajes</h1>
+        <h1 className="font-heading text-3xl font-extrabold text-white">Mis personajes</h1>
         <NewCharacterDialog systems={systems} campaigns={dialogCampaigns} books={books} />
       </div>
 
       <ListFilters
-        className="mb-6"
+        className="mb-8 rounded-xl border border-line bg-surface/50 p-5 shadow-sm"
         base="/characters"
-        title="Buscar personajes"
+        title="Filtros de búsqueda"
         q={q}
         searchLabel="Buscar personajes"
         placeholder="Nombre, especie, clase o campaña"
@@ -75,24 +74,25 @@ export default async function CharactersPage({
 
       {cards.length === 0 ? (
         hasFilters ? (
-          <div className="rounded-lg border border-dashed border-line p-10 text-center">
-            <p className="mb-3 text-muted">Ningún personaje coincide con esos filtros.</p>
-            <Link href="/characters" className="font-semibold text-brand-soft hover:underline">Quitar filtros</Link>
+          <div className="rounded-xl border border-dashed border-line p-12 text-center text-muted">
+            <p className="font-medium">No se han encontrado personajes con esos filtros.</p>
           </div>
         ) : (
-          <div className="flex flex-col items-center rounded-lg border border-dashed border-line p-10 text-center">
-            <Files size={48} className="mb-4 text-muted" aria-hidden="true" />
-            <h2 className="mb-2 font-heading text-xl font-bold">Aún no tienes ningún personaje</h2>
-            <p className="mb-6 max-w-xl text-muted">
-              Crea tus personajes para imprimirlos en papel, llevarlos a la partida en el móvil o la tablet, o jugar con ellos online.
+          <div className="animate-fade-up rounded-xl border border-dashed border-line bg-surface/30 p-12 text-center shadow-sm">
+            <Files size={56} className="mx-auto mb-6 text-line" aria-hidden="true" />
+            <h2 className="mb-3 font-heading text-2xl font-bold text-white">Aún no tienes ningún personaje</h2>
+            <p className="mx-auto mb-8 max-w-lg text-sm text-muted">
+              Crea y gestiona los personajes para tus partidas. Podrás imprimirlos en papel, llevarlos en tu móvil a la mesa o jugar con ellos en partidas online.
             </p>
-            <NewCharacterDialog systems={systems} campaigns={dialogCampaigns} books={books} />
+            <div className="flex justify-center">
+              <NewCharacterDialog systems={systems} campaigns={dialogCampaigns} books={books} />
+            </div>
           </div>
         )
       ) : (
-        <div className="grid grid-cols-[repeat(auto-fill,minmax(min(300px,100%),1fr))] gap-4">
-          {cards.map((c) => (
-            <CharacterCard key={c.id} character={c} />
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(min(320px,100%),1fr))] gap-5">
+          {cards.map((c, i) => (
+            <CharacterCard key={c.id} character={c} index={i} />
           ))}
         </div>
       )}

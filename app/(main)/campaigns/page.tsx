@@ -56,7 +56,7 @@ export default async function CampaignsPage({
       <CampaignInvites invites={inviteData} />
 
       <ListFilters
-        className="mb-6"
+        className="mb-6 rounded-lg border border-line bg-panel p-5"
         base="/campaigns"
         title="Buscar campañas"
         q={q}

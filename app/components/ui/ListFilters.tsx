@@ -4,11 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ChevronDown, Search } from "lucide-react";
+import { field } from "@/app/components/ui/formStyles";
 import { nextListQuery } from "@/lib/utils/listQuery";
-
-// La barra va sobre el fondo de la página, sin caja: los controles se aclaran para destacar sobre él
-const control =
-  "w-full rounded-md border border-line-strong bg-panel py-2.5 text-fg transition-colors hover:border-fg focus:border-brand-soft focus:outline-none";
 
 export type FilterSelect = {
   /** Nombre del parámetro de la URL. */
@@ -90,10 +87,10 @@ export default function ListFilters({ base, title, q: urlQ, searchLabel, placeho
   const hasFilters = urlQ !== "" || selects.some((s) => s.value !== s.defaultValue);
   return (
     <div className={className}>
-      <h2 className="sr-only">{title}</h2>
+      <h2 className="mb-4 font-heading text-xs font-bold uppercase tracking-widest text-muted">{title}</h2>
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative min-w-0 flex-[2_1_14rem]">
-          <Search size={16} aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+          <Search size={18} aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
           <input
             type="search"
             value={q}
@@ -101,7 +98,7 @@ export default function ListFilters({ base, title, q: urlQ, searchLabel, placeho
             maxLength={80}
             placeholder={placeholder}
             aria-label={searchLabel}
-            className={`${control} pl-9 pr-3 placeholder:text-muted`}
+            className={`${field} pl-10`}
           />
         </div>
         {selects.map((s) => (
@@ -110,7 +107,7 @@ export default function ListFilters({ base, title, q: urlQ, searchLabel, placeho
               value={vals[s.name] ?? s.value}
               onChange={(e) => onSelect(s, e.target.value)}
               aria-label={s.label}
-              className={`${control} cursor-pointer appearance-none pl-3 pr-9`}
+              className={`${field} cursor-pointer appearance-none pr-10`}
             >
               {s.options.map((o) => (
                 <option key={o.value} value={o.value}>{o.label}</option>

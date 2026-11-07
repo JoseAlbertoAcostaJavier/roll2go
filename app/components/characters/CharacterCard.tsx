@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { avatarTone, initialsOf } from "@/lib/utils/initials";
+import { initialsOf } from "@/lib/utils/initials";
 import CharacterCardMenu from "./CharacterCardMenu";
 
 export type CharacterCardData = {
@@ -14,66 +14,60 @@ export type CharacterCardData = {
   pending: boolean;
 };
 
-const STATUS = {
-  retired: { label: "Retirado", tone: "bg-[#3a3a3e] text-[#d6d6da]" },
-  dead: { label: "Fallecido", tone: "bg-[#4a1418] text-[#f7bcc0]" },
-  npc: { label: "PNJ", tone: "bg-[#17324f] text-[#b0d4f8]" },
+const STATUS_LABEL = { retired: "Retirado", dead: "Fallecido", npc: "PNJ" } as const;
+
+const STATUS_COLORS = {
+  retired: "bg-gray-500/10 text-gray-300 border border-gray-500/20",
+  dead: "bg-red-500/10 text-red-300 border border-red-500/20",
+  npc: "bg-blue-500/10 text-blue-300 border border-blue-500/20",
 } as const;
 
-const badge = "rounded-full px-2.5 py-0.5 text-xs font-semibold";
+const badge = "rounded-md px-2 py-0.5 text-[11px] font-bold";
 
-export default function CharacterCard({ character: c }: { character: CharacterCardData }) {
-  const dead = c.status === "dead";
+export default function CharacterCard({ character: c, index }: { character: CharacterCardData; index: number }) {
   return (
     /* El título lleva un enlace "estirado" (after:inset-0) que hace pulsable toda la tarjeta; el enlace a la campaña y
-       el menú quedan por encima (la fila de etiquetas deja pasar los clics salvo en ese enlace). Con el menú abierto, la tarjeta sube para que no lo tapen las siguientes. */
-    <article className="group relative flex min-h-32 rounded-lg border border-line bg-panel transition-colors hover:border-line-strong has-[a:focus-visible]:border-brand-soft has-[[data-menu-open]]:z-30">
-      <div className="w-24 shrink-0 overflow-hidden rounded-l-[calc(var(--radius-lg)-1px)] sm:w-28">
+       el menú quedan por encima (la fila de etiquetas deja pasar los clics salvo en ese enlace). Con el menú abierto,
+       la tarjeta sube para que no lo tapen las siguientes. */
+    <article
+      style={{ animationDelay: `${Math.min(index, 12) * 40}ms` }}
+      className="group relative flex animate-fade-up gap-4 rounded-xl border border-line bg-panel p-4 transition-all duration-200 hover:-translate-y-1 hover:border-brand-soft hover:shadow-lg hover:shadow-brand/5 has-[a:focus-visible]:border-brand has-[[data-menu-open]]:z-30"
+    >
+      <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-surface text-xl font-bold text-muted transition-colors group-hover:bg-line/50 group-hover:text-white">
         {c.portraitUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={c.portraitUrl}
-            alt=""
-            loading="lazy"
-            className={`h-full w-full object-cover ${dead ? "grayscale" : ""}`}
-          />
+          <img src={c.portraitUrl} alt="" loading="lazy" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />
         ) : (
-          <div
-            aria-hidden="true"
-            className={`flex h-full w-full items-center justify-center font-display text-3xl ${dead ? "bg-[#2c2c2f] text-[#b4b4ba]" : avatarTone(c.name)}`}
-          >
-            {initialsOf(c.name)}
-          </div>
+          <span aria-hidden="true">{initialsOf(c.name)}</span>
         )}
       </div>
 
-      <div className="flex min-w-0 flex-1 flex-col p-4">
-        <h2 className="line-clamp-2 pr-7 font-heading text-xl font-bold leading-tight wrap-anywhere">
+      <div className="flex min-w-0 flex-1 flex-col">
+        <h2 className="line-clamp-2 pr-7 font-heading text-xl font-extrabold leading-tight text-white wrap-anywhere">
           <Link
             href={`/characters/${c.id}`}
-            className="outline-none after:absolute after:inset-0 after:rounded-lg after:content-[''] focus-visible:after:outline-2 focus-visible:after:outline-offset-2 focus-visible:after:outline-brand-soft"
+            className="outline-none after:absolute after:inset-0 after:rounded-xl after:content-[''] focus-visible:after:outline-2 focus-visible:after:outline-offset-2 focus-visible:after:outline-brand-soft"
           >
             {c.name}
           </Link>
         </h2>
-        {c.summary && <p className="mt-1 line-clamp-2 text-sm leading-snug text-muted">{c.summary}</p>}
-        <p className="mt-1 text-xs text-muted">{c.systemName}</p>
 
-        <div className="pointer-events-none relative z-10 mt-auto flex flex-wrap items-center gap-1.5 pt-3">
-          {c.status !== "active" && <span className={`${badge} ${STATUS[c.status].tone}`}>{STATUS[c.status].label}</span>}
+        {c.summary && <p title={c.summary} className="mt-0.5 truncate text-sm font-medium text-muted">{c.summary}</p>}
+        <p className="mt-1.5 text-[11px] font-bold uppercase tracking-wider text-muted">{c.systemName}</p>
+
+        <div className="pointer-events-none relative z-10 mt-auto flex flex-wrap items-center gap-x-3 gap-y-2 pt-3 text-sm">
           {c.campaign ? (
             <Link
               href={`/campaigns/${c.campaign.id}`}
-              className={`${badge} pointer-events-auto max-w-full truncate border border-line-strong bg-surface text-fg transition-colors hover:border-fg`}
+              className="pointer-events-auto truncate font-semibold text-brand-soft transition-colors hover:text-brand hover:underline"
             >
               {c.campaign.name}
             </Link>
           ) : (
-            <span className={`${badge} border border-line text-muted`}>Sin campaña</span>
+            <span className={`${badge} border border-dashed border-line font-medium text-muted`}>Sin campaña</span>
           )}
-          {c.campaign && c.pending && (
-            <span className={`${badge} bg-[#47380f] text-[#f3d98b]`}>Pendiente</span>
-          )}
+          {c.campaign && c.pending && <span className={`${badge} bg-yellow-500/10 text-yellow-400`}>Pendiente</span>}
+          {c.status !== "active" && <span className={`${badge} ${STATUS_COLORS[c.status]}`}>{STATUS_LABEL[c.status]}</span>}
         </div>
       </div>
 
