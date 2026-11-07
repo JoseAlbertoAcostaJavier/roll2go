@@ -38,10 +38,10 @@ export default async function NewCharacterPage({ searchParams }: { searchParams:
   const back = campaign ? `/campaigns/${campaign.id}/characters` : "/characters";
 
   return (
-    <div className="mx-auto max-w-280 px-5 py-8">
+    <div className="mx-auto max-w-300 px-5 py-8">
       <header className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="font-heading text-3xl font-extrabold">Nuevo personaje</h1>
+          <h1 className="font-heading text-3xl font-extrabold text-white">Nuevo personaje</h1>
           <nav aria-label="Ruta de navegación" className="mt-1 flex flex-wrap items-center gap-x-2 text-xs uppercase text-muted">
             <span className="text-brand-soft">{system.name}</span>
             <span aria-hidden="true">/</span>

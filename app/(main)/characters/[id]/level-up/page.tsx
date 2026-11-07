@@ -95,8 +95,7 @@ export default async function LevelUpPage({ params }: { params: Promise<{ id: st
   // (las listas de conjuros las pide el asistente al llegar a cada paso de conjuros)
 
   return (
-    <div className="mx-auto max-w-280 px-4 py-8 sm:px-5">
-      {back}
+    <div className="mx-auto max-w-300 px-5 py-8">
       <LevelUpWizard
         characterId={id}
         characterName={c.name}

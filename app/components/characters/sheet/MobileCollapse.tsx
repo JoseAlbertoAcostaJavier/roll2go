@@ -19,7 +19,7 @@ export default function MobileCollapse({ title, children }: { title: string; chi
           aria-expanded={open}
           aria-controls={id}
           onClick={() => setOpen((o) => !o)}
-          className="flex w-full items-center justify-between gap-2 py-2 text-left focus-visible:outline-2 focus-visible:outline-brand-soft"
+          className="flex w-full items-center justify-between gap-2 py-1 text-left focus-visible:outline-2 focus-visible:outline-brand-soft"
         >
           {title}
           <ChevronDown size={18} aria-hidden="true" className={`shrink-0 text-muted transition-transform ${open ? "rotate-180" : ""}`} />

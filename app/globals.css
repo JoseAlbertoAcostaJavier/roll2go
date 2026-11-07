@@ -21,9 +21,11 @@
   --color-success: #6fd08c;
 
   /* Animaciones: animate-fade-up (aparecer subiendo), animate-fade-in, animate-pop (menús y chips) */
-  --animate-fade-up: fade-up 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) both;
-  --animate-fade-in: fade-in 0.2s ease-out both;
-  --animate-pop: pop 0.16s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  /* `backwards`: se aplica durante el retraso (entrada escalonada) y no deja rastro al terminar. Con `both`, la animación
+     seguía activa: creaba un contexto de apilado y atrapaba los `position: fixed` de dentro (diálogos a medio camino). */
+  --animate-fade-up: fade-up 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+  --animate-fade-in: fade-in 0.2s ease-out backwards;
+  --animate-pop: pop 0.16s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
 
   @keyframes fade-up {
     from { opacity: 0; transform: translateY(8px); }

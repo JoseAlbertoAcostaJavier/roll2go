@@ -10,6 +10,8 @@ import type { loadCharacterFor } from "@/lib/server/characters/characterAccess";
 import { isValidId } from "@/lib/server/ids";
 import { system as rpgSystems } from "@/lib/utils/systems";
 import { accentInsensitive } from "@/lib/utils/utils";
+import { MAX_LEVEL } from "@/lib/rules/dnd2024/levels/validateLevel";
+import { bareName } from "@/lib/rules/dnd2024/sheet/equipmentRefs";
 import { classesOf } from "@/lib/rules/dnd2024/sheet/upgrade";
 import type { SpeciesData } from "@/lib/rules/types";
 
@@ -23,7 +25,8 @@ export type CharacterFilters = {
 
 /* «Mis personajes»: las tarjetas de los personajes del usuario con los filtros (la búsqueda mira el nombre, la
    especie, el legado, la clase y el nombre de la campaña), las campañas activas que admiten crear personajes desde
-   ellas y los libros que ve el usuario (para el diálogo de «Nuevo personaje»). */
+   ellas, los libros que ve el usuario (para el diálogo de «Nuevo personaje») y cuántos hay de cada estado con esa
+   búsqueda (para las pestañas). */
 export async function listMyCharacters(userId: string, { q, status, sort }: CharacterFilters) {
   await connectDB();
 
@@ -34,13 +37,12 @@ export async function listMyCharacters(userId: string, { q, status, sort }: Char
     .collation({ locale: "es", strength: 2 })
     .lean();
 
-  const filter: Record<string, unknown> = { owner: userId };
-  if (status !== "all") filter.status = status;
+  const base: Record<string, unknown> = { owner: userId };
   if (q) {
     const rx = { $regex: accentInsensitive(q), $options: "i" }; // sin distinguir tildes ni mayúsculas
     // Para buscar por campaña se averiguan antes los ids por nombre (también las que ya no están activas)
     const named = await Campaign.find({ members: userId, name: rx }).select("_id").lean();
-    filter.$or = [
+    base.$or = [
       { name: rx },
       { "sheet.species.name": rx },
       { "sheet.lineage.name": rx },
@@ -50,13 +52,16 @@ export async function listMyCharacters(userId: string, { q, status, sort }: Char
     ];
   }
 
-  const [characters, books] = await Promise.all([
+  const filter = status === "all" ? base : { ...base, status };
+
+  const [characters, statuses, books] = await Promise.all([
     Character.find(filter)
       .select("name systemId status campaign campaignStatus portraitId sheet.species sheet.lineage sheet.classes sheet.classesSummary")
       .sort(sort === "name" ? { name: 1 } : { updatedAt: -1 })
       .collation({ locale: "es", strength: 2 })
       .limit(100)
       .lean(),
+    Character.find(base).select("status").lean(),
     visibleBooksOf(userId),
   ]);
 
@@ -72,16 +77,19 @@ export async function listMyCharacters(userId: string, { q, status, sort }: Char
 
   const cards = characters.map((c) => {
     const s = c.sheet ?? {};
-    const cls = classesOf(s)[0];
-    const species = s.species?.name ? `${s.species.name}${s.lineage?.name ? ` (${s.lineage.name})` : ""}` : "";
-    const klass = cls?.class?.name ? `${cls.class.name}${cls.level ? ` ${cls.level}` : ""}` : "";
+    const classes = classesOf(s).flatMap((k) => (k.class?.name
+      ? [{ name: k.class.name, level: k.level ?? 0, icon: k.class.ref?.key ? bareName(k.class.ref.key) : null }]
+      : []));
+    const level = classes.reduce((sum, k) => sum + k.level, 0);
     const campaignId = c.campaign ? String(c.campaign) : "";
     const campaignName = campaignNames.get(campaignId);
     return {
       id: String(c._id),
       name: c.name,
       portraitUrl: c.portraitId ? `/api/images/${c.portraitId}` : null,
-      summary: [species, klass].filter(Boolean).join(" · "),
+      species: s.species?.name ? `${s.species.name}${s.lineage?.name ? ` (${s.lineage.name})` : ""}` : "",
+      classes,
+      canLevelUp: level >= 1 && level < MAX_LEVEL,
       systemName: rpgSystems.find((r) => r.id === c.systemId)?.name ?? c.systemId,
       status: c.status,
       campaign: campaignName ? { id: campaignId, name: campaignName } : null,
@@ -98,7 +106,10 @@ export async function listMyCharacters(userId: string, { q, status, sort }: Char
       restrictBooks: !!c.restrictBooks,
     }));
 
-  return { cards, dialogCampaigns, books };
+  const counts = { active: 0, retired: 0, dead: 0, npc: 0, all: statuses.length };
+  for (const c of statuses) if (c.status in counts) counts[c.status as keyof typeof counts] += 1;
+
+  return { cards, counts, dialogCampaigns, books };
 }
 
 /* Listas del creador con los libros dados: especies (con los legados de cada una que los tiene, del mismo libro, por

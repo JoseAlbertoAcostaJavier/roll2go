@@ -3,8 +3,7 @@
 import { RotateCw, TriangleAlert } from "lucide-react";
 
 /* Resumen de lo elegido antes de guardar el nivel, con los errores del servidor si los hubo. */
-export default function ConfirmStep({ level, rows, errors, conflict }: {
-  level: number;
+export default function ConfirmStep({ rows, errors, conflict }: {
   rows: { label: string; value: string }[];
   /** Mensajes de error del servidor (400). */
   errors: string[];
@@ -13,18 +12,17 @@ export default function ConfirmStep({ level, rows, errors, conflict }: {
 }) {
   return (
     <div className="space-y-5">
-      <p className="text-sm text-muted">Revisa lo que ganas en el nivel {level}. Al confirmar se guarda en la ficha.</p>
-      <dl className="divide-y divide-line rounded-md border border-line bg-surface">
+      <dl className="divide-y divide-line rounded-xl border border-line bg-surface/40">
         {rows.map((r, i) => (
           <div key={`${r.label}-${i}`} className="grid gap-1 px-4 py-3 sm:grid-cols-[12rem_1fr] sm:gap-4">
-            <dt className="text-sm font-semibold">{r.label}</dt>
+            <dt className="text-sm font-bold text-fg">{r.label}</dt>
             <dd className="text-sm text-muted">{r.value || "—"}</dd>
           </div>
         ))}
       </dl>
 
       {conflict && (
-        <div role="alert" className="flex flex-wrap items-center gap-3 rounded-md border border-brand/50 bg-brand/10 p-3 text-sm">
+        <div role="alert" className="flex flex-wrap items-center gap-3 rounded-xl border border-brand/50 bg-brand/10 p-3 text-sm">
           <TriangleAlert size={16} aria-hidden="true" className="shrink-0 text-brand-soft" />
           <span className="flex-1">{conflict}</span>
           <button
@@ -37,7 +35,7 @@ export default function ConfirmStep({ level, rows, errors, conflict }: {
         </div>
       )}
       {errors.length > 0 && (
-        <ul role="alert" className="space-y-1 rounded-md border border-brand/50 bg-brand/10 p-3 text-sm text-danger">
+        <ul role="alert" className="space-y-1 rounded-xl border border-brand/50 bg-brand/10 p-3 text-sm text-danger">
           {errors.map((e) => <li key={e}>{e}</li>)}
         </ul>
       )}

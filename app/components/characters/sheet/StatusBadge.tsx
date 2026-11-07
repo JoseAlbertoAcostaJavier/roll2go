@@ -32,7 +32,7 @@ export default function StatusBadge({ status, isOwner }: { status: CharacterStat
       <span
         id="status-tip"
         role="tooltip"
-        className="pointer-events-none invisible absolute left-1/2 top-full z-20 mt-2 w-56 -translate-x-1/2 rounded-md border border-line bg-surface px-3 py-2 text-xs opacity-0 shadow-lg transition-opacity group-focus-within:visible group-focus-within:opacity-100 group-hover:visible group-hover:opacity-100"
+        className="pointer-events-none invisible absolute -left-16 top-full z-20 mt-2 w-56 rounded-md border border-line bg-surface px-3 py-2 text-xs opacity-0 shadow-lg transition-opacity group-focus-within:visible group-focus-within:opacity-100 group-hover:visible group-hover:opacity-100"
       >
         <strong className="text-fg">{s.label}:</strong> <span className="text-muted">{s.description}</span>
         {isOwner && <span className="mt-1 block text-muted">Puedes cambiar el estado desde Editar.</span>}

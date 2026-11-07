@@ -1,9 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { flushSync } from "react-dom";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Check, ChevronLeft, ChevronRight, LoaderCircle } from "lucide-react";
-import { card, primaryButton } from "@/app/components/ui/formStyles";
+import {
+  Award, ChevronLeft, ChevronRight, ChevronsUp, ClipboardCheck, Globe, GraduationCap, Heart, LoaderCircle, Shield, Sparkles,
+  Star, Sword, Swords, TrendingUp, Wand2, type LucideIcon,
+} from "lucide-react";
+import { primaryButton, secondaryButton } from "@/app/components/ui/formStyles";
 import type { CatalogEntry, EntryOption } from "@/lib/rules/catalog/types";
 import { derive } from "@/lib/rules/dnd2024/derive";
 import { characterFeats } from "@/lib/rules/dnd2024/derive/features";
@@ -29,6 +34,7 @@ import {
   ABILITIES, type Ability, type BackgroundData, type ClassData, type FeatData, type ItemData, type Ref, type SubclassData,
 } from "@/lib/rules/types";
 import { nameFromKey, refFromKey, type ChoiceCtx } from "../creator/ClassFeaturesSection";
+import CreatorStepper, { StepSection, type CreatorStep } from "../creator/CreatorSteps";
 import useCatalogEntries from "../hooks/useCatalogEntries";
 import ClassCard from "./ClassCard";
 import DeleteLevel from "./DeleteLevel";
@@ -69,7 +75,28 @@ type Props = {
 
 type Step = { id: string; title: string; p?: PendingChoice };
 
+// Id fijo de la sección del paso visible (los de las elecciones llevan su `source`, que puede tener espacios)
+const STEP_ID = "level-up-step";
+
 const ROW_TYPES: PendingChoice["type"][] = ["skills", "expertise", "weaponMastery", "languages"];
+
+// Icono y texto de cada elección en la barra de pasos y en su cabecera
+function choiceLook(type: PendingChoice["type"]): { icon: LucideIcon; description?: string } {
+  switch (type) {
+    case "subclass": return { icon: Shield, description: "La especialidad de tu clase." };
+    case "asi": return { icon: TrendingUp, description: "Mejora tus puntuaciones o elige una dote." };
+    case "spells": return { icon: Wand2, description: "Los conjuros que ganas en este nivel." };
+    case "featSpells":
+    case "bonusSpells":
+    case "arcanum": return { icon: Wand2 };
+    case "skills":
+    case "expertise": return { icon: GraduationCap };
+    case "weaponMastery": return { icon: Swords };
+    case "languages": return { icon: Globe };
+    case "feat": return { icon: Award };
+    default: return { icon: Star };
+  }
+}
 const uniq = <T,>(list: T[]) => [...new Set(list)];
 const nameOf = (e: { nameEs: string | null; name: string }) => e.nameEs ?? e.name;
 // Entrada ligera del listado como entrada completa, para `derive` (solo usa `data` y los nombres)
@@ -295,12 +322,30 @@ function Wizard(props: Props & { draftKey: string; draft: string | null }) {
     setState((s) => ({ ...s, ...patch }));
     setErrors([]);
   };
+  // Al cambiar de paso, la barra de progreso queda a la vista y el foco pasa al título (sin abrir ningún desplegable)
   const go = (i: number) => {
-    update({ step: steps[i].id });
-    // Al cambiar de paso, el principio del asistente queda a la vista
-    const box = top.current;
-    if (box && box.getBoundingClientRect().top < 0) box.scrollIntoView({ behavior: "smooth", block: "start" });
+    flushSync(() => update({ step: steps[i].id }));
+    top.current?.scrollIntoView();
+    document.getElementById(`${STEP_ID}-title`)?.focus({ preventScroll: true });
   };
+
+  // Los pasos como los pinta la barra: los ya pasados, completos; tras la primera elección sin hacer, bloqueados
+  const stepLook = (s: Step): Pick<CreatorStep, "icon" | "description"> => {
+    if (s.id === "class") return { icon: Sword, description: "Elige en qué clase ganas el nivel." };
+    if (s.id === "features") return { icon: Sparkles };
+    if (s.id === "hp") return { icon: Heart, description: "Cuánto aumentan tus puntos de golpe máximos." };
+    if (s.id === "confirm") return { icon: ClipboardCheck, description: `Revisa lo que ganas en el nivel ${n}. Al confirmar se guarda en la ficha.` };
+    return s.p ? choiceLook(s.p.type) : { icon: Star };
+  };
+  const barSteps: CreatorStep[] = steps.map((s, i) => ({
+    ...stepLook(s),
+    id: s.id,
+    label: s.title,
+    title: s.title,
+    pending: !!missingOf(s),
+    seen: i < index,
+    locked: firstMissing >= 0 && i > firstMissing,
+  }));
 
   // ---- conjuros: los que ya tiene la clase (en el Mago, su libro con los copiados) ----
   const heldSpells = (p: PendingChoice) => {
@@ -501,7 +546,7 @@ function Wizard(props: Props & { draftKey: string; draft: string | null }) {
       );
     }
     if (step.id === "confirm") {
-      return <ConfirmStep level={n} rows={summaryRows()} errors={errors} conflict={conflict} />;
+      return <ConfirmStep rows={summaryRows()} errors={errors} conflict={conflict} />;
     }
     const p = step.p;
     if (!p) return null;
@@ -595,62 +640,48 @@ function Wizard(props: Props & { draftKey: string; draft: string | null }) {
     );
   }
 
+  const stats = [
+    { label: "Nivel", value: `${n - 1} → ${n}`, icon: ChevronsUp, color: "text-brand-soft" },
+    { label: "Puntos de golpe", value: preview ? `${preview.before} → ${preview.after}` : String(derived.hp.max), icon: Heart, color: "text-brand-soft" },
+  ];
+
   return (
-    <div ref={top} className="scroll-mt-4">
-      <header className="mb-6 flex flex-wrap items-start justify-between gap-4">
+    <div className="space-y-6">
+      <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="font-heading text-3xl font-extrabold">Subir de nivel</h1>
+          <h1 className="font-heading text-3xl font-extrabold text-white">Subir de nivel</h1>
           <p className="text-muted">{props.characterName} · Nivel {n - 1} → {n}</p>
         </div>
-        {n - 1 >= 2 && <DeleteLevel characterId={characterId} level={n - 1} />}
+        <div className="flex flex-wrap items-center gap-3">
+          {n - 1 >= 2 && <DeleteLevel characterId={characterId} level={n - 1} />}
+          <Link href={`/characters/${characterId}`} className="flex items-center gap-1 text-sm text-muted hover:text-white">
+            <ChevronLeft size={16} aria-hidden="true" /> Volver
+          </Link>
+        </div>
       </header>
 
-      <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-6 lg:grid-cols-[minmax(0,1fr)_24rem]">
+      <div ref={top} className="scroll-mt-24">
+        <CreatorStepper steps={barSteps} current={step.id} onGo={(id) => go(steps.findIndex((s) => s.id === id))} />
+      </div>
+
+      <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
         {classEntry && (
           <div className="lg:hidden">
-            <ClassCard classEntry={classEntry} classLevel={classLevel} entry={entry} collapsible />
+            <ClassCard classEntry={classEntry} classLevel={classLevel} entry={entry} stats={stats} collapsible />
           </div>
         )}
 
-        <section className={`${card} min-w-0`} aria-labelledby="level-up-step">
-          <ol className="mb-5 flex gap-1.5 overflow-x-auto pb-1" aria-label="Pasos">
-            {steps.map((s, i) => {
-              const done = i < index;
-              const reachable = firstMissing < 0 || i <= firstMissing;
-              return (
-                <li key={s.id} className="shrink-0">
-                  <button
-                    type="button"
-                    disabled={!reachable || i === index}
-                    aria-current={i === index ? "step" : undefined}
-                    onClick={() => go(i)}
-                    className={`flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-semibold transition-colors ${
-                      i === index ? "border-brand bg-brand text-white"
-                        : done ? "border-line text-fg enabled:hover:border-brand" : "border-line text-muted enabled:hover:border-brand disabled:opacity-50"
-                    }`}
-                  >
-                    {done && <Check size={12} aria-hidden="true" />}
-                    {s.title}
-                  </button>
-                </li>
-              );
-            })}
-          </ol>
+        <div className="min-w-0 space-y-6">
+          <StepSection key={step.id} step={{ ...barSteps[index], id: STEP_ID }} number={index + 1} total={steps.length} active>
+            {content()}
+          </StepSection>
 
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted">Paso {index + 1} de {steps.length}</p>
-          <h2 id="level-up-step" className="mb-4 font-heading text-2xl font-bold">{step.title}</h2>
-
-          <div key={step.id} className="animate-fade-up">{content()}</div>
-
-          <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-5">
-            <button
-              type="button"
-              onClick={() => go(index - 1)}
-              disabled={index === 0 || saving}
-              className="flex items-center gap-1 rounded-md border border-line px-4 py-2.5 font-semibold transition-colors enabled:hover:border-brand enabled:hover:text-white disabled:opacity-40"
-            >
-              <ChevronLeft size={16} aria-hidden="true" /> Anterior
-            </button>
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-panel p-4">
+            {index > 0 ? (
+              <button type="button" onClick={() => go(index - 1)} disabled={saving} className={secondaryButton}>
+                <ChevronLeft size={16} aria-hidden="true" /> Anterior
+              </button>
+            ) : <span />}
             <div className="flex flex-wrap items-center justify-end gap-3">
               {missing && <p className="text-sm text-muted" role="status">Falta: {missing}</p>}
               {isLast ? (
@@ -665,11 +696,11 @@ function Wizard(props: Props & { draftKey: string; draft: string | null }) {
               )}
             </div>
           </div>
-        </section>
+        </div>
 
         {classEntry && (
-          <aside className="sticky top-4 hidden lg:block">
-            <ClassCard classEntry={classEntry} classLevel={classLevel} entry={entry} />
+          <aside className="hidden lg:sticky lg:top-24 lg:block lg:max-h-[calc(100dvh-7rem)] lg:overflow-y-auto">
+            <ClassCard classEntry={classEntry} classLevel={classLevel} entry={entry} stats={stats} />
           </aside>
         )}
       </div>

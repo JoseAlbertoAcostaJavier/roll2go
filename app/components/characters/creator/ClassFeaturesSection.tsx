@@ -290,7 +290,7 @@ export default function ClassFeaturesSection({
       ))}
 
       <div>
-        <h3 className="mb-2 text-sm font-semibold">Rasgos de nivel 1</h3>
+        <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-white">Rasgos de nivel 1</h3>
         {loadingFeatures && (
           <p className="mb-2 flex items-center gap-2 text-sm text-muted">
             <LoaderCircle size={14} className="animate-spin" aria-hidden="true" /> Cargando rasgos…

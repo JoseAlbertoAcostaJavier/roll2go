@@ -10,7 +10,7 @@ import { REST_EVENT } from "./HpEditor";
 type Rest = "short" | "long";
 
 const button =
-  "flex items-center gap-2 rounded-md border border-line px-3 py-2 text-sm font-semibold transition-colors hover:border-brand hover:text-white";
+  "flex items-center justify-center gap-2 rounded-md border border-line px-3 py-2 text-sm font-semibold transition-colors hover:border-brand hover:text-white";
 const secondary =
   "rounded-md border border-line px-4 py-2 text-sm font-semibold text-muted transition-colors enabled:hover:text-white disabled:opacity-50";
 const primary =

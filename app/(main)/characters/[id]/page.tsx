@@ -242,7 +242,7 @@ export default async function CharacterPage({ params, searchParams }: Props) {
         pronouns={pronounsText(parsePronouns(((c.pronouns ?? []) as string[]).join(",")) ?? [])}
         portraitUrl={c.portraitId ? `/api/images/${c.portraitId}` : null}
         status={(c.status ?? "active") as CharacterStatus}
-        summary={[species, classes].filter(Boolean).join(" ")}
+        summary={[species, classes].filter(Boolean).join(" · ")}
         level={d.level}
         campaign={campaign}
         isOwner={isOwner}

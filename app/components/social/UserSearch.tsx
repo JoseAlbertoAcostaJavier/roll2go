@@ -54,7 +54,7 @@ export default function UserSearch() {
 
   return (
     <div ref={ref} className="relative">
-      <label htmlFor="user-search" className="mb-2 flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-muted">
+      <label htmlFor="user-search" className="mb-4 flex items-center gap-2 font-heading text-xs font-bold uppercase tracking-widest text-muted">
         <UserPlus size={16} aria-hidden="true" /> Añadir a mi lista de amigos
       </label>
       <div className="relative">

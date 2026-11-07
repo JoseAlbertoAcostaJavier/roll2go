@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, type LucideIcon } from "lucide-react";
 import Bbcode from "@/app/components/ui/Bbcode";
 import type { CatalogEntry } from "@/lib/rules/catalog/types";
 import { refKey } from "@/lib/rules/dnd2024/sheet/equipmentRefs";
@@ -64,13 +64,14 @@ function ClassTable({ data, classLevel, entry }: {
   );
 }
 
-/* Tarjeta de la clase en la que sube: icono, descripción, dado de golpe y la tabla de la clase con la fila del nuevo
-   nivel resaltada. En móvil va arriba y plegada. */
-export default function ClassCard({ classEntry, classLevel, entry, collapsible = false }: {
+/* Tarjeta de la clase en la que sube: icono, cómo cambia el personaje, descripción, dado de golpe y la tabla de la clase
+   con la fila del nuevo nivel resaltada. En móvil va arriba y plegada. */
+export default function ClassCard({ classEntry, classLevel, entry, stats, collapsible = false }: {
   classEntry: CatalogEntry;
   classLevel: number;
   /** Entradas cargadas (nombres de los rasgos). */
   entry: (r: Ref) => CatalogEntry | null | undefined;
+  stats: { label: string; value: string; icon: LucideIcon; color: string }[];
   collapsible?: boolean;
 }) {
   const data = classEntry.data as ClassData;
@@ -81,12 +82,22 @@ export default function ClassCard({ classEntry, classLevel, entry, collapsible =
       <ClassIcon entry={classEntry} size={48} />
       <span className="min-w-0">
         <span className="block text-xs font-semibold uppercase tracking-wide text-muted">Nuevo nivel</span>
-        <span className="block font-heading text-xl font-bold">{name} {classLevel}</span>
+        <span className="block font-heading text-lg font-extrabold text-white">{name} {classLevel}</span>
       </span>
     </span>
   );
   const body = (
-    <div className="mt-4 space-y-4">
+    <div className="space-y-4">
+      <dl className="grid grid-cols-2 gap-3">
+        {stats.map((s) => (
+          <div key={s.label} className="flex flex-col-reverse items-center rounded-lg border border-line bg-surface px-1 py-3 text-center">
+            <dt className="mt-0.5 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-muted">
+              <s.icon size={14} className={s.color} aria-hidden="true" /> {s.label}
+            </dt>
+            <dd className="font-heading text-xl font-extrabold text-white">{s.value}</dd>
+          </div>
+        ))}
+      </dl>
       {description && (
         <div className="max-h-48 overflow-y-auto pr-1">
           <Bbcode source={description} className="text-sm" />
@@ -107,19 +118,19 @@ export default function ClassCard({ classEntry, classLevel, entry, collapsible =
 
   if (collapsible) {
     return (
-      <details className="group/card rounded-lg border border-line bg-panel p-4">
+      <details className="group/card rounded-xl border border-line bg-panel p-4">
         <summary className="flex cursor-pointer list-none items-center justify-between gap-3">
           {heading}
           <ChevronDown size={18} aria-hidden="true" className="shrink-0 text-muted transition-transform group-open/card:rotate-180" />
         </summary>
-        {body}
+        <div className="mt-4">{body}</div>
       </details>
     );
   }
   return (
-    <section aria-label={`Nuevo nivel: ${name}`} className="animate-fade-up rounded-lg border border-line bg-panel p-5">
-      {heading}
-      {body}
+    <section aria-label={`Nuevo nivel: ${name}`} className="animate-fade-up rounded-xl border border-line bg-panel">
+      <div className="border-b border-line p-5">{heading}</div>
+      <div className="p-5">{body}</div>
     </section>
   );
 }

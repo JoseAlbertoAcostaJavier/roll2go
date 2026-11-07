@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { Files } from "lucide-react";
+import Link from "next/link";
+import { Files, SearchX } from "lucide-react";
 import { requireUser } from "@/lib/server/auth/currentUser";
 import { listMyCharacters } from "@/lib/server/characters/queries";
 import { system as rpgSystems } from "@/lib/utils/systems";
@@ -12,6 +13,15 @@ export const metadata: Metadata = { title: "Mis personajes" };
 
 const STATUSES = ["active", "retired", "dead", "npc", "all"] as const;
 const SORTS = ["recent", "name"] as const;
+const STATUS_TABS: { value: (typeof STATUSES)[number]; label: string }[] = [
+  { value: "active", label: "Activos" },
+  { value: "retired", label: "Retirados" },
+  { value: "dead", label: "Fallecidos" },
+  { value: "npc", label: "PNJ" },
+  { value: "all", label: "Todos" },
+];
+// Lo que devuelve como máximo la lista (listMyCharacters)
+const LIST_LIMIT = 100;
 
 // Devuelve el valor solo si es uno de los permitidos; si no, el valor por defecto
 function pick<T extends string>(value: string | undefined, allowed: readonly T[], fallback: T): T {
@@ -27,40 +37,32 @@ export default async function CharactersPage({
   const q = (first(sp.q) ?? "").trim().slice(0, 80);
   const status = pick(first(sp.status), STATUSES, "active");
   const sort = pick(first(sp.sort), SORTS, "recent");
-  const hasFilters = q !== "" || status !== "active" || sort !== "recent";
 
   const user = await requireUser("/characters");
   // Tarjetas con los filtros, campañas en las que se puede crear un personaje y libros del usuario
   const data = await listMyCharacters(user.id, { q, status, sort });
   const cards: CharacterCardData[] = data.cards;
-  const { dialogCampaigns, books } = data;
+  const { counts, dialogCampaigns, books } = data;
 
   const systems = rpgSystems.map((s) => ({ id: s.id, name: s.name, creator: s.creator }));
 
   return (
-    <div className="mx-auto max-w-280 px-5 py-10">
+    <div className="mx-auto max-w-300 px-5 py-10">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <h1 className="font-heading text-3xl font-extrabold text-white">Mis personajes</h1>
         <NewCharacterDialog systems={systems} campaigns={dialogCampaigns} books={books} />
       </div>
 
       <ListFilters
-        className="mb-8 rounded-xl border border-line bg-surface/50 p-5 shadow-sm"
+        className="mb-6 rounded-xl border border-line bg-surface/50 p-4 shadow-sm"
         base="/characters"
-        title="Filtros de búsqueda"
         q={q}
         searchLabel="Buscar personajes"
         placeholder="Nombre, especie, clase o campaña"
         selects={[
           {
-            name: "status", label: "Estado", value: status, defaultValue: "active",
-            options: [
-              { value: "active", label: "Activos" },
-              { value: "retired", label: "Retirados" },
-              { value: "dead", label: "Fallecidos" },
-              { value: "npc", label: "PNJ" },
-              { value: "all", label: "Todos" },
-            ],
+            name: "status", label: "Estado", value: status, defaultValue: "active", tabs: true,
+            options: STATUS_TABS.map((t) => ({ ...t, count: counts[t.value] })),
           },
           {
             name: "sort", label: "Ordenar por", value: sort, defaultValue: "recent",
@@ -72,10 +74,21 @@ export default async function CharactersPage({
         ]}
       />
 
+      {/* Se anuncia al cambiar los filtros; a la vista solo al buscar */}
+      <p role="status" className={q ? "mb-4 text-sm text-muted" : "sr-only"}>
+        {cards.length} {cards.length === 1 ? "personaje" : "personajes"}{q ? <> para «<span className="text-fg">{q}</span>»</> : null}
+      </p>
+
       {cards.length === 0 ? (
-        hasFilters ? (
+        counts.all > 0 || q ? (
           <div className="rounded-xl border border-dashed border-line p-12 text-center text-muted">
-            <p className="font-medium">No se han encontrado personajes con esos filtros.</p>
+            <SearchX size={40} className="mx-auto mb-4 text-line" aria-hidden="true" />
+            <p className="font-medium">
+              {q ? "No se han encontrado personajes con esos filtros." : `No tienes personajes en «${STATUS_TABS.find((t) => t.value === status)?.label}».`}
+            </p>
+            <Link href={q ? "/characters" : "/characters?status=all"} className="mt-3 inline-block text-sm font-semibold text-brand-soft hover:underline">
+              {q ? "Limpiar filtros" : "Ver todos tus personajes"}
+            </Link>
           </div>
         ) : (
           <div className="animate-fade-up rounded-xl border border-dashed border-line bg-surface/30 p-12 text-center shadow-sm">
@@ -95,6 +108,12 @@ export default async function CharactersPage({
             <CharacterCard key={c.id} character={c} index={i} />
           ))}
         </div>
+      )}
+
+      {cards.length === LIST_LIMIT && counts[status] > LIST_LIMIT && (
+        <p className="mt-6 text-center text-sm text-muted">
+          Se muestran {LIST_LIMIT} de {counts[status]}. Busca por nombre para encontrar el resto.
+        </p>
       )}
     </div>
   );
