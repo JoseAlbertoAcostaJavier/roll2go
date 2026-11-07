@@ -63,7 +63,7 @@ const MENU = [
           {menuOpen ? <X size={24} /> : <Menu size={24} />}
         </button>
 
-        <Link className="flex shrink-0 items-center py-2" href="/" onClick={() => setMenuOpen(false)}>
+        <Link className="flex shrink-0 items-center py-2" href="/" aria-label="Roll2Go, ir a inicio" onClick={() => setMenuOpen(false)}>
           <Image src={logo} alt="Roll2Go" priority className="h-auto w-36 md:w-44 hover:scale-105 transition-all" />
         </Link>
 
