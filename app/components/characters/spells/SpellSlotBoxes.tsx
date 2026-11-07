@@ -24,7 +24,7 @@ export default function SpellSlotBoxes({ level, count, used, onSet, busy, pact =
   const kind = `${pact ? "pacto de " : ""}nivel ${spellLevel}`;
   return (
     <UseBoxes
-      count={count} used={used} busy={busy} size={size} className={className} tag={tag ? "Pacto" : undefined}
+      diamond count={count} used={used} busy={busy} size={size} className={className} tag={tag ? "Pacto" : undefined}
       label={`Espacios de ${kind}`} itemLabel={`Espacio de ${kind}`}
       onSet={onSet ? (n) => onSet(level, n) : null}
     />

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import PanelSearch from "./PanelSearch";
 import { ACTION_FILTERS, actionFilterHref, type ActionFilter } from "@/lib/rules/dnd2024/sheet/actionFilters";
 
 type Query = Record<string, string | string[] | undefined>;
@@ -12,7 +13,9 @@ const chip = (on: boolean) =>
 // móvil se desplazan en horizontal dentro de su fila
 export default function ActionsFilters({ base, query, active }: { base: string; query: Query; active: ActionFilter }) {
   return (
-    <nav aria-label="Filtrar acciones" className="-mx-1 mb-4 flex gap-2 overflow-x-auto px-1 pb-1 print:hidden">
+    <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-2 print:hidden">
+    <PanelSearch label="Buscar en combate" />
+    <nav aria-label="Filtrar acciones" className="flex gap-1.5 overflow-x-auto pb-0.5">
       {ACTION_FILTERS.map((f) => (
         <Link
           key={f.id}
@@ -25,5 +28,6 @@ export default function ActionsFilters({ base, query, active }: { base: string; 
         </Link>
       ))}
     </nav>
+    </div>
   );
 }

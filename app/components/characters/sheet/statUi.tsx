@@ -8,10 +8,32 @@ export const abbr = (a: Ability) => ABILITY_ABBR[a][0] + ABILITY_ABBR[a].slice(1
 // como texto (`data-print`, ver globals.css)
 export const statButton =
   "cursor-pointer transition-colors hover:border-line-strong hover:bg-surface focus-visible:outline-2 focus-visible:outline-brand";
-// Tarjeta de la franja superior (características, CA, iniciativa, velocidad, competencia): valor grande y rótulo debajo
-export const tile = "rounded-xl border border-line bg-panel";
-export const tileValue = "font-heading text-3xl font-extrabold leading-tight text-white";
-export const tileLabel = "mt-1 flex items-center justify-center gap-1 text-[11px] font-bold uppercase leading-tight tracking-wide text-muted";
+// Caja de la ficha, su título y sus piezas (etiquetas, recuadros, rótulos pequeños)
+export const sheetBox = "rounded-xl border border-line bg-panel";
+export const sheetSideBox = "rounded-xl border border-line bg-panel p-3";
+export const boxTitle = "font-heading text-sm font-extrabold uppercase tracking-wide text-brand-soft";
+export const subLabel = "mb-1 text-xs font-semibold text-muted";
+export const abbrChip = "shrink-0 rounded bg-surface px-1.5 py-0.5 text-[10px] font-bold text-fg";
+export const tagChip = "rounded bg-surface px-1.5 py-0.5 text-xs font-medium text-fg";
+export const fieldBox = "flex min-h-9 flex-wrap items-center gap-1 rounded-md border border-line p-1";
+// Interruptor (casilla nativa con forma de palanca): para equipar objetos
+export const switchTrack = "relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full bg-line transition-colors has-checked:bg-brand has-disabled:cursor-not-allowed has-disabled:opacity-50 has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-brand-soft";
+export const switchThumb = "pointer-events-none absolute left-0.5 h-4 w-4 rounded-full bg-fg transition-transform peer-checked:translate-x-4";
+
+/** Texto llano de una descripción (sin etiquetas BBCode), para el resumen de dos líneas de las filas. */
+export const plainText = (source: string) => source.replace(/\[[^\]]*\]/g, "").replace(/\s+/g, " ").trim();
+
+// Barra de sección de las pestañas: título a la izquierda y, a la derecha, las columnas o los controles
+export function SectionBar({ title, extra, children }: { title: string; extra?: React.ReactNode; children?: React.ReactNode }) {
+  return (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md bg-surface px-3 py-1.5">
+      <h3 className={boxTitle}>{title}</h3>
+      {extra && <span className="text-xs text-muted">{extra}</span>}
+      {children && <div className="ml-auto flex items-center gap-3 text-xs font-medium text-fg">{children}</div>}
+    </div>
+  );
+}
+
 export const chip = "flex h-14 flex-col items-center justify-center rounded-md border border-line bg-surface px-2 text-center";
 export const chipLabel = "flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-muted";
 export const chipValue = "font-heading text-xl font-extrabold leading-tight";

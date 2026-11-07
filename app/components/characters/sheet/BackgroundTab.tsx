@@ -7,7 +7,7 @@ import { BACKGROUND_SECTION_CHIPS, parseSection, type BackgroundSection } from "
 import type { SheetTextField } from "@/lib/rules/dnd2024/sheet/textFields";
 import type { Ability, BackgroundData } from "@/lib/rules/types";
 import Bbcode from "@/app/components/ui/Bbcode";
-import { sheetCard, cardTitle } from "@/app/components/ui/formStyles";
+import { SectionBar } from "./statUi";
 import { InlineSelect, InlineText } from "./InlineText";
 import SectionChips from "./SectionChips";
 
@@ -55,15 +55,16 @@ export default function BackgroundTab({ characterId, isOwner, sheet, backstory, 
   return (
     <div>
       <SectionChips chips={BACKGROUND_SECTION_CHIPS} active={active} base={base} query={query} label="Filtrar trasfondo" />
-      <div className="space-y-6">
-        <section aria-label="Trasfondo" className={`${sheetCard} animate-fade-up ${hide("trasfondo")}`}>
-          <h3 className={cardTitle}>Trasfondo: {background ? entryName(background) : sheet.background.name}</h3>
+      <div className="space-y-5">
+        <section aria-label="Trasfondo" className={`animate-fade-up space-y-3 ${hide("trasfondo")}`}>
+          <SectionBar title="Trasfondo" />
+          <p className="px-1 font-heading text-lg font-bold text-white">{background ? entryName(background) : sheet.background.name}</p>
           {background ? (
-            entryText(background) ? <Bbcode source={entryText(background)} className="text-sm" /> : null
+            entryText(background) ? <div className="rounded-md border border-line p-3"><Bbcode source={entryText(background)} className="text-sm" /></div> : null
           ) : (
             <p className="text-sm text-muted">Contenido no disponible.</p>
           )}
-          <dl className="mt-4 grid gap-x-4 gap-y-2 text-sm sm:grid-cols-[auto_1fr]">
+          <dl className="grid px-1 gap-x-4 gap-y-2 text-sm sm:grid-cols-[auto_1fr]">
             {bonuses.length > 0 && (
               <>
                 <dt className="font-semibold">Mejoras de característica</dt>
@@ -79,9 +80,9 @@ export default function BackgroundTab({ characterId, isOwner, sheet, backstory, 
           </dl>
         </section>
 
-        <section aria-label="Características" className={`${sheetCard} animate-fade-up ${hide("caracteristicas")}`} style={{ animationDelay: "50ms" }}>
-          <h3 className={cardTitle}>Características</h3>
-          <div className="grid grid-cols-2 gap-x-4 gap-y-4 lg:grid-cols-5">
+        <section aria-label="Características" className={`animate-fade-up space-y-3 ${hide("caracteristicas")}`} style={{ animationDelay: "50ms" }}>
+          <SectionBar title="Características" />
+          <div className="grid grid-cols-2 gap-x-4 gap-y-4 rounded-md bg-surface/40 p-3 sm:grid-cols-5">
             <InlineSelect
               characterId={characterId}
               field="alignment"
@@ -106,7 +107,7 @@ export default function BackgroundTab({ characterId, isOwner, sheet, backstory, 
             {text("age", "Edad", false, true)}
             {text("weight", "Peso", false, true)}
           </div>
-          <div className="mt-6 grid gap-4 md:grid-cols-2">
+          <div className="grid gap-4 px-1 md:grid-cols-2">
             {text("personality", "Rasgos de personalidad", true)}
             {text("ideals", "Ideales", true)}
             {text("bonds", "Vínculos", true)}
@@ -114,9 +115,9 @@ export default function BackgroundTab({ characterId, isOwner, sheet, backstory, 
           </div>
         </section>
 
-        <section aria-label="Aspecto" className={`${sheetCard} animate-fade-up ${hide("aspecto")}`} style={{ animationDelay: "100ms" }}>
-          <h3 className={cardTitle}>Aspecto</h3>
-          <div className={imageUrl ? "grid gap-6 lg:grid-cols-[1fr_20rem]" : ""}>
+        <section aria-label="Aspecto" className={`animate-fade-up space-y-3 ${hide("aspecto")}`} style={{ animationDelay: "100ms" }}>
+          <SectionBar title="Aspecto" />
+          <div className={imageUrl ? "grid gap-6 px-1 lg:grid-cols-[1fr_16rem]" : "px-1"}>
             {imageUrl && (
               // En móvil la imagen va arriba; en escritorio, a la derecha
               <div className="lg:order-2">

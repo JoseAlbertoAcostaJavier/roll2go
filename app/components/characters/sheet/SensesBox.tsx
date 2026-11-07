@@ -1,7 +1,7 @@
 import { PASSIVE_SKILLS } from "@/lib/rules/dnd2024/derive/abilities";
-import { distanceText, skillName } from "@/lib/rules/dnd2024/sheet/labels";
-import { sheetCard } from "@/app/components/ui/formStyles";
+import { ABILITY_ABBR, distanceText, skillName } from "@/lib/rules/dnd2024/sheet/labels";
 import MobileCollapse from "./MobileCollapse";
+import { abbrChip, sheetSideBox, subLabel } from "./statUi";
 import type { SheetData } from "./types";
 
 // Sentidos: Percepción, Investigación y Perspicacia pasivas (10 + bonificador) y visión en la oscuridad si la hay
@@ -10,20 +10,26 @@ export default function SensesBox({ d, className = "" }: {
 }) {
   const passives = PASSIVE_SKILLS.flatMap((id) => {
     const s = d.skills.find((x) => x.id === id);
-    return s ? [{ id, value: 10 + s.total }] : [];
+    return s ? [{ id, ability: s.ability, value: 10 + s.total }] : [];
   });
   return (
-    <section className={`${sheetCard} ${className}`}>
+    <section className={`${sheetSideBox} ${className}`}>
       <MobileCollapse title="Sentidos">
-        <ul className="divide-y divide-line text-sm">
+        <p className={subLabel}>Pasivos</p>
+        <ul className="space-y-2 text-sm">
           {passives.map((p) => (
-            <li key={p.id} className="flex items-center gap-3 py-2">
-              <span className="w-8 shrink-0 text-center font-heading text-base font-bold">{p.value}</span>
-              <span>{skillName(p.id)} pasiva</span>
+            <li key={p.id} className="flex items-center gap-2">
+              <span className="min-w-0 flex-1 font-semibold text-fg">{skillName(p.id)}</span>
+              <span className={abbrChip}>{ABILITY_ABBR[p.ability]}</span>
+              <span className="w-6 text-right font-heading font-bold text-white">{p.value}</span>
             </li>
           ))}
-          {d.darkvision ? <li className="py-2">Visión en la oscuridad {distanceText(d.darkvision)}</li> : null}
         </ul>
+        <p className={`${subLabel} mt-3`}>Otros sentidos</p>
+        <p className="flex items-center justify-between gap-2 text-sm">
+          <span className="font-semibold text-fg">Visión en la oscuridad</span>
+          <span className="shrink-0 text-muted">{d.darkvision ? distanceText(d.darkvision) : "—"}</span>
+        </p>
       </MobileCollapse>
     </section>
   );

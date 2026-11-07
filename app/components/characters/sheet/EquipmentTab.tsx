@@ -9,13 +9,13 @@ import { effectiveContainer, inventoryWeights } from "@/lib/rules/dnd2024/sheet/
 import { itemDetails, locationText, type ItemDetails } from "@/lib/rules/dnd2024/sheet/itemDetails";
 import { inventoryChips, inventoryGroups, type ItemInfo } from "@/lib/rules/dnd2024/sheet/inventoryTable";
 import { parseSection } from "@/lib/rules/dnd2024/sheet/sheetSections";
-import { sheetCard, cardTitle } from "@/app/components/ui/formStyles";
 import type { NewItem } from "./AddItemDialog";
 import InventoryFilters from "./InventoryFilters";
 import { clampInt, smallInput } from "./InventoryFields";
 import ItemDialog, { type ItemOwnerControls } from "./ItemDialog";
 import ManageInventory from "./ManageInventory";
 import InventoryTable, { fmt, weightText, type InventoryActions } from "./InventoryTable";
+import { SectionBar } from "./statUi";
 
 export type { ItemInfo };
 
@@ -40,7 +40,7 @@ type Props = {
 };
 
 const COINS: { key: keyof Coins; label: string }[] = [
-  { key: "pp", label: "PP" }, { key: "gp", label: "PO" }, { key: "ep", label: "PE" }, { key: "sp", label: "PL" }, { key: "cp", label: "PC" },
+  { key: "cp", label: "Cobre" }, { key: "sp", label: "Plata" }, { key: "ep", label: "Electro" }, { key: "gp", label: "Oro" }, { key: "pp", label: "Platino" },
 ];
 const goldValue = (c: Coins) => c.pp * 10 + c.gp + c.ep / 2 + c.sp / 10 + c.cp / 100;
 const toDraft = (c: Coins) => ({ cp: String(c.cp), sp: String(c.sp), ep: String(c.ep), gp: String(c.gp), pp: String(c.pp) });
@@ -161,25 +161,8 @@ export default function EquipmentTab({ characterId, isOwner, inventory, info, ca
         </p>
       )}
 
-      <section className={`${sheetCard} animate-fade-up`} aria-labelledby="inventory-title">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <h3 id="inventory-title" className={`${cardTitle} mb-0`}>
-            Inventario
-            {saving > 0 && <LoaderCircle size={14} aria-label="Guardando" className="ml-2 inline animate-spin text-muted" />}
-          </h3>
-        </div>
-
-        <div className="mb-4 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 text-sm">
-          <p className={over ? "font-semibold text-brand-soft" : "text-muted"}>
-            Peso cargado: {weightText(carried)} de {weightText(capacity)}
-            {over && (
-              <span className="ml-2 inline-flex items-center gap-1" role="status">
-                <TriangleAlert size={14} aria-hidden="true" /> Supera la capacidad de carga
-              </span>
-            )}
-          </p>
-          <p className="text-muted">Monedas: {fmt(goldValue(inv.coins))} po</p>
-        </div>
+      <section className="animate-fade-up space-y-3" aria-label="Inventario">
+        <CoinsEditor coins={inv.coins} readOnly={readOnly} onCommit={(coins) => send({ op: "coins", coins }, (i) => ({ ...i, coins }))} />
 
         <InventoryFilters
           base={base} query={query} chips={chips} active={active} q={q}
@@ -188,15 +171,25 @@ export default function EquipmentTab({ characterId, isOwner, inventory, info, ca
               ref={manageButton}
               type="button"
               onClick={(e) => setManage(e.currentTarget)}
-              className="flex shrink-0 items-center gap-2 rounded-md bg-brand px-4 py-2.5 font-heading text-sm font-bold text-white transition-colors hover:bg-brand-hover"
+              className="flex shrink-0 items-center gap-2 rounded-md border border-line-strong px-3 py-2 font-heading text-sm font-bold text-fg transition-colors hover:border-fg"
             >
               <SlidersHorizontal size={16} aria-hidden="true" /> Gestionar inventario
             </button>
           )}
         />
-        {error && <p role="alert" className="mb-3 text-sm text-danger">{error}</p>}
+        <p className={`text-sm font-semibold ${over ? "text-brand-soft" : "text-fg"}`}>
+          Peso total: {weightText(carried)} <span className="font-normal text-muted">de {weightText(capacity)}</span>
+          {over && (
+            <span className="ml-2 inline-flex items-center gap-1" role="status">
+              <TriangleAlert size={14} aria-hidden="true" /> Supera la capacidad de carga
+            </span>
+          )}
+          <span className="ml-3 font-normal text-muted">Monedas: {fmt(goldValue(inv.coins))} po</span>
+          {saving > 0 && <LoaderCircle size={14} aria-label="Guardando" className="ml-2 inline animate-spin text-muted" />}
+        </p>
+        {error && <p role="alert" className="text-sm text-danger">{error}</p>}
 
-        <div className={`space-y-6 ${section(active !== "otras")}`}>
+        <div className={`space-y-5 ${section(active !== "otras")}`}>
           {nothing && active !== "otras" && <p className="text-sm text-muted print:hidden">Sin objetos.</p>}
           {all.map((g) => {
             const s = nothing ? undefined : shown.get(g.id);
@@ -241,14 +234,8 @@ export default function EquipmentTab({ characterId, isOwner, inventory, info, ca
         />
       )}
 
-      <section className={`${sheetCard} animate-fade-up ${section(active === "todo")}`} aria-labelledby="coins-title">
-        <h3 id="coins-title" className={cardTitle}>Monedas</h3>
-        <CoinsEditor coins={inv.coins} readOnly={readOnly} onCommit={(coins) => send({ op: "coins", coins }, (i) => ({ ...i, coins }))} />
-        <p className="mt-3 text-sm text-muted">Total: {fmt(goldValue(inv.coins))} po</p>
-      </section>
-
-      <section className={`${sheetCard} animate-fade-up ${section(active === "todo" || active === "otras")}`} aria-labelledby="other-title">
-        <h3 id="other-title" className={cardTitle}>Otras posesiones</h3>
+      <section className={`animate-fade-up space-y-2 ${section(active === "todo" || active === "otras")}`} aria-label="Otras posesiones">
+        <SectionBar title="Otras posesiones" />
         {readOnly ? (
           <p className="whitespace-pre-wrap text-sm">{inv.other || <span className="text-muted">Nada.</span>}</p>
         ) : (
@@ -275,14 +262,14 @@ function CoinsEditor({ coins, readOnly, onCommit }: { coins: Coins; readOnly: bo
     if (COINS.some(({ key }) => next[key] !== coins[key])) onCommit(next);
   };
   return (
-    <ul className="grid grid-cols-5 gap-2 sm:max-w-md">
+    <ul className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 rounded-md bg-surface px-3 py-2">
       {COINS.map(({ key, label }) => (
-        <li key={key} className="text-center">
-          <label htmlFor={`coin-${key}`} className="mb-1 block text-xs font-semibold uppercase tracking-wide text-muted">{label}</label>
+        <li key={key} className="flex items-center gap-1.5">
+          <label htmlFor={`coin-${key}`} className="text-xs font-semibold text-fg">{label}:</label>
           {readOnly ? <p className="font-heading font-bold">{coins[key]}</p> : (
             <input
               id={`coin-${key}`} type="number" inputMode="numeric" min={0} max={MAX_COINS}
-              className={`${smallInput} w-full text-center`} value={draft[key]}
+              className={`${smallInput} w-16 text-center`} value={draft[key]}
               onChange={(e) => setDraft({ ...draft, [key]: e.target.value })}
               onBlur={commit} onKeyDown={(e) => e.key === "Enter" && commit()}
             />
