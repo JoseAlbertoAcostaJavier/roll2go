@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { ArrowUp, Files } from "lucide-react";
+import Link from "next/link";
+import { Files } from "lucide-react";
 import { requireUser } from "@/lib/server/auth/currentUser";
 import { listMyCharacters } from "@/lib/server/characters/queries";
 import { system as rpgSystems } from "@/lib/utils/systems";
@@ -45,7 +46,7 @@ export default async function CharactersPage({
       </div>
 
       <ListFilters
-        className="mb-6 rounded-lg border border-line bg-panel p-5"
+        className="mb-6"
         base="/characters"
         title="Buscar personajes"
         q={q}
@@ -74,26 +75,24 @@ export default async function CharactersPage({
 
       {cards.length === 0 ? (
         hasFilters ? (
-          <div className="rounded-lg border border-dashed border-line p-10 text-center text-muted">
-            <p>No se han encontrado personajes con esos filtros.</p>
+          <div className="rounded-lg border border-dashed border-line p-10 text-center">
+            <p className="mb-3 text-muted">Ningún personaje coincide con esos filtros.</p>
+            <Link href="/characters" className="font-semibold text-brand-soft hover:underline">Quitar filtros</Link>
           </div>
         ) : (
-          <div className="animate-fade-up rounded-lg border border-dashed border-line p-10 text-center">
-            <p className="mb-4 flex items-center justify-center gap-2 font-heading font-bold text-brand-soft sm:justify-end">
-              <ArrowUp size={18} aria-hidden="true" /> ¡Crea el primero!
-            </p>
-            <Files size={48} className="mx-auto mb-4 text-muted" aria-hidden="true" />
+          <div className="flex flex-col items-center rounded-lg border border-dashed border-line p-10 text-center">
+            <Files size={48} className="mb-4 text-muted" aria-hidden="true" />
             <h2 className="mb-2 font-heading text-xl font-bold">Aún no tienes ningún personaje</h2>
-            <p className="mx-auto max-w-xl text-muted">
-              Puedes crear y gestionar los personajes para tus partidas, para luego imprimirlos en papel, llevarlos en
-              tu móvil o tablet a la partida o jugar con ellos en partidas online
+            <p className="mb-6 max-w-xl text-muted">
+              Crea tus personajes para imprimirlos en papel, llevarlos a la partida en el móvil o la tablet, o jugar con ellos online.
             </p>
+            <NewCharacterDialog systems={systems} campaigns={dialogCampaigns} books={books} />
           </div>
         )
       ) : (
         <div className="grid grid-cols-[repeat(auto-fill,minmax(min(300px,100%),1fr))] gap-4">
-          {cards.map((c, i) => (
-            <CharacterCard key={c.id} character={c} index={i} />
+          {cards.map((c) => (
+            <CharacterCard key={c.id} character={c} />
           ))}
         </div>
       )}
