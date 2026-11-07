@@ -4,7 +4,7 @@ import { useState } from "react";
 import { MAX_ITEM_NOTES, MAX_QUANTITY } from "@/lib/rules/dnd2024/sheet/edits";
 
 export const smallInput =
-  "h-8 rounded-md border border-line bg-surface px-2 text-sm text-fg focus:border-brand focus:outline-none disabled:opacity-60";
+  "h-8 rounded-md border border-line-strong bg-surface px-2 text-sm text-fg focus:border-brand focus:outline-none disabled:opacity-60";
 export const clampInt = (v: string, max: number, fallback: number) => {
   const n = Math.trunc(Number(v));
   return Number.isFinite(n) && v.trim() !== "" ? Math.min(max, Math.max(0, n)) : fallback;

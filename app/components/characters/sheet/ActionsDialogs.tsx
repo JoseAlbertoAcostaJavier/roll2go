@@ -118,7 +118,7 @@ export function SpellLink({ spellRef, name }: { spellRef: Ref; name: string }) {
         e.preventDefault();
         openSpell(spellRef, e.currentTarget);
       }}
-      className="font-semibold text-fg hover:text-brand-soft hover:underline"
+      className="inline-block py-0.5 font-semibold text-fg hover:text-brand-soft hover:underline"
     >
       {name}
     </a>
@@ -131,8 +131,9 @@ export function BasicActionButton({ actionKey, name }: { actionKey: string; name
   return (
     <button
       type="button"
+      data-print="text"
       onClick={(e) => openBasic(actionKey, e.currentTarget)}
-      className="font-semibold text-fg hover:text-brand-soft hover:underline"
+      className="inline-block py-0.5 font-semibold text-fg hover:text-brand-soft hover:underline"
     >
       {name}
     </button>
@@ -145,8 +146,9 @@ export function FeatureButton({ featureKey, name }: { featureKey: string; name: 
   return (
     <button
       type="button"
+      data-print="text"
       onClick={(e) => openFeature(featureKey, e.currentTarget)}
-      className="text-left font-semibold text-fg hover:text-brand-soft hover:underline"
+      className="inline-block py-0.5 text-left font-semibold text-fg hover:text-brand-soft hover:underline"
     >
       {name}
     </button>
@@ -161,7 +163,7 @@ export function ItemButton({ lineId, name }: { lineId: string; name: string }) {
       type="button"
       data-print="text"
       onClick={(e) => openItem(lineId, e.currentTarget)}
-      className="text-left font-semibold text-fg hover:text-brand-soft hover:underline"
+      className="inline-block py-0.5 text-left font-semibold text-fg hover:text-brand-soft hover:underline"
     >
       {name}
     </button>

@@ -19,7 +19,7 @@ const FILTERS: { id: UserFilter; label: string }[] = [
 type FilterId = UserFilter;
 
 const field =
-  "h-11 w-full rounded-md border border-line bg-surface pl-10 pr-3 text-fg placeholder:text-muted focus:border-brand focus:outline-none";
+  "h-11 w-full rounded-md border border-line-strong bg-surface pl-10 pr-3 text-fg placeholder:text-muted focus:border-brand focus:outline-none";
 const chip = "rounded-full border px-3 py-1 text-sm transition-colors";
 
 export default async function AdminUsersPage({

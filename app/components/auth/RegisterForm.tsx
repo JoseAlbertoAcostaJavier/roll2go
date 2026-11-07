@@ -10,7 +10,7 @@ type Errors = Partial<Record<"username" | "email" | "password" | "confirm", stri
 // Estilos del campo: borde normal o rojo claro si tiene error
 const inputClass = (hasError: boolean, extra = "pr-3") =>
   `w-full rounded-md border bg-surface py-2.5 pl-10 ${extra} text-fg placeholder:text-muted focus:outline-none transition-colors ${
-    hasError ? "border-brand-soft" : "border-line focus:border-brand"
+    hasError ? "border-brand-soft" : "border-line-strong focus:border-brand"
   }`;
 const iconClass = "pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted";
 

@@ -303,7 +303,7 @@ function OtherField({ value, onCommit }: { value: string; onCommit: (v: string) 
   return (
     <textarea
       aria-label="Otras posesiones" rows={4} maxLength={MAX_OTHER} value={draft}
-      className="w-full rounded-md border border-line bg-surface px-3 py-2 text-sm text-fg focus:border-brand focus:outline-none"
+      className="w-full rounded-md border border-line-strong bg-surface px-3 py-2 text-sm text-fg focus:border-brand focus:outline-none"
       onChange={(e) => setDraft(e.target.value)}
       onBlur={() => draft !== value && onCommit(draft)}
     />

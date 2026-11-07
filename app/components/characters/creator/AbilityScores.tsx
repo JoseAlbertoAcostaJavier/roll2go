@@ -266,7 +266,7 @@ export default function AbilityScores({
                       <div className="flex items-center justify-center gap-2">
                         <select
                           aria-label={`Valor de ${NAMES[a]}`}
-                          className="w-20 rounded-md border border-line bg-surface px-1 py-1.5 text-fg disabled:opacity-60"
+                          className="w-20 rounded-md border border-line-strong bg-surface px-1 py-1.5 text-fg disabled:opacity-60"
                           value={selected[i] ?? ""}
                           disabled={pool.length === 0}
                           onChange={(e) => (e.target.value === "" ? clear(a) : place(a, pool[Number(e.target.value)]))}

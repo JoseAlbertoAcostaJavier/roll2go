@@ -81,7 +81,7 @@ export default function VerifyPending({ initialEmail }: { initialEmail: string }
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="tu@correo.com"
-            className="mb-3 w-full rounded-md border border-line bg-surface px-3 py-2.5 text-fg placeholder:text-muted focus:border-brand focus:outline-none"
+            className="mb-3 w-full rounded-md border border-line-strong bg-surface px-3 py-2.5 text-fg placeholder:text-muted focus:border-brand focus:outline-none"
           />
         </>
       )}

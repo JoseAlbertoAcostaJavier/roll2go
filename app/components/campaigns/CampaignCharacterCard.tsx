@@ -48,7 +48,7 @@ export default function CampaignCharacterCard({ character: c, campaignId, isDm }
         {/* El aviso «Pendiente de aprobación» queda fuera del gris, para que se lea bien */}
         <div className={dimmed ? "grayscale opacity-60" : ""}>
           <p className="truncate font-heading font-bold">
-            <Link href={`/characters/${c.id}`} className="text-brand-soft hover:underline">{c.name}</Link>
+            <Link href={`/characters/${c.id}`} className="text-fg hover:underline">{c.name}</Link>
           </p>
           {c.summary && <p className="truncate text-sm text-muted">{c.summary}</p>}
           {c.owner ? (

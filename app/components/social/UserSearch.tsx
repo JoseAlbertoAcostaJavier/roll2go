@@ -76,7 +76,7 @@ export default function UserSearch() {
             setOpen(true);
           }}
           onFocus={() => setOpen(true)}
-          className="h-12 w-full rounded-md border border-line bg-surface pl-10 pr-3 text-fg placeholder:text-muted focus:border-brand focus:outline-none"
+          className="h-12 w-full rounded-md border border-line-strong bg-surface pl-10 pr-3 text-fg placeholder:text-muted focus:border-brand focus:outline-none"
         />
       </div>
 

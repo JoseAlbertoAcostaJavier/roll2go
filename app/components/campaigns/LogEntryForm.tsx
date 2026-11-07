@@ -10,7 +10,7 @@ type Visibility = "public" | "private";
 type Errors = Partial<Record<"title" | "content" | "visibility", string>>;
 
 const field =
-  "w-full rounded-md border border-line bg-surface px-3 py-2.5 text-fg placeholder:text-muted focus:border-brand focus:outline-none";
+  "w-full rounded-md border border-line-strong bg-surface px-3 py-2.5 text-fg placeholder:text-muted focus:border-brand focus:outline-none";
 const labelClass = "mb-1.5 block text-sm font-semibold";
 const errorClass = "mt-1 text-xs text-brand-soft";
 

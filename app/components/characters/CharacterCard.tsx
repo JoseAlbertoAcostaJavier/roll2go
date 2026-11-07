@@ -33,7 +33,7 @@ export default function CharacterCard({ character: c, index }: { character: Char
       <div className="flex min-w-0 flex-1 flex-col">
         <h2 className="truncate font-heading text-lg font-bold">
           {/* La hoja del personaje llega en una tarea posterior */}
-          <Link href={`/characters/${c.id}`} className="outline-none after:absolute after:inset-0 after:content-['']">
+          <Link href={`/characters/${c.id}`} className="outline-none after:absolute after:inset-0 after:rounded-lg after:content-[''] focus-visible:after:outline-2 focus-visible:after:outline-offset-2 focus-visible:after:outline-brand-soft">
             {c.name}
           </Link>
         </h2>
@@ -41,7 +41,7 @@ export default function CharacterCard({ character: c, index }: { character: Char
         <p className="mt-2 text-sm font-semibold">{c.systemName}</p>
         <div className="relative z-10 mt-auto flex flex-wrap items-center gap-x-3 pt-2 text-sm">
           {c.campaign ? (
-            <Link href={`/campaigns/${c.campaign.id}`} className="truncate text-brand-soft hover:underline">
+            <Link href={`/campaigns/${c.campaign.id}`} className="truncate text-fg hover:underline">
               {c.campaign.name}
             </Link>
           ) : (

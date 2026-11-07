@@ -238,13 +238,16 @@ function Row({ line: l, data, where, containers, actions }: {
       <div className="flex items-center gap-2">
         <span className="flex w-5 shrink-0 justify-center">
           {equippable && (
-            <input
-              type="checkbox"
-              className="h-4 w-4 accent-brand"
-              checked={l.equipped}
-              aria-label={`Equipar ${l.name}`}
-              onChange={(e) => actions.equip(l.id, e.target.checked)}
-            />
+            // Casilla de 16 px con zona pulsable de 24 × 32 px (la etiqueta la reenvía a la casilla)
+            <label className="relative inline-flex h-4 w-4 after:absolute after:left-1/2 after:top-1/2 after:h-8 after:w-6 after:-translate-x-1/2 after:-translate-y-1/2">
+              <input
+                type="checkbox"
+                className="h-4 w-4 accent-brand"
+                checked={l.equipped}
+                aria-label={`Equipar ${l.name}`}
+                onChange={(e) => actions.equip(l.id, e.target.checked)}
+              />
+            </label>
           )}
         </span>
         <span className="min-w-0 flex-1 wrap-break-word text-sm font-semibold">

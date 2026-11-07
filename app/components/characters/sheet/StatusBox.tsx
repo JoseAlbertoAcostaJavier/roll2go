@@ -91,7 +91,7 @@ export default function StatusBox({ characterId, isOwner, defenses, status, show
   const hasStatus = conditions.length > 0 || exhaustion > 0;
 
   return (
-    <section aria-label="Defensas y estados" className={`rounded-lg border-2 border-brand/40 bg-panel p-4 ${className}`}>
+    <section aria-label="Defensas y estados" className={`rounded-lg border border-line bg-panel p-4 ${className}`}>
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="min-w-0">
           <h3 className={title}>Defensas</h3>

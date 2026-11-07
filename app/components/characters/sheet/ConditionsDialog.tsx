@@ -110,7 +110,7 @@ export default function ConditionsDialog({ conditions, exhaustion, onCondition, 
             value={exhaustion}
             aria-disabled={busy}
             onChange={(e) => !busy && onExhaustion(Number(e.target.value))}
-            className="w-full rounded-md border border-line bg-surface px-3 py-2 text-fg focus:border-brand focus:outline-none"
+            className="w-full rounded-md border border-line-strong bg-surface px-3 py-2 text-fg focus:border-brand focus:outline-none"
           >
             {[0, 1, 2, 3, 4, 5, 6].map((n) => <option key={n} value={n}>{n}</option>)}
           </select>

@@ -135,7 +135,7 @@ export default function BbcodeEditor({
           rows={rows}
           onChange={(e) => onChange(e.target.value)}
           onKeyDown={onKeyDown}
-          className="w-full rounded-b-md border border-t-0 border-line bg-surface px-3 py-2.5 font-mono text-sm text-fg placeholder:text-muted focus:border-brand focus:outline-none"
+          className="w-full rounded-b-md border border-t-0 border-line-strong bg-surface px-3 py-2.5 font-mono text-sm text-fg placeholder:text-muted focus:border-brand focus:outline-none"
         />
       ) : (
         <div className="min-h-64 rounded-b-md border border-t-0 border-line bg-surface p-3 text-sm">

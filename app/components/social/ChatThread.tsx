@@ -144,7 +144,7 @@ export default function ChatThread({
                 void send();
               }
             }}
-            className="min-w-0 flex-1 resize-none rounded-md border border-line
+            className="min-w-0 flex-1 resize-none rounded-md border border-line-strong
                      bg-surface px-3 py-2.5 text-sm text-fg placeholder:text-muted
                       focus:border-brand focus:outline-none"
           />

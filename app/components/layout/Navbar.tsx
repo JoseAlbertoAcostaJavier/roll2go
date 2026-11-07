@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname} from "next/navigation";
 import {
-  CircleUser, Swords, Users, BookOpen, BookMarked, User, House, Menu, X
+  CircleUser, Swords, Users, User, House, Menu, X
 } from "lucide-react";
 import UserMenu, { type NavUser } from "@/app/components/layout/UserMenu";
 import logo from "@/assets/logo.png";
@@ -21,8 +21,6 @@ const MENU = [
   { label: "Mis personajes", icon: User, href: "/characters" },
   { label: "Mis campañas", icon: Swords, href: "/campaigns" },
   { label: "Social", icon: Users, href: "/social" },
-  { label: "Sistemas", icon: BookOpen, href: "/system" },
-  { label: "Biblioteca", icon: BookMarked, href: "/library" },
 ];
 
 /* "user" llega desde el layout (que lee la cookie de sesión en el servidor):

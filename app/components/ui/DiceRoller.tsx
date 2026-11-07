@@ -63,7 +63,7 @@ export default function DiceRoller() {
           onKeyDown={(e) => e.key === "Enter" && roll()}
           aria-label="Expresión de dados"
           placeholder="2d6+3"
-          className="min-w-0 flex-1 rounded-md border border-line bg-surface px-3 py-2.5 text-base text-fg"
+          className="min-w-0 flex-1 rounded-md border border-line-strong bg-surface px-3 py-2.5 text-base text-fg"
         />
         <button
           onClick={() => roll()}

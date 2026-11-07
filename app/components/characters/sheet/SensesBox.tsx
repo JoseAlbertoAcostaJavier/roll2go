@@ -1,6 +1,7 @@
 import { PASSIVE_SKILLS } from "@/lib/rules/dnd2024/derive/abilities";
 import { distanceText, skillName } from "@/lib/rules/dnd2024/sheet/labels";
-import { sheetCard, cardTitle } from "@/app/components/ui/formStyles";
+import { sheetCard } from "@/app/components/ui/formStyles";
+import MobileCollapse from "./MobileCollapse";
 import type { SheetData } from "./types";
 
 // Sentidos: Percepción, Investigación y Perspicacia pasivas (10 + bonificador) y visión en la oscuridad si la hay
@@ -13,16 +14,17 @@ export default function SensesBox({ d, className = "" }: {
   });
   return (
     <section className={`${sheetCard} ${className}`}>
-      <h3 className={cardTitle}>Sentidos</h3>
-      <ul className="divide-y divide-line text-sm">
-        {passives.map((p) => (
-          <li key={p.id} className="flex items-center gap-3 py-2">
-            <span className="w-8 shrink-0 text-center font-heading text-base font-bold">{p.value}</span>
-            <span>{skillName(p.id)} pasiva</span>
-          </li>
-        ))}
-        {d.darkvision ? <li className="py-2">Visión en la oscuridad {distanceText(d.darkvision)}</li> : null}
-      </ul>
+      <MobileCollapse title="Sentidos">
+        <ul className="divide-y divide-line text-sm">
+          {passives.map((p) => (
+            <li key={p.id} className="flex items-center gap-3 py-2">
+              <span className="w-8 shrink-0 text-center font-heading text-base font-bold">{p.value}</span>
+              <span>{skillName(p.id)} pasiva</span>
+            </li>
+          ))}
+          {d.darkvision ? <li className="py-2">Visión en la oscuridad {distanceText(d.darkvision)}</li> : null}
+        </ul>
+      </MobileCollapse>
     </section>
   );
 }

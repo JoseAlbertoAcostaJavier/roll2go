@@ -29,7 +29,8 @@ import { itemDetails, locationText, type ItemDetails } from "@/lib/rules/dnd2024
 import type { ActionData, BackgroundData, ItemData, SpeciesData } from "@/lib/rules/types";
 import SheetHeader from "@/app/components/characters/sheet/SheetHeader";
 import type { JoinableCampaign } from "@/app/components/characters/sheet/JoinCampaignDialog";
-import SheetTabs, { SHEET_TABS, type SheetTab } from "@/app/components/characters/sheet/SheetTabs";
+import SheetTabs from "@/app/components/characters/sheet/SheetTabs";
+import { SHEET_TABS, type SheetTab } from "@/app/components/characters/sheet/sheetTabsList";
 import SheetLayout, { type SheetData } from "@/app/components/characters/sheet/SheetLayout";
 import ActionsTab from "@/app/components/characters/sheet/ActionsTab";
 import type { BasicActionInfo } from "@/app/components/characters/sheet/ActionsDialogs";
@@ -222,7 +223,8 @@ export default async function CharacterPage({ params, searchParams }: Props) {
   // Las pestañas inactivas se ocultan en pantalla, pero se imprimen todas seguidas
   const panel = (t: SheetTab) => ({
     id: `panel-${t}`,
-    className: t === tab ? "" : "hidden print:block",
+    // Margen de desplazamiento: la barra de pestañas fija (≈ 46 px) no tapa el control que recibe el foco con el teclado
+    className: `[&_a]:scroll-mt-14 [&_button]:scroll-mt-14 [&_input]:scroll-mt-14 [&_select]:scroll-mt-14 [&_textarea]:scroll-mt-14 ${t === tab ? "" : "hidden print:block"}`,
   });
   const panelTitle = (t: SheetTab) => (
     <h2 className="sr-only print:not-sr-only print:mb-4 print:mt-8 print:font-heading print:text-2xl print:font-bold">
@@ -269,7 +271,8 @@ export default async function CharacterPage({ params, searchParams }: Props) {
         pools={pools}
         status={statusOf(sheet)}
         version={new Date(c.updatedAt ?? 0).getTime()}
-        tabs={<SheetTabs base={base} active={tab} tabs={tabs} />}
+        // Con `key`: SheetLayout pinta este elemento junto a sus hijos y React comprueba los que le llegan de la página
+        tabs={<SheetTabs key="tabs" base={base} active={tab} tabs={tabs} />}
       >
         <section {...panel("acciones")}>
           {panelTitle("acciones")}

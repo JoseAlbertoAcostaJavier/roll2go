@@ -115,7 +115,7 @@ export default function DeleteCharacter({
               spellCheck={false}
               onChange={(e) => setTyped(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && confirmDelete()}
-              className="w-full rounded-md border border-line bg-surface px-3 py-2.5 text-fg focus:border-brand focus:outline-none"
+              className="w-full rounded-md border border-line-strong bg-surface px-3 py-2.5 text-fg focus:border-brand focus:outline-none"
             />
             {error && (
               <p className="mt-2 text-sm text-brand-soft" role="alert">

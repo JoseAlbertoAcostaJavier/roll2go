@@ -7,6 +7,7 @@
   --color-surface: #19191a;
   --color-panel: #242426;
   --color-line: #38383b;
+  --color-line-strong: #737378;
   --color-fg: #f0f0f0;
   --color-muted: #a3a3a8;
   --color-brand: #dc3741;
@@ -74,6 +75,7 @@
     --color-surface: #fff;
     --color-panel: #fff;
     --color-line: #bbb;
+    --color-line-strong: #bbb;
     --color-fg: #111;
     --color-muted: #555;
     --color-brand-soft: #8f1d25;

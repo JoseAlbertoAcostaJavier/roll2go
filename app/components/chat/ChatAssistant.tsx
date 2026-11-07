@@ -216,7 +216,7 @@ export default function ChatAssistant() {
               onKeyDown={(e) => e.key === "Enter" && send(input)}
               aria-label="Tu pregunta"
               placeholder={current ? "Escribe tu pregunta..." : "Elige primero un sistema de rol"}
-              className="h-11 min-w-0 flex-1 rounded-md border border-line bg-surface px-3 text-[.95rem] text-fg disabled:cursor-not-allowed disabled:opacity-50"
+              className="h-11 min-w-0 flex-1 rounded-md border border-line-strong bg-surface px-3 text-[.95rem] text-fg disabled:cursor-not-allowed disabled:opacity-50"
             />
             <button
               className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-brand text-white transition-colors enabled:hover:bg-brand-hover disabled:opacity-50"
