@@ -11,6 +11,7 @@ import { preparedKey, spellListOf } from "./spellcasting";
 
 export type SpellOp =
   | { op: "prepare" | "unprepare"; class: Ref; ref: Ref }
+  | { op: "unprepareAll"; class: Ref }
   | { op: "copy"; ref: Ref }
   | { op: "slot"; level: string; used: number }
   | { op: "setOption"; subclass: Ref; name: string | null }
@@ -94,6 +95,14 @@ function inClassList(block: CasterBlock, data: SpellData, ctx: SpellOpCtx): bool
 export function applySpellOp(sheet: Dnd2024SheetV2, op: unknown, ctx: SpellOpCtx): SpellOpResult {
   if (!isObj(op)) return fail("Petición no válida.");
   const prepared = sheet.prepared ?? {};
+
+  if (op.op === "unprepareAll") {
+    const cls = asRef(op.class);
+    const block = cls ? ctx.blocks.find((b) => refKey(b.class) === refKey(cls)) : undefined;
+    if (!block) return fail("Esa clase no lanza conjuros.");
+    if (block.mode === "levelUp") return fail(`Los conjuros de ${block.name} se cambian al subir de nivel.`);
+    return { ok: true, sheet: { ...sheet, prepared: { ...prepared, [preparedKey(block.class)]: [] } } };
+  }
 
   if (op.op === "prepare" || op.op === "unprepare") {
     const cls = asRef(op.class);

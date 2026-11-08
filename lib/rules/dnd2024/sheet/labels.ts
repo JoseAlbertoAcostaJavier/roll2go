@@ -240,3 +240,9 @@ export function featureReference(entry: CatalogEntry | undefined): string | null
   if (!entry?.bookName) return null;
   return entry.page ? `${entry.bookName}, pág. ${entry.page}` : entry.bookName;
 }
+
+/** Especie con su legado. Si el legado ya lleva el nombre de la especie («Genasi (Fuego)»), basta con él. */
+export function speciesLabel(species: string, lineage: string | null | undefined): string {
+  if (!lineage) return species;
+  return lineage.toLowerCase().startsWith(species.toLowerCase()) ? lineage : `${species} (${lineage})`;
+}

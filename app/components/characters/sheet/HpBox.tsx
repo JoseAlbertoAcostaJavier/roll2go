@@ -1,7 +1,8 @@
 import type { HitDicePool } from "@/lib/rules/dnd2024/sheet/rest";
+import HitDiceField from "./HitDiceField";
 import HpEditor, { HpBar } from "./HpEditor";
 import RestButtons from "./RestButtons";
-import { boxTitle, sheetBox, tagChip } from "./statUi";
+import { boxTitle, sheetBox } from "./statUi";
 import type { SheetData } from "./types";
 
 // Puntos de golpe: actuales, máximos y temporales; daño y curación; descansos (el dueño) y dados de golpe disponibles
@@ -9,8 +10,8 @@ export default function HpBox({ d, characterId, isOwner, version, pools, recover
   d: SheetData; characterId: string; isOwner: boolean; version: number; pools: HitDicePool[]; recoversOther: boolean;
 }) {
   return (
-    <section aria-label="Puntos de golpe" className={`${sheetBox} flex flex-col p-4`}>
-      <h2 className={`${boxTitle} mb-3`}>Puntos de golpe</h2>
+    <section aria-label="Puntos de golpe" className={`${sheetBox} flex flex-col gap-3 p-4`}>
+      <h2 className={boxTitle}>Puntos de golpe</h2>
       {isOwner ? (
         // El editor guarda su estado y adopta los PG nuevos cuando cambia `version` (descanso, borrar un nivel) sin
         // remontarse: así un cambio de PG pendiente no se pierde cuando otra caja de la ficha refresca la página.
@@ -34,14 +35,9 @@ export default function HpBox({ d, characterId, isOwner, version, pools, recover
         </div>
       )}
       {pools.length > 0 && (
-        <div className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-line pt-3 max-lg:mt-3 lg:mt-auto">
+        <div className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-line pt-3">
           <span className="text-sm text-muted">Dados de golpe</span>
-          {pools.map((p) => (
-            <span key={p.classKey} className="flex items-center gap-2 text-sm">
-              <span className={tagChip}>D{p.die} ({p.name})</span>
-              <span className="font-heading font-bold text-white">{p.total - p.used} / {p.total}</span>
-            </span>
-          ))}
+          {pools.map((p) => <HitDiceField key={p.classKey} characterId={characterId} pool={p} isOwner={isOwner} />)}
         </div>
       )}
     </section>

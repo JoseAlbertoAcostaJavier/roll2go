@@ -70,6 +70,11 @@ const exactly = (n: number, c: Check): Check => (v, p, e) => {
   c(v, p, e);
 };
 
+const backgroundAbilities: Check = (v, p, e) => {
+  if (Array.isArray(v) && v.length !== 3 && v.length !== 6) { e.push(`${p}: deben ser 3 o las 6`); return; }
+  abilities(v, p, e);
+};
+
 const feature = shape({
   level: int(1, 20), className: str, "subclassName?": str, "options?": arrayOf(ref), "asi?": oneOf(true),
   "activation?": oneOf("action", "bonus", "reaction"),
@@ -121,6 +126,7 @@ const checks: { [K in EntryKind]: Check } = {
     skills: shape({ fixed: strings, "choose?": shape({ count: int(1, 20), from: strings }) }),
     spells: arrayOf(spellGrant),
     hasLineages: bool,
+    "naturalArmor?": bool,
   }),
   lineage: shape({ "darkvision?": num, "speed?": num, spells: arrayOf(spellGrant), traitName: str }),
   class: shape({
@@ -157,8 +163,8 @@ const checks: { [K in EntryKind]: Check } = {
   classFeature: feature,
   subclassFeature: feature,
   background: shape({
-    abilities: exactly(3, abilities),
-    feat: ref,
+    abilities: backgroundAbilities,
+    feat: nullable(ref),
     skills: strings,
     tools: strings,
     equipment,
@@ -198,6 +204,14 @@ const checks: { [K in EntryKind]: Check } = {
     "weapon?": shape({ damage: str, damageType: str, properties: strings, "mastery?": str, category: str }),
     "contents?": arrayOf(shape({ ref, quantity: num })),
     "container?": shape({ weight: nullable(num), volume: nullable(num), items: arrayOf(shape({ ref, count: num })), weightless: bool }),
+  }),
+  condition: shape({ type: oneOf("condition", "disease") }),
+  monster: shape({
+    size: strings, type: str, tags: strings, alignment: strings, ac: num, acNote: str, hp: num, hpFormula: str,
+    abilities: shape({ str: num, dex: num, con: num, int: num, wis: num, cha: num }),
+    senses: strings, passive: num, languages: strings, cr: str, resist: strings, immune: strings, vulnerable: strings, conditionImmune: strings,
+    traits: arrayOf(shape({ name: str, text: str })), actions: arrayOf(shape({ name: str, text: str })), bonus: arrayOf(shape({ name: str, text: str })),
+    reactions: arrayOf(shape({ name: str, text: str })), legendary: arrayOf(shape({ name: str, text: str })), environment: strings,
   }),
   language: shape({ type: oneOf("standard", "rare") }),
   skill: shape({ ability }),

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { Check, type LucideIcon } from "lucide-react";
+import MaskIcon from "../../ui/MaskIcon";
 
 /**
  * `pending`: true si faltan cosas, false si está completo, null si el paso es opcional. `seen`: ya se ha visitado.
@@ -12,7 +13,8 @@ export type CreatorStep = {
   label: string;
   title: string;
   description?: string;
-  icon: LucideIcon;
+  /** Icono de lucide o ruta de un SVG, que se pinta con el color del texto. */
+  icon: LucideIcon | string;
   pending: boolean | null;
   seen: boolean;
   locked?: boolean;
@@ -116,7 +118,7 @@ export default function CreatorStepper({ steps, current, onGo }: {
                               : "border-line-strong bg-panel text-muted group-hover:border-fg group-hover:text-white"
                       }`}
                     >
-                      {done && !active ? <Check size={16} strokeWidth={3} aria-hidden="true" /> : <Icon size={16} aria-hidden="true" />}
+                      {done && !active ? <Check size={16} strokeWidth={3} aria-hidden="true" /> : typeof Icon === "string" ? <MaskIcon src={Icon} size={20} /> : <Icon size={16} aria-hidden="true" />}
                     </span>
                     <span title={s.label} className={`hidden w-full px-1 text-xs leading-tight line-clamp-2 md:[display:-webkit-box] ${active ? "font-bold text-white" : "font-medium text-muted group-hover:text-white"}`}>
                       {s.label}
@@ -156,13 +158,9 @@ export function StepSection({ step, number, total, active, children }: {
   active: boolean;
   children: React.ReactNode;
 }) {
-  const Icon = step.icon;
   return (
     <section id={step.id} hidden={!active} aria-labelledby={`${step.id}-title`} className="animate-fade-up rounded-xl border border-line bg-panel p-5 sm:p-7">
       <header className="mb-6 flex items-start gap-3 border-b border-line pb-4">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-line bg-surface text-brand-soft">
-          <Icon size={20} aria-hidden="true" />
-        </span>
         <div className="min-w-0 flex-1">
           <h2 id={`${step.id}-title`} tabIndex={-1} className="font-heading text-xl font-extrabold text-white outline-none">
             {step.title}

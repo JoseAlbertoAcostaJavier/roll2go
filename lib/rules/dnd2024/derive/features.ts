@@ -32,7 +32,8 @@ export type FeatPick = { ref: Ref; name: string | null; level: number; resist?: 
  * elecciones de dote que conserva (sin las sustituidas), por nivel.
  */
 export function characterFeats(sheet: Dnd2024SheetV2, background: BackgroundData | undefined): FeatPick[] {
-  const feats: FeatPick[] = background?.feat ? [{ ref: background.feat, name: null, level: 1 }] : [];
+  const originFeat = background?.feat ?? sheet.background.feat;
+  const feats: FeatPick[] = originFeat ? [{ ref: originFeat, name: null, level: 1 }] : [];
   for (const l of sheet.levels) {
     for (const c of l.choices) {
       if (c.type === "asi" && "feat" in c.value) {

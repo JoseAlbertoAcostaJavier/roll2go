@@ -18,11 +18,14 @@ const COIN_KEYS: (keyof Coins)[] = ["cp", "sp", "ep", "gp", "pp"];
 
 export type InventoryOp =
   | { op: "add"; ref?: Ref; name?: string; quantity?: number; notes?: string }
-  | { op: "update"; id: string; quantity?: number; notes?: string; equipped?: boolean }
+  | { op: "update"; id: string; quantity?: number; notes?: string; equipped?: boolean; attuned?: boolean }
   | { op: "remove"; id: string }
   | { op: "move"; id: string; container: string | null }
   | { op: "coins"; coins: Coins }
   | { op: "other"; text: string };
+
+/** Objetos con los que se puede estar sintonizado a la vez. */
+export const MAX_ATTUNED = 3;
 
 type Obj = Record<string, unknown>;
 const isObj = (v: unknown): v is Obj => typeof v === "object" && v !== null && !Array.isArray(v);
@@ -123,6 +126,12 @@ export function applyInventoryOp(
         next.notes = notes;
       }
       let items = inv.items;
+      if (op.attuned !== undefined) {
+        if (typeof op.attuned !== "boolean") return fail("Petición no válida.");
+        if (op.attuned && !line.attuned && inv.items.filter((i) => i.attuned).length >= MAX_ATTUNED)
+          return fail(`Solo puedes sintonizar ${MAX_ATTUNED} objetos a la vez.`);
+        next.attuned = op.attuned;
+      }
       if (op.equipped !== undefined) {
         if (typeof op.equipped !== "boolean") return fail("Petición no válida.");
         if (op.equipped) {

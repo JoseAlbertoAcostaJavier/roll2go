@@ -1,5 +1,6 @@
 "use client";
 
+import MaskIcon from "@/app/components/ui/MaskIcon";
 import { ChevronDown, type LucideIcon } from "lucide-react";
 import Bbcode from "@/app/components/ui/Bbcode";
 import type { CatalogEntry } from "@/lib/rules/catalog/types";
@@ -71,7 +72,7 @@ export default function ClassCard({ classEntry, classLevel, entry, stats, collap
   classLevel: number;
   /** Entradas cargadas (nombres de los rasgos). */
   entry: (r: Ref) => CatalogEntry | null | undefined;
-  stats: { label: string; value: string; icon: LucideIcon; color: string }[];
+  stats: { label: string; value: string; icon: LucideIcon | string; color: string }[];
   collapsible?: boolean;
 }) {
   const data = classEntry.data as ClassData;
@@ -92,7 +93,7 @@ export default function ClassCard({ classEntry, classLevel, entry, stats, collap
         {stats.map((s) => (
           <div key={s.label} className="flex flex-col-reverse items-center rounded-lg border border-line bg-surface px-1 py-3 text-center">
             <dt className="mt-0.5 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-muted">
-              <s.icon size={14} className={s.color} aria-hidden="true" /> {s.label}
+              {typeof s.icon === "string" ? <MaskIcon src={s.icon} size={14} className={s.color} /> : <s.icon size={14} className={s.color} aria-hidden="true" />} {s.label}
             </dt>
             <dd className="font-heading text-xl font-extrabold text-white">{s.value}</dd>
           </div>

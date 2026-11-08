@@ -2,17 +2,13 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { LoaderCircle, Pencil } from "lucide-react";
-import RoundIcon from "@/app/components/ui/RoundIcon";
-import { sheetCard, errorClass, primaryButton } from "@/app/components/ui/formStyles";
 import { refFromKey } from "../creator/ClassFeaturesSection";
-import SkillPicker, { type PickerOption } from "../fields/SkillPicker";
+import type { PickerOption } from "../fields/SkillPicker";
+import { SectionBar, switchThumb, switchTrack } from "./statUi";
 
-/* Maestrías con armas actuales en la pestaña Rasgos. El dueño puede cambiarlas libremente (Roll2Go no registra los
-   descansos largos, tras los que la regla permite cambiar una). `current` y las opciones van por `libro:clave`. */
-export default function MasteriesEditor({
-  characterId, isOwner, allowed, current, options,
-}: {
+/* Maestrías con armas: un interruptor por arma, hasta las que dan sus clases. El dueño puede cambiarlas libremente (Roll2Go
+   no registra los descansos largos, tras los que la regla permite cambiar una). `current` y las opciones van por `libro:clave`. */
+export default function MasteriesEditor({ characterId, isOwner, allowed, current, options }: {
   characterId: string;
   isOwner: boolean;
   /** Número de maestrías que dan sus clases. */
@@ -23,37 +19,35 @@ export default function MasteriesEditor({
   options: PickerOption[];
 }) {
   const router = useRouter();
-  const [editing, setEditing] = useState(false);
-  const [value, setValue] = useState<string[]>([]);
+  const [value, setValue] = useState(current.map((c) => c.id));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
   if (allowed === 0 && current.length === 0) return null;
-  const filled = value.filter(Boolean);
+  // Las elegidas primero y, para el dueño, el resto
+  const list = isOwner ? [...current, ...options.filter((o) => !current.some((c) => c.id === o.id))] : current;
 
-  function start() {
-    setValue(current.map((c) => c.id));
-    setError("");
-    setEditing(true);
-  }
-
-  async function save() {
+  async function toggle(id: string, on: boolean) {
+    const before = value;
+    const next = on ? [...value, id] : value.filter((k) => k !== id);
+    setValue(next);
     setSaving(true);
     setError("");
     try {
       const res = await fetch(`/api/characters/${characterId}/masteries`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ masteries: filled.map(refFromKey) }),
+        body: JSON.stringify({ masteries: next.map(refFromKey), partial: true }),
       });
       const data = await res.json().catch(() => null);
       if (!res.ok) {
+        setValue(before);
         setError(data?.error ?? `El servidor ha respondido con un error (${res.status}).`);
         return;
       }
-      setEditing(false);
       router.refresh();
     } catch {
+      setValue(before);
       setError("No se pudo conectar con el servidor.");
     } finally {
       setSaving(false);
@@ -61,56 +55,32 @@ export default function MasteriesEditor({
   }
 
   return (
-    <section className={`${sheetCard} mb-6 animate-fade-up`}>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <RoundIcon kind="feature" id="weapon-mastery" label="Maestrías con armas" size={40} />
-          <h3 className="font-heading text-xl font-bold">Maestrías con armas</h3>
-        </div>
-        {isOwner && !editing && (
-          <button
-            type="button"
-            onClick={start}
-            className="flex items-center gap-2 rounded-md border border-line px-3 py-2 text-sm font-semibold transition-colors hover:border-brand hover:text-white print:hidden"
-          >
-            <Pencil size={14} aria-hidden="true" /> Cambiar maestrías
-          </button>
-        )}
-      </div>
-
-      {!editing ? (
-        <ul className="mt-4 flex flex-wrap gap-2">
-          {current.map((c) => (
-            <li key={c.id} className="rounded-md border border-line bg-surface px-3 py-1.5 text-sm">{c.label}</li>
-          ))}
-          {current.length < allowed && (
-            <li className="px-1 py-1.5 text-sm text-muted">
-              {current.length === 0 ? "Sin elegir" : `Te falta${allowed - current.length === 1 ? "" : "n"} ${allowed - current.length}`}
+    <section aria-label="Maestría con armas" className="animate-fade-up">
+      <SectionBar title="Maestría con armas" extra={`${value.length}/${allowed}`} />
+      {error && <p role="alert" className="mt-1 px-3 text-xs text-danger">{error}</p>}
+      <ul className="mt-1 max-h-72 divide-y divide-line overflow-y-auto print:max-h-none">
+        {list.map((o) => {
+          const on = value.includes(o.id);
+          return (
+            <li key={o.id} className={`flex items-center gap-3 px-3 py-2 text-sm ${on ? "" : "print:hidden"}`}>
+              {isOwner && (
+                <label className={`${switchTrack} print:hidden`}>
+                  <input
+                    type="checkbox"
+                    className="peer sr-only"
+                    checked={on}
+                    disabled={saving || (!on && value.length >= allowed)}
+                    aria-label={`Maestría con ${o.label}`}
+                    onChange={(e) => toggle(o.id, e.target.checked)}
+                  />
+                  <span aria-hidden="true" className={switchThumb} />
+                </label>
+              )}
+              <span className="font-semibold text-white">{o.label}</span>
             </li>
-          )}
-        </ul>
-      ) : (
-        <div className="mt-4 animate-fade-in space-y-3">
-          <p className="text-sm text-muted">
-            La regla permite cambiar una tras cada descanso largo; aquí puedes cambiarlas todas.
-          </p>
-          <SkillPicker id="masteries" label="Armas" count={allowed} options={options} value={value} onChange={setValue} />
-          {error && <p className={errorClass} role="alert">{error}</p>}
-          <div className="flex flex-wrap justify-end gap-2">
-            <button
-              type="button"
-              onClick={() => setEditing(false)}
-              className="rounded-md border border-line px-4 py-2.5 text-sm font-semibold text-muted transition-colors hover:text-white"
-            >
-              Cancelar
-            </button>
-            <button type="button" onClick={save} disabled={saving || filled.length !== allowed} className={primaryButton}>
-              {saving && <LoaderCircle size={16} className="animate-spin" aria-hidden="true" />}
-              Guardar
-            </button>
-          </div>
-        </div>
-      )}
+          );
+        })}
+      </ul>
     </section>
   );
 }

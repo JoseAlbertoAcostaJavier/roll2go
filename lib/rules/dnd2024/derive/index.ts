@@ -2,6 +2,7 @@
 // usan el resumen del asistente, la ficha, la subida de nivel y el exportador a Foundry. Recorre el historial de
 // niveles (`levels`) y el inventario de la hoja v2; una v1 se convierte antes en memoria.
 import type { CatalogEntry } from "@/lib/rules/catalog/types";
+import type { Defenses } from "@/lib/rules/types";
 import { bareName, refKey } from "@/lib/rules/dnd2024/sheet/equipmentRefs";
 import type { AnySheet, Dnd2024SheetV2, Named } from "@/lib/rules/dnd2024/sheet/sheet";
 import { currentMasteries } from "@/lib/rules/dnd2024/levels/masteries";
@@ -15,8 +16,9 @@ import {
 } from "./abilities";
 import { makeBreakdown, type Breakdown } from "./breakdown";
 import { armorClassBreakdown, UNARMORED_CLASSES, type ArmorData, type UnarmoredClass } from "./ac";
-import { unarmedAttack, weaponAttack, weaponProficient, type Attack } from "./attacks";
+import { unarmedAttack, weaponAttack, weaponProficient, type Attack, attackVariants } from "./attacks";
 import { defensesOf, type DefenseRow } from "./defenses";
+import { MANUAL_DEFENSE_SOURCE, customOf } from "../sheet/custom";
 import { characterFeats, featureGroups, type FeatureGroup } from "./features";
 import { featureUses, usesVars, type FeatureUse } from "./featureUses";
 import { normalizeName } from "@/lib/rules/schemas";
@@ -223,7 +225,10 @@ export function derive(input: AnySheet, entries: Map<string, CatalogEntry>): Der
     ),
     lineId: e.id,
   });
-  const attacks: Attack[] = equipped.filter((e) => e.data.weapon).map(attackOf);
+  const attacks: Attack[] = equipped.filter((e) => e.data.weapon).flatMap((e) => {
+    const base = attackOf(e);
+    return [base, ...attackVariants(base, e.data)];
+  });
   // El mismo cálculo para las armas sin equipar, para la ficha del objeto (no salen en Acciones)
   const weaponCards: Record<string, Attack> = {};
   for (const i of sheet.inventory.items) {
@@ -267,6 +272,13 @@ export function derive(input: AnySheet, entries: Map<string, CatalogEntry>): Der
       chosen: f.resist,
     })),
     ...equipped.map((e) => ({ name: e.name, defenses: e.data.defenses })),
+    // Las añadidas a mano, una fuente más
+    {
+      name: MANUAL_DEFENSE_SOURCE,
+      defenses: Object.fromEntries((["resist", "immune", "vulnerable", "conditionImmune"] as const).map((kind) => [
+        kind, customOf(sheet).defenses.filter((c) => c.kind === kind).map((c) => c.type),
+      ])) as Defenses,
+    },
   ]);
   const size = sheet.speciesChoices.size ?? (speciesData?.size.length === 1 ? speciesData.size[0] : null);
 

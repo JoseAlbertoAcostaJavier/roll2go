@@ -9,6 +9,8 @@ const BookEntrySchema = new Schema(
   {
     book: { type: Schema.Types.ObjectId, ref: "Book", required: true, index: true },
     kind: { type: String, enum: ENTRY_KINDS, required: true },
+    // Tiene una versión más nueva: no se ofrece al elegir, pero los personajes que ya la usan la siguen leyendo
+    superseded: { type: Boolean },
     // Clave estable en minúsculas, estilo 5etools ("elf|xphb"). Única por libro.
     key: { type: String, required: true, maxlength: 200 },
     // Identificador corto estilo Foundry ("elf")

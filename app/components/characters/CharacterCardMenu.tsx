@@ -1,8 +1,10 @@
 "use client";
 
+import MaskIcon from "@/app/components/ui/MaskIcon";
+import { sheetUiSrc } from "@/lib/utils/icons";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { ChevronsUp, EllipsisVertical, Pencil, Trash2 } from "lucide-react";
+import { EllipsisVertical, Pencil, Trash2 } from "lucide-react";
 import DeleteCharacter from "./DeleteCharacter";
 
 const item =
@@ -74,7 +76,7 @@ export default function CharacterCardMenu({ characterId, characterName, canLevel
           >
             {canLevelUp && (
               <Link role="menuitem" href={`/characters/${characterId}/level-up`} className={item}>
-                <ChevronsUp size={15} aria-hidden="true" /> Subir de nivel
+                <MaskIcon src={sheetUiSrc("level-up")} size={16} /> Subir de nivel
               </Link>
             )}
             <Link role="menuitem" href={`/characters/${characterId}/edit`} className={item}>

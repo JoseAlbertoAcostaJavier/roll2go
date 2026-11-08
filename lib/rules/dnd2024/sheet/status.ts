@@ -7,10 +7,15 @@ export type StatusOp =
   | { op: "inspiration"; value: boolean }
   | { op: "condition"; key: string; active: boolean }
   | { op: "exhaustion"; level: number }
-  | { op: "featureUse"; key: string; used: number };
+  | { op: "featureUse"; key: string; used: number }
+  | { op: "hitDice"; key: string; used: number };
 
 /** Lo que el servicio sabe de los usos de los rasgos: el máximo de uno, o `null` si no tiene contador. */
-export type StatusCtx = { useMax: (key: string) => number | null };
+export type StatusCtx = {
+  useMax: (key: string) => number | null;
+  /** Dados de golpe de una clase del personaje; `null` si no la tiene. */
+  hitDiceTotal?: (key: string) => number | null;
+};
 
 export type StatusResult = { ok: true; sheet: Dnd2024SheetV2 } | { ok: false; error: string };
 
@@ -68,6 +73,20 @@ export function applyStatus(sheet: Dnd2024SheetV2, op: unknown, ctx?: StatusCtx)
     if (used > 0) featureUses[op.key] = used;
     else delete featureUses[op.key];
     return { ok: true, sheet: { ...sheet, featureUses } };
+  }
+
+  // Dados de golpe gastados de una clase; con 0 se quita la clave
+  if (op.op === "hitDice") {
+    if (typeof op.key !== "string") return fail("Petición no válida.");
+    const total = ctx?.hitDiceTotal?.(op.key) ?? null;
+    if (total === null) return fail("El personaje no tiene esa clase.");
+    const used = op.used;
+    if (typeof used !== "number" || !Number.isInteger(used) || used < 0 || used > total)
+      return fail(`Los dados gastados van de 0 a ${total}.`);
+    const hitDiceUsed = { ...sheet.hitDiceUsed };
+    if (used > 0) hitDiceUsed[op.key] = used;
+    else delete hitDiceUsed[op.key];
+    return { ok: true, sheet: { ...sheet, hitDiceUsed } };
   }
 
   return fail("Petición no válida.");

@@ -3,13 +3,14 @@ import { ALIGNMENTS } from "@/lib/rules/dnd2024/sheet/alignments";
 import { parsePronouns, pronounsText } from "@/lib/rules/dnd2024/creation/names";
 import { ABILITY_NAMES, skillName, toolName } from "@/lib/rules/dnd2024/sheet/labels";
 import type { Dnd2024SheetV2 } from "@/lib/rules/dnd2024/sheet/sheet";
-import { BACKGROUND_SECTION_CHIPS, parseSection, type BackgroundSection } from "@/lib/rules/dnd2024/sheet/sheetSections";
+import { BACKGROUND_SECTION_CHIPS, parseSection, sectionHref, type BackgroundSection } from "@/lib/rules/dnd2024/sheet/sheetSections";
 import type { SheetTextField } from "@/lib/rules/dnd2024/sheet/textFields";
 import type { Ability, BackgroundData } from "@/lib/rules/types";
 import Bbcode from "@/app/components/ui/Bbcode";
 import { SectionBar } from "./statUi";
 import { InlineSelect, InlineText } from "./InlineText";
-import SectionChips from "./SectionChips";
+import PanelSearch from "./PanelSearch";
+import ShowSelect from "./ShowSelect";
 
 type Query = Record<string, string | string[] | undefined>;
 
@@ -54,9 +55,16 @@ export default function BackgroundTab({ characterId, isOwner, sheet, backstory, 
 
   return (
     <div>
-      <SectionChips chips={BACKGROUND_SECTION_CHIPS} active={active} base={base} query={query} label="Filtrar trasfondo" />
+      <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-2 print:hidden">
+        <PanelSearch label="Buscar en el trasfondo" />
+        <ShowSelect
+          label="Mostrar en el trasfondo"
+          value={active}
+          options={BACKGROUND_SECTION_CHIPS.map((c) => ({ id: c.id, label: c.label, href: `${base}${sectionHref(query, c.id)}` }))}
+        />
+      </div>
       <div className="space-y-5">
-        <section aria-label="Trasfondo" className={`animate-fade-up space-y-3 ${hide("trasfondo")}`}>
+        <section aria-label="Trasfondo" data-search={`Trasfondo ${background ? entryName(background) : sheet.background.name} ${background ? entryText(background) : ""}`} className={`animate-fade-up space-y-3 ${hide("trasfondo")}`}>
           <SectionBar title="Trasfondo" />
           <p className="px-1 font-heading text-lg font-bold text-white">{background ? entryName(background) : sheet.background.name}</p>
           {background ? (
@@ -80,7 +88,7 @@ export default function BackgroundTab({ characterId, isOwner, sheet, backstory, 
           </dl>
         </section>
 
-        <section aria-label="Características" className={`animate-fade-up space-y-3 ${hide("caracteristicas")}`} style={{ animationDelay: "50ms" }}>
+        <section aria-label="Características" data-search={`Características alineamiento género ojos tamaño altura fe pelo piel edad peso personalidad ideales vínculos defectos ${[sheet.alignment, sheet.eyes, sheet.height, sheet.faith, sheet.hair, sheet.skin, sheet.age, sheet.weight, sheet.personality, sheet.ideals, sheet.bonds, sheet.flaws].filter(Boolean).join(" ")}`} className={`animate-fade-up space-y-3 ${hide("caracteristicas")}`} style={{ animationDelay: "50ms" }}>
           <SectionBar title="Características" />
           <div className="grid grid-cols-2 gap-x-4 gap-y-4 rounded-md bg-surface/40 p-3 sm:grid-cols-5">
             <InlineSelect
@@ -115,7 +123,7 @@ export default function BackgroundTab({ characterId, isOwner, sheet, backstory, 
           </div>
         </section>
 
-        <section aria-label="Aspecto" className={`animate-fade-up space-y-3 ${hide("aspecto")}`} style={{ animationDelay: "100ms" }}>
+        <section aria-label="Aspecto" data-search={`Aspecto apariencia historia ${sheet.appearance ?? ""} ${backstory}`} className={`animate-fade-up space-y-3 ${hide("aspecto")}`} style={{ animationDelay: "100ms" }}>
           <SectionBar title="Aspecto" />
           <div className={imageUrl ? "grid gap-6 px-1 lg:grid-cols-[1fr_16rem]" : "px-1"}>
             {imageUrl && (

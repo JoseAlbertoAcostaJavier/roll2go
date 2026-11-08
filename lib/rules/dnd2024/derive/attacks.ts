@@ -19,6 +19,8 @@ export type Attack = {
   damageTypeId: string;
   /** Línea del inventario de la que sale el arma (no el ataque sin armas). */
   lineId?: string;
+  /** Otra forma de usar la misma arma: lanzada o con la otra mano. */
+  variant?: "thrown" | "offhand";
 };
 
 export const UNARMED_NAME = "Ataque sin armas";
@@ -124,6 +126,24 @@ export function weaponAttack(
     range: attackRange(weapon, weapon.type === RANGED_TYPE),
     damageTypeId: w ? damageTypeId(w.damageType) : "",
   };
+}
+
+/**
+ * Otras formas de usar un arma cuerpo a cuerpo: lanzarla (arrojadiza, con su alcance a distancia) y atacar con la otra mano
+ * (ligera, como acción adicional: el modificador positivo no se suma al daño, uno negativo sí).
+ */
+export function attackVariants(base: Attack, weapon: ItemData): Attack[] {
+  if (weapon.type === RANGED_TYPE) return [];
+  const properties = weapon.weapon?.properties ?? [];
+  const out: Attack[] = [];
+  if (properties.includes(THROWN)) {
+    out.push({ ...base, name: `${base.name} (arrojadiza)`, kind: "ranged", range: attackRange(weapon, true), variant: "thrown" });
+  }
+  if (properties.includes(LIGHT)) {
+    const damage = base.damage.split(" / ")[0].replace(/\+\d+$/, "");
+    out.push({ ...base, name: `${base.name} (otra mano)`, damage, notes: ["Acción adicional", base.notes].filter(Boolean).join(", "), variant: "offhand" });
+  }
+  return out;
 }
 
 /** Sin armas: 1 + FUE contundente. Con `martialArtsDie` (Monje), ese dado y la mejor de FUE y DES. */

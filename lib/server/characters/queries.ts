@@ -13,7 +13,8 @@ import { accentInsensitive } from "@/lib/utils/utils";
 import { MAX_LEVEL } from "@/lib/rules/dnd2024/levels/validateLevel";
 import { bareName } from "@/lib/rules/dnd2024/sheet/equipmentRefs";
 import { classesOf } from "@/lib/rules/dnd2024/sheet/upgrade";
-import type { SpeciesData } from "@/lib/rules/types";
+import { speciesLabel } from "@/lib/rules/dnd2024/sheet/labels";
+import type { ClassData, SpeciesData } from "@/lib/rules/types";
 
 type LoadedCharacter = NonNullable<Awaited<ReturnType<typeof loadCharacterFor>>>["character"];
 
@@ -87,7 +88,7 @@ export async function listMyCharacters(userId: string, { q, status, sort }: Char
       id: String(c._id),
       name: c.name,
       portraitUrl: c.portraitId ? `/api/images/${c.portraitId}` : null,
-      species: s.species?.name ? `${s.species.name}${s.lineage?.name ? ` (${s.lineage.name})` : ""}` : "",
+      species: s.species?.name ? speciesLabel(s.species.name, s.lineage?.name) : "",
       classes,
       canLevelUp: level >= 1 && level < MAX_LEVEL,
       systemName: rpgSystems.find((r) => r.id === c.systemId)?.name ?? c.systemId,
@@ -131,11 +132,20 @@ export async function loadCreatorLists(books: string[]) {
     species
       .filter((s) => (s.data as SpeciesData | null)?.hasLineages)
       .map(async (s) => {
-        const list = await listEntries({ books, kind: "lineage", parent: s.ref.key });
-        lineages[`${s.ref.book}:${s.ref.key}`] = list.filter((l) => l.ref.book === s.ref.book);
+        // Solo en su libro: con muchos libros, buscar en todos multiplica las consultas (especies × libros)
+        lineages[`${s.ref.book}:${s.ref.key}`] = await listEntries({ books: [s.ref.book], kind: "lineage", parent: s.ref.key });
       }),
   );
-  return { species, lineages, classes, backgrounds, feats, optionalFeatures, weapons, languages, choiceItems };
+  // Subclases de las clases que la eligen en el nivel 1 (las de 2024 lo hacen en el 3)
+  const levelOneSubclasses: Record<string, EntryOption[]> = {};
+  await Promise.all(
+    classes
+      .filter((c) => (c.data as ClassData | null)?.subclassLevel === 1)
+      .map(async (c) => {
+        levelOneSubclasses[`${c.ref.book}:${c.ref.key}`] = await listEntries({ books, kind: "subclass", parent: c.ref.key });
+      }),
+  );
+  return { species, lineages, levelOneSubclasses, classes, backgrounds, feats, optionalFeatures, weapons, languages, choiceItems };
 }
 
 /* El creador de un personaje nuevo. Con campaña, tiene que ser del mismo sistema y admitir personajes internos, y

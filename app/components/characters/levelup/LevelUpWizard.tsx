@@ -5,10 +5,11 @@ import { flushSync } from "react-dom";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  Award, ChevronLeft, ChevronRight, ChevronsUp, ClipboardCheck, Globe, GraduationCap, Heart, LoaderCircle, Shield, Sparkles,
-  Star, Sword, Swords, TrendingUp, Wand2, type LucideIcon,
+  Award, ChevronLeft, ChevronRight, Globe, GraduationCap, LoaderCircle,
+  Star, Swords, TrendingUp, type LucideIcon,
 } from "lucide-react";
 import { primaryButton, secondaryButton } from "@/app/components/ui/formStyles";
+import { sheetUiSrc } from "@/lib/utils/icons";
 import type { CatalogEntry, EntryOption } from "@/lib/rules/catalog/types";
 import { derive } from "@/lib/rules/dnd2024/derive";
 import { characterFeats } from "@/lib/rules/dnd2024/derive/features";
@@ -80,15 +81,17 @@ const STEP_ID = "level-up-step";
 
 const ROW_TYPES: PendingChoice["type"][] = ["skills", "expertise", "weaponMastery", "languages"];
 
+const SPELLS_ICON = "/assets/icons/creator-steps/spells.svg";
+
 // Icono y texto de cada elección en la barra de pasos y en su cabecera
-function choiceLook(type: PendingChoice["type"]): { icon: LucideIcon; description?: string } {
+function choiceLook(type: PendingChoice["type"]): { icon: LucideIcon | string; description?: string } {
   switch (type) {
-    case "subclass": return { icon: Shield, description: "La especialidad de tu clase." };
+    case "subclass": return { icon: "/assets/icons/creator-steps/Subclass.svg", description: "La especialidad de tu clase." };
     case "asi": return { icon: TrendingUp, description: "Mejora tus puntuaciones o elige una dote." };
-    case "spells": return { icon: Wand2, description: "Los conjuros que ganas en este nivel." };
+    case "spells": return { icon: SPELLS_ICON, description: "Los conjuros que ganas en este nivel." };
     case "featSpells":
     case "bonusSpells":
-    case "arcanum": return { icon: Wand2 };
+    case "arcanum": return { icon: SPELLS_ICON };
     case "skills":
     case "expertise": return { icon: GraduationCap };
     case "weaponMastery": return { icon: Swords };
@@ -331,10 +334,10 @@ function Wizard(props: Props & { draftKey: string; draft: string | null }) {
 
   // Los pasos como los pinta la barra: los ya pasados, completos; tras la primera elección sin hacer, bloqueados
   const stepLook = (s: Step): Pick<CreatorStep, "icon" | "description"> => {
-    if (s.id === "class") return { icon: Sword, description: "Elige en qué clase ganas el nivel." };
-    if (s.id === "features") return { icon: Sparkles };
-    if (s.id === "hp") return { icon: Heart, description: "Cuánto aumentan tus puntos de golpe máximos." };
-    if (s.id === "confirm") return { icon: ClipboardCheck, description: `Revisa lo que ganas en el nivel ${n}. Al confirmar se guarda en la ficha.` };
+    if (s.id === "class") return { icon: "/assets/icons/creator-steps/class.svg", description: "Elige en qué clase ganas el nivel." };
+    if (s.id === "features") return { icon: "/assets/icons/creator-steps/features.svg" };
+    if (s.id === "hp") return { icon: "/assets/icons/creator-steps/HP.svg", description: "Cuánto aumentan tus puntos de golpe máximos." };
+    if (s.id === "confirm") return { icon: "/assets/icons/creator-steps/confirm.svg", description: `Revisa lo que ganas en el nivel ${n}. Al confirmar se guarda en la ficha.` };
     return s.p ? choiceLook(s.p.type) : { icon: Star };
   };
   const barSteps: CreatorStep[] = steps.map((s, i) => ({
@@ -641,8 +644,8 @@ function Wizard(props: Props & { draftKey: string; draft: string | null }) {
   }
 
   const stats = [
-    { label: "Nivel", value: `${n - 1} → ${n}`, icon: ChevronsUp, color: "text-brand-soft" },
-    { label: "Puntos de golpe", value: preview ? `${preview.before} → ${preview.after}` : String(derived.hp.max), icon: Heart, color: "text-brand-soft" },
+    { label: "Nivel", value: `${n - 1} → ${n}`, icon: sheetUiSrc("level-up"), color: "text-brand-soft" },
+    { label: "Puntos de golpe", value: preview ? `${preview.before} → ${preview.after}` : String(derived.hp.max), icon: "/assets/icons/creator-steps/HP.svg", color: "text-brand-soft" },
   ];
 
   return (

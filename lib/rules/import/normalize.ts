@@ -29,13 +29,17 @@ export type NormalizedEntry = {
   /** Página en el libro (5etools); `null` si no consta. */
   page: number | null;
   data: EntryData[EntryKind];
+  /** Hay una versión más nueva: no se ofrece al elegir (las reglas de 2024 mandan usar la revisada). */
+  superseded?: boolean;
 };
 
 type Rec = Record<string, unknown>;
 
 /** JSON de 5etools ya leídos, agrupados por archivo. */
 export type RawFiles = {
-  races?: { race?: unknown[] };
+  bestiary?: { monster?: unknown[] }[];
+  races?: { race?: unknown[]; subrace?: unknown[] };
+  conditions?: { condition?: unknown[]; disease?: unknown[] };
   backgrounds?: { background?: unknown[] };
   feats?: { feat?: unknown[] };
   items?: { item?: unknown[]; itemGroup?: unknown[] };
@@ -45,7 +49,7 @@ export type RawFiles = {
   /** Un elemento por `spells/spells-*.json`. */
   spells?: { spell?: unknown[] }[];
   /** `spells/sources.json`: fuente → nombre del conjuro → clases que lo tienen. */
-  spellSources?: Record<string, Record<string, { class?: { name: string; source: string }[] }>>;
+  spellSources?: Record<string, Record<string, { class?: { name: string; source: string }[]; classVariant?: { name: string; source: string }[] }>>;
   /** Un elemento por `class/class-*.json`. */
   classes?: { class?: unknown[]; subclass?: unknown[]; classFeature?: unknown[]; subclassFeature?: unknown[] }[];
   /** `optionalfeatures.json` (invocaciones, metamagia, maniobras…). */
@@ -372,8 +376,25 @@ function toPack(p: unknown): Pack | null {
 function toEquipment(raw: unknown): Equipment {
   const opts = isObj(raw) ? raw : {};
   return Object.fromEntries(Object.entries(opts)
-    .filter(([letter]) => /^[A-Z]$/.test(letter))
-    .map(([letter, items]) => [letter, asArr(items).map(toPack).filter((x): x is Pack => x !== null)]));
+    // Algunos libros (Forja del Artífice) escriben las letras en minúscula
+    .filter(([letter]) => /^[A-Za-z]$/.test(letter))
+    .map(([letter, items]) => [letter.toUpperCase(), asArr(items).map(toPack).filter((x): x is Pack => x !== null)]));
+}
+
+/**
+ * Equipo inicial de una clase. El formato de antes de 2024 (lista de elecciones sueltas, como el del artífice de Tasha) no
+ * tiene opciones A/B: se ofrece solo el oro alternativo, con su media.
+ */
+function classEquipment(raw: unknown): Equipment {
+  const start = isObj(raw) ? raw : {};
+  const rows = asArr(start.defaultData);
+  // Una sola fila con opciones A/B es el formato de 2024; varias son elecciones sueltas
+  const equipment = rows.length === 1 ? toEquipment(rows[0]) : {};
+  if (Object.keys(equipment).length) return equipment;
+  const dice = /(\d+)d(\d+)(?: × (\d+))?/.exec(str(start.goldAlternative));
+  if (!dice) return equipment;
+  const gold = Number(dice[1]) * ((Number(dice[2]) + 1) / 2) * Number(dice[3] ?? 1);
+  return { A: [{ value: gold * 100 }] } as unknown as Equipment;
 }
 
 /** `[{ a: true, b: true }]` → `["a", "b"]` (las claves `any…`/`choose` también se conservan como texto). */
@@ -451,7 +472,8 @@ export function normalizeSpecies(raw: Rec, ctx: NormalizeContext): NormalizedEnt
     creatureType: str(asArr(raw.creatureTypes)[0]) || "humanoid",
     skills,
     spells: spellGrants(ownSpells),
-    hasLineages: asArr(raw._versions).length > 0,
+    hasLineages: asArr(raw._versions).length > 0 || raw._hasSubraces === true,
+    ...(asArr(raw.traitTags).includes("Natural Armor") ? { naturalArmor: true } : {}),
     ...withDefenses(raw),
   });
 }
@@ -489,17 +511,31 @@ export function normalizeLineage(version: Rec, species: Rec): NormalizedEntry {
   }, data);
 }
 
+/**
+ * Equipo de un trasfondo. Los de antes de 2024 lo traen en filas con partes fijas (`_`) y elecciones (`a`/`b`): se ofrece
+ * una opción única con lo fijo y la primera elección de cada fila.
+ */
+function backgroundEquipment(raw: unknown): Equipment {
+  const rows = asArr(raw);
+  const modern = rows.length === 1 ? toEquipment(rows[0]) : {};
+  if (Object.keys(modern).length && !(isObj(rows[0]) && "_" in rows[0])) return modern;
+  const items = rows.flatMap((row) => (isObj(row) ? asArr(row._ ?? row.a ?? row.A) : []))
+    .map(toPack).filter((x): x is Pack => x !== null);
+  return items.length ? { A: items } : { A: [{ value: 0 }] as Pack[] };
+}
+
 export function normalizeBackground(raw: Rec): NormalizedEntry {
   const abilityBlock = asArr(raw.ability)[0];
   const weighted = isObj(abilityBlock) && isObj(abilityBlock.choose) && isObj(abilityBlock.choose.weighted)
     ? abilityBlock.choose.weighted : {};
+  const from = asArr(weighted.from).map(str) as Ability[];
   const featKey = Object.keys(asArr(raw.feats)[0] ?? {})[0] ?? "";
   return entry<"background">(header("background", raw, keyOf("background", str(raw.name), str(raw.source))), {
-    abilities: asArr(weighted.from).map(str) as Ability[],
-    feat: ref("feat", featKey),
+    abilities: from.length ? from : [...ABILITIES],
+    feat: featKey ? ref("feat", featKey) : null,
     skills: trueKeys(raw.skillProficiencies),
     tools: trueKeys(raw.toolProficiencies),
-    equipment: toEquipment(asArr(raw.startingEquipment)[0]),
+    equipment: backgroundEquipment(raw.startingEquipment),
   });
 }
 
@@ -525,7 +561,8 @@ function prerequisiteText(pre: unknown): string | undefined {
 
 export function normalizeFeat(raw: Rec): NormalizedEntry {
   const data: EntryData["feat"] = {
-    category: FEAT_CATEGORIES[str(raw.category)] ?? (str(raw.category) as EntryData["feat"]["category"]),
+    // Sin categoría (libros anteriores a 2024) o con una propia de su libro (marcas de dragón de Eberron): generales
+    category: (FEAT_CATEGORIES[str(raw.category)] ?? "general") as EntryData["feat"]["category"],
     ...(str(raw.category) ? { categoryCode: str(raw.category) } : {}),
     repeatable: raw.repeatable === true,
     ...withDefenses(raw),
@@ -657,9 +694,64 @@ export function normalizeItem(raw: Rec): NormalizedEntry {
   return entry<"item">(header("item", raw, keyOf("item", str(raw.name), str(raw.source))), data);
 }
 
+// Lista de defensas de 5etools («fire», o { immune: ["poison"], note }) en texto plano
+const defenseList = (v: unknown, field: string): string[] => asArr(v).flatMap((x) => {
+  if (typeof x === "string") return [x];
+  if (!isObj(x)) return [];
+  if (typeof x.special === "string") return [x.special];
+  return defenseList(x[field], field);
+});
+const monsterBlocks = (v: unknown) => asArr(v).flatMap((b) => (isObj(b) ? [{ name: str(b.name), text: entriesToBbcode(asArr(b.entries)) }] : []));
+const stringMap = (v: unknown) => (isObj(v) ? Object.fromEntries(Object.entries(v).filter(([, x]) => typeof x === "string")) as Record<string, string> : {});
+
+export function normalizeMonster(raw: Rec): NormalizedEntry {
+  const type = isObj(raw.type) ? raw.type : { type: raw.type };
+  const ac = asArr(raw.ac)[0];
+  const hp = isObj(raw.hp) ? raw.hp : {};
+  const speed = Object.fromEntries(Object.entries(isObj(raw.speed) ? raw.speed : {}).flatMap(([k, v]) => {
+    if (typeof v === "number") return [[k, v]];
+    return isObj(v) && typeof v.number === "number" ? [[k, v.number]] : [];
+  }));
+  const score = (a: string) => (typeof raw[a] === "number" ? (raw[a] as number) : 0);
+  const data: EntryData["monster"] = {
+    size: asArr(raw.size).map(str),
+    type: isObj(type.type) ? asArr(type.type.choose).map(str).join("/") : str(type.type),
+    tags: asArr(type.tags).map((t) => (isObj(t) ? str(t.tag) : str(t))),
+    alignment: asArr(raw.alignment).flatMap((a) => (typeof a === "string" ? [a] : [])),
+    ac: typeof ac === "number" ? ac : isObj(ac) && typeof ac.ac === "number" ? ac.ac : 0,
+    acNote: isObj(ac) ? (typeof ac.special === "string" ? ac.special : asArr(ac.from).map(str).join(", ")) : "",
+    hp: typeof hp.average === "number" ? hp.average : 0,
+    hpFormula: typeof hp.formula === "string" ? hp.formula : typeof hp.special === "string" ? hp.special : "",
+    speed,
+    abilities: { str: score("str"), dex: score("dex"), con: score("con"), int: score("int"), wis: score("wis"), cha: score("cha") },
+    saves: stringMap(raw.save),
+    skills: stringMap(raw.skill),
+    senses: asArr(raw.senses).map(str),
+    passive: typeof raw.passive === "number" ? raw.passive : 0,
+    languages: asArr(raw.languages).map(str),
+    cr: isObj(raw.cr) ? str(raw.cr.cr) : str(raw.cr),
+    resist: defenseList(raw.resist, "resist"),
+    immune: defenseList(raw.immune, "immune"),
+    vulnerable: defenseList(raw.vulnerable, "vulnerable"),
+    conditionImmune: defenseList(raw.conditionImmune, "conditionImmune"),
+    traits: monsterBlocks(raw.trait),
+    actions: monsterBlocks(raw.action),
+    bonus: monsterBlocks(raw.bonus),
+    reactions: monsterBlocks(raw.reaction),
+    legendary: monsterBlocks(raw.legendary),
+    environment: asArr(raw.environment).map(str),
+  };
+  return entry<"monster">(header("monster", raw, keyOf("monster", str(raw.name), str(raw.source))), data);
+}
+
+export function normalizeCondition(raw: Rec, type: "condition" | "disease"): NormalizedEntry {
+  return entry<"condition">(header("condition", raw, keyOf("condition", str(raw.name), str(raw.source))), { type });
+}
+
 export function normalizeLanguage(raw: Rec): NormalizedEntry {
   return entry<"language">(header("language", raw, keyOf("language", str(raw.name), str(raw.source))),
-    { type: raw.type as "standard" | "rare" });
+    // Los libros anteriores a 2024 dicen «exotic» o «secret», o no dicen nada: todo eso es lo que ahora se llama rara
+    { type: raw.type === "standard" ? "standard" : "rare" });
 }
 
 export function normalizeSkill(raw: Rec): NormalizedEntry {
@@ -750,6 +842,54 @@ function choiceProgressions(raw: Rec): EntryData["subclass"]["progressions"] {
       name: str(p.name), featureType: asArr(p.featureType).map(str), levels: levelCounts(p.progression),
     })),
   };
+}
+
+/**
+ * Lista de conjuros de una clase de homebrew (`classSpells`, «Acid Burn|Libro» o «Light»): identificador de la clase y claves
+ * de cada conjuro. Los que no dicen libro son del Manual: valen las versiones de 2014 y de 2024.
+ */
+export function classSpellKeys(raw: Rec): { id: string; keys: string[] } {
+  const keys = asArr(raw.classSpells).flatMap((s) => {
+    const [name, source] = (isObj(s) ? `${str(s.name)}|${str(s.source)}` : str(s)).split("|");
+    return source ? [keyOf("spell", name, source)] : [keyOf("spell", name, "PHB"), keyOf("spell", name, "XPHB")];
+  });
+  return { id: toIdentifier(str(raw.name)), keys };
+}
+
+/**
+ * Resuelve las referencias que apuntan fuera del libro que se importa (en JSON, con el libro aún sin resolver): el objeto del
+ * Manual del Jugador en un trasfondo de otro libro, por ejemplo. Un conjuro sin fuente es el de 2014: si no existe se busca por
+ * nombre, para enlazar el del catálogo.
+ */
+export function relinkRefs(json: string, opts: {
+  own: Set<string>;
+  byKey: (key: string) => Ref | undefined;
+  spellByName: (name: string) => Ref | undefined;
+}): string {
+  const pattern = new RegExp(`\\{"book":"${BOOK_PLACEHOLDER}","key":"([^"]+)"\\}`, "g");
+  return json.replace(pattern, (whole, key: string) => {
+    if (opts.own.has(key)) return whole;
+    const spell = /^spell:([^|]+)(?:\|phb)?$/.exec(key);
+    const found = opts.byKey(key) ?? (spell ? opts.spellByName(spell[1]) : undefined);
+    return found ? JSON.stringify({ book: found.book, key: found.key }) : whole;
+  });
+}
+
+const KIND_COUNTS: Record<string, number> = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6 };
+
+/**
+ * Las clases de homebrew pueden tener el rasgo «Weapon Mastery» sin la progresión que permite elegir: se deduce de su texto
+ * («…of two kinds of weapons…»). Si la clase ya la trae, o el texto no da el número, se queda como está.
+ */
+export function inferWeaponMasteries(raw: Rec, features: unknown[] = []): Rec {
+  if (raw.itemMasteriesProgression) return raw;
+  const progression: Record<string, number> = {};
+  for (const f of features) {
+    if (!isObj(f) || f.name !== "Weapon Mastery" || f.className !== raw.name || typeof f.level !== "number") continue;
+    const count = /\b(one|two|three|four|five|six)\s+kinds?\b/i.exec(JSON.stringify(f.entries ?? []))?.[1].toLowerCase();
+    if (count) progression[f.level] = KIND_COUNTS[count];
+  }
+  return Object.keys(progression).length ? { ...raw, itemMasteriesProgression: progression } : raw;
 }
 
 function classProgressions(raw: Rec): EntryData["class"]["progressions"] {
@@ -884,10 +1024,10 @@ export function normalizeClass(raw: Rec, ctx: NormalizeContext): NormalizedEntry
     primaryAbility: ABILITIES.filter((a) => asArr(raw.primaryAbility).some((p) => isObj(p) && p[a] === true)),
     saves: asArr(raw.proficiency).map(str) as Ability[],
     armor: asArr(prof.armor).map((a) => plainText(str(a))),
-    weapons: asArr(prof.weapons).map((w) => plainText(str(w))),
+    weapons: asArr(prof.weapons).map((w) => plainText(str(w))).filter(Boolean),
     tools: asArr(prof.tools).map((t) => plainText(str(t))),
     skills,
-    equipment: toEquipment(asArr(isObj(raw.startingEquipment) ? raw.startingEquipment.defaultData : [])[0]),
+    equipment: classEquipment(raw.startingEquipment),
     subclassLevel: subclassAt?.level ?? 3,
     asiLevels: features.filter((f) => f.ref.key.startsWith("classFeature:ability score improvement|")).map((f) => f.level),
     spellcasting: spellcasting(raw, key),
@@ -1154,6 +1294,7 @@ export function normalizeAll(files: RawFiles, source: string): {
       }
     });
 
+  let isSupersededSubclass: (s: Rec) => boolean = () => false;
   const run = (kind: EntryKind, raw: Rec, make: () => NormalizedEntry) => {
     let e: NormalizedEntry;
     try {
@@ -1162,6 +1303,7 @@ export function normalizeAll(files: RawFiles, source: string): {
       errors.push({ key: keyOf(kind, str(raw.name), str(raw.source)), errors: [err instanceof Error ? err.message : String(err)] });
       return;
     }
+    if (asArr(raw.reprintedAs).length || (kind === "subclass" && isSupersededSubclass(raw))) e.superseded = true;
     const r = validateEntryData(e.kind, e.data);
     if (r.ok) entries.push(e);
     else errors.push({ key: e.key, errors: r.errors });
@@ -1187,11 +1329,25 @@ export function normalizeAll(files: RawFiles, source: string): {
   }
   for (const [spellSource, byName] of Object.entries(files.spellSources ?? {})) {
     for (const [name, info] of Object.entries(byName)) {
-      ctx.spellClasses.set(keyOf("spell", name, spellSource), [...new Set((info.class ?? []).map((c) => toIdentifier(c.name)))]);
+      ctx.spellClasses.set(keyOf("spell", name, spellSource), [...new Set([...(info.class ?? []), ...(info.classVariant ?? [])].map((c) => toIdentifier(c.name)))]);
     }
   }
+  // Algunos libros (Wildemount, homebrew) dicen las clases del conjuro en el propio conjuro
+  for (const s of (files.spells ?? []).flatMap((f) => (f.spell ?? []) as Rec[])) {
+    if (!isObj(s) || lower(str(s.source)) !== lower(source)) continue;
+    const listed = asArr(isObj(s.classes) ? s.classes.fromClassList : []).filter(isObj).map((c) => toIdentifier(str(c.name)));
+    const key = keyOf("spell", str(s.name), str(s.source));
+    if (listed.length) ctx.spellClasses.set(key, [...new Set([...(ctx.spellClasses.get(key) ?? []), ...listed])]);
+  }
   const classFiles = files.classes ?? [];
-  const subclasses = classFiles.flatMap((f) => fromSource("subclass", f.subclass));
+  // Las clases pueden copiar de otro archivo (las de World of Warcraft, de las del Manual del Jugador)
+  const poolOf = (kind: "class" | "subclass" | "classFeature" | "subclassFeature") => classFiles.flatMap((f) => f[kind] ?? []);
+  const classPool = { class: poolOf("class"), subclass: poolOf("subclass"), classFeature: poolOf("classFeature"), subclassFeature: poolOf("subclassFeature") };
+  // 5etools adapta las subclases antiguas a la clase nueva: si esa clase ya trae la suya con ese nombre, manda la propia
+  const subclassId = (s: Rec) => lower(`${str(s.className)}|${str(s.classSource)}|${str(s.shortName)}`);
+  const ownSubclasses = new Set(classPool.subclass.filter((s): s is Rec => isObj(s) && lower(str(s.source)) === lower(str(s.classSource))).map(subclassId));
+  isSupersededSubclass = (s) => lower(str(s.source)) !== lower(str(s.classSource)) && ownSubclasses.has(subclassId(s));
+  const subclasses = classFiles.flatMap((f) => fromSource("subclass", f.subclass, classPool.subclass));
   for (const s of subclasses) {
     ctx.subclasses.set(
       subclassLookup(str(s.shortName), str(s.className), str(s.classSource), str(s.source)),
@@ -1200,8 +1356,15 @@ export function normalizeAll(files: RawFiles, source: string): {
   }
 
   for (const r of fromSource("species", files.races?.race)) {
-    run("species", r, () => normalizeSpecies(r, ctx));
+    // Algunas especies (Genasi, Cambiante de Eberron) traen sus variantes como subrazas en vez de versiones
+    const subs = asArr(files.races?.subrace).filter((s): s is Rec => isObj(s) && !!s.name
+      && lower(str(s.raceName)) === lower(str(r.name)) && lower(str(s.raceSource)) === lower(str(r.source)));
+    run("species", r, () => normalizeSpecies(subs.length ? { ...r, _hasSubraces: true } : r, ctx));
     for (const v of expandVersions(r)) run("lineage", v, () => normalizeLineage(v, r));
+    for (const s of subs) {
+      const version = { ...s, name: `${str(r.name)} (${str(s.name)})`, _versionEntries: asArr(s.entries) };
+      run("lineage", version, () => normalizeLineage(version, r));
+    }
   }
   for (const b of fromSource("background", files.backgrounds?.background)) run("background", b, () => normalizeBackground(b));
   for (const f of fromSource("feat", files.feats?.feat)) {
@@ -1221,21 +1384,26 @@ export function normalizeAll(files: RawFiles, source: string): {
   // Los `itemGroup` (Símbolo sagrado, Canalizador druídico…) son entradas de equipo como las demás
   const itemPool = [...(files.itemsBase?.baseitem ?? []), ...(files.items?.item ?? []), ...(files.items?.itemGroup ?? [])];
   for (const i of fromSource("item", itemPool)) run("item", i, () => normalizeItem(i));
+  // Bestiario: las copias («_copy») pueden venir de cualquier libro
+  const monsterPool = (files.bestiary ?? []).flatMap((f) => f.monster ?? []);
+  for (const m of fromSource("monster", monsterPool)) run("monster", m, () => normalizeMonster(m));
   for (const l of fromSource("language", files.languages?.language)) run("language", l, () => normalizeLanguage(l));
+  for (const c of fromSource("condition", files.conditions?.condition)) run("condition", c, () => normalizeCondition(c, "condition"));
+  for (const d of fromSource("condition", files.conditions?.disease)) run("condition", d, () => normalizeCondition(d, "disease"));
   for (const s of skills) run("skill", s, () => normalizeSkill(s));
   for (const a of fromSource("action", files.actions?.action)) run("action", a, () => normalizeAction(a));
   // Rasgos sin normalizar por clave, para seguir los enlaces de su texto
   const rawFeatures = new Map<string, Rec>();
   for (const f of classFiles) {
-    for (const c of fromSource("class", f.class)) run("class", c, () => normalizeClass(c, ctx));
-    for (const c of fromSource("classFeature", f.classFeature)) {
+    for (const c of fromSource("class", f.class, classPool.class)) run("class", c, () => normalizeClass(c, ctx));
+    for (const c of fromSource("classFeature", f.classFeature, classPool.classFeature)) {
       rawFeatures.set(classFeatureKeyOf(c), c);
       run("classFeature", c, () => normalizeClassFeature(c));
     }
   }
   for (const s of subclasses) run("subclass", s, () => normalizeSubclass(s));
   for (const f of classFiles) {
-    for (const s of fromSource("subclassFeature", f.subclassFeature)) {
+    for (const s of fromSource("subclassFeature", f.subclassFeature, classPool.subclassFeature)) {
       rawFeatures.set(subclassFeatureKeyOf(s), s);
       run("subclassFeature", s, () => normalizeSubclassFeature(s, ctx));
     }

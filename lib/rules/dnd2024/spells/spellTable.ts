@@ -4,6 +4,7 @@ import type { CatalogEntry } from "@/lib/rules/catalog/types";
 import { DEFAULT_SPELL_ABILITY, innateKey, innateMax, type CasterBlock, type CastingStats, type SpellsSummary } from "@/lib/rules/dnd2024/derive/spells";
 import { refKey } from "@/lib/rules/dnd2024/sheet/equipmentRefs";
 import { ABILITY_ABBR, ABILITY_NAMES, DAMAGE_TYPE_NAMES, fmtMod } from "@/lib/rules/dnd2024/sheet/labels";
+import { spellRangeParts, type SpellArea } from "@/lib/rules/dnd2024/spells/spellArea";
 import { spellSchoolName } from "@/lib/rules/dnd2024/spells/spellTextClient";
 import type { Ability, Ref, SpellData } from "@/lib/rules/types";
 
@@ -11,12 +12,16 @@ export type SpellRow = {
   ref: Ref; key: string; name: string; nameEn: string; level: number; school: string;
   /** Letra de escuela de 5etools (`V`), para su icono. */
   schoolId: string;
-  time: string; timeShort: string; range: string; duration: string; components: string;
+  time: string; timeShort: string; range: string; area: SpellArea | null; duration: string; components: string;
   concentration: boolean; ritual: boolean;
   /** «+N» con ataque de conjuro, «CD N {Car}» con salvación; null sin tirada. */
   hit: string | null;
   /** Primer «Daño de …», si no primer «Estado: …», si no la primera etiqueta que no sea de tirada, área ni duración. */
   effect: { damageTypeId: string | null; label: string } | null;
+  /** Dados de daño o de curación (`healing`), con el tipo de daño; null si el conjuro no hace ni una cosa ni otra. */
+  damage: { dice: string; damageTypeId: string | null; healing: boolean } | null;
+  /** Clase con la que se prepara (interruptor de la tabla); null si no se prepara (trucos, siempre preparados, aprendidos…). */
+  prepare: Ref | null;
   /** «Mago», «Especie: Tiefling», «Dote: …». */
   origin: string;
   /** Arcano místico, conjuros distintivos y de especie con usos por descanso largo. */
@@ -140,13 +145,58 @@ function effectOf(tags: string[], data: SpellData): SpellRow["effect"] {
   return misc ? { damageTypeId: null, label: misc } : null;
 }
 
-/** Una fila por conjuro utilizable, en el orden en que aparecen en la ficha. */
-export function spellTableRows(spells: SpellsSummary, entries: Map<string, CatalogEntry>): SpellRow[] {
-  return usableSpells(spells, entries).map(({ ref, block, caster, origin, entry, data, limited }) => ({
+function damageOf(data: SpellData, level: number): SpellRow["damage"] {
+  if (data.healing) return { dice: data.healing.dice, damageTypeId: null, healing: true };
+  const dice = spellDamageAt(data, level);
+  if (!dice) return null;
+  return { dice, damageTypeId: data.tags.map(damageIdOf).find((id) => !!id) ?? null, healing: false };
+}
+
+/** Lo que hace falta para ofrecer también los conjuros aún sin preparar. */
+export type SpellTableOptions = {
+  /** Nivel total del personaje (los dados de los trucos suben con él). */
+  level?: number;
+  /** Listas de conjuros de un bloque (`SpellData.classes`); con ellas salen también los que puede preparar. */
+  listsOf?: (block: CasterBlock) => string[];
+};
+
+const canPrepareBlock = (block: CasterBlock | null) => !!block && block.mode !== "levelUp" && block.preparedLimit > 0;
+
+/**
+ * Una fila por conjuro utilizable, en el orden en que aparecen en la ficha y, con `listsOf`, una por cada conjuro que
+ * podría preparar: en el Mago, los de su libro; en el resto, los de su lista hasta su nivel máximo.
+ */
+export function spellTableRows(spells: SpellsSummary, entries: Map<string, CatalogEntry>, options: SpellTableOptions = {}): SpellRow[] {
+  const level = options.level ?? 1;
+  const row = (ref: Ref, entry: CatalogEntry, data: SpellData, caster: CastingBonus | null, origin: string, limited: SpellRow["limited"], block: CasterBlock | null, prepare: Ref | null): SpellRow => ({
     ref, key: refKey(ref), name: entry.nameEs ?? entry.name, nameEn: entry.name, level: data.level,
-    school: spellSchoolName(data.school), schoolId: data.school, time: data.time, timeShort: timeShort(data.time), range: data.range,
+    school: spellSchoolName(data.school), schoolId: data.school, time: data.time, timeShort: timeShort(data.time), ...spellRangeParts(data.range, data.area),
     duration: data.duration, components: data.components, concentration: data.concentration, ritual: data.ritual,
-    hit: hitOf(data.tags, caster), effect: effectOf(data.tags, data), origin, limited,
+    hit: hitOf(data.tags, caster), effect: effectOf(data.tags, data), damage: damageOf(data, level), prepare, origin, limited,
     casterClass: block?.class ?? null, tags: data.tags,
-  }));
+  });
+
+  const rows = usableSpells(spells, entries).map(({ ref, block, caster, origin, entry, data, limited }) => {
+    const prepared = canPrepareBlock(block) && block!.prepared.some((p) => refKey(p) === refKey(ref));
+    return row(ref, entry, data, caster, origin, limited, block, prepared ? block!.class : null);
+  });
+
+  if (options.listsOf) {
+    const seen = new Set(rows.map((r) => r.key));
+    for (const block of spells.blocks) {
+      if (!canPrepareBlock(block)) continue;
+      const lists = options.listsOf(block);
+      const candidates = block.mode === "spellbook"
+        ? block.spellbook.map((s) => entries.get(refKey(s.ref))).filter((e) => !!e)
+        : [...entries.values()].filter((e) => e.ref.key.startsWith("spell:") && (e.data as SpellData).classes?.some((c) => lists.includes(c)));
+      for (const entry of candidates) {
+        const data = entry.data as SpellData;
+        const key = refKey(entry.ref);
+        if (seen.has(key) || data.level < 1 || data.level > block.maxSpellLevel) continue;
+        seen.add(key);
+        rows.push(row(entry.ref, entry, data, block, block.name, null, block, block.class));
+      }
+    }
+  }
+  return rows;
 }

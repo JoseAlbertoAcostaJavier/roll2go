@@ -21,10 +21,12 @@ import {
 import { parsePronouns, pronounsText } from "@/lib/rules/dnd2024/creation/names";
 import { spellListOf } from "@/lib/rules/dnd2024/spells/spellcasting";
 import { spellTableRows } from "@/lib/rules/dnd2024/spells/spellTable";
+import { customOf } from "@/lib/rules/dnd2024/sheet/custom";
+import { itemActions } from "@/lib/rules/dnd2024/sheet/itemActions";
 import { hitDicePools } from "@/lib/rules/dnd2024/sheet/rest";
 import { statusOf } from "@/lib/rules/dnd2024/sheet/status";
 import { shortRestRestores } from "@/lib/rules/dnd2024/spells/spellOps";
-import { sizeName } from "@/lib/rules/dnd2024/sheet/labels";
+import { sizeName, speciesLabel } from "@/lib/rules/dnd2024/sheet/labels";
 import { itemDetails, locationText, type ItemDetails } from "@/lib/rules/dnd2024/sheet/itemDetails";
 import type { ActionData, BackgroundData, ItemData, SpeciesData } from "@/lib/rules/types";
 import type { JoinableCampaign } from "@/app/components/characters/sheet/JoinCampaignDialog";
@@ -76,6 +78,7 @@ export default async function CharacterPage({ params, searchParams }: Props) {
   const d = derive(sheet, entries);
 
   const pools = hitDicePools(sheet, entries);
+  const custom = customOf(sheet);
   const isOwner = String(c.owner) === user.id;
   // Notas: siempre para el dueño; para los demás, solo si alguna tiene texto
   const hasNotes = [sheet.organizations, sheet.allies, sheet.enemies, sheet.notes].some((n) => n?.trim());
@@ -91,10 +94,10 @@ export default async function CharacterPage({ params, searchParams }: Props) {
   const { campaign } = sheetCampaign;
   const joinable: JoinableCampaign[] = sheetCampaign.joinable;
 
-  const species = `${sheet.species.name}${sheet.lineage ? ` (${sheet.lineage.name})` : ""}`;
+  const species = speciesLabel(sheet.species.name, sheet.lineage?.name);
   const classes = d.classes.map((k) => `${k.name} ${k.level}`).join(" / ");
   const background = entries.get(refKey(sheet.background.ref)) ?? null;
-  const featRef = (background?.data as BackgroundData | undefined)?.feat;
+  const featRef = (background?.data as BackgroundData | undefined)?.feat ?? sheet.background.feat;
   const feat = featRef ? (entries.get(refKey(featRef)) ?? null) : null;
 
   // Tamaño: el elegido o, si la especie solo tiene uno, ese
@@ -265,6 +268,7 @@ export default async function CharacterPage({ params, searchParams }: Props) {
         }}
         recoversOther={shortRestRestores(d.spells)}
         featureUses={d.featureUses}
+        customConditions={custom.conditions}
         characterId={id}
         isOwner={isOwner}
         pools={pools}
@@ -288,14 +292,18 @@ export default async function CharacterPage({ params, searchParams }: Props) {
             basics={basics}
             itemCards={itemCards}
             itemDescriptions={itemDescriptions}
-          />
-          <MasteriesEditor
-            key={d.level}
-            characterId={id}
-            isOwner={isOwner}
-            allowed={allowedMasteries}
-            current={masteryCurrent}
-            options={masteryOptions}
+            custom={custom}
+            itemActions={itemActions(sheet.inventory.items, entries)}
+            mastery={(
+              <MasteriesEditor
+                key={d.level}
+                characterId={id}
+                isOwner={isOwner}
+                allowed={allowedMasteries}
+                current={masteryCurrent}
+                options={masteryOptions}
+              />
+            )}
           />
         </section>
         <section {...panel("trasfondo")}>
@@ -317,14 +325,14 @@ export default async function CharacterPage({ params, searchParams }: Props) {
         {withNotes.length > 0 && (
           <section {...panel("notas")}>
             {panelTitle("notas")}
-            <NotesTab characterId={id} isOwner={isOwner} sheet={sheet} />
+            <NotesTab characterId={id} isOwner={isOwner} sheet={sheet} notes={custom.notes} />
           </section>
         )}
         <section {...panel("rasgos")}>
           {panelTitle("rasgos")}
           <FeaturesTab
             groups={d.features} entries={entries} base={base} query={query}
-            featureUses={d.featureUses} characterId={id} isOwner={isOwner}
+            featureUses={d.featureUses} characterId={id} isOwner={isOwner} custom={custom}
           />
         </section>
         <section {...panel("inventario")}>
@@ -342,6 +350,7 @@ export default async function CharacterPage({ params, searchParams }: Props) {
             query={query}
             details={itemCards}
             descriptions={itemDescriptions}
+            custom={custom}
           />
         </section>
 
@@ -356,7 +365,8 @@ export default async function CharacterPage({ params, searchParams }: Props) {
               initial={d.spells}
               lists={spellLists}
               spells={spellOptions}
-              rows={spellTableRows(d.spells, spellEntries)}
+              rows={spellTableRows(d.spells, spellEntries, { level: d.level, listsOf: (b) => [spellLists[refKey(b.class)]?.listId ?? "", ...(b.lists ?? [])] })}
+              custom={custom}
               query={query}
               proficiencyBonus={d.proficiencyBonus}
             />

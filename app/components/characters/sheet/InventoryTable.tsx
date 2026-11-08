@@ -5,7 +5,9 @@ import type { InventoryItem } from "@/lib/rules/dnd2024/sheet/sheet";
 import { effectiveContainer } from "@/lib/rules/dnd2024/sheet/inventory";
 import type { InventoryGroup, ItemInfo } from "@/lib/rules/dnd2024/sheet/inventoryTable";
 import { itemTypeName, rarityName, weaponPropertyName } from "@/lib/rules/dnd2024/sheet/labels";
-import { SectionBar, switchThumb, switchTrack, tagChip } from "./statUi";
+import type { SheetCustom } from "@/lib/rules/dnd2024/sheet/custom";
+import OrderedSection from "./OrderedSection";
+import { switchThumb, switchTrack, tagChip } from "./statUi";
 
 const LB_TO_KG = 0.4536;
 export const fmt = (n: number) => n.toLocaleString("es-ES", { maximumFractionDigits: 2 });
@@ -34,7 +36,7 @@ export function containerTitle(g: InventoryGroup) {
 }
 
 // Un grupo del inventario: «Equipo» o un contenedor. Lo que el filtro oculta sigue en el DOM (`hidden print:…`) para imprimir.
-export default function InventoryTable({ group, shown, info, items, readOnly, actions, onOpen }: {
+export default function InventoryTable({ group, shown, info, items, readOnly, actions, onOpen, custom, characterId, onAdd }: {
   group: InventoryGroup;
   /** Si el grupo pasa el filtro y los ids de sus líneas visibles. */
   shown: Set<string> | null;
@@ -44,56 +46,56 @@ export default function InventoryTable({ group, shown, info, items, readOnly, ac
   actions: Pick<InventoryActions, "equip" | "quantity">;
   /** Abre la ficha del objeto; `from` es el botón del nombre (recibe el foco al cerrarla). */
   onOpen: (id: string, from: HTMLElement) => void;
+  custom: SheetCustom;
+  characterId: string;
+  /** El «+» de la sección: abre la gestión del inventario. */
+  onAdd?: (e: React.MouseEvent<HTMLButtonElement>) => void;
 }) {
   const c = group.container;
   const total = group.lines.reduce((sum, l) => sum + (info[l.id]?.weight ?? 0) * l.quantity, 0);
   return (
-    <section aria-label={group.title} className={shown ? "" : "hidden print:block"}>
-      <SectionBar
-        title={c ? containerTitle(group) : group.title}
-        extra={(
-          <>
-            {!c && `${fmt(total)} lb`}
-            {c?.over && (
-              <span className="inline-flex items-center gap-1 font-semibold text-brand-soft">
-                <TriangleAlert size={14} aria-hidden="true" /> Sobrecargado
-              </span>
-            )}
-            {c && info[c.line.id]?.container?.weightless && "No cuenta para el peso cargado"}
-          </>
-        )}
-      >
-        <span className={`${columns} hidden sm:block`}>Peso</span>
-        <span className={`${qtyColumn} hidden sm:block`}>Cant.</span>
-      </SectionBar>
-      {group.lines.length === 0 ? (
-        <p className="px-3 py-3 text-sm text-muted">Sin objetos.</p>
-      ) : (
-        <ul className="divide-y divide-line">
-          {group.lines.map((l) => (
-            <Row
-              key={l.id}
-              line={l}
-              data={info[l.id]}
-              where={effectiveContainer(l, items, info)}
-              visible={shown?.has(l.id) ?? false}
-              readOnly={readOnly}
-              actions={actions}
-              onOpen={onOpen}
-            />
-          ))}
-        </ul>
+    <OrderedSection
+      id={`inventario:${group.id}`}
+      title={c ? containerTitle(group) : group.title}
+      className={shown ? "" : "hidden print:block"}
+      extra={(
+        <>
+          {!c && `${fmt(total)} lb`}
+          {c?.over && (
+            <span className="inline-flex items-center gap-1 font-semibold text-brand-soft">
+              <TriangleAlert size={14} aria-hidden="true" /> Sobrecargado
+            </span>
+          )}
+          {c && info[c.line.id]?.container?.weightless && "No cuenta para el peso cargado"}
+        </>
       )}
-    </section>
+      columns={(
+        <>
+          <span className={`${columns} hidden sm:block`}>Peso</span>
+          <span className={`${qtyColumn} hidden sm:block`}>Cant.</span>
+        </>
+      )}
+      rows={group.lines.map((l) => ({
+        key: l.id,
+        label: l.name,
+        className: shown?.has(l.id) ? "" : "hidden print:flex",
+        node: <Row line={l} data={info[l.id]} where={effectiveContainer(l, items, info)} readOnly={readOnly} actions={actions} onOpen={onOpen} />,
+      }))}
+      custom={custom}
+      characterId={characterId}
+      isOwner={!readOnly}
+      canHide={false}
+      onAdd={onAdd}
+      empty="Sin objetos."
+    />
   );
 }
 
-function Row({ line: l, data, where, visible, readOnly, actions, onOpen }: {
+function Row({ line: l, data, where, readOnly, actions, onOpen }: {
   line: InventoryItem;
   data: ItemInfo | undefined;
   /** Id del contenedor donde está la línea; `null` = suelta. */
   where: string | null;
-  visible: boolean;
   readOnly: boolean;
   actions: Pick<InventoryActions, "equip" | "quantity">;
   onOpen: (id: string, from: HTMLElement) => void;
@@ -106,7 +108,7 @@ function Row({ line: l, data, where, visible, readOnly, actions, onOpen }: {
   const canEquip = where === null && !!data?.equippable;
   const weight = data ? data.weight * l.quantity : 0;
   return (
-    <li className={`flex flex-wrap items-center gap-x-3 gap-y-2 px-3 py-3 ${visible ? "" : "hidden print:flex"}`}>
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-3 py-3">
       {canEquip && (readOnly ? (
         <span className={`shrink-0 text-xs font-semibold ${l.equipped ? "text-success" : "text-muted"}`}>{l.equipped ? "Equipado" : "—"}</span>
       ) : (
@@ -156,6 +158,6 @@ function Row({ line: l, data, where, visible, readOnly, actions, onOpen }: {
           </>
         )}
       </div>
-    </li>
+    </div>
   );
 }

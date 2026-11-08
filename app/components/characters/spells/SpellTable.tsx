@@ -2,15 +2,18 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import type { Slots } from "@/lib/rules/dnd2024/derive";
+import type { CasterBlock, Slots } from "@/lib/rules/dnd2024/derive";
+import type { SheetCustom } from "@/lib/rules/dnd2024/sheet/custom";
+import { refKey } from "@/lib/rules/dnd2024/sheet/equipmentRefs";
 import { PACT_SLOT } from "@/lib/rules/dnd2024/spells/spellOps";
-import type { CastOption } from "@/lib/rules/dnd2024/spells/castOptions";
-import { castOptions } from "@/lib/rules/dnd2024/spells/castOptions";
 import type { SpellRow } from "@/lib/rules/dnd2024/spells/spellTable";
 import { groupByLevel, matchesSpellTable, type SpellTableFilter } from "@/lib/rules/dnd2024/spells/spellTableFilter";
-import { iconSrc } from "@/lib/utils/icons";
+import { iconSrc, spellAreaSrc } from "@/lib/utils/icons";
 import MaskIcon from "@/app/components/ui/MaskIcon";
-import CastButton from "./CastButton";
+import OrderedSection, { type OrderedRow } from "../sheet/OrderedSection";
+import { d20Expr, diceIn } from "@/lib/utils/diceText";
+import { RollButton } from "../sheet/rolls";
+import { switchThumb, switchTrack } from "../sheet/statUi";
 import { Uses } from "./LimitedUses";
 import SpellSlotBoxes from "./SpellSlotBoxes";
 import { spellHrefFrom, type SpellOpener } from "./SpellList";
@@ -19,143 +22,148 @@ type Props = {
   /** Todas las filas: el filtro solo decide qué se ve en pantalla, la hoja impresa sale completa. */
   rows: SpellRow[];
   filter: SpellTableFilter;
+  /** Solo los preparados (y los que no se preparan: trucos, siempre preparados…). */
+  preparedOnly: boolean;
+  blocks: CasterBlock[];
   slots: Slots;
   /** Espacios gastados por nivel ("1".."9" y "pact"). */
   used: Record<string, number>;
   /** Usos gastados de los conjuros limitados, por clave. */
   limitedUsed: Record<string, number>;
-  /** Solo el dueño lanza y marca casillas. */
+  /** Solo el dueño prepara y marca casillas. */
   isOwner: boolean;
   busy: boolean;
-  onCast: (row: SpellRow, option: CastOption) => void;
+  onPrepare: (row: SpellRow, prepared: boolean) => void;
   onSetSlot: (level: string, used: number) => void;
   onSetLimited: (key: string, used: number) => void;
   onOpen: SpellOpener;
   /** Dirección que quita todos los filtros. */
   clearHref: string;
+  characterId: string;
+  custom: SheetCustom;
 };
 
-const th = "px-3 py-2 font-semibold";
-const td = "px-3 py-2 align-top";
-// Lo que el filtro oculta en pantalla sigue en el documento y sale al imprimir
-// En móvil (y no al imprimir) la fila es una tarjeta: nombre a la izquierda, datos a la derecha, Lanzar debajo
-const card = "max-md:not-print:grid max-md:not-print:grid-cols-[minmax(0,1fr)_auto_auto] max-md:not-print:gap-x-4 max-md:not-print:gap-y-1 max-md:not-print:px-3 max-md:not-print:py-3";
-const cardStat = "max-md:not-print:p-0 max-md:not-print:text-right";
-const cardBig = `${cardStat} max-md:not-print:font-heading max-md:not-print:text-xl max-md:not-print:font-bold`;
-// Rótulo de un dato: solo se ve en la tarjeta de móvil (desde md las cabeceras de columna lo dicen)
-const label = "block font-sans text-[11px] font-normal uppercase tracking-wide text-muted md:hidden print:hidden";
-const inlineLabel = `${label} max-md:not-print:mr-1 max-md:not-print:inline`;
-const hideRow = (visible: boolean) => (visible ? card : "hidden print:table-row");
+// Columnas de cada fila y de la barra de su nivel: nombre | alcance | golpe/CD | daño
+const ROW_GRID = "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-0.5 px-3 py-2 text-sm sm:grid-cols-[minmax(0,1fr)_7rem_5.5rem_6.5rem]";
 
 function Flag({ letter, title }: { letter: string; title: string }) {
   return (
-    <abbr title={title} className="rounded border border-line px-1 text-xs font-semibold text-muted no-underline">
+    <abbr title={title} className="flex size-5 items-center justify-center rounded-full bg-surface text-[10px] font-bold text-fg no-underline">
       {letter}
       <span className="sr-only"> ({title})</span>
     </abbr>
   );
 }
 
-function Row({ row, visible, props, search }: { row: SpellRow; visible: boolean; props: Props; search: string }) {
-  const { slots, used, isOwner, busy } = props;
-  const limitedUsed = row.limited ? (props.limitedUsed[row.limited.key] ?? row.limited.used) : 0;
-  // (con los usos gastados al momento, no los de la carga de la página)
-  const options = castOptions(row.limited ? { ...row, limited: { ...row.limited, used: limitedUsed } } : row, slots, used);
-  const uses = row.limited && (
-    <Uses
-      item={{
-        key: row.limited.key, spell: { ref: row.ref, name: row.name }, origin: row.origin,
-        max: row.limited.max, used: limitedUsed,
-      }}
-      onSet={isOwner ? props.onSetLimited : null}
-      busy={busy}
-    />
-  );
-  const notes = [row.duration, row.components].filter(Boolean).join(" · ");
+// Interruptor de preparar: en los preparables; los siempre preparados y demás no lo tienen
+function PrepareSwitch({ row, block, props }: { row: SpellRow; block: CasterBlock; props: Props }) {
+  const prepared = block.prepared.some((r) => refKey(r) === row.key);
+  const full = block.prepared.length >= block.preparedLimit;
+  const disabled = props.busy || (!prepared && full);
   return (
-    <tr role="row" className={hideRow(visible)}>
-      {/* Quien no es el dueño no lanza: sin columna, y los usos (solo lectura) van bajo el nombre */}
-      {isOwner && (
-        <td role="cell" className={`${td} print:hidden max-md:not-print:col-span-full max-md:not-print:col-start-1 max-md:not-print:row-start-4 max-md:not-print:p-0 max-md:not-print:has-[>span:empty]:hidden`}>
-          <span className="flex flex-wrap items-center gap-2">
-            {row.level > 0 && (
-              <CastButton options={options} disabled={busy} name={row.name} onCast={(o) => props.onCast(row, o)} />
-            )}
-            {uses}
-          </span>
-        </td>
-      )}
-      <th role="rowheader" scope="row" className={`${td} text-left max-md:not-print:col-start-1 max-md:not-print:row-span-3 max-md:not-print:row-start-1 max-md:not-print:p-0`}>
-        <span className="flex items-start gap-2">
-          <MaskIcon src={iconSrc("darkSchool", row.schoolId)} size={18} label={row.school} className="mt-0.5 text-muted" />
-          <span className="min-w-0">
-            <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-              <a
-                href={spellHrefFrom(search, row.ref)}
-                onClick={(e) => {
-                  if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
-                  e.preventDefault();
-                  props.onOpen(row.ref, e.currentTarget);
-                }}
-                className="inline-block py-0.5 font-semibold text-white hover:text-brand-soft hover:underline"
-              >
-                {row.name}
-              </a>
-              {row.concentration && <Flag letter="C" title="Concentración" />}
-              {row.ritual && <Flag letter="R" title="Ritual" />}
-            </span>
-            <span className="block text-xs font-normal text-muted">{row.origin}</span>
-            {notes && <span className="mt-0.5 block text-xs font-normal text-muted">{notes}</span>}
-            {row.limited && (
-              <>
-                {!isOwner && <span className="mt-1 block print:hidden">{uses}</span>}
-                {/* Las casillas no salen al imprimir: los usos quedan en texto */}
-                <span className="hidden text-xs font-normal text-muted print:block">
-                  Usos disponibles: {row.limited.max - Math.min(limitedUsed, row.limited.max)}/{row.limited.max}
-                </span>
-              </>
-            )}
-          </span>
-        </span>
-      </th>
-      <td role="cell" className={`${td} md:whitespace-nowrap max-md:not-print:col-span-2 max-md:not-print:col-start-2 max-md:not-print:row-start-3 max-md:not-print:text-xs ${cardStat}`}>
-        <span className={inlineLabel}>Tiempo</span>
-        <span title={row.time}>{row.timeShort}</span>
-      </td>
-      <td role="cell" className={`${td} md:whitespace-nowrap max-md:not-print:col-span-2 max-md:not-print:col-start-2 max-md:not-print:row-start-2 max-md:not-print:text-xs ${cardStat}`}>
-        <span className={inlineLabel}>Alcance</span>
-        {row.range}
-      </td>
-      <td role="cell" className={`${td} md:whitespace-nowrap font-heading font-bold text-success max-md:not-print:col-start-2 max-md:not-print:row-start-1 ${cardBig}`}>
-        <span className={label}>Golpe</span>
-        {row.hit ?? <span className="font-normal text-muted">—</span>}
-      </td>
-      <td role="cell" className={`${td} max-md:not-print:col-start-3 max-md:not-print:row-start-1 max-md:not-print:max-w-40 ${cardBig}`}>
-        <span className={label}>Efecto</span>
-        {row.effect ? (
-          <span className="flex max-md:not-print:flex-wrap items-center gap-1.5 max-md:not-print:justify-end">
-            <MaskIcon src={iconSrc("damageType", row.effect.damageTypeId)} size={16} className="text-brand-soft" />
-            <span className="font-semibold text-brand-soft max-md:not-print:text-base">{row.effect.label}</span>
-          </span>
-        ) : (
-          <span className="font-normal text-muted">—</span>
-        )}
-      </td>
-    </tr>
+    <label
+      title={!prepared && full ? `Ya tienes ${block.prepared.length} de ${block.preparedLimit} preparados` : prepared ? "Dejar de preparar" : "Preparar"}
+      className={`${switchTrack} print:hidden`}
+    >
+      <input
+        type="checkbox"
+        className="peer sr-only"
+        checked={prepared}
+        disabled={disabled}
+        aria-label={`Preparar ${row.name}`}
+        onChange={() => props.onPrepare(row, prepared)}
+      />
+      <span aria-hidden="true" className={switchThumb} />
+    </label>
   );
 }
 
-// Tabla de conjuros agrupada por nivel (spec de la tabla de conjuros §3.1): la cabecera de cada nivel lleva sus espacios
-// de conjuro y cada fila su botón Lanzar. En móvil cada fila es una tarjeta (mismo DOM, solo CSS); al cambiar el display se pierde la semántica
-// de tabla y los roles la mantienen. Desde md se desplaza dentro de su caja si no cabe.
-export default function SpellTable(props: Props) {
-  const { rows, filter, slots, used, isOwner, busy, onSetSlot, clearHref } = props;
-  const search = useSearchParams().toString();
-  const visible = new Set(rows.filter((r) => matchesSpellTable(r, filter)).map((r) => r.key));
-  const filtering = filter.q !== "" || filter.kind !== "all" || filter.levels.length > 0
-    || filter.concentration !== "any" || filter.ritual !== "any";
+function RowView({ row, block, props, search }: { row: SpellRow; block: CasterBlock | null; props: Props; search: string }) {
+  const { isOwner, busy } = props;
+  const limitedUsed = row.limited ? (props.limitedUsed[row.limited.key] ?? row.limited.used) : 0;
+  const notes = [row.timeShort, row.duration, row.components].filter(Boolean).join(" · ");
+  const expr = row.damage ? diceIn(row.damage.dice) : null;
+  return (
+    <div className={ROW_GRID}>
+      <div className="col-span-2 flex min-w-0 items-start gap-2 sm:col-span-1">
+        {isOwner && row.prepare && block && <PrepareSwitch row={row} block={block} props={props} />}
+        {row.limited && isOwner && (
+          <Uses
+            item={{ key: row.limited.key, spell: { ref: row.ref, name: row.name }, origin: row.origin, max: row.limited.max, used: limitedUsed }}
+            onSet={props.onSetLimited}
+            busy={busy}
+          />
+        )}
+        <span className="min-w-0">
+          <span className="flex flex-wrap items-center gap-x-1.5">
+            <MaskIcon src={iconSrc("darkSchool", row.schoolId)} size={14} label={row.school} className="text-muted" />
+            <a
+              href={spellHrefFrom(search, row.ref)}
+              onClick={(e) => {
+                if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+                e.preventDefault();
+                props.onOpen(row.ref, e.currentTarget);
+              }}
+              className="font-semibold text-white hover:text-brand-soft hover:underline"
+            >
+              {row.name}
+            </a>
+            {row.concentration && <Flag letter="C" title="Concentración" />}
+            {row.ritual && <Flag letter="R" title="Ritual" />}
+          </span>
+          <span className="block text-xs text-muted">{row.origin}{notes && ` · ${notes}`}</span>
+          {row.limited && (
+            <span className={`text-xs text-muted ${isOwner ? "hidden print:block" : "block"}`}>
+              Usos disponibles: {row.limited.max - Math.min(limitedUsed, row.limited.max)}/{row.limited.max}
+            </span>
+          )}
+        </span>
+      </div>
+      <span className="text-muted sm:order-none">
+        <span className="block">{row.range}</span>
+        {row.area && (
+          <span className="flex items-center gap-1 text-xs" title={`${row.area.name} de ${row.area.size}`}>
+            <MaskIcon src={spellAreaSrc(row.area.shape)} size={12} label={row.area.name} />
+            {!spellAreaSrc(row.area.shape) && <span className="capitalize">{row.area.name}</span>}
+            {row.area.size}
+          </span>
+        )}
+      </span>
+      <span className="font-heading font-bold text-success">
+        {row.hit && /^[+-]\d+$/.test(row.hit)
+          ? <RollButton label={`${row.name}: ataque`} expr={d20Expr(Number(row.hit))} d20>{row.hit}</RollButton>
+          : row.hit ?? <span className="font-normal text-muted">—</span>}
+      </span>
+      <span className={`flex flex-wrap items-center gap-1.5 font-semibold ${row.damage?.healing ? "text-success" : "text-brand-soft"}`}>
+        {row.damage ? (
+          <>
+            {expr ? <RollButton label={`${row.name}: ${row.damage.healing ? "curación" : "daño"}`} expr={expr}>{row.damage.dice}</RollButton> : row.damage.dice}
+            {row.damage.healing
+              ? <span className="text-xs font-normal">Curación</span>
+              : <MaskIcon src={iconSrc("damageType", row.damage.damageTypeId)} size={15} className="text-brand-soft" />}
+          </>
+        ) : <span className="font-normal text-muted">—</span>}
+      </span>
+    </div>
+  );
+}
 
-  // Niveles con conjuros y, aunque no los tengan, con espacios (se pueden gastar al lanzar uno de nivel inferior)
+// Conjuros por nivel: la barra de cada nivel lleva sus espacios y cada fila, su interruptor de preparar. Se ven los que puede
+// preparar y, con «Solo preparados», únicamente los que tiene a punto.
+export default function SpellTable(props: Props) {
+  const { rows, filter, preparedOnly, blocks, slots, used, isOwner, busy, onSetSlot, clearHref, characterId, custom } = props;
+  const search = useSearchParams().toString();
+  const blockOf = (row: SpellRow) => (row.prepare ? blocks.find((b) => refKey(b.class) === refKey(row.prepare!)) ?? null : null);
+  const isPrepared = (row: SpellRow) => {
+    const block = blockOf(row);
+    return !block || block.prepared.some((r) => refKey(r) === row.key);
+  };
+  const matches = (row: SpellRow) => matchesSpellTable(row, filter) && (!preparedOnly || isPrepared(row));
+  const visible = new Set(rows.filter(matches).map((r) => r.key));
+  const filtering = filter.q !== "" || filter.kind !== "all" || filter.levels.length > 0
+    || filter.concentration !== "any" || filter.ritual !== "any" || preparedOnly;
+
+  // Niveles con conjuros y, aunque no los tengan, con espacios
   const groups = groupByLevel(rows);
   const slotLevels = [
     ...Object.entries(slots.levels).filter(([, n]) => n > 0).map(([l]) => Number(l)),
@@ -166,65 +174,51 @@ export default function SpellTable(props: Props) {
   }
   groups.sort((a, b) => a.level - b.level);
 
-  const anyVisible = visible.size > 0;
   return (
-    <div className="space-y-3">
-      {!anyVisible && rows.length > 0 && (
+    <div className="space-y-4">
+      {visible.size === 0 && rows.length > 0 && (
         <p className="text-sm text-muted print:hidden">
           Ningún conjuro coincide con la búsqueda.{" "}
           <Link href={clearHref} scroll={false} className="font-semibold text-brand-soft hover:underline">Quitar filtros</Link>
         </p>
       )}
-      <div className={`animate-fade-up md:overflow-x-auto ${anyVisible || rows.length === 0 ? "" : "hidden print:block"}`}>
-        <table role="table" className="w-full text-left text-sm max-md:not-print:block md:min-w-[40rem]">
-          <caption className="sr-only">Conjuros</caption>
-          <thead role="rowgroup" className="text-xs text-muted max-md:not-print:sr-only">
-            <tr role="row" className="border-b border-line">
-              {isOwner && <th role="columnheader" scope="col" className={`${th} w-28 print:hidden`}>Lanzar</th>}
-              <th role="columnheader" scope="col" className={th}>Nombre</th>
-              <th role="columnheader" scope="col" className={th}>Tiempo</th>
-              <th role="columnheader" scope="col" className={th}>Alcance</th>
-              <th role="columnheader" scope="col" className={th}>Golpe/CD</th>
-              <th role="columnheader" scope="col" className={th}>Efecto</th>
-            </tr>
-          </thead>
-          {groups.map((g) => {
-            const shown = g.rows.some((r) => visible.has(r.key));
-            // Un nivel sin conjuros solo aparece (con sus espacios) mientras no se filtra
-            const show = shown || (g.rows.length === 0 && !filtering);
-            const count = g.level > 0 ? (slots.levels[String(g.level)] ?? 0) : 0;
-            const pact = slots.pact && slots.pact.level === g.level ? slots.pact : null;
-            return (
-              <tbody role="rowgroup" key={g.level} className={`divide-y divide-line ${show ? "max-md:not-print:block" : "hidden print:table-row-group"}`}>
-                <tr role="row" className="bg-surface max-md:not-print:block">
-                  <th role="rowheader" scope="rowgroup" colSpan={isOwner ? 6 : 5} className="px-3 py-2 text-left max-md:not-print:block">
-                    <span className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
-                      <span className="font-heading text-sm font-extrabold uppercase tracking-wide text-brand-soft">
-                        {g.level === 0 ? "Trucos" : `Nivel ${g.level}`}
-                      </span>
-                      <span className="flex flex-wrap items-center gap-x-4 gap-y-4">
-                        {count > 0 && (
-                          <SpellSlotBoxes
-                            level={String(g.level)} spellLevel={g.level} count={count} used={used[String(g.level)] ?? 0}
-                            onSet={isOwner ? onSetSlot : null} busy={busy}
-                          />
-                        )}
-                        {pact && (
-                          <SpellSlotBoxes
-                            level={PACT_SLOT} spellLevel={g.level} count={pact.count} used={used[PACT_SLOT] ?? 0}
-                            onSet={isOwner ? onSetSlot : null} busy={busy} pact
-                          />
-                        )}
-                      </span>
-                    </span>
-                  </th>
-                </tr>
-                {g.rows.map((r) => <Row key={r.key} row={r} visible={visible.has(r.key)} props={props} search={search} />)}
-              </tbody>
-            );
-          })}
-        </table>
-      </div>
+      {groups.map((g) => {
+        const shown = g.rows.some((r) => visible.has(r.key));
+        const show = shown || (g.rows.length === 0 && !filtering);
+        const count = g.level > 0 ? (slots.levels[String(g.level)] ?? 0) : 0;
+        const pact = slots.pact && slots.pact.level === g.level ? slots.pact : null;
+        const orderedRows: OrderedRow[] = g.rows.map((r) => ({
+          key: r.key,
+          label: r.name,
+          // Sin preparar no se imprime; lo filtrado no se ve en pantalla, pero sí en papel si está preparado
+          className: `${visible.has(r.key) ? "" : isPrepared(r) ? "hidden print:flex" : "hidden"} ${isPrepared(r) ? "" : "print:hidden"}`,
+          node: <RowView row={r} block={blockOf(r)} props={props} search={search} />,
+        }));
+        return (
+          <OrderedSection
+            key={g.level}
+            id={`conjuros:${g.level}`}
+            title={g.level === 0 ? "Trucos" : `Nivel ${g.level}`}
+            className={`animate-fade-up ${show ? "" : "hidden print:block"}`}
+            extra={(count > 0 || pact) && (
+              <span className="inline-flex flex-wrap items-center gap-x-3">
+                {count > 0 && <SpellSlotBoxes level={String(g.level)} spellLevel={g.level} count={count} used={used[String(g.level)] ?? 0} onSet={isOwner ? onSetSlot : null} busy={busy} />}
+                {pact && <SpellSlotBoxes level={PACT_SLOT} spellLevel={g.level} count={pact.count} used={used[PACT_SLOT] ?? 0} onSet={isOwner ? onSetSlot : null} busy={busy} pact />}
+              </span>
+            )}
+            columns={(
+              <span className="hidden gap-3 sm:flex">
+                <span className="w-[7rem]">Alcance</span><span className="w-[5.5rem]">Golpe/CD</span><span className="w-[6.5rem]">Daño</span>
+              </span>
+            )}
+            rows={orderedRows}
+            custom={custom}
+            characterId={characterId}
+            isOwner={isOwner}
+            canHide={false}
+          />
+        );
+      })}
     </div>
   );
 }

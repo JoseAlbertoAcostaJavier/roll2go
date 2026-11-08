@@ -2,18 +2,23 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { ChevronsUp, CircleCheck, Pencil, Printer, User as UserIcon, X } from "lucide-react";
+import { CircleCheck, Pencil, Printer, User as UserIcon, X } from "lucide-react";
 import DeleteLevel from "../levelup/DeleteLevel";
 import StatusBadge, { type CharacterStatus } from "./StatusBadge";
 import InspirationBox from "./InspirationBox";
 import { fmtMod } from "@/lib/rules/dnd2024/sheet/labels";
+import { xpForNextLevel } from "@/lib/rules/dnd2024/sheet/xp";
 import { sheetBox } from "./statUi";
+import MaskIcon from "@/app/components/ui/MaskIcon";
+import { sheetUiSrc } from "@/lib/utils/icons";
 import type { ShowStat } from "./types";
 import JoinCampaignDialog, { LeaveCampaignButton, type JoinableCampaign } from "./JoinCampaignDialog";
 import { CharacterNoticeArea, CharacterNotices } from "@/app/components/campaigns/CharacterActions";
 
 // Nivel total máximo (como MAX_LEVEL del servidor)
 const MAX_LEVEL = 20;
+const sideButton =
+  "flex items-center justify-center gap-1 rounded-md border border-line-strong px-1 py-2 font-heading text-xs font-bold transition-colors print:hidden";
 const iconButton =
   "rounded p-1.5 text-muted transition-colors hover:bg-surface hover:text-white focus-visible:outline-2 focus-visible:outline-brand";
 
@@ -50,6 +55,7 @@ export default function SheetHeader(p: SheetHeaderProps & {
   show: ShowStat;
 }) {
   const [notice, setNotice] = useState(p.notice);
+  const next = xpForNextLevel(p.level);
 
   // Al imprimir (botón o Ctrl+P) se despliegan todos los rasgos plegados; al terminar se vuelven a plegar
   useEffect(() => {
@@ -111,7 +117,7 @@ export default function SheetHeader(p: SheetHeaderProps & {
 
         <div className="flex gap-4">
           {/* Retrato, con el nivel en un rombo y el estado encima */}
-          <div className="flex w-28 shrink-0 flex-col gap-5">
+          <div className="flex w-28 shrink-0 flex-col gap-1.5">
             <div className="relative">
               <div className="flex h-28 w-28 items-center justify-center overflow-hidden rounded-lg border-2 border-brand bg-surface text-muted">
                 {p.portraitUrl ? (
@@ -128,13 +134,19 @@ export default function SheetHeader(p: SheetHeaderProps & {
               </span>
               <StatusBadge status={p.status} isOwner={p.isOwner} />
             </div>
+            <span className="h-3.5" aria-hidden="true" />
             {p.isOwner && p.level < MAX_LEVEL && (
               <Link
                 href={`/characters/${p.id}/level-up`}
-                className="flex items-center justify-center gap-1 rounded-md border border-line-strong px-1 py-2 font-heading text-xs font-bold text-white transition-colors hover:border-brand hover:bg-brand/15 print:hidden"
+                className={`${sideButton} text-white hover:border-brand hover:bg-brand/15`}
               >
-                <ChevronsUp size={14} aria-hidden="true" /> Subir nivel
+                <MaskIcon src={sheetUiSrc("level-up")} size={16} /> Subir nivel
               </Link>
+            )}
+            {p.isOwner && p.level >= 2 && (
+              <div className="print:hidden">
+                <DeleteLevel characterId={p.id} level={p.level} redirectTo={`/characters/${p.id}?saved=level-deleted`} buttonClass={`${sideButton} w-full text-muted hover:border-danger hover:text-danger`} />
+              </div>
             )}
           </div>
 
@@ -146,20 +158,23 @@ export default function SheetHeader(p: SheetHeaderProps & {
               </h1>
               {p.isOwner && (
                 <div className="flex shrink-0 items-center print:hidden">
-                  <button type="button" onClick={() => window.print()} aria-label="Imprimir" title="Imprimir" className={iconButton}>
+                  <Link href={`/characters/${p.id}/pdf`} aria-label="Ver e imprimir en PDF" title="Imprimir" className={iconButton}>
                     <Printer size={16} aria-hidden="true" />
-                  </button>
+                  </Link>
                   <Link href={`/characters/${p.id}/edit`} aria-label="Editar" title="Editar" className={iconButton}>
                     <Pencil size={16} aria-hidden="true" />
                   </Link>
                 </div>
               )}
             </div>
-            <div className="mt-1 space-y-0.5 text-sm text-fg">
+            {/* Datos a la izquierda; inspiración e iniciativa a su lado, abajo a la derecha */}
+            <div className="mt-1 flex flex-1 flex-wrap gap-x-4 gap-y-3">
+            <div className="min-w-44 flex-1">
+            <div className="space-y-0.5 text-sm text-fg">
               {p.classes && <p>{p.classes}</p>}
               {p.species && <p>{p.species}</p>}
               {p.background && <p>{p.background}</p>}
-              <p className="text-muted">Experiencia: {p.xp.toLocaleString("es-ES")}</p>
+              <p className="text-muted">Exp.: {p.xp.toLocaleString("es-ES")}{next !== null && `/${next.toLocaleString("es-ES")}`}</p>
               <p className="text-muted">
                 Bonificador de competencia <span className="ml-1 rounded bg-surface px-1.5 text-xs font-bold text-fg">{fmtMod(p.proficiencyBonus)}</span>
               </p>
@@ -204,25 +219,22 @@ export default function SheetHeader(p: SheetHeaderProps & {
                 </span>
               )}
             </div>
-            <div className="mt-auto flex flex-wrap items-end justify-end gap-2 pt-3">
-              <InspirationBox characterId={p.id} initial={p.inspiration} isOwner={p.isOwner} className="min-w-36 flex-1 sm:flex-none" />
+            </div>
+            <div className="flex w-full flex-col gap-2 self-end sm:w-44">
+              <InspirationBox characterId={p.id} initial={p.inspiration} isOwner={p.isOwner} />
               <button
                 type="button"
                 aria-haspopup="dialog"
                 data-print="text"
                 onClick={p.show({ kind: "initiative" })}
-                className="h-10 min-w-36 flex-1 rounded-md bg-brand px-3 font-heading text-sm font-bold uppercase text-white transition-colors hover:bg-brand-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-soft sm:flex-none"
+                className="h-10 w-full rounded-md bg-brand px-3 font-heading text-sm font-bold uppercase text-white transition-colors hover:bg-brand-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-soft"
               >
                 Iniciativa {fmtMod(p.initiative)}
               </button>
             </div>
+            </div>
           </div>
         </div>
-        {p.isOwner && p.level >= 2 && (
-          <div className="mt-3 border-t border-line pt-3 print:hidden">
-            <DeleteLevel characterId={p.id} level={p.level} redirectTo={`/characters/${p.id}?saved=level-deleted`} />
-          </div>
-        )}
       </CharacterNotices>
     </header>
   );

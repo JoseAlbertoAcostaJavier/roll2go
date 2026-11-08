@@ -42,6 +42,11 @@ const catalog = new Map<string, CatalogEntry>(
     }),
     entry("lineage:drow|xphb", {}, { parent: { book: B, key: "species:elf|xphb" } }),
     entry("lineage:other|xphb", {}, { parent: { book: B, key: "species:dwarf|xphb" } }),
+    entry("feat:alert|xphb", { category: "origin" }, { name: "Alert" }),
+    entry("feat:tough|xphb", { category: "general" }, { name: "Tough" }),
+    entry("background:guild|phb", {
+      abilities: ["str", "dex", "con", "int", "wis", "cha"], feat: null, skills: ["Insight"], equipment: { A: [{ value: 100 }] },
+    }),
     entry("background:acolyte|xphb", {
       abilities: ["int", "wis", "cha"], skills: ["Insight", "Religion"], equipment: { A: [], B: [] },
     }),
@@ -288,6 +293,41 @@ describe("validateSheet", () => {
     expect(await errorsOf((s) => { s.xp = 1.5; })).toHaveProperty("xp");
     const r = await run((s) => { s.notes = "a\u0000b"; });
     expect(r.ok && r.sheet.notes).toBe("ab");
+  });
+});
+
+describe("validateSheet: trasfondo de antes de 2024", () => {
+  const legacy = (extra: Sheet) => ({
+    ...valid(),
+    background: { ...named("background:guild|phb"), abilities: { str: 2, cha: 1 }, equipment: "A", ...extra },
+  });
+  const featRef = (key: string) => ({ book: B, key });
+  const errorsOf = (r: Awaited<ReturnType<typeof validateSheet>>) => (r.ok ? {} : r.errors);
+
+  it("con una dote de origen se guarda en la hoja", async () => {
+    const r = await validateSheet(legacy({ feat: featRef("feat:alert|xphb") }), ctx);
+    expect(errorsOf(r)).toEqual({});
+    expect(r.ok && r.sheet.background.feat).toEqual(featRef("feat:alert|xphb"));
+  });
+
+  it("sin dote pide elegirla", async () => {
+    expect(errorsOf(await validateSheet(legacy({}), ctx))).toHaveProperty(["background.feat"]);
+  });
+
+  it("no acepta una dote que no sea de origen", async () => {
+    expect(errorsOf(await validateSheet(legacy({ feat: featRef("feat:tough|xphb") }), ctx))).toEqual({ "background.feat": "Elige una dote de origen." });
+  });
+
+  it("admite repartir el bono en cualquiera de las 6, pero no más de +2/+1", async () => {
+    const r = await validateSheet({ ...legacy({ feat: featRef("feat:alert|xphb") }), background: { ...legacy({ feat: featRef("feat:alert|xphb") }).background, abilities: { str: 2, dex: 2 } } }, ctx);
+    expect(errorsOf(r)).toHaveProperty(["background.abilities"]);
+  });
+
+  it("un trasfondo de 2024 ignora una dote enviada a mano", async () => {
+    const sheet = valid();
+    sheet.background.feat = featRef("feat:alert|xphb");
+    const r = await validateSheet(sheet, ctx);
+    expect(r.ok && r.sheet.background).not.toHaveProperty("feat");
   });
 });
 

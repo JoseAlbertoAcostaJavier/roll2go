@@ -24,9 +24,10 @@ export const switchThumb = "pointer-events-none absolute left-0.5 h-4 w-4 rounde
 export const plainText = (source: string) => source.replace(/\[[^\]]*\]/g, "").replace(/\s+/g, " ").trim();
 
 // Barra de sección de las pestañas: título a la izquierda y, a la derecha, las columnas o los controles
-export function SectionBar({ title, extra, children }: { title: string; extra?: React.ReactNode; children?: React.ReactNode }) {
+export function SectionBar({ title, lead, extra, children }: { title: string; lead?: React.ReactNode; extra?: React.ReactNode; children?: React.ReactNode }) {
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md bg-surface px-3 py-1.5">
+      {lead}
       <h3 className={boxTitle}>{title}</h3>
       {extra && <span className="text-xs text-muted">{extra}</span>}
       {children && <div className="ml-auto flex items-center gap-3 text-xs font-medium text-fg">{children}</div>}
