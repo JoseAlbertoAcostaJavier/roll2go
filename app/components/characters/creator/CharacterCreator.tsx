@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "reac
 import { flushSync } from "react-dom";
 import { useRouter } from "next/navigation";
 import {
-  ChevronLeft, ChevronRight, Dna, FileText, LoaderCircle, Package, TriangleAlert, User, Wand2,
+  ChevronLeft, ChevronRight, LoaderCircle, Package, TriangleAlert, Wand2,
 } from "lucide-react";
 import Bbcode from "@/app/components/ui/Bbcode";
 import { field, labelClass, primaryButton, secondaryButton } from "@/app/components/ui/formStyles";
@@ -657,14 +657,14 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
     return null;
   };
   const steps: CreatorStep[] = [
-    { href: S.identity, label: "Identidad", title: "Identidad", description: "Cómo se llama tu personaje y cómo se presenta.", icon: User, optional: false },
-    { href: S.species, label: "Especie", title: "Especie", description: "Su origen: tamaño, velocidad y rasgos innatos.", icon: Dna, optional: false },
+    { href: S.identity, label: "Identidad", title: "Identidad", description: "Cómo se llama tu personaje y cómo se presenta.", icon: STEP_ICON("identity"), optional: false },
+    { href: S.species, label: "Especie", title: "Especie", description: "Su origen: tamaño, velocidad y rasgos innatos.", icon: STEP_ICON("dna"), optional: false },
     { href: S.background, label: "Trasfondo", title: "Trasfondo", description: "De dónde viene: características, dote, habilidades y equipo.", icon: STEP_ICON("background"), optional: false },
     { href: S.klass, label: "Clase", title: "Clase", description: "Su oficio: rasgos de nivel 1, habilidades y equipo inicial.", icon: STEP_ICON("class"), optional: false },
     ...(casting && form.klass ? [{ href: S.spells, label: "Conjuros", title: "Conjuros iniciales", description: "Prepararás tus conjuros desde la pestaña Conjuros de la ficha.", icon: STEP_ICON("spells"), optional: false }] : []),
     { href: S.languages, label: "Idiomas", title: "Idiomas", description: "Las lenguas que conoce tu personaje.", icon: STEP_ICON("languages"), optional: false },
     { href: S.abilities, label: "Características", title: "Puntuaciones de característica", description: "Reparte sus puntuaciones y la bonificación del trasfondo.", icon: STEP_ICON("abilities"), optional: false },
-    ...(!recreate ? [{ href: S.info, label: "Información", title: "Biografía e información", description: "Opcional: podrás completarla más adelante desde la ficha.", icon: FileText, optional: true }] : []),
+    ...(!recreate ? [{ href: S.info, label: "Información", title: "Biografía e información", description: "Opcional: podrás completarla más adelante desde la ficha.", icon: STEP_ICON("information"), optional: true }] : []),
   ].map(({ href, optional, ...s }) => ({
     ...s,
     id: stepId(href),

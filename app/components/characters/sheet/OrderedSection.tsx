@@ -2,7 +2,9 @@
 
 import { useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { GripVertical, Lock, LockOpen, Minus, Plus } from "lucide-react";
+import { GripVertical, Minus, Plus } from "lucide-react";
+import MaskIcon from "@/app/components/ui/MaskIcon";
+import { sheetUiSrc } from "@/lib/utils/icons";
 import { ordered, type SheetCustom } from "@/lib/rules/dnd2024/sheet/custom";
 import type { CustomItem } from "@/lib/rules/dnd2024/sheet/sheet";
 import CustomItemForm from "./CustomItemForm";
@@ -112,7 +114,7 @@ export default function OrderedSection({ id, title, extra, columns, rows, custom
             onClick={() => setUnlocked((u) => !u)}
             className={`${iconButton} ${unlocked ? "text-brand-soft" : ""}`}
           >
-            {unlocked ? <LockOpen size={14} aria-hidden="true" /> : <Lock size={14} aria-hidden="true" />}
+            <MaskIcon src={sheetUiSrc(unlocked ? "padlock-open" : "padlock")} size={15} />
           </button>
         ) : undefined}
       >

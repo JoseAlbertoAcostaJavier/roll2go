@@ -2,7 +2,8 @@
 
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Sparkles } from "lucide-react";
+import MaskIcon from "@/app/components/ui/MaskIcon";
+import { sheetUiSrc } from "@/lib/utils/icons";
 
 // Inspiración heroica: el dueño la marca o desmarca (optimista, con vuelta atrás si falla); los demás la ven en solo lectura
 export default function InspirationBox({ characterId, initial, isOwner, className = "" }: {
@@ -55,7 +56,7 @@ export default function InspirationBox({ characterId, initial, isOwner, classNam
   const content = (
     <>
       Inspiración
-      <Sparkles size={16} aria-hidden="true" className={on ? "fill-brand-soft text-brand-soft" : "text-muted"} />
+      <MaskIcon src={sheetUiSrc("inspiration")} size={18} className={on ? "text-brand-soft" : "text-muted"} />
     </>
   );
 

@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { BedDouble, Coffee, Hexagon, LoaderCircle } from "lucide-react";
+import { Hexagon, LoaderCircle } from "lucide-react";
+import MaskIcon from "@/app/components/ui/MaskIcon";
+import { sheetUiSrc } from "@/lib/utils/icons";
 import { CampaignDialog } from "@/app/components/campaigns/CharacterActions";
 import { healingRange, type HitDicePool } from "@/lib/rules/dnd2024/sheet/rest";
 import { HpBar, REST_EVENT } from "./HpEditor";
@@ -117,10 +119,10 @@ export default function RestButtons({ characterId, pools, conMod, recoversOther,
   return (
     <>
       <button type="button" onClick={show("short")} aria-haspopup="dialog" className={button}>
-        <Coffee size={14} aria-hidden="true" /> Corto<span className="sr-only"> (descanso)</span>
+        <MaskIcon src={sheetUiSrc("short-rest")} size={16} /> Corto<span className="sr-only"> (descanso)</span>
       </button>
       <button type="button" onClick={show("long")} aria-haspopup="dialog" className={button}>
-        <BedDouble size={14} aria-hidden="true" /> Largo<span className="sr-only"> (descanso)</span>
+        <MaskIcon src={sheetUiSrc("long-rest")} size={16} /> Largo<span className="sr-only"> (descanso)</span>
       </button>
 
       {open && rest && (

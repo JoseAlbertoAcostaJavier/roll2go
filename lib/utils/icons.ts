@@ -64,6 +64,11 @@ export function spellAreaSrc(shape: SpellAreaShape): string | null {
   return icon ? `/assets/icons/spell-ranges/${icon}.svg` : null;
 }
 
+/** Iconos de los controles de la ficha (descansos, curar, inspiración…). */
+export function sheetUiSrc(name: "heart-minus" | "heart-plus" | "inspiration" | "level-up" | "long-rest" | "padlock" | "padlock-open" | "short-rest"): string {
+  return `/assets/icons/sheet/UI/${name}.svg`;
+}
+
 export function portraitSrc(kind: "class" | "species", id: string): string {
   const known = slug(id);
   const [dir, list] = kind === "class" ? ["class-portraits", CLASS_PORTRAITS] : ["species-portraits", SPECIES_PORTRAITS];

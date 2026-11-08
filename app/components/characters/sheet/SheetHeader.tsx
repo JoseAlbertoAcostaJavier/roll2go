@@ -2,13 +2,15 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { ChevronsUp, CircleCheck, Pencil, Printer, User as UserIcon, X } from "lucide-react";
+import { CircleCheck, Pencil, Printer, User as UserIcon, X } from "lucide-react";
 import DeleteLevel from "../levelup/DeleteLevel";
 import StatusBadge, { type CharacterStatus } from "./StatusBadge";
 import InspirationBox from "./InspirationBox";
 import { fmtMod } from "@/lib/rules/dnd2024/sheet/labels";
 import { xpForNextLevel } from "@/lib/rules/dnd2024/sheet/xp";
 import { sheetBox } from "./statUi";
+import MaskIcon from "@/app/components/ui/MaskIcon";
+import { sheetUiSrc } from "@/lib/utils/icons";
 import type { ShowStat } from "./types";
 import JoinCampaignDialog, { LeaveCampaignButton, type JoinableCampaign } from "./JoinCampaignDialog";
 import { CharacterNoticeArea, CharacterNotices } from "@/app/components/campaigns/CharacterActions";
@@ -138,7 +140,7 @@ export default function SheetHeader(p: SheetHeaderProps & {
                 href={`/characters/${p.id}/level-up`}
                 className={`${sideButton} text-white hover:border-brand hover:bg-brand/15`}
               >
-                <ChevronsUp size={14} aria-hidden="true" /> Subir nivel
+                <MaskIcon src={sheetUiSrc("level-up")} size={16} /> Subir nivel
               </Link>
             )}
             {p.isOwner && p.level >= 2 && (
@@ -165,7 +167,10 @@ export default function SheetHeader(p: SheetHeaderProps & {
                 </div>
               )}
             </div>
-            <div className="mt-1 space-y-0.5 text-sm text-fg">
+            {/* Datos a la izquierda; inspiración e iniciativa a su lado, abajo a la derecha */}
+            <div className="mt-1 flex flex-1 flex-wrap gap-x-4 gap-y-3">
+            <div className="min-w-44 flex-1">
+            <div className="space-y-0.5 text-sm text-fg">
               {p.classes && <p>{p.classes}</p>}
               {p.species && <p>{p.species}</p>}
               {p.background && <p>{p.background}</p>}
@@ -214,8 +219,8 @@ export default function SheetHeader(p: SheetHeaderProps & {
                 </span>
               )}
             </div>
-            {/* Inspiración sobre iniciativa, abajo a la derecha */}
-            <div className="ml-auto mt-auto flex w-full flex-col gap-2 pt-3 sm:w-44">
+            </div>
+            <div className="flex w-full flex-col gap-2 self-end sm:w-44">
               <InspirationBox characterId={p.id} initial={p.inspiration} isOwner={p.isOwner} />
               <button
                 type="button"
@@ -226,6 +231,7 @@ export default function SheetHeader(p: SheetHeaderProps & {
               >
                 Iniciativa {fmtMod(p.initiative)}
               </button>
+            </div>
             </div>
           </div>
         </div>

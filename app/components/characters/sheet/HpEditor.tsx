@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Heart, HeartCrack, LoaderCircle } from "lucide-react";
+import { LoaderCircle } from "lucide-react";
+import MaskIcon from "@/app/components/ui/MaskIcon";
+import { sheetUiSrc } from "@/lib/utils/icons";
 import type { ReactNode } from "react";
 import { MAX_TEMP_HP } from "@/lib/rules/dnd2024/sheet/edits";
 
@@ -195,9 +197,9 @@ export default function HpEditor({ characterId, max, current, temp, version, res
 
   return (
     <div>
-      <div className="flex flex-wrap items-start gap-x-5 gap-y-3 print:hidden">
+      <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3 print:hidden">
         {/* Actuales / Máximos y Temporales */}
-        <div className="grid grid-cols-[minmax(10rem,auto)_auto] gap-x-2">
+        <div className="grid min-w-56 flex-1 grid-cols-[minmax(10rem,1fr)_auto] gap-x-2">
           <div className="relative flex h-12 items-center justify-center gap-3 overflow-hidden rounded-md border border-line-strong bg-surface pb-1">
             <Stepper big label="PG actuales" value={hp.current} max={max} onChange={(v) => update({ current: v })} />
             <span aria-hidden="true" className="text-muted">/</span>
@@ -215,7 +217,7 @@ export default function HpEditor({ characterId, max, current, temp, version, res
         <div>
           <div className="flex overflow-hidden rounded-md border border-line-strong">
             <button type="button" aria-label="Daño" title="Daño" className={actionButton} onClick={damage} disabled={delta === 0 || (hp.current === 0 && hp.temp === 0)}>
-              <HeartCrack size={18} aria-hidden="true" className="text-brand-soft" />
+              <MaskIcon src={sheetUiSrc("heart-minus")} size={20} className="text-brand-soft" />
             </button>
             <input
               type="number"
@@ -227,7 +229,7 @@ export default function HpEditor({ characterId, max, current, temp, version, res
               className={`${numberField} rounded-none! border-0!`}
             />
             <button type="button" aria-label="Curar" title="Curar" className={actionButton} onClick={heal} disabled={delta === 0 || hp.current >= max}>
-              <Heart size={18} aria-hidden="true" className="text-success" />
+              <MaskIcon src={sheetUiSrc("heart-plus")} size={20} className="text-success" />
             </button>
           </div>
           <div aria-hidden="true" className="flex justify-between px-1">
