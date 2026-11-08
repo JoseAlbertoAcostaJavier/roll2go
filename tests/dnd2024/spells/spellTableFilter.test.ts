@@ -6,7 +6,7 @@ import type { SpellRow } from "@/lib/rules/dnd2024/spells/spellTable";
 
 const row = (name: string, nameEn: string, level: number, over: Partial<SpellRow> = {}): SpellRow => ({
   ref: { book: "b", key: `spell:${nameEn}|xphb` }, key: `b:spell:${nameEn}|xphb`, name, nameEn, level, school: "V", schoolId: "V",
-  time: "1 acción", timeShort: "1 A", range: "18 m", duration: "Instantáneo", components: "V, S",
+  time: "1 acción", timeShort: "1 A", range: "18 m", area: null, duration: "Instantáneo", components: "V, S",
   concentration: false, ritual: false, hit: null, effect: null, damage: null, prepare: null, origin: "Mago", limited: null, casterClass: null,
   tags: [], ...over,
 });

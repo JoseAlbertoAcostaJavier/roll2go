@@ -156,9 +156,9 @@ export default function SheetHeader(p: SheetHeaderProps & {
               </h1>
               {p.isOwner && (
                 <div className="flex shrink-0 items-center print:hidden">
-                  <button type="button" onClick={() => window.print()} aria-label="Imprimir" title="Imprimir" className={iconButton}>
+                  <Link href={`/characters/${p.id}/pdf`} aria-label="Ver e imprimir en PDF" title="Imprimir" className={iconButton}>
                     <Printer size={16} aria-hidden="true" />
-                  </button>
+                  </Link>
                   <Link href={`/characters/${p.id}/edit`} aria-label="Editar" title="Editar" className={iconButton}>
                     <Pencil size={16} aria-hidden="true" />
                   </Link>

@@ -1,3 +1,4 @@
+import type { SpellAreaShape } from "@/lib/rules/dnd2024/spells/spellArea";
 // Iconos de clase, escuela de magia, especie, estado y grupos de rasgos (public/assets/icons)
 
 export type IconKind =
@@ -55,6 +56,14 @@ export function classGlyphSrc(id: string | null | undefined): string | null {
 }
 
 /** Retrato de la tarjeta de clase o especie; sin imagen propia, el genérico. */
+const AREA_ICONS: Partial<Record<SpellAreaShape, string>> = { sphere: "sphere", emanation: "sphere", radius: "sphere", cube: "cube", cone: "cone", cylinder: "cylinder" };
+
+/** Icono del área de un conjuro; null en las líneas, que no tienen. */
+export function spellAreaSrc(shape: SpellAreaShape): string | null {
+  const icon = AREA_ICONS[shape];
+  return icon ? `/assets/icons/spell-ranges/${icon}.svg` : null;
+}
+
 export function portraitSrc(kind: "class" | "species", id: string): string {
   const known = slug(id);
   const [dir, list] = kind === "class" ? ["class-portraits", CLASS_PORTRAITS] : ["species-portraits", SPECIES_PORTRAITS];

@@ -4,6 +4,7 @@ import type { CatalogEntry } from "@/lib/rules/catalog/types";
 import { DEFAULT_SPELL_ABILITY, innateKey, innateMax, type CasterBlock, type CastingStats, type SpellsSummary } from "@/lib/rules/dnd2024/derive/spells";
 import { refKey } from "@/lib/rules/dnd2024/sheet/equipmentRefs";
 import { ABILITY_ABBR, ABILITY_NAMES, DAMAGE_TYPE_NAMES, fmtMod } from "@/lib/rules/dnd2024/sheet/labels";
+import { spellRangeParts, type SpellArea } from "@/lib/rules/dnd2024/spells/spellArea";
 import { spellSchoolName } from "@/lib/rules/dnd2024/spells/spellTextClient";
 import type { Ability, Ref, SpellData } from "@/lib/rules/types";
 
@@ -11,7 +12,7 @@ export type SpellRow = {
   ref: Ref; key: string; name: string; nameEn: string; level: number; school: string;
   /** Letra de escuela de 5etools (`V`), para su icono. */
   schoolId: string;
-  time: string; timeShort: string; range: string; duration: string; components: string;
+  time: string; timeShort: string; range: string; area: SpellArea | null; duration: string; components: string;
   concentration: boolean; ritual: boolean;
   /** «+N» con ataque de conjuro, «CD N {Car}» con salvación; null sin tirada. */
   hit: string | null;
@@ -169,7 +170,7 @@ export function spellTableRows(spells: SpellsSummary, entries: Map<string, Catal
   const level = options.level ?? 1;
   const row = (ref: Ref, entry: CatalogEntry, data: SpellData, caster: CastingBonus | null, origin: string, limited: SpellRow["limited"], block: CasterBlock | null, prepare: Ref | null): SpellRow => ({
     ref, key: refKey(ref), name: entry.nameEs ?? entry.name, nameEn: entry.name, level: data.level,
-    school: spellSchoolName(data.school), schoolId: data.school, time: data.time, timeShort: timeShort(data.time), range: data.range,
+    school: spellSchoolName(data.school), schoolId: data.school, time: data.time, timeShort: timeShort(data.time), ...spellRangeParts(data.range, data.area),
     duration: data.duration, components: data.components, concentration: data.concentration, ritual: data.ritual,
     hit: hitOf(data.tags, caster), effect: effectOf(data.tags, data), damage: damageOf(data, level), prepare, origin, limited,
     casterClass: block?.class ?? null, tags: data.tags,

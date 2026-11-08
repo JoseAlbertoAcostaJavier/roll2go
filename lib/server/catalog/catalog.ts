@@ -1,4 +1,5 @@
 import "server-only";
+import { spellAreaInText } from "@/lib/rules/dnd2024/spells/spellArea";
 import mongoose from "mongoose";
 import { unstable_cache } from "next/cache";
 import { connectDB } from "@/lib/models/mongodb";
@@ -159,7 +160,7 @@ export function listChoiceItems(books: string[]): Promise<EntryOption[]> {
 /** Conjuros de los libros dados con datos y resumen, para la pestaña Conjuros (sin el límite del listado); ordenados por nombre. */
 export async function listSpells(books: string[]): Promise<SpellOption[]> {
   const ids = validIds(books);
-  return cachedList("rules-spells-v4", [], ids, async (names) => {
+  return cachedList("rules-spells-v5", [], ids, async (names) => {
     const docs = (await BookEntry.find({ book: { $in: ids }, kind: "spell", ...NOT_SUPERSEDED })
       .select("-foundry")
       .sort({ nameLower: 1 })
@@ -170,6 +171,8 @@ export async function listSpells(books: string[]): Promise<SpellOption[]> {
         // La mejora va también al final de la descripción, que se pide al abrir la ficha del conjuro
         const data = { ...(d.data as SpellData) };
         delete data.higherLevels;
+        const area = spellAreaInText(d.description || "");
+        if (area) data.area = area;
         const summary = spellSummary(d.descriptionEs || d.description || "");
         return { ...toOption(d, names.get(String(d.book))!, false), data, summary };
       });

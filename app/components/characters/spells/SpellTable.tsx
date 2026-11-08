@@ -8,7 +8,7 @@ import { refKey } from "@/lib/rules/dnd2024/sheet/equipmentRefs";
 import { PACT_SLOT } from "@/lib/rules/dnd2024/spells/spellOps";
 import type { SpellRow } from "@/lib/rules/dnd2024/spells/spellTable";
 import { groupByLevel, matchesSpellTable, type SpellTableFilter } from "@/lib/rules/dnd2024/spells/spellTableFilter";
-import { iconSrc } from "@/lib/utils/icons";
+import { iconSrc, spellAreaSrc } from "@/lib/utils/icons";
 import MaskIcon from "@/app/components/ui/MaskIcon";
 import OrderedSection, { type OrderedRow } from "../sheet/OrderedSection";
 import { d20Expr, diceIn } from "@/lib/utils/diceText";
@@ -119,7 +119,16 @@ function RowView({ row, block, props, search }: { row: SpellRow; block: CasterBl
           )}
         </span>
       </div>
-      <span className="text-muted sm:order-none">{row.range}</span>
+      <span className="text-muted sm:order-none">
+        <span className="block">{row.range}</span>
+        {row.area && (
+          <span className="flex items-center gap-1 text-xs" title={`${row.area.name} de ${row.area.size}`}>
+            <MaskIcon src={spellAreaSrc(row.area.shape)} size={12} label={row.area.name} />
+            {!spellAreaSrc(row.area.shape) && <span className="capitalize">{row.area.name}</span>}
+            {row.area.size}
+          </span>
+        )}
+      </span>
       <span className="font-heading font-bold text-success">
         {row.hit && /^[+-]\d+$/.test(row.hit)
           ? <RollButton label={`${row.name}: ataque`} expr={d20Expr(Number(row.hit))} d20>{row.hit}</RollButton>

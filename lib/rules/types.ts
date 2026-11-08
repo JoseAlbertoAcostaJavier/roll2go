@@ -1,3 +1,4 @@
+import type { SpellAreaShape } from "@/lib/rules/dnd2024/spells/spellArea";
 // Tipos compartidos del catálogo de reglas (importación de 5etools y libros de usuario).
 
 export type Ability = "str" | "dex" | "con" | "int" | "wis" | "cha";
@@ -220,6 +221,8 @@ export type SpellData = {
   school: string;
   time: string;
   range: string;
+  /** Área de efecto leída de la descripción al listar los conjuros; no se guarda en el catálogo. */
+  area?: { shape: SpellAreaShape; feet: number };
   components: string;
   duration: string;
   concentration: boolean;
