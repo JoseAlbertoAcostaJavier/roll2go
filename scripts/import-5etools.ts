@@ -1,6 +1,7 @@
 // Importa una fuente de 5etools (por defecto el Player's Handbook 2024, XPHB) como libro oficial en MongoDB.
 // Es idempotente: reimportar actualiza lo existente y borra lo que ya no llega.
 // Uso: npm run import:5etools -- --data <carpeta data de 5etools> [--source XPHB] [--only tipo,tipo] [--srd-only] [--dry-run]
+// Con --homebrew <archivo> se añade una clase de homebrew en formato 5etools; la fuente sale de su `_meta`.
 // Con --only solo se importan (y se borran) entradas de esos tipos; p. ej. las tablas de nombres de la Guía de Xanathar:
 // npm run import:5etools -- --data <carpeta> --source XGE --only nameTable
 import { existsSync, readdirSync, readFileSync } from "node:fs";
@@ -15,8 +16,9 @@ try {
 import { connectDB } from "../lib/models/mongodb";
 import { Book } from "../lib/models/Book";
 import { BookEntry, ENTRY_KINDS } from "../lib/models/BookEntry";
+import { withHomebrew, type Homebrew } from "../lib/rules/import/homebrew";
 import {
-  BOOK_PLACEHOLDER, normalizeAll, textChoiceFeatures, unreachableFeatures, type RawFiles,
+  BOOK_PLACEHOLDER, classSpellKeys, normalizeAll, relinkRefs, textChoiceFeatures, unreachableFeatures, type RawFiles,
 } from "../lib/rules/import/normalize";
 import { planImport } from "../lib/rules/import/plan";
 import { matchFoundry, type FoundryFiles } from "../lib/rules/import/foundry";
@@ -41,6 +43,9 @@ const BOOK_NAMES: Record<string, string> = {
   DSOTDQ: "Dragonlance: La sombra de la Reina de los Dragones",
   COS: "La maldición de Strahd",
   BGDIA: "Baldur's Gate: Descenso a Avernus",
+  PHB: "Manual del Jugador 2014",
+  DMG: "Guía del Dungeon Master 2014",
+  MM: "Manual de Monstruos 2014",
 };
 // Libros de apoyo que no se ofrecen como libros de reglas
 const UNLISTED = new Set<string>();
@@ -52,11 +57,12 @@ function fail(msg: string): never {
 }
 
 function parseArgs(argv: string[]) {
-  const o = { data: "", source: "XPHB", srdOnly: false, dryRun: false, only: [] as string[] };
+  const o = { data: "", source: "XPHB", homebrew: "", srdOnly: false, dryRun: false, only: [] as string[] };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--data") o.data = argv[++i] ?? "";
     else if (a === "--source") o.source = argv[++i] ?? "";
+    else if (a === "--homebrew") o.homebrew = argv[++i] ?? "";
     else if (a === "--only") o.only = (argv[++i] ?? "").split(",").map((k) => k.trim()).filter(Boolean);
     else if (a === "--srd-only") o.srdOnly = true;
     else if (a === "--dry-run") o.dryRun = true;
@@ -65,6 +71,7 @@ function parseArgs(argv: string[]) {
   if (!o.data) fail("Falta --data <carpeta data de 5etools>.");
   if (!o.source) fail("Falta el valor de --source.");
   if (!existsSync(o.data)) fail(`No existe la carpeta: ${o.data}`);
+  if (o.homebrew && !existsSync(o.homebrew)) fail(`No existe el archivo: ${o.homebrew}`);
   const unknown = o.only.filter((k) => !(ENTRY_KINDS as readonly string[]).includes(k));
   if (unknown.length) fail(`Tipos desconocidos en --only: ${unknown.join(", ")}`);
   return o;
@@ -103,8 +110,15 @@ function loadRaw(data: string, srdOnly: boolean): RawFiles {
     optionalFeatures: j("optionalfeatures.json"),
     names: j("names.json"),
     actions: j("actions.json"),
+    conditions: j("conditionsdiseases.json"),
     bestiary: readAll(path.join(data, "bestiary"), "bestiary-"),
   };
+}
+
+/** Nombre original de la fuente en `books.json` o `adventures.json`. */
+function officialName(data: string, source: string): string | undefined {
+  const list = (f: string, key: string) => readJson<Record<string, { source: string; name: string }[]>>(path.join(data, f))?.[key] ?? [];
+  return [...list("books.json", "book"), ...list("adventures.json", "adventure")].find((b) => b.source.toUpperCase() === source)?.name;
 }
 
 function loadFoundry(data: string): FoundryFiles {
@@ -127,10 +141,14 @@ const count = (xs: string[]) => {
 
 async function main() {
   const args = parseArgs(process.argv.slice(2));
-  const source = args.source.toUpperCase();
+  const brew = args.homebrew ? (readJson<Homebrew>(args.homebrew) as Homebrew) : null;
+  const brewSource = brew?._meta?.sources?.[0];
+  if (brew && !brewSource) fail("El archivo de homebrew no declara su fuente en _meta.sources.");
+  const source = (brewSource?.json ?? args.source).toUpperCase();
   const dict = es as Record<string, string>;
 
-  const normalized = normalizeAll(loadRaw(args.data, args.srdOnly), source);
+  const raw = loadRaw(args.data, args.srdOnly);
+  const normalized = normalizeAll(brew ? withHomebrew(raw, brew) : raw, source);
   const wanted = (kind: string) => args.only.length === 0 || args.only.includes(kind);
   const entries = normalized.entries.filter((e) => wanted(e.kind));
   const errors = normalized.errors.filter((e) => wanted(e.key.split(":")[0]));
@@ -158,17 +176,36 @@ async function main() {
           listed: !UNLISTED.has(source),
           license: args.srdOnly
             ? { type: "srd", attribution: SRD_ATTRIBUTION, sourceUrl: "https://www.dndbeyond.com/srd" }
-            : { type: "official", attribution: "", sourceUrl: "" },
+            : {
+                type: "official",
+                attribution: brewSource ? [...(brewSource.authors ?? []), ...(brewSource.convertedBy ?? [])].join(", ") : "",
+                sourceUrl: brewSource?.url ?? "",
+              },
         },
         // El nombre solo se pone al crear el libro, para no pisar un nombre cambiado después
-        $setOnInsert: { owner: null, key: source, language: "es", name: BOOK_NAMES[source] ?? source },
+        $setOnInsert: { owner: null, key: source, language: "es", name: BOOK_NAMES[source] ?? brewSource?.full ?? officialName(args.data, source) ?? source },
       },
       { upsert: true, returnDocument: "after" },
     );
     const bookId = String(book._id);
     // Las referencias llevan un libro provisional que se sustituye por el id real
-    const withBook = (data: unknown) =>
-      JSON.parse(JSON.stringify(data).replaceAll(JSON.stringify(BOOK_PLACEHOLDER), JSON.stringify(bookId)));
+    // Referencias a otros libros: por clave y, los conjuros sin fuente, por nombre (a igual nombre, el de 2024)
+    const officialBooks = (await Book.find({ owner: null }).select("_id").lean()).map((b) => b._id);
+    const docs = (await BookEntry.find({ book: { $in: officialBooks } }).select("book key").lean()) as { book: unknown; key: string }[];
+    const refByKey = new Map<string, { book: string; key: string }>();
+    const spellByName = new Map<string, { book: string; key: string }>();
+    for (const d of docs) {
+      const target = { book: String(d.book), key: d.key };
+      refByKey.set(d.key, target);
+      if (!d.key.startsWith("spell:")) continue;
+      const name = d.key.replace(/^spell:/, "").split("|")[0];
+      if (!spellByName.has(name) || d.key.endsWith("|xphb")) spellByName.set(name, target);
+    }
+    const own = new Set(normalized.entries.map((e) => e.key));
+    const withBook = (data: unknown) => JSON.parse(
+      relinkRefs(JSON.stringify(data), { own, byKey: (k) => refByKey.get(k), spellByName: (n) => spellByName.get(n) })
+        .replaceAll(JSON.stringify(BOOK_PLACEHOLDER), JSON.stringify(bookId)),
+    );
 
     for (let i = 0; i < upserts.length; i += BATCH) {
       const ops = upserts.slice(i, i + BATCH).map((e) => {
@@ -187,6 +224,8 @@ async function main() {
         const $unset: Record<string, 1> = {};
         if (e.parent) $set.parent = { book: book._id, key: e.parent.key };
         else $unset.parent = 1;
+        if (e.superseded) $set.superseded = true;
+        else $unset.superseded = 1;
         const f = foundry.get(e.key);
         if (f) $set.foundry = f;
         else $unset.foundry = 1;
@@ -199,6 +238,11 @@ async function main() {
         };
       });
       await BookEntry.bulkWrite(ops);
+    }
+    // Una clase de homebrew con lista propia también usa conjuros de otros libros: se añade a sus clases
+    for (const c of (brew?.class ?? []) as Record<string, unknown>[]) {
+      const { id, keys } = classSpellKeys(c);
+      if (keys.length) await BookEntry.updateMany({ kind: "spell", key: { $in: keys } }, { $addToSet: { "data.classes": id } });
     }
     for (let i = 0; i < deletes.length; i += BATCH) {
       await BookEntry.deleteMany({ book: book._id, key: { $in: deletes.slice(i, i + BATCH) } });

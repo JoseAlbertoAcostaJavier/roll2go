@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { blankForm, isUntouched, parseDraft } from "@/app/components/characters/creator/CharacterCreator";
 
-const props = { species: [], lineages: {}, classes: [], backgrounds: [], languages: [], choiceItems: [] } as unknown as Parameters<typeof parseDraft>[1];
+const props = { species: [], lineages: {}, levelOneSubclasses: {}, classes: [], backgrounds: [], languages: [], choiceItems: [] } as unknown as Parameters<typeof parseDraft>[1];
 
 describe("parseDraft", () => {
   it("un borrador antiguo con `prepared` se lee sin fallar y el formulario ya no lo tiene", () => {
@@ -26,7 +26,7 @@ describe("parseDraft: objetos a elegir e idiomas", () => {
     B: [{ value: 5000 }],
   };
   const full = {
-    species: [], lineages: {},
+    species: [], lineages: {}, levelOneSubclasses: {},
     classes: [opt("class:rogue|xphb", { equipment })],
     backgrounds: [opt("background:soldier|xphb", { equipment })],
     languages: [opt("language:elvish|xphb", { type: "standard" }), opt("language:dwarvish|xphb", { type: "standard" }), opt("language:celestial|xphb", { type: "rare" })],

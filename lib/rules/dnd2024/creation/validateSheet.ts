@@ -157,7 +157,14 @@ export async function validateSheet(input: unknown, ctx: ValidateCtx): Promise<V
   const bonus: Partial<Record<Ability, 1 | 2>> = {};
   let bgEquipment = "";
   let bgPicks: Record<string, Ref> | undefined;
+  // Un trasfondo de antes de 2024 no trae dote: se elige una de origen
+  let chosenBgFeat: Ref | undefined;
   if (bg && isObj(input.background)) {
+    if (bg.feat === null) {
+      const feat = await load("background.feat", { ref: input.background.feat }, "feat");
+      if (feat && (feat.data as FeatData).category !== "origin") err("background.feat", "Elige una dote de origen.");
+      else if (feat) chosenBgFeat = feat.ref;
+    }
     const rawBonus = isObj(input.background.abilities) ? input.background.abilities : null;
     if (!rawBonus) err("background.abilities", "Reparte la bonificación del trasfondo.");
     else {
@@ -224,7 +231,8 @@ export async function validateSheet(input: unknown, ctx: ValidateCtx): Promise<V
       await loadInto(classEntries, options, ctx.resolve);
       const pending = pendingChoices({ levels: [] }, cEntry.ref, 1, classEntries, subclass ? { subclass: subclass.ref } : {});
       // Conjuros de nivel 1 que ya da otra cosa: especie, legado, dote del trasfondo, clase y subclase
-      const bgFeat = bg?.feat ? ((await ctx.resolve(bg.feat))?.data as FeatData | undefined) : undefined;
+      const originFeat = bg?.feat ?? chosenBgFeat;
+      const bgFeat = originFeat ? ((await ctx.resolve(originFeat))?.data as FeatData | undefined) : undefined;
       const spellsGranted = [species?.spells, lineageData?.spells, bgFeat?.spells, cls.spells, subData?.spells]
         .flatMap((list) => (list ?? []).filter((g) => g.level <= 1).map((g) => g.ref));
       // (los conjuros de la dote del trasfondo, aparte)
@@ -234,7 +242,7 @@ export async function validateSheet(input: unknown, ctx: ValidateCtx): Promise<V
         weapons: cls.weapons, level: 1, subclass, spellsGranted,
       });
       // (y los de las invocaciones elegidas en el nivel 1: Pacto del tomo, y sin repetir uno elegido para la clase)
-      const featSpells = await checkFeatSpells(split.featSpells, bg?.feat, bgFeat, checked.choices, classEntries, ctx);
+      const featSpells = await checkFeatSpells(split.featSpells, originFeat, bgFeat, checked.choices, classEntries, ctx);
       for (const [k, msg] of Object.entries({ ...featSpells.errors, ...checked.errors })) err(k, msg);
       if (Object.keys(checked.errors).length || Object.keys(featSpells.errors).length) ok = false;
       choices = [...checked.choices, ...featSpells.choices];
@@ -355,7 +363,10 @@ export async function validateSheet(input: unknown, ctx: ValidateCtx): Promise<V
     version: 1,
     species: named(speciesEntry),
     lineage,
-    background: { ...named(bgEntry), abilities: bonus, equipment: bgEquipment, ...(bgPicks ? { equipmentPicks: bgPicks } : {}) },
+    background: {
+      ...named(bgEntry), abilities: bonus, equipment: bgEquipment,
+      ...(bgPicks ? { equipmentPicks: bgPicks } : {}), ...(chosenBgFeat ? { feat: chosenBgFeat } : {}),
+    },
     classes,
     abilityMethod: method,
     baseAbilities: base,

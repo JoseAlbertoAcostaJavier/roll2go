@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { EntryOption } from "@/lib/rules/catalog/types";
-import { classFacets, filterGroups, matchesFilters, matchesSearch, speciesFacets, toggleFilter } from "@/lib/rules/dnd2024/optionFilters";
+import { classFacets, filterGroups, isEdition2024, matchesFilters, matchesSearch, speciesFacets, toggleFilter } from "@/lib/rules/dnd2024/optionFilters";
 import { normalizeSpecies } from "@/lib/rules/import/normalize";
 import { validateEntryData } from "@/lib/rules/schemas";
 
@@ -38,6 +38,15 @@ describe("clases", () => {
 
   it("sin característica principal usa la de sus conjuros", () => {
     expect(classFacets(option("Artificer", klass({ primaryAbility: [], spellcasting: { ability: "int" } }))).primary).toEqual(["int"]);
+  });
+});
+
+describe("edición de la entrada", () => {
+  it("reconoce los libros de 2024 por su clave", () => {
+    expect(isEdition2024("class:artificer|efa")).toBe(true);
+    expect(isEdition2024("species:elf|xphb")).toBe(true);
+    expect(isEdition2024("class:artificer|tce")).toBe(false);
+    expect(isEdition2024("species:goblin|mpmm")).toBe(false);
   });
 });
 

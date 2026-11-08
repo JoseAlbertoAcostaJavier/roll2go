@@ -32,12 +32,22 @@ vi.mock("@/lib/server/catalog/books", () => ({
   visibleBooksOf: async () => [{ id: A }, { id: B }],
 }));
 vi.mock("@/lib/models/Book", () => ({
-  Book: { findById: (id: string) => ({ select: () => ({ lean: async () => ({ _id: id, name: `Libro ${id.slice(-1)}` }) }) }) },
+  Book: {
+    find: (f: { _id: { $in: string[] } }) => ({
+      select: () => ({ lean: async () => f._id.$in.map((id) => ({ _id: id, name: `Libro ${id.slice(-1)}` })) }),
+    }),
+  },
 }));
 vi.mock("@/lib/models/BookEntry", () => ({
   BookEntry: {
-    find: (f: { book: string }) => ({
-      select: () => ({ sort: () => ({ lean: async () => (SPELLS[f.book] ?? []).map((s) => ({ ...s, book: f.book })) }) }),
+    find: (f: { book: { $in: string[] } }) => ({
+      select: () => ({
+        sort: () => ({
+          lean: async () => f.book.$in
+            .flatMap((book) => (SPELLS[book] ?? []).map((s) => ({ ...s, book })))
+            .sort((a, b) => (a.nameLower < b.nameLower ? -1 : a.nameLower > b.nameLower ? 1 : 0)),
+        }),
+      }),
     }),
   },
 }));

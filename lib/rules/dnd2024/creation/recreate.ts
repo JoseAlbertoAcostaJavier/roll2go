@@ -12,11 +12,13 @@ export type CreationDraft = {
   status: string;
   species: Ref;
   lineage: Ref | null;
+  subclass: Ref | null;
   speciesSkills: string[];
   size: "S" | "M" | "L" | null;
   background: Ref;
   bonus: Dnd2024SheetV2["background"]["abilities"];
   bgEquipment: string;
+  bgFeat: Ref | null;
   /** Objeto elegido en cada `Pack` con `choose` de la opción de equipo (clave = índice del `Pack`, en texto). */
   bgEquipmentPicks: Record<string, Ref>;
   klass: Ref | null;
@@ -99,11 +101,13 @@ export function creationDraft(
     status: character.status,
     species: sheet.species.ref,
     lineage: sheet.lineage?.ref ?? null,
+    subclass: sheet.classesSummary?.[0]?.subclass?.ref ?? null,
     speciesSkills: sheet.speciesChoices.skills,
     size: sheet.speciesChoices.size,
     background: sheet.background.ref,
     bonus: sheet.background.abilities,
     bgEquipment: sheet.background.equipment,
+    bgFeat: sheet.background.feat ?? null,
     bgEquipmentPicks: sheet.background.equipmentPicks ?? {},
     klass: first?.class.ref ?? null,
     classChoices,

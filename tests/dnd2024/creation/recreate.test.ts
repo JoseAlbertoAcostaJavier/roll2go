@@ -124,6 +124,23 @@ describe("creationDraft: picks e idiomas", () => {
     expect(d.classEquipmentPicks).toEqual({ "2": ref("item:shortsword|xphb") });
     expect(d.languageChoices).toEqual(s.languageChoices);
   });
+  it("lleva al borrador la subclase de nivel 1", () => {
+    const person = { name: "Ana", pronouns: [], status: "active", backstory: "" };
+    const ref = { book: "b", key: "subclass:x|y" };
+    const withSub = { ...sheet() };
+    withSub.classesSummary = [{ class: withSub.classesSummary[0].class, level: 1, subclass: { ref, name: "X" } }];
+    expect(creationDraft(person, withSub).subclass).toEqual(ref);
+  });
+
+  it("lleva al borrador la dote de origen elegida; sin ella, null", () => {
+    const person = { name: "Ana", pronouns: [], status: "active", backstory: "" };
+    expect(creationDraft(person, sheet()).bgFeat).toBeNull();
+    const feat = { book: "b", key: "feat:alert|xphb" };
+    const withFeat = { ...sheet() };
+    withFeat.background = { ...withFeat.background, feat };
+    expect(creationDraft(person, withFeat).bgFeat).toEqual(feat);
+  });
+
   it("una hoja sin picks ni idiomas elegidos da listas vacías", () => {
     const d = creationDraft({ name: "Ana", pronouns: [], status: "active", backstory: "" }, sheet());
     expect(d.bgEquipmentPicks).toEqual({});

@@ -12,7 +12,7 @@ export type Ref = { book: string; key: string };
 
 export type EntryKind =
   | "species" | "lineage" | "class" | "subclass" | "classFeature" | "subclassFeature"
-  | "background" | "feat" | "spell" | "item" | "language" | "skill" | "optionalFeature" | "nameTable" | "action" | "monster";
+  | "background" | "feat" | "spell" | "item" | "language" | "skill" | "optionalFeature" | "nameTable" | "action" | "monster" | "condition";
 // Todos los tipos de entrada, en el orden de EntryKind
 export const ENTRY_KINDS: readonly EntryKind[] = [
   "species",
@@ -31,6 +31,7 @@ export const ENTRY_KINDS: readonly EntryKind[] = [
   "nameTable",
   "action",
   "monster",
+  "condition",
 ];
 
 /** Elemento de equipo: una entrada del catálogo, monedas (pc) o un texto libre. */
@@ -178,8 +179,10 @@ export type OptionalFeatureData = {
 };
 
 export type BackgroundData = {
+  /** Las 3 del trasfondo; en los de antes de 2024, que no traen ninguna, las 6. */
   abilities: Ability[];
-  feat: Ref;
+  /** Dote de origen; los trasfondos de antes de 2024 no tienen. */
+  feat: Ref | null;
   skills: string[];
   tools: string[];
   equipment: Equipment;
@@ -258,6 +261,9 @@ export type ItemData = {
 
 export type LanguageData = { type: "standard" | "rare" };
 
+/** Estado o enfermedad, con su texto como descripción. */
+export type ConditionData = { type: "condition" | "disease" };
+
 /** Bloque de texto de un monstruo (rasgo, acción…), con su texto en BBCode. */
 export type MonsterBlock = { name: string; text: string };
 
@@ -314,6 +320,7 @@ export type EntryData = {
   spell: SpellData;
   item: ItemData;
   monster: MonsterData;
+  condition: ConditionData;
   language: LanguageData;
   skill: SkillData;
   optionalFeature: OptionalFeatureData;

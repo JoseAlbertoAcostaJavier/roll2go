@@ -1,17 +1,18 @@
 "use client";
 
+import Image from "next/image";
 import { useMemo, useRef, useState } from "react";
 import { Check, ChevronDown, Funnel, Search, SearchX, X } from "lucide-react";
 import type { EntryOption } from "@/lib/rules/catalog/types";
 import type { Ref } from "@/lib/rules/types";
 import { bareName } from "@/lib/rules/dnd2024/sheet/equipmentRefs";
-import { classFacets, filterGroups, matchesFilters, matchesSearch, speciesFacets, toggleFilter, type FilterState } from "@/lib/rules/dnd2024/optionFilters";
-import RoundIcon from "../../ui/RoundIcon";
+import { portraitSrc } from "@/lib/utils/icons";
+import { classFacets, filterGroups, isEdition2024, matchesFilters, matchesSearch, speciesFacets, toggleFilter, type FilterState } from "@/lib/rules/dnd2024/optionFilters";
 import useDismiss from "../../ui/useDismiss";
 
 const sameRef = (a: Ref | null, b: Ref) => !!a && a.book === b.book && a.key === b.key;
 
-/* Elección de clase o especie en tarjetas con su icono (botones de opción nativos: flechas del teclado y lector de
+/* Elección de clase o especie en tarjetas con su retrato (botones de opción nativos: flechas del teclado y lector de
    pantalla incluidos), con buscador y filtros. El `id` va en la opción que recibe el foco, para los enlaces de «Falta por
    completar». */
 export default function OptionCards({ id, label, kind, options, lineages, value, onChange }: {
@@ -158,15 +159,16 @@ export default function OptionCards({ id, label, kind, options, lineages, value,
         </p>
       )}
       {/* Con muchos libros la lista es larga: se desplaza por dentro para no alejar lo que viene después */}
-      <div className="-m-1 grid max-h-[30rem] gap-2.5 overflow-y-auto p-1 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="-m-1 grid max-h-[36rem] grid-cols-2 gap-3 overflow-y-auto p-1 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5">
         {visible.map((o, i) => {
           const selected = sameRef(value, o.ref);
           const name = o.nameEs ?? o.name;
           return (
             <label
               key={`${o.ref.book}:${o.ref.key}`}
-              className={`relative flex cursor-pointer items-center gap-3 rounded-xl border p-3 transition-colors has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-brand-soft ${
-                selected ? "border-brand bg-brand/10" : "border-line bg-surface/40 hover:border-line-strong hover:bg-surface"
+              title={o.bookName || undefined}
+              className={`group relative block aspect-[5/6] cursor-pointer overflow-hidden rounded-lg border-2 bg-surface transition-colors has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-brand-soft ${
+                selected ? "border-brand" : "border-line hover:border-line-strong"
               }`}
             >
               <input
@@ -177,12 +179,25 @@ export default function OptionCards({ id, label, kind, options, lineages, value,
                 onChange={() => onChange(o.ref)}
                 className="sr-only"
               />
-              <RoundIcon kind={kind} id={bareName(o.ref.key)} label={name} size={44} />
-              <span className="min-w-0 flex-1">
-                <span className="block truncate font-heading text-sm font-bold text-white">{name}</span>
-                {o.bookName && <span className="block truncate text-xs text-muted">{o.bookName}</span>}
+              <Image
+                src={portraitSrc(kind, bareName(o.ref.key))}
+                alt=""
+                fill
+                sizes="(min-width: 1280px) 170px, (min-width: 768px) 25vw, (min-width: 640px) 33vw, 50vw"
+                className="object-cover object-top transition-transform duration-300 group-hover:scale-105"
+              />
+              {isEdition2024(o.ref.key) && (
+                <span className="absolute right-1.5 top-1.5 rounded bg-brand px-1.5 py-0.5 text-[10px] font-bold leading-none text-white">2024</span>
+              )}
+              {selected && (
+                <span className="absolute left-1.5 top-1.5 flex size-6 items-center justify-center rounded-full bg-brand text-white">
+                  <Check size={14} strokeWidth={3} aria-hidden="true" />
+                </span>
+              )}
+              <span className="absolute inset-x-0 bottom-0 flex min-h-[40%] flex-col items-center justify-center bg-black/65 px-1.5 py-1.5 text-center">
+                <span className="line-clamp-2 font-heading text-sm font-bold leading-tight text-white">{name}</span>
+                {o.bookName && <span className="mt-0.5 w-full truncate text-[10px] leading-tight text-white/75">{o.bookName}</span>}
               </span>
-              {selected && <Check size={16} strokeWidth={3} aria-hidden="true" className="shrink-0 text-brand-soft" />}
             </label>
           );
         })}

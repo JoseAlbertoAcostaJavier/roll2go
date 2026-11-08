@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { Check, ChevronDown, LoaderCircle, SearchX, X } from "lucide-react";
 import type { EntryOption } from "@/lib/rules/catalog/types";
 import type { Ref } from "@/lib/rules/types";
+import { isEdition2024 } from "@/lib/rules/dnd2024/optionFilters";
 import { normalizeName } from "@/lib/rules/schemas";
 import { labelClass } from "../../ui/formStyles";
 import useDismiss from "../../ui/useDismiss";
@@ -34,7 +35,7 @@ function placeFor(el: HTMLElement): Place {
 /* Desplegable con búsqueda (combobox accesible) para elegir una entrada de reglas. Con `loadOptions` la búsqueda
    se hace en remoto (con espera) en vez de filtrar `options` en local. */
 export default function RuleSelect({
-  id, label, options, value, onChange, disabled, placeholder = "Selecciona una opción", loadOptions,
+  id, label, options, value, onChange, disabled, placeholder = "Selecciona una opción", loadOptions, showEdition,
 }: {
   id: string;
   label: string;
@@ -44,6 +45,8 @@ export default function RuleSelect({
   onChange: (ref: Ref | null) => void;
   disabled?: boolean;
   placeholder?: string;
+  /** Marca con «2024» las opciones de esa edición. */
+  showEdition?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -244,6 +247,11 @@ export default function RuleSelect({
                 <span className="block truncate font-medium">{displayName(o)}</span>
                 {o.bookName && <span className="block truncate text-xs text-muted">{o.bookName}</span>}
               </span>
+              {showEdition && isEdition2024(o.ref.key) && (
+                <span className="rounded bg-brand px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white" title="De las reglas de 2024">
+                  2024
+                </span>
+              )}
               {o.srd52 && (
                 <span className="rounded bg-line/50 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-muted" title="Incluido en el SRD 5.2">
                   SRD

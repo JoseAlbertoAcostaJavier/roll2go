@@ -17,6 +17,8 @@ export type Dnd2024Sheet = {
    */
   background: Named & {
     abilities: Partial<Record<Ability, 1 | 2>>; equipment: string; equipmentPicks?: Record<string, Ref>;
+    /** Dote de origen elegida, en los trasfondos de antes de 2024 (no traen la suya). */
+    feat?: Ref;
   };
   classes: (Named & {
     level: number; subclass: Named | null; skills: string[]; equipment: string; equipmentPicks?: Record<string, Ref>;

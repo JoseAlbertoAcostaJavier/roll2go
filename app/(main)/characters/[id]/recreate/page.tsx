@@ -22,7 +22,7 @@ export default async function RecreateCharacterPage({ params }: { params: Promis
   const campaign = await campaignRefOf(c);
 
   // Las mismas listas que en el alta, con los libros del personaje (las de conjuros, bajo demanda)
-  const { species, lineages, classes, backgrounds, feats, optionalFeatures, weapons, languages, choiceItems } = await loadCreatorLists(books);
+  const { species, lineages, levelOneSubclasses, classes, backgrounds, feats, optionalFeatures, weapons, languages, choiceItems } = await loadCreatorLists(books);
 
   const initial = creationDraft(
     { name: c.name, pronouns: (c.pronouns ?? []) as string[], status: c.status, backstory: c.backstory ?? "" },
@@ -47,6 +47,7 @@ export default async function RecreateCharacterPage({ params }: { params: Promis
         chosenBooks={books}
         species={species}
         lineages={lineages}
+        levelOneSubclasses={levelOneSubclasses}
         classes={classes}
         backgrounds={backgrounds}
         feats={feats}

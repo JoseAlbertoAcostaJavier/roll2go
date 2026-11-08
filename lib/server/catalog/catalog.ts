@@ -26,7 +26,7 @@ export class NotFoundError extends Error {
   }
 }
 
-const MAX_RESULTS = 200;
+const MAX_RESULTS = 2000;
 const CACHE_SECONDS = 3600;
 // Solo estos tipos devuelven `data` en el listado; el resto lo omite para aligerar la respuesta
 // (las dotes y los rasgos opcionales, para filtrarlos por categoría en las elecciones de clase; los idiomas, por
@@ -77,198 +77,117 @@ const toOption = (d: EntryDoc, bookName: string, withData: boolean): EntryOption
   data: withData ? (d.data ?? null) : null,
 });
 
-type Cached = { entries: { sort: string; option: EntryOption }[] };
+const NOT_SUPERSEDED = { superseded: { $ne: true } };
+const validIds = (books: string[]) => [...new Set(books)].filter((id) => mongoose.isValidObjectId(id)).sort();
 
-/* Listado de un libro. La clave de caché incluye todos los argumentos y la etiqueta `book:<id>` permite
-   invalidar un libro entero al editarlo. Se omiten las entradas cuyo `data` no es válido para su tipo (p. ej. las
-   de usuario aún sin rellenar), para que el asistente no ofrezca opciones con las que no puede trabajar. */
-function listBookEntries(bookId: string, kind: EntryKind, parent: string, q: string) {
+async function bookNames(ids: string[]): Promise<Map<string, string>> {
+  const docs = (await Book.find({ _id: { $in: ids } }).select("name").lean()) as unknown as { _id: unknown; name: string }[];
+  return new Map(docs.map((b) => [String(b._id), b.name]));
+}
+
+/* Una lista del catálogo para un conjunto de libros: una sola consulta aunque haya decenas de libros. La clave de caché lleva
+   los libros y las etiquetas `book:<id>` permiten invalidar la lista al editar cualquiera de ellos. */
+function cachedList<T>(name: string, args: string[], ids: string[], load: (names: Map<string, string>) => Promise<T[]>): Promise<T[]> {
+  if (!ids.length) return Promise.resolve([]);
   return unstable_cache(
-    async (): Promise<Cached> => {
+    async () => {
       await connectDB();
-      const book = await Book.findById(bookId).select("name").lean();
-      if (!book) return { entries: [] };
-      const withData = KINDS_WITH_DATA.includes(kind);
-      const filter: Record<string, unknown> = { book: bookId, kind };
-      if (parent) filter["parent.key"] = parent;
-      if (q) filter.nameLower = { $regex: "^" + escapeRegex(q) };
-      const docs = (await BookEntry.find(filter)
-        .select("-description -descriptionEs -foundry")
-        .sort({ nameLower: 1 })
-        .limit(MAX_RESULTS)
-        .lean()) as unknown as EntryDoc[];
-      return {
-        entries: docs
-          .filter((d) => validateEntryData(kind, d.data).ok)
-          .map((d) => ({ sort: d.nameLower, option: toOption(d, book.name, withData) })),
-      };
+      return load(await bookNames(ids));
     },
-    ["rules-entries-v2", bookId, kind, parent, q],
-    { tags: [`book:${bookId}`], revalidate: CACHE_SECONDS },
+    [name, ids.join(","), ...args],
+    { tags: ids.map((id) => `book:${id}`), revalidate: CACHE_SECONDS },
   )();
 }
 
-// Entradas de un tipo en los libros dados, ordenadas por nombre (sin tildes); `q` busca por prefijo
+/* Entradas de un tipo en los libros dados, ordenadas por nombre (sin tildes); `q` busca por prefijo. Se omiten las de libros que
+   ya no existen y aquellas cuyo `data` no es válido para su tipo (p. ej. las de usuario aún sin rellenar), para que el asistente
+   no ofrezca opciones con las que no puede trabajar. */
 export async function listEntries(opts: {
   books: string[];
   kind: EntryKind;
   parent?: string;
   q?: string;
 }): Promise<EntryOption[]> {
-  const books = [...new Set(opts.books)].filter((id) => mongoose.isValidObjectId(id)).sort();
+  const { kind } = opts;
+  const parent = opts.parent ?? "";
   const q = normalizeName((opts.q ?? "").trim());
-  const lists = await Promise.all(books.map((id) => listBookEntries(id, opts.kind, opts.parent ?? "", q)));
-  return lists
-    .flatMap((l) => l.entries)
-    .sort((a, b) => (a.sort < b.sort ? -1 : a.sort > b.sort ? 1 : 0))
-    .slice(0, MAX_RESULTS)
-    .map((e) => e.option);
+  const ids = validIds(opts.books);
+  return cachedList("rules-entries-v9", [kind, parent, q], ids, async (names) => {
+    const withData = KINDS_WITH_DATA.includes(kind);
+    const filter: Record<string, unknown> = { book: { $in: ids }, kind, ...NOT_SUPERSEDED };
+    if (parent) filter["parent.key"] = parent;
+    if (q) filter.nameLower = { $regex: "^" + escapeRegex(q) };
+    const docs = (await BookEntry.find(filter)
+      .select("-description -descriptionEs -foundry")
+      .sort({ nameLower: 1 })
+      .limit(MAX_RESULTS)
+      .lean()) as unknown as EntryDoc[];
+    return docs
+      .filter((d) => names.has(String(d.book)) && validateEntryData(kind, d.data).ok)
+      .map((d) => toOption(d, names.get(String(d.book))!, withData));
+  });
 }
 
-/* Armas con propiedad de maestría de un libro (con `data`), para elegir maestrías. Misma caché que el listado. */
-function listBookMasteryWeapons(bookId: string) {
-  return unstable_cache(
-    async (): Promise<Cached> => {
-      await connectDB();
-      const book = await Book.findById(bookId).select("name").lean();
-      if (!book) return { entries: [] };
-      const docs = (await BookEntry.find({ book: bookId, kind: "item", "data.weapon.mastery": { $exists: true } })
-        .select("-description -descriptionEs -foundry")
-        .sort({ nameLower: 1 })
-        .lean()) as unknown as EntryDoc[];
-      return {
-        entries: docs
-          .filter((d) => validateEntryData("item", d.data).ok && isMasteryWeapon(d.data as ItemData))
-          .map((d) => ({ sort: d.nameLower, option: toOption(d, book.name, true) })),
-      };
-    },
-    ["rules-mastery-weapons", bookId],
-    { tags: [`book:${bookId}`], revalidate: CACHE_SECONDS },
-  )();
+// Objetos (con `data`) que cumplen `match` y son válidos, de los libros dados y ordenados por nombre
+async function listItems(cacheName: string, books: string[], match: Record<string, unknown>, keep: (data: ItemData) => boolean) {
+  const ids = validIds(books);
+  return cachedList(cacheName, [], ids, async (names) => {
+    const docs = (await BookEntry.find({ book: { $in: ids }, kind: "item", ...NOT_SUPERSEDED, ...match })
+      .select("-description -descriptionEs -foundry")
+      .sort({ nameLower: 1 })
+      .lean()) as unknown as EntryDoc[];
+    return docs
+      .filter((d) => names.has(String(d.book)) && validateEntryData("item", d.data).ok && keep(d.data as ItemData))
+      .map((d) => toOption(d, names.get(String(d.book))!, true));
+  });
 }
 
 /** Armas con propiedad de maestría de los libros dados, ordenadas por nombre. */
-export async function listMasteryWeapons(books: string[]): Promise<EntryOption[]> {
-  const ids = [...new Set(books)].filter((id) => mongoose.isValidObjectId(id)).sort();
-  const lists = await Promise.all(ids.map(listBookMasteryWeapons));
-  return lists
-    .flatMap((l) => l.entries)
-    .sort((a, b) => (a.sort < b.sort ? -1 : a.sort > b.sort ? 1 : 0))
-    .map((e) => e.option);
+export function listMasteryWeapons(books: string[]): Promise<EntryOption[]> {
+  return listItems("rules-mastery-weapons-v4", books, { "data.weapon.mastery": { $exists: true } }, isMasteryWeapon);
 }
 
-/* Objetos no mágicos que pueden ser la elección de un paquete de equipo (juegos, instrumentos, herramientas de
-   artesano y armas sencillas o marciales), con `data` para filtrarlos con `choiceMatches`. Misma caché que el listado. */
-function listBookChoiceItems(bookId: string) {
-  return unstable_cache(
-    async (): Promise<Cached> => {
-      await connectDB();
-      const book = await Book.findById(bookId).select("name").lean();
-      if (!book) return { entries: [] };
-      const docs = (await BookEntry.find({
-        book: bookId,
-        kind: "item",
-        "data.rarity": { $exists: false },
-        $or: [{ "data.type": { $in: ["GS", "INS", "AT"] } }, { "data.weapon.category": { $in: ["simple", "martial"] } }],
-      })
-        .select("-description -descriptionEs -foundry")
-        .sort({ nameLower: 1 })
-        .lean()) as unknown as EntryDoc[];
-      return {
-        entries: docs
-          .filter((d) => validateEntryData("item", d.data).ok)
-          .map((d) => ({ sort: d.nameLower, option: toOption(d, book.name, true) })),
-      };
-    },
-    ["rules-choice-items", bookId],
-    { tags: [`book:${bookId}`], revalidate: CACHE_SECONDS },
-  )();
+/** Objetos no mágicos que pueden ser la elección de un paquete de equipo (juegos, instrumentos, herramientas de artesano y armas
+ *  sencillas o marciales), con `data` para filtrarlos con `choiceMatches`; de los libros dados, ordenados por nombre. */
+export function listChoiceItems(books: string[]): Promise<EntryOption[]> {
+  return listItems("rules-choice-items-v4", books, {
+    "data.rarity": { $exists: false },
+    $or: [{ "data.type": { $in: ["GS", "INS", "AT"] } }, { "data.weapon.category": { $in: ["simple", "martial"] } }],
+  }, () => true);
 }
 
-/** Objetos que pueden elegirse en el equipo inicial, de los libros dados, ordenados por nombre. */
-export async function listChoiceItems(books: string[]): Promise<EntryOption[]> {
-  const ids = [...new Set(books)].filter((id) => mongoose.isValidObjectId(id)).sort();
-  const lists = await Promise.all(ids.map(listBookChoiceItems));
-  return lists
-    .flatMap((l) => l.entries)
-    .sort((a, b) => (a.sort < b.sort ? -1 : a.sort > b.sort ? 1 : 0))
-    .map((e) => e.option);
-}
-
-type CachedSpells = { entries: { sort: string; option: SpellOption }[] };
-
-/* Todos los conjuros de un libro con datos y resumen, para la pestaña Conjuros (sin el límite del listado, que se
-   queda corto para un libro con 391). Misma caché que el listado. */
-function listBookSpells(bookId: string) {
-  return unstable_cache(
-    async (): Promise<CachedSpells> => {
-      await connectDB();
-      const book = await Book.findById(bookId).select("name").lean();
-      if (!book) return { entries: [] };
-      const docs = (await BookEntry.find({ book: bookId, kind: "spell" })
-        .select("-foundry")
-        .sort({ nameLower: 1 })
-        .lean()) as unknown as FullEntryDoc[];
-      return {
-        entries: docs
-          .filter((d) => validateEntryData("spell", d.data).ok)
-          .map((d) => {
-            // La mejora va también al final de la descripción, que se pide al abrir la ficha del conjuro
-            const data = { ...(d.data as SpellData) };
-            delete data.higherLevels;
-            const summary = spellSummary(d.descriptionEs || d.description || "");
-            return { sort: d.nameLower, option: { ...toOption(d, book.name, false), data, summary } };
-          }),
-      };
-    },
-    ["rules-spells", bookId],
-    { tags: [`book:${bookId}`], revalidate: CACHE_SECONDS },
-  )();
-}
-
-/** Conjuros de los libros dados, ordenados por nombre. */
+/** Conjuros de los libros dados con datos y resumen, para la pestaña Conjuros (sin el límite del listado); ordenados por nombre. */
 export async function listSpells(books: string[]): Promise<SpellOption[]> {
-  const ids = [...new Set(books)].filter((id) => mongoose.isValidObjectId(id)).sort();
-  const lists = await Promise.all(ids.map(listBookSpells));
-  return lists
-    .flatMap((l) => l.entries)
-    .sort((a, b) => (a.sort < b.sort ? -1 : a.sort > b.sort ? 1 : 0))
-    .map((e) => e.option);
+  const ids = validIds(books);
+  return cachedList("rules-spells-v4", [], ids, async (names) => {
+    const docs = (await BookEntry.find({ book: { $in: ids }, kind: "spell", ...NOT_SUPERSEDED })
+      .select("-foundry")
+      .sort({ nameLower: 1 })
+      .lean()) as unknown as FullEntryDoc[];
+    return docs
+      .filter((d) => names.has(String(d.book)) && validateEntryData("spell", d.data).ok)
+      .map((d) => {
+        // La mejora va también al final de la descripción, que se pide al abrir la ficha del conjuro
+        const data = { ...(d.data as SpellData) };
+        delete data.higherLevels;
+        const summary = spellSummary(d.descriptionEs || d.description || "");
+        return { ...toOption(d, names.get(String(d.book))!, false), data, summary };
+      });
+  });
 }
 
-type CachedEntries = { entries: { sort: string; entry: CatalogEntry }[] };
-
-/* Acciones básicas de combate de un libro, completas (con descripción), para la pestaña Acciones. Misma caché que el
-   listado. */
-function listBookActions(bookId: string) {
-  return unstable_cache(
-    async (): Promise<CachedEntries> => {
-      await connectDB();
-      const book = await Book.findById(bookId).select("name").lean();
-      if (!book) return { entries: [] };
-      const docs = (await BookEntry.find({ book: bookId, kind: "action" })
-        .select("-foundry")
-        .sort({ nameLower: 1 })
-        .lean()) as unknown as FullEntryDoc[];
-      return {
-        entries: docs
-          .filter((d) => validateEntryData("action", d.data).ok)
-          .map((d) => ({ sort: d.nameLower, entry: toEntry(d, book.name) })),
-      };
-    },
-    ["rules-actions", bookId],
-    { tags: [`book:${bookId}`], revalidate: CACHE_SECONDS },
-  )();
-}
-
-/** Acciones básicas de combate (entradas `action`) de los libros dados, ordenadas por nombre. */
+/** Acciones básicas de combate (entradas `action`) de los libros dados, completas y ordenadas por nombre. */
 export async function listActions(books: string[]): Promise<CatalogEntry[]> {
-  const ids = [...new Set(books)].filter((id) => mongoose.isValidObjectId(id)).sort();
-  const lists = await Promise.all(ids.map(listBookActions));
-  return lists
-    .flatMap((l) => l.entries)
-    .sort((a, b) => (a.sort < b.sort ? -1 : a.sort > b.sort ? 1 : 0))
-    .map((e) => e.entry);
+  const ids = validIds(books);
+  return cachedList("rules-actions-v4", [], ids, async (names) => {
+    const docs = (await BookEntry.find({ book: { $in: ids }, kind: "action", ...NOT_SUPERSEDED })
+      .select("-foundry")
+      .sort({ nameLower: 1 })
+      .lean()) as unknown as FullEntryDoc[];
+    return docs
+      .filter((d) => names.has(String(d.book)) && validateEntryData("action", d.data).ok)
+      .map((d) => toEntry(d, names.get(String(d.book))!));
+  });
 }
 
 /** Filas ligeras de una lista de clase (`ALL_LISTS`: de todas) en los libros dados, ordenadas por nombre. */

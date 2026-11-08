@@ -5,9 +5,9 @@ import { applyCustom } from "@/lib/rules/dnd2024/sheet/custom";
 import { itemActions } from "@/lib/rules/dnd2024/sheet/itemActions";
 import type { Dnd2024SheetV2, InventoryItem } from "@/lib/rules/dnd2024/sheet/sheet";
 import { applyStatus } from "@/lib/rules/dnd2024/sheet/status";
-import { normalizeFeat, normalizeLanguage, normalizeMonster } from "@/lib/rules/import/normalize";
+import { BOOK_PLACEHOLDER, classSpellKeys, inferWeaponMasteries, normalizeAll, normalizeBackground, normalizeFeat, normalizeLanguage, normalizeMonster, relinkRefs } from "@/lib/rules/import/normalize";
 import { validateEntryData } from "@/lib/rules/schemas";
-import type { ItemData, MonsterData } from "@/lib/rules/types";
+import type { BackgroundData, ConditionData, ItemData, MonsterData } from "@/lib/rules/types";
 
 const mods = { str: 0, dex: 3, con: 0, int: 0, wis: 0, cha: 0 };
 const weapon = (properties: string[], over: Partial<ItemData> = {}) => ({
@@ -125,6 +125,146 @@ describe("libros anteriores a 2024", () => {
       expect(normalizeLanguage({ name: "Quori", source: "ERLW", type }).data).toEqual({ type: "rare" });
     }
     expect(normalizeLanguage({ name: "Común", source: "ERLW", type: "standard" }).data).toEqual({ type: "standard" });
+  });
+});
+
+describe("clases y conjuros entre archivos", () => {
+  it("una clase puede copiar de otro archivo", () => {
+    const files = { classes: [
+      { class: [{ name: "Ranger", source: "XPHB", hd: { number: 1, faces: 10 } }] },
+      { class: [{ name: "Hunter", source: "WoW", _copy: { name: "Ranger", source: "XPHB" } }] },
+    ] };
+    expect(normalizeAll(files as never, "WoW").errors.filter((e) => /_copy/.test(e.errors.join()))).toEqual([]);
+  });
+
+  it("un conjuro con su lista de clases la conserva", () => {
+    const spell = { name: "Hechizo", source: "EGW", level: 1, school: "A", time: [], range: {}, components: {}, duration: [], entries: ["x"], classes: { fromClassList: [{ name: "Wizard", source: "PHB" }] } };
+    const { entries } = normalizeAll({ spells: [{ spell: [spell] }] } as never, "EGW");
+    expect((entries[0]?.data as { classes: string[] }).classes).toEqual(["wizard"]);
+  });
+
+  it("la lista de una clase de homebrew distingue los conjuros con libro de los del Manual", () => {
+    expect(classSpellKeys({ name: "Apothecary", classSpells: ["Acid Burn|Guide", "Light"] })).toEqual({
+      id: "apothecary", keys: ["spell:acid burn|guide", "spell:light|phb", "spell:light|xphb"],
+    });
+  });
+});
+
+describe("opciones sustituidas por su versión 2024", () => {
+  it("una entrada reimpresa queda marcada; las demás no", () => {
+    const { entries } = normalizeAll({ languages: { language: [{ name: "Viejo", source: "PHB", type: "standard", reprintedAs: ["Viejo|XPHB"] }, { name: "Otro", source: "PHB", type: "standard" }] } } as never, "PHB");
+    expect(entries.map((e) => [e.name, !!e.superseded])).toEqual([["Viejo", true], ["Otro", false]]);
+  });
+
+  it("una subclase adaptada cede ante la propia de la clase; sin propia, sigue", () => {
+    const sub = (source: string, shortName: string) => ({ name: shortName, shortName, source, className: "Bard", classSource: "XPHB", features: [], subclassFeatures: [] });
+    const files = { classes: [{ subclass: [sub("XPHB", "Glamour"), sub("XGE", "Glamour"), sub("XGE", "Swords")] }] };
+    const of = (s: string) => normalizeAll(files as never, s).entries.filter((e) => e.kind === "subclass").map((e) => [e.key.split("|").at(-1) === s.toLowerCase() && e.name, !!e.superseded]);
+    expect(of("XGE")).toEqual([["Glamour", true], ["Swords", false]]);
+    expect(of("XPHB")).toEqual([["Glamour", false]]);
+  });
+});
+
+describe("referencias a otros libros", () => {
+  const data = (key: string) => JSON.stringify({ ref: { book: BOOK_PLACEHOLDER, key } });
+  const spell = { book: "xphb", key: "spell:levitate|xphb" };
+  const opts = {
+    own: new Set(["item:propio|tce"]),
+    byKey: (k: string) => (k === "item:rope|xphb" ? { book: "xphb", key: k } : undefined),
+    spellByName: (n: string) => (n === "levitate" ? spell : undefined),
+  };
+
+  it("un conjuro sin fuente o del Manual de 2014 pasa al del catálogo", () => {
+    expect(JSON.parse(relinkRefs(data("spell:levitate"), opts))).toEqual({ ref: spell });
+    expect(JSON.parse(relinkRefs(data("spell:levitate|phb"), opts))).toEqual({ ref: spell });
+  });
+
+  it("una entrada de otro libro enlaza a ese libro", () => {
+    expect(JSON.parse(relinkRefs(data("item:rope|xphb"), opts))).toEqual({ ref: { book: "xphb", key: "item:rope|xphb" } });
+  });
+
+  it("deja las del propio libro y las que no encuentra", () => {
+    for (const key of ["item:propio|tce", "spell:otro", "item:nada|tce"]) expect(relinkRefs(data(key), opts)).toBe(data(key));
+  });
+});
+
+describe("subrazas como variantes de la especie", () => {
+  const files = {
+    races: {
+      race: [{ name: "Genasi", source: "MPMM", size: ["M"], speed: 30, entries: [] }, { name: "Humano", source: "MPMM", size: ["M"], speed: 30, entries: [] }],
+      subrace: [
+        { name: "Air", source: "MPMM", raceName: "Genasi", raceSource: "MPMM", speed: 35, resist: ["lightning"], entries: [{ type: "entries", name: "Viento", entries: ["x"] }] },
+        { name: "Otra", source: "MPMM", raceName: "Genasi", raceSource: "EEPC", entries: [] },
+      ],
+    },
+  };
+
+  it("Genasi pasa a tener legados y cada subraza es uno", () => {
+    const { entries, errors } = normalizeAll(files as never, "MPMM");
+    expect(errors).toEqual([]);
+    const genasi = entries.find((e) => e.key === "species:genasi|mpmm")!;
+    expect(genasi.data).toMatchObject({ hasLineages: true });
+    expect(entries.find((e) => e.key === "species:humano|mpmm")!.data).toMatchObject({ hasLineages: false });
+    const air = entries.filter((e) => e.kind === "lineage");
+    expect(air.map((e) => e.key)).toEqual(["lineage:genasi (air)|mpmm"]);
+    expect(air[0].parent?.key).toBe("species:genasi|mpmm");
+    expect(air[0].data).toMatchObject({ speed: 35, traitName: "Viento" });
+  });
+});
+
+describe("maestrías de una clase de homebrew", () => {
+  const raw = { name: "Blood Hunter" };
+  const feature = (over: object = {}) => ({ name: "Weapon Mastery", className: "Blood Hunter", level: 1, entries: ["Use the properties of two kinds of weapons of your choice."], ...over });
+
+  it("se deducen del texto del rasgo", () => {
+    expect(inferWeaponMasteries(raw, [feature()]).itemMasteriesProgression).toEqual({ 1: 2 });
+  });
+
+  it("respeta la que ya trae la clase", () => {
+    const own = { ...raw, itemMasteriesProgression: { 1: 3 } };
+    expect(inferWeaponMasteries(own, [feature()])).toBe(own);
+  });
+
+  it("sin rasgo, de otra clase o sin número no añade nada", () => {
+    expect(inferWeaponMasteries(raw, [])).toBe(raw);
+    expect(inferWeaponMasteries(raw, [feature({ className: "Otra" })])).toBe(raw);
+    expect(inferWeaponMasteries(raw, [feature({ entries: ["Some weapons."] })])).toBe(raw);
+  });
+});
+
+describe("trasfondos de antes de 2024", () => {
+  const raw = {
+    name: "Soldier", source: "PHB", entries: [], skillProficiencies: [{ athletics: true }],
+    startingEquipment: [{ _: ["clothes|phb", { value: 1000 }] }, { a: ["dagger|phb"], b: ["mace|phb"] }],
+  };
+
+  it("permite elegir entre las 6 características, sin dote, y da una opción de equipo", () => {
+    const e = normalizeBackground(raw);
+    expect(validateEntryData("background", e.data).ok).toBe(true);
+    const d = e.data as BackgroundData;
+    expect(d.abilities).toHaveLength(6);
+    expect(d.feat).toBeNull();
+    expect(Object.keys(d.equipment)).toEqual(["A"]);
+    expect(d.equipment.A).toHaveLength(3);
+  });
+
+  it("uno de 2024 mantiene sus 3 y su dote", () => {
+    const e = normalizeBackground({
+      name: "Sage", source: "XPHB", entries: [], feats: [{ "magic initiate|xphb": true }],
+      ability: [{ choose: { weighted: { from: ["con", "int", "wis"], weights: [2, 1] } } }],
+      startingEquipment: [{ A: [{ value: 800 }], B: [{ value: 5000 }] }],
+    });
+    expect(validateEntryData("background", e.data).ok).toBe(true);
+    expect((e.data as BackgroundData).abilities).toEqual(["con", "int", "wis"]);
+    expect(Object.keys((e.data as BackgroundData).equipment)).toEqual(["A", "B"]);
+  });
+});
+
+describe("estados y enfermedades", () => {
+  it("se importan con su tipo", () => {
+    const { entries } = normalizeAll({ conditions: { condition: [{ name: "Blinded", source: "XPHB", entries: ["x"] }], disease: [{ name: "Cackle Fever", source: "XPHB", entries: ["y"] }] } } as never, "XPHB");
+    expect(entries.map((e) => [e.key, (e.data as ConditionData).type])).toEqual([["condition:blinded|xphb", "condition"], ["condition:cackle fever|xphb", "disease"]]);
+    for (const e of entries) expect(validateEntryData("condition", e.data).ok).toBe(true);
   });
 });
 

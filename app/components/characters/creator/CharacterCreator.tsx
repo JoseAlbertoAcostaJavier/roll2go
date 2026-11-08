@@ -4,14 +4,14 @@ import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "reac
 import { flushSync } from "react-dom";
 import { useRouter } from "next/navigation";
 import {
-  ChevronLeft, ChevronRight, Dices, Dna, FileText, Globe, LoaderCircle, Package, Shield, Sword, TriangleAlert, User, Wand2,
+  ChevronLeft, ChevronRight, Dna, FileText, LoaderCircle, Package, TriangleAlert, User, Wand2,
 } from "lucide-react";
 import Bbcode from "@/app/components/ui/Bbcode";
 import { field, labelClass, primaryButton, secondaryButton } from "@/app/components/ui/formStyles";
 import type { CatalogEntry, EntryOption } from "@/lib/rules/catalog/types";
 import {
   ABILITIES, type Ability, type BackgroundData, type ClassData, type Equipment, type FeatData, type FeatureData,
-  type LanguageData, type OptionalFeatureData, type Pack, type Ref, type SpeciesData,
+  type LanguageData, type OptionalFeatureData, type Pack, type Ref, type SpeciesData, type SubclassData,
 } from "@/lib/rules/types";
 import type { AbilityMethod, Dnd2024Sheet } from "@/lib/rules/dnd2024/sheet/sheet";
 import { checkBackgroundBonus } from "@/lib/rules/dnd2024/creation/abilities";
@@ -36,6 +36,7 @@ import AbilityScores from "./AbilityScores";
 import CharacterSummary, { type MissingItem } from "./CharacterSummary";
 import CreatorStepper, { StepAnchor, StepSection, focusSection, type CreatorStep } from "./CreatorSteps";
 import OptionCards from "./OptionCards";
+import { isEdition2024 } from "@/lib/rules/dnd2024/optionFilters";
 import ClassFeaturesSection, { choicesFor, refFromKey, unfinished, type ChoiceValues } from "./ClassFeaturesSection";
 import EquipmentPicks from "./EquipmentPicks";
 import LanguagesSection from "./LanguagesSection";
@@ -70,6 +71,10 @@ type FormState = {
   background: Ref | null;
   bonus: Partial<Record<Ability, number>>;
   bgEquipment: string;
+  /** Dote de origen elegida, si el trasfondo (de antes de 2024) no trae la suya. */
+  bgFeat: Ref | null;
+  /** Subclase, en las clases que la eligen en el nivel 1. */
+  subclass: Ref | null;
   /** Objeto elegido en cada paquete con `choose` de la opción de equipo, por índice del paquete (en texto). */
   bgEquipmentPicks: Record<string, Ref>;
   klass: Ref | null;
@@ -107,6 +112,8 @@ type Props = {
   species: EntryOption[];
   /** Legados por "libro:clave" de la especie. */
   lineages: Record<string, EntryOption[]>;
+  /** Subclases por "libro:clave" de las clases que la eligen en el nivel 1. */
+  levelOneSubclasses: Record<string, EntryOption[]>;
   classes: EntryOption[];
   backgrounds: EntryOption[];
   /** Dotes (con `data`), para los estilos de combate. */
@@ -129,7 +136,7 @@ type Props = {
 const emptyForm = (): FormState => ({
   name: "", pronouns: [], status: "active",
   species: null, lineage: null, speciesSkills: [], size: null,
-  background: null, bonus: {}, bgEquipment: "", bgEquipmentPicks: {},
+  background: null, bonus: {}, bgEquipment: "", bgFeat: null, subclass: null, bgEquipmentPicks: {},
   klass: null, classChoices: {}, classEquipment: "", classEquipmentPicks: {}, spells: emptySpellPick(),
   featSpells: {}, featAbility: {},
   method: "pointBuy", base: { str: 8, dex: 8, con: 8, int: 8, wis: 8, cha: 8 }, rolls: null,
@@ -153,6 +160,8 @@ const findOption = (list: EntryOption[], ref: Ref | null) => (ref ? list.find((o
 const nameOf = (e: { nameEs: string | null; name: string }) => e.nameEs ?? e.name;
 const letters = (eq: Equipment | undefined) => Object.keys(eq ?? {}).sort();
 const fmtGold = (copper: number) => `${(copper / 100).toLocaleString("es-ES", { maximumFractionDigits: 2 })} po`;
+
+const STEP_ICON = (name: string) => `/assets/icons/creator-steps/${name}.svg`;
 
 // Los pasos del asistente, para la barra de progreso y los enlaces de "Falta por completar"
 const S = {
@@ -218,13 +227,14 @@ export function parseDraft(raw: string | null, props: Props): FormState {
     form.lineage = findOption(props.lineages[refKey(form.species)] ?? [], asRef(d.lineage))?.ref ?? null;
   form.background = findOption(props.backgrounds, asRef(d.background))?.ref ?? null;
   form.klass = findOption(props.classes, asRef(d.klass))?.ref ?? null;
+  form.subclass = form.klass ? (findOption(props.levelOneSubclasses[refKey(form.klass)] ?? [], asRef(d.subclass))?.ref ?? null) : null;
   form.speciesSkills = form.species ? strings(d.speciesSkills) : [];
   form.size = ["S", "M", "L"].includes(d.size as string) && form.species ? (d.size as Size) : null;
   if (form.klass && isObj(d.classChoices))
     for (const [source, v] of Object.entries(d.classChoices)) form.classChoices[source] = strings(v);
   if (form.klass) form.spells = parseSpellPick(d.spells);
   // Conjuros de dotes e invocaciones por fuente (los borradores anteriores guardaban solo los de la dote del trasfondo)
-  const bgFeat = (findOption(props.backgrounds, form.background)?.data as BackgroundData | undefined)?.feat;
+  const bgFeat = (findOption(props.backgrounds, form.background)?.data as BackgroundData | undefined)?.feat ?? form.bgFeat;
   const legacy = bgFeat ? featSpellsSource(bgFeat) : "";
   if (isObj(d.featSpells)) {
     const picks = Array.isArray(d.featSpells.cantrips) ? (legacy ? { [legacy]: d.featSpells } : {}) : d.featSpells;
@@ -236,6 +246,7 @@ export function parseDraft(raw: string | null, props: Props): FormState {
       if (ABILITIES.includes(a as Ability)) form.featAbility[source] = a as Ability;
   }
   if (!form.background) form.bgEquipment = "";
+  form.bgFeat = form.background ? (findOption(props.feats, asRef(d.bgFeat))?.ref ?? null) : null;
   if (!form.klass) form.classEquipment = "";
 
   // Objetos elegidos: solo los que siguen en el catálogo y en un paquete con `choose` de la opción elegida
@@ -432,6 +443,8 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
   );
   const bgOpt = findOption(props.backgrounds, form.background);
   const bgData = bgOpt?.data as BackgroundData | undefined;
+  const bgFeatRef = bgData?.feat ?? form.bgFeat;
+  const originFeats = useMemo(() => props.feats.filter((f) => (f.data as FeatData | null)?.category === "origin"), [props.feats]);
   const classOpt = findOption(props.classes, form.klass);
   const classData = classOpt?.data as ClassData | undefined;
   const hasLineages = !!speciesData?.hasLineages && lineageOptions.length > 0;
@@ -460,19 +473,21 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
     [classData, bgData, cache],
   );
   // Rasgos de nivel 1 de la clase, sus opciones (Orden divina…) y lo elegido de las listas (para la descripción)
+  const subclassOptions = form.klass ? (props.levelOneSubclasses[refKey(form.klass)] ?? []) : [];
+  const subclassData = form.subclass ? (cache[refKey(form.subclass)]?.data as SubclassData | undefined) : undefined;
   const featureRefs = useMemo(() => {
-    const features = (classData?.features ?? []).filter((f) => f.level === 1).map((f) => f.ref);
+    const features = [...(classData?.features ?? []), ...(subclassData?.features ?? [])].filter((f) => f.level === 1).map((f) => f.ref);
     const options = features.flatMap((r) => (cache[refKey(r)]?.data as FeatureData | undefined)?.options ?? []);
     const picked = Object.values(form.classChoices).flat()
       .filter((k) => /^[^:]+:(feat|optionalFeature):/.test(k))
       .map(refFromKey);
     return [...features, ...options, ...picked];
-  }, [classData, cache, form.classChoices]);
+  }, [classData, subclassData, cache, form.classChoices]);
   const wanted = useMemo(() => {
     const list: Ref[] = [];
-    for (const r of [form.species, form.lineage, form.background, form.klass, bgData?.feat ?? null]) if (r) list.push(r);
+    for (const r of [form.species, form.lineage, form.background, form.klass, form.subclass, bgFeatRef]) if (r) list.push(r);
     return [...list, ...equipmentNeeded, ...featureRefs];
-  }, [form.species, form.lineage, form.background, form.klass, bgData, equipmentNeeded, featureRefs]);
+  }, [form.species, form.lineage, form.background, form.klass, form.subclass, bgFeatRef, equipmentNeeded, featureRefs]);
   // Solo cambia la lista (y se piden entradas) cuando aparece alguna referencia nueva
   const wantedKey = wanted.map(refKey).sort().join("\n");
   const [lastKey, setLastKey] = useState("");
@@ -496,11 +511,11 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
   // La de conjuros va en su propia sección
   // (con el truco de más de la opción de rasgo elegida: Taumaturgo, Mago del Druida)
   const allPending = useMemo(() => {
-    const base = form.klass ? pendingChoices({ levels: [] }, form.klass, 1, entries) : [];
+    const base = form.klass ? pendingChoices({ levels: [] }, form.klass, 1, entries, form.subclass ? { subclass: form.subclass } : {}) : [];
     const options = base.filter((p) => p.type === "featureOption")
       .flatMap((p) => (form.classChoices[p.source] ?? []).filter(Boolean).map((k) => refFromKey(k).key));
     return withBonusCantrips(base, options);
-  }, [form.klass, form.classChoices, entries]);
+  }, [form.klass, form.subclass, form.classChoices, entries]);
   const pending = useMemo(() => allPending.filter((p) => p.type !== "spells"), [allPending]);
   const spellPending = allPending.find((p) => p.type === "spells") ?? null;
 
@@ -517,7 +532,7 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
   }, [classData, classOpt, form.klass, spellPending, entries]);
   const spellsMissing = spellPending ? spellPickMissing(spellPending, form.spells) : null;
   // Conjuros de la dote del trasfondo (Acólito → Iniciado en la magia) y de las invocaciones elegidas (Pacto del tomo)
-  const bgFeat = bgData?.feat ? entries.get(refKey(bgData.feat)) : undefined;
+  const bgFeat = bgFeatRef ? entries.get(refKey(bgFeatRef)) : undefined;
   const bgFeatPending = useMemo(() => (bgFeat
     ? featSpellPending([{ ref: bgFeat.ref, name: nameOf(bgFeat), data: bgFeat.data as FeatData | null }], (l) => l <= 1)[0] ?? null
     : null), [bgFeat]);
@@ -540,10 +555,10 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
   const featSpellsLeft = (p: PendingChoice) =>
     featSpellsMissing(p, form.featSpells[p.source], form.featAbility[p.source] ?? "");
   // Conjuros de nivel 1 que ya da otra cosa (especie, legado, dote del trasfondo, clase): no se eligen
-  const baseGranted = useMemo(() => [form.species, form.lineage, bgData?.feat ?? null, form.klass].flatMap((r) => {
+  const baseGranted = useMemo(() => [form.species, form.lineage, bgFeatRef, form.klass].flatMap((r) => {
     const data = r ? (entries.get(refKey(r))?.data as { spells?: { level: number; ref: Ref }[] } | undefined) : undefined;
     return (data?.spells ?? []).filter((g) => g.level <= 1).map((g) => refKey(g.ref));
-  }), [form.species, form.lineage, form.klass, bgData, entries]);
+  }), [form.species, form.lineage, form.klass, bgFeatRef, entries]);
   // Y lo que se elige en otra fuente (la clase o una dote): un mismo conjuro no se elige en dos sitios
   const pickSources = [
     { source: "class", label: "la clase", keys: [...form.spells.cantrips, ...form.spells.spells, ...(form.spells.free ?? [])] },
@@ -580,7 +595,7 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
       },
       classes: form.klass
         ? [{
-          ref: form.klass, name: "", level: 1, subclass: null,
+          ref: form.klass, name: "", level: 1, subclass: form.subclass ? { ref: form.subclass, name: "" } : null,
           skills: (form.classChoices[SKILLS_SOURCE] ?? []).filter(Boolean),
           equipment: equipmentLoading ? "" : form.classEquipment,
         }]
@@ -610,6 +625,8 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
   else
     for (const c of choosePacks(bgData?.equipment, form.bgEquipment))
       if (!form.bgEquipmentPicks[c.index]) missing.push({ label: `Trasfondo: ${c.pack.choose!.label}`, href: S.background });
+  if (bgData && !bgData.feat && !form.bgFeat) missing.push({ label: "Dote de origen", href: S.background });
+  if (subclassOptions.length && !form.subclass) missing.push({ label: "Subclase", href: S.klass });
   for (const p of unfinished(pending, form.classChoices)) missing.push({ label: p.label, href: S.klass });
   if (spellsMissing) missing.push({ label: "Conjuros", href: S.spells });
   for (const p of featPendings) {
@@ -642,11 +659,11 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
   const steps: CreatorStep[] = [
     { href: S.identity, label: "Identidad", title: "Identidad", description: "Cómo se llama tu personaje y cómo se presenta.", icon: User, optional: false },
     { href: S.species, label: "Especie", title: "Especie", description: "Su origen: tamaño, velocidad y rasgos innatos.", icon: Dna, optional: false },
-    { href: S.background, label: "Trasfondo", title: "Trasfondo", description: "De dónde viene: características, dote, habilidades y equipo.", icon: Shield, optional: false },
-    { href: S.klass, label: "Clase", title: "Clase", description: "Su oficio: rasgos de nivel 1, habilidades y equipo inicial.", icon: Sword, optional: false },
-    ...(casting && form.klass ? [{ href: S.spells, label: "Conjuros", title: "Conjuros iniciales", description: "Prepararás tus conjuros desde la pestaña Conjuros de la ficha.", icon: Wand2, optional: false }] : []),
-    { href: S.languages, label: "Idiomas", title: "Idiomas", description: "Las lenguas que conoce tu personaje.", icon: Globe, optional: false },
-    { href: S.abilities, label: "Características", title: "Puntuaciones de característica", description: "Reparte sus puntuaciones y la bonificación del trasfondo.", icon: Dices, optional: false },
+    { href: S.background, label: "Trasfondo", title: "Trasfondo", description: "De dónde viene: características, dote, habilidades y equipo.", icon: STEP_ICON("background"), optional: false },
+    { href: S.klass, label: "Clase", title: "Clase", description: "Su oficio: rasgos de nivel 1, habilidades y equipo inicial.", icon: STEP_ICON("class"), optional: false },
+    ...(casting && form.klass ? [{ href: S.spells, label: "Conjuros", title: "Conjuros iniciales", description: "Prepararás tus conjuros desde la pestaña Conjuros de la ficha.", icon: STEP_ICON("spells"), optional: false }] : []),
+    { href: S.languages, label: "Idiomas", title: "Idiomas", description: "Las lenguas que conoce tu personaje.", icon: STEP_ICON("languages"), optional: false },
+    { href: S.abilities, label: "Características", title: "Puntuaciones de característica", description: "Reparte sus puntuaciones y la bonificación del trasfondo.", icon: STEP_ICON("abilities"), optional: false },
     ...(!recreate ? [{ href: S.info, label: "Información", title: "Biografía e información", description: "Opcional: podrás completarla más adelante desde la ficha.", icon: FileText, optional: true }] : []),
   ].map(({ href, optional, ...s }) => ({
     ...s,
@@ -700,11 +717,11 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
     const speciesSkills = form.speciesSkills.map((s) => (skills.includes(s) ? "" : s));
     update(
       {
-        background: ref, bonus: {}, bgEquipment: "", bgEquipmentPicks: {}, speciesSkills, classChoices: withoutSkills(form.classChoices, skills),
+        background: ref, bonus: {}, bgEquipment: "", bgFeat: null, subclass: null, bgEquipmentPicks: {}, speciesSkills, classChoices: withoutSkills(form.classChoices, skills),
         // (los de la dote del trasfondo anterior dejan de valer)
         ...withoutFeatSpells(bgFeatPending ? [bgFeatPending.source] : []),
       },
-      "background", "background.abilities", "background.equipment", "background.equipmentPicks", "speciesChoices.skills",
+      "background", "background.feat", "background.abilities", "background.equipment", "background.equipmentPicks", "speciesChoices.skills",
       ...choiceErrorKeys(),
     );
   }
@@ -724,7 +741,7 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
     if (sameRef(ref, form.klass)) return;
     update(
       {
-        klass: ref, classChoices: {}, classEquipment: "", classEquipmentPicks: {}, spells: emptySpellPick(),
+        klass: ref, subclass: null, classChoices: {}, classEquipment: "", classEquipmentPicks: {}, spells: emptySpellPick(),
         ...withoutFeatSpells(invocationPending.map((p) => p.source)),
         // Los idiomas que ya no valen con la nueva clase (huecos de menos, uno que ya da la clase) se quitan
         languageChoices: pruneLanguages(
@@ -768,12 +785,13 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
       background: form.background
         ? {
           ref: form.background, name: "", abilities: form.bonus, equipment: form.bgEquipment,
+          ...(bgData && !bgData.feat && form.bgFeat ? { feat: form.bgFeat } : {}),
           equipmentPicks: prunePicks(form.bgEquipmentPicks, bgData?.equipment, form.bgEquipment),
         }
         : null,
       classes: [form.klass
         ? {
-          ref: form.klass, name: "", level: 1, subclass: null, equipment: form.classEquipment,
+          ref: form.klass, name: "", level: 1, subclass: form.subclass ? { ref: form.subclass, name: "" } : null, equipment: form.classEquipment,
           equipmentPicks: prunePicks(form.classEquipmentPicks, classData?.equipment, form.classEquipment),
           choices: [
             ...choicesFor(pending, form.classChoices),
@@ -967,7 +985,7 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
                 <div className="animate-fade-in">
                   <RuleSelect
                     id="lineage"
-                    label="Legado"
+                    label={form.species && isEdition2024(form.species.key) ? "Legado" : "Subespecie"}
                     options={lineageOptions}
                     value={form.lineage}
                     onChange={(ref) => update({ lineage: ref }, "lineage")}
@@ -1014,23 +1032,38 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
 
           {/* Trasfondo */}
           <StepSection {...stepProps(S.background)}>
-            <RuleSelect id="background" label="Trasfondo" options={props.backgrounds} value={form.background} onChange={chooseBackground} />
+            <RuleSelect id="background" label="Trasfondo" options={props.backgrounds} value={form.background} onChange={chooseBackground} showEdition />
             <FieldError errors={errors} keys={["background"]} />
             {form.background && <Description entry={cache[refKey(form.background)]} />}
             {bgData && (
               <div className="mt-6 space-y-6">
+                {!bgData.feat && (
+                  <div>
+                    <RuleSelect
+                      id="background-feat"
+                      label="Dote de origen"
+                      options={originFeats}
+                      value={form.bgFeat}
+                      onChange={(ref) => update({ bgFeat: ref }, "background.feat")}
+                    />
+                    <FieldError errors={errors} keys={["background.feat"]} />
+                    {form.bgFeat && <Description entry={cache[refKey(form.bgFeat)]} />}
+                  </div>
+                )}
                 <div className="rounded-xl border border-line bg-surface/40 p-4">
                   <h3 className={subheading}>Rasgos del trasfondo</h3>
                   <dl className="grid gap-x-6 gap-y-2.5 text-sm sm:grid-cols-[auto_1fr]">
                     <dt className="font-bold text-fg">Características</dt>
                     <dd className="text-muted">{bgData.abilities.map((a) => ABILITY_NAMES[a]).join(", ") || "—"}</dd>
-                    <dt className="font-bold text-fg">Dote</dt>
-                    <dd className="text-muted">
-                      {(() => {
-                        const feat = cache[refKey(bgData.feat)];
-                        return feat ? nameOf(feat) : bareName(bgData.feat.key);
-                      })()}
-                    </dd>
+                    {bgData.feat && (
+                      <>
+                        <dt className="font-bold text-fg">Dote</dt>
+                        <dd className="text-muted">{(() => {
+                          const feat = cache[refKey(bgData.feat)];
+                          return feat ? nameOf(feat) : bareName(bgData.feat.key);
+                        })()}</dd>
+                      </>
+                    )}
                     <dt className="font-bold text-fg">Habilidades</dt>
                     <dd className="text-muted">{bgData.skills.map(skillName).join(", ") || "—"}</dd>
                     <dt className="font-bold text-fg">Herramientas</dt>
@@ -1068,8 +1101,21 @@ function CreatorForm(props: Props & { draftKey: string; draft: string | null }) 
           {/* Clase */}
           <StepSection {...stepProps(S.klass)}>
             <OptionCards id="class" label="Clase inicial" kind="class" options={props.classes} value={form.klass} onChange={chooseClass} />
-            <FieldError errors={errors} keys={["classes", "classes.0", "classes.0.level", "classes.0.subclass"]} />
+            <FieldError errors={errors} keys={["classes", "classes.0", "classes.0.level", ...(subclassOptions.length ? [] : ["classes.0.subclass"])]} />
             {form.klass && <Description entry={cache[refKey(form.klass)]} />}
+            {subclassOptions.length > 0 && (
+              <div className="mt-6">
+                <RuleSelect
+                  id="subclass"
+                  label={classData?.subclassTitle || "Subclase"}
+                  options={subclassOptions}
+                  value={form.subclass}
+                  onChange={(ref) => update({ subclass: ref, classChoices: {} }, "classes.0.subclass", "levels.0.choices", ...choiceErrorKeys())}
+                />
+                <FieldError errors={errors} keys={["classes.0.subclass"]} />
+                {form.subclass && <Description entry={cache[refKey(form.subclass)]} />}
+              </div>
+            )}
             {classData && (
               <div className="mt-6 space-y-6">
                 <ClassFeaturesSection

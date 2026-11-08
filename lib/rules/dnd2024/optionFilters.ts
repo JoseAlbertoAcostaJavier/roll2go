@@ -88,6 +88,9 @@ export function matchesSearch(option: EntryOption, query: string) {
   return !q || normalizeName(option.nameEs ?? option.name).includes(q) || normalizeName(option.name).includes(q);
 }
 
+/** Si la entrada es de un libro con las reglas de 2024 (va en su clave: «class:artificer|efa»). */
+export const isEdition2024 = (key: string) => /\|(xphb|xdmg|xmm|efa|frhof|fraif|bloodhunter2024)$/.test(key);
+
 /** Marca o desmarca un valor; los grupos vacíos desaparecen. */
 export function toggleFilter(state: FilterState, group: string, value: string): FilterState {
   const current = state[group] ?? [];

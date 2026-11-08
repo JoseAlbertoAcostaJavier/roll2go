@@ -43,7 +43,7 @@ function wantedRefs(sheet: AnySheet, entries: Map<string, CatalogEntry>, books: 
     sheet.species.ref,
     ...(sheet.lineage ? [sheet.lineage.ref] : []),
     sheet.background.ref,
-    ...(bg?.feat ? [bg.feat] : []),
+    ...(bg?.feat ? [bg.feat] : sheet.background.feat ? [sheet.background.feat] : []),
     ...classes.flatMap((c) => [
       c.ref,
       ...upTo(data<ClassData>(c.ref)?.features, c.level),

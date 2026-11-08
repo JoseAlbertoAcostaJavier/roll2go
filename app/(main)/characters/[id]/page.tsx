@@ -26,7 +26,7 @@ import { itemActions } from "@/lib/rules/dnd2024/sheet/itemActions";
 import { hitDicePools } from "@/lib/rules/dnd2024/sheet/rest";
 import { statusOf } from "@/lib/rules/dnd2024/sheet/status";
 import { shortRestRestores } from "@/lib/rules/dnd2024/spells/spellOps";
-import { sizeName } from "@/lib/rules/dnd2024/sheet/labels";
+import { sizeName, speciesLabel } from "@/lib/rules/dnd2024/sheet/labels";
 import { itemDetails, locationText, type ItemDetails } from "@/lib/rules/dnd2024/sheet/itemDetails";
 import type { ActionData, BackgroundData, ItemData, SpeciesData } from "@/lib/rules/types";
 import type { JoinableCampaign } from "@/app/components/characters/sheet/JoinCampaignDialog";
@@ -94,10 +94,10 @@ export default async function CharacterPage({ params, searchParams }: Props) {
   const { campaign } = sheetCampaign;
   const joinable: JoinableCampaign[] = sheetCampaign.joinable;
 
-  const species = `${sheet.species.name}${sheet.lineage ? ` (${sheet.lineage.name})` : ""}`;
+  const species = speciesLabel(sheet.species.name, sheet.lineage?.name);
   const classes = d.classes.map((k) => `${k.name} ${k.level}`).join(" / ");
   const background = entries.get(refKey(sheet.background.ref)) ?? null;
-  const featRef = (background?.data as BackgroundData | undefined)?.feat;
+  const featRef = (background?.data as BackgroundData | undefined)?.feat ?? sheet.background.feat;
   const feat = featRef ? (entries.get(refKey(featRef)) ?? null) : null;
 
   // Tamaño: el elegido o, si la especie solo tiene uno, ese
