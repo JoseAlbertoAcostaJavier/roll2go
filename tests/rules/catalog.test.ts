@@ -2,6 +2,14 @@ import { describe, expect, it } from "vitest";
 import { pickBooks } from "@/lib/rules/catalog/pickBooks";
 
 describe("pickBooks", () => {
+  it("las reglas básicas siempre están, aunque la campaña o el personaje las dejen fuera", () => {
+    const visible = ["a", "b", "core"];
+    expect(pickBooks({ visible, campaign: { restrictBooks: true, allowedBooks: ["a"] }, chosen: [], core: ["core"] })).toEqual(["a", "core"]);
+    expect(pickBooks({ visible, campaign: { restrictBooks: true, allowedBooks: [] }, chosen: [], core: ["core"] })).toEqual(["core"]);
+    expect(pickBooks({ visible, campaign: null, chosen: ["b"], core: ["core"] })).toEqual(["b", "core"]);
+    expect(pickBooks({ visible, campaign: null, chosen: [], core: ["core"] })).toEqual(visible);
+  });
+
   const visible = ["a", "b", "c"];
 
   it("una campaña que restringe ignora chosen aunque traiga libros ajenos", () => {

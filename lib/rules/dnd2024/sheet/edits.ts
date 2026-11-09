@@ -52,7 +52,8 @@ export function applyHp(sheet: Dnd2024SheetV2, input: unknown, maxHp: number): E
 const itemData = (e: CatalogEntry | null) => e?.data as ItemData | undefined;
 const isShield = (d: ItemData | undefined) => d?.armor?.category === "shield";
 const isBodyArmor = (d: ItemData | undefined) => !!d?.armor && !isShield(d);
-const canEquip = (d: ItemData | undefined) => !!d && (!!d.weapon || !!d.armor || !!d.defenses);
+/** Si tiene sentido equiparlo: arma, armadura o un objeto con efectos. */
+export const canEquip = (d: ItemData | undefined) => !!d && (!!d.weapon || !!d.armor || !!d.defenses || !!d.bonuses);
 
 const QUANTITY_ERROR = `La cantidad va de 0 a ${MAX_QUANTITY}.`;
 const NOTES_ERROR = `Las notas admiten ${MAX_ITEM_NOTES} caracteres como máximo.`;

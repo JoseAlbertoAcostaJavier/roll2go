@@ -12,6 +12,7 @@ export default function HpBox({ d, characterId, isOwner, version, pools, recover
   return (
     <section aria-label="Puntos de golpe" className={`${sheetBox} flex flex-col gap-3 p-4`}>
       <h2 className={boxTitle}>Puntos de golpe</h2>
+      <div className="flex flex-1 flex-col justify-center">
       {isOwner ? (
         // El editor guarda su estado y adopta los PG nuevos cuando cambia `version` (descanso, borrar un nivel) sin
         // remontarse: así un cambio de PG pendiente no se pierde cuando otra caja de la ficha refresca la página.
@@ -34,6 +35,7 @@ export default function HpBox({ d, characterId, isOwner, version, pools, recover
           <HpBar current={Math.min(d.hp.current, d.hp.max)} max={d.hp.max} temp={d.hp.temp} />
         </div>
       )}
+      </div>
       {pools.length > 0 && (
         <div className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-line pt-3">
           <span className="text-sm text-muted">Dados de golpe</span>

@@ -72,7 +72,7 @@ describe("listEntries", () => {
   it("la caché depende de los libros y de los filtros, y se invalida con cualquiera de sus libros", async () => {
     db.results["BookEntry.find"] = [];
     await catalog.listEntries({ books: [B, A, A], kind: "lineage", parent: "species:elf|a", q: "Dró" });
-    expect(cache.keys[0]).toEqual(["rules-entries-v9", `${A},${B}`, "lineage", "species:elf|a", "dro"]);
+    expect(cache.keys[0]).toEqual(["rules-entries-v13", `${A},${B}`, "lineage", "species:elf|a", "dro"]);
     expect(cache.options[0].tags).toEqual([`book:${A}`, `book:${B}`]);
     expect(db.callsOf("BookEntry", "find")[0][0]).toMatchObject({ book: { $in: [A, B] }, "parent.key": "species:elf|a", nameLower: { $regex: "^dro" } });
   });

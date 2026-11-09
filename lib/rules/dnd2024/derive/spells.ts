@@ -156,9 +156,12 @@ function casters(sheet: Dnd2024SheetV2, entries: Map<string, CatalogEntry>): Cas
 }
 
 /** Un bloque por clase o subclase lanzadora, en el orden del historial. */
+/** Lo que necesitan los bloques de conjuros; los bonificadores son los de los objetos mágicos activos. */
+type SpellDerived = { abilities: AbilityScores; proficiencyBonus: number; spellAttackBonus?: number; spellDcBonus?: number };
+
 export function casterBlocks(
   sheet: Dnd2024SheetV2,
-  derived: { abilities: AbilityScores; proficiencyBonus: number },
+  derived: SpellDerived,
   entries: Map<string, CatalogEntry>,
 ): CasterBlock[] {
   return casters(sheet, entries).map((c) => {
@@ -215,8 +218,8 @@ export function casterBlocks(
       name: c.name,
       ability,
       mode,
-      dc: 8 + derived.proficiencyBonus + mod,
-      attack: derived.proficiencyBonus + mod,
+      dc: 8 + derived.proficiencyBonus + mod + (derived.spellDcBonus ?? 0),
+      attack: derived.proficiencyBonus + mod + (derived.spellAttackBonus ?? 0),
       // (más los trucos de las opciones de rasgo: Taumaturgo…)
       cantripLimit: (c.progressions.cantrips?.[c.level - 1] ?? 0) + heldBonusCantrips(sheet.levels, c.klass.named.ref),
       preparedLimit: c.progressions.prepared?.[c.level - 1] ?? 0,
@@ -340,7 +343,7 @@ const background = (sheet: Dnd2024SheetV2, entries: Map<string, CatalogEntry>) =
  */
 export function spellsSummary(
   sheet: Dnd2024SheetV2,
-  derived: { abilities: AbilityScores; proficiencyBonus: number },
+  derived: SpellDerived,
   entries: Map<string, CatalogEntry>,
 ): { spells: SpellsSummary; hasSpells: boolean } {
   const blocks = casterBlocks(sheet, derived, entries);

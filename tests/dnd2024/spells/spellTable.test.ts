@@ -64,7 +64,7 @@ describe("spellTableRows", () => {
   });
   it("calcula hit como en Acciones", () => {
     expect(row("Descarga de fuego").hit).toBe("+5");
-    expect(row("Amigos").hit).toBe("CD 13 SAB");
+    expect(row("Amigos").hit).toBe("13 SAB");
     expect(row("Paso brumoso").hit).toBeNull();
   });
   it("otros conjuros: CD con competencia y la característica del conjuro", () => {
@@ -73,7 +73,7 @@ describe("spellTableRows", () => {
       other: [{ spell: named("spell:poison spray|xphb"), origin: "Legado: Drow", innate: true, ability: "wis" }],
       casting: { proficiencyBonus: 2, mods: { str: 0, dex: 0, con: 0, int: 0, wis: 3, cha: 0 } },
     };
-    expect(spellTableRows(withAbility, entries).find((r) => r.name === "Rociada venenosa")?.hit).toBe("CD 13 CON");
+    expect(spellTableRows(withAbility, entries).find((r) => r.name === "Rociada venenosa")?.hit).toBe("13 CON");
   });
   it("calcula el efecto", () => {
     expect(row("Descarga de fuego").effect).toEqual({ damageTypeId: "fire", label: "Fuego" });

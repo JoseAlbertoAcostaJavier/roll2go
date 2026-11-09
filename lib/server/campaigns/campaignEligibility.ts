@@ -5,6 +5,7 @@ import mongoose from "mongoose";
 import { Book } from "@/lib/models/Book";
 import { canRequestJoin } from "@/lib/shared/campaignRules";
 import { OUTDATED_SHEET_ERROR } from "@/lib/server/characters/characterAccess";
+import { coreBookIds } from "@/lib/server/catalog/books";
 import { getEntry } from "@/lib/server/catalog/catalog";
 import { booksUsedBy } from "@/lib/rules/dnd2024/creation/booksUsed";
 import type { AnySheet } from "@/lib/rules/dnd2024/sheet/sheet";
@@ -52,6 +53,7 @@ export async function joinReasons(
     return booksBySheet.get(sheet)!;
   };
 
+  const coreBooks = await coreBookIds();
   const results = await Promise.all(
     checks.map(async ({ campaign, character }) => {
       const books = await booksOf(character.sheet);
@@ -69,6 +71,7 @@ export async function joinReasons(
           books: books ?? [],
         },
         isMember: (campaign.members ?? []).some((m) => String(m) === userId),
+        coreBooks,
       });
       return { rule, outdated: books === null };
     }),

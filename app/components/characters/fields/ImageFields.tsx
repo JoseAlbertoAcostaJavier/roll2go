@@ -21,6 +21,7 @@ export default function ImageFields({
         hint={`PNG, JPG o WebP. Máximo ${IMAGE_MB} MB.`}
         maxMB={IMAGE_MB}
         previewClass="h-24 w-24"
+        cropSquare
         currentUrl={portraitUrl}
         onFile={onPortrait}
         onRemove={onRemovePortrait ?? (() => {})}
@@ -31,7 +32,8 @@ export default function ImageFields({
         label="Imagen"
         hint={`PNG, JPG o WebP. Máximo ${IMAGE_MB} MB.`}
         maxMB={IMAGE_MB}
-        previewClass="h-24 w-32"
+        previewClass="h-24 w-auto min-w-20 max-w-32"
+        keepRatio
         currentUrl={imageUrl}
         onFile={onImage}
         onRemove={onRemoveImage ?? (() => {})}

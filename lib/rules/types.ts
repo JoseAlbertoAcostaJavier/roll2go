@@ -248,12 +248,32 @@ export type ContainerData = {
   weightless: boolean;
 };
 
+/** Efectos mecánicos de un objeto mágico. Solo los que la ficha sabe aplicar; el resto queda en su descripción. */
+export type ItemBonuses = {
+  ac?: number;
+  saves?: number;
+  /** Tiradas de ataque y de daño con el propio objeto. */
+  attack?: number;
+  damage?: number;
+  spellAttack?: number;
+  spellDc?: number;
+  /** Puntuación que fija el objeto (si es mayor que la del personaje). */
+  setScores?: Partial<Record<Ability, number>>;
+  /** Puntuación que suma el objeto, hasta 20. */
+  addScores?: Partial<Record<Ability, number>>;
+  /** Velocidad caminando que fija el objeto, en pies (si es mayor que la del personaje). */
+  walk?: number;
+};
+
 export type ItemData = {
   type: string;
   weight: number;
   value: number; // pc
   /** Rareza de un objeto mágico (`uncommon`, `rare`…); los objetos normales no la llevan. */
   rarity?: string;
+  /** Requiere sintonización para funcionar. */
+  attunement?: boolean;
+  bonuses?: ItemBonuses;
   armor?: { ac: number; dexCap: number | null; stealthDisadvantage: boolean; category: string };
   weapon?: { damage: string; damageType: string; properties: string[]; mastery?: string; category: string;
     /** Alcance de 5etools en pies, tal cual ("20/60"); solo en armas arrojadizas o de distancia. */ range?: string };

@@ -2,7 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { sessionOf } from "@/lib/server/campaigns/campaignApi";
 import { rateLimit, tooManyRequests } from "@/lib/server/rateLimit";
 import { loadCharacterFor } from "@/lib/server/characters/characterAccess";
-import { listActions, listSpells } from "@/lib/server/catalog/catalog";
+import { listSpells } from "@/lib/server/catalog/catalog";
+import { loadBasicActions } from "@/lib/server/characters/basicActions";
+import { shownActions } from "@/lib/rules/dnd2024/sheet/basicActions";
+import { customOf } from "@/lib/rules/dnd2024/sheet/custom";
 import { fillSheetPdf } from "@/lib/server/characters/sheetPdf";
 import { derive } from "@/lib/rules/dnd2024/derive";
 import { deriveActions, withSpellEntries } from "@/lib/rules/dnd2024/derive/actions";
@@ -26,7 +29,8 @@ export async function GET(req: NextRequest, { params }: Ctx) {
   const { character, sheet, entries, books } = found;
 
   const derived = derive(sheet, entries);
-  const [spellOptions, basics] = await Promise.all([derived.hasSpells ? listSpells(books) : Promise.resolve([]), listActions(books)]);
+  const [spellOptions, actionData] = await Promise.all([derived.hasSpells ? listSpells(books) : Promise.resolve([]), loadBasicActions(found)]);
+  const basics = shownActions(actionData.all, customOf(sheet).basics, actionData.rules);
   const full = withSpellEntries(entries, spellOptions);
   const actions = deriveActions({
     attacks: derived.attacks, spells: derived.spells, features: derived.features, featureUses: derived.featureUses, basics, entries: full,

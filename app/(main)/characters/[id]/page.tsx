@@ -7,9 +7,13 @@ import { loadCharacterFor } from "@/lib/server/characters/characterAccess";
 import { loadSheetCampaign } from "@/lib/server/characters/queries";
 import { system as rpgSystems } from "@/lib/utils/systems";
 import { booksByIds } from "@/lib/server/catalog/books";
-import { getEntries, listActions, listMasteryWeapons, listSpells } from "@/lib/server/catalog/catalog";
+import { getEntries, listMasteryWeapons, listSpells } from "@/lib/server/catalog/catalog";
+import { loadBasicActions } from "@/lib/server/characters/basicActions";
+import { isActionActive, isCoreAction, isEditableAction, shownActions, withActionEdit } from "@/lib/rules/dnd2024/sheet/basicActions";
+import { parseBbcode, plainText } from "@/lib/utils/bbcode";
+import type { BasicActionOption } from "@/app/components/characters/sheet/BasicActionsManager";
 import { derive } from "@/lib/rules/dnd2024/derive";
-import { deriveActions, withSpellEntries } from "@/lib/rules/dnd2024/derive/actions";
+import { BASIC_GROUPS, deriveActions, withSpellEntries } from "@/lib/rules/dnd2024/derive/actions";
 import { ACTION_TIME_LABELS, parseActionFilter } from "@/lib/rules/dnd2024/sheet/actionFilters";
 import { actionIcon } from "@/lib/rules/dnd2024/sheet/actionIcons";
 import { weaponProficient } from "@/lib/rules/dnd2024/derive/attacks";
@@ -22,6 +26,7 @@ import { parsePronouns, pronounsText } from "@/lib/rules/dnd2024/creation/names"
 import { spellListOf } from "@/lib/rules/dnd2024/spells/spellcasting";
 import { spellTableRows } from "@/lib/rules/dnd2024/spells/spellTable";
 import { customOf } from "@/lib/rules/dnd2024/sheet/custom";
+import { canEquip } from "@/lib/rules/dnd2024/sheet/edits";
 import { itemActions } from "@/lib/rules/dnd2024/sheet/itemActions";
 import { hitDicePools } from "@/lib/rules/dnd2024/sheet/rest";
 import { statusOf } from "@/lib/rules/dnd2024/sheet/status";
@@ -131,10 +136,11 @@ export default async function CharacterPage({ params, searchParams }: Props) {
     ].join(", ") || null;
     itemInfo[line.id] = {
       weight: data?.weight ?? 0,
-      equippable: !!(data?.armor || data?.weapon || data?.defenses),
+      equippable: canEquip(data),
       nameEn: entry?.name ?? null,
       type: data?.type ?? null,
       rarity: data?.rarity ?? null,
+      attunement: !!data?.attunement,
       properties: data?.weapon?.properties ?? [],
       value: data?.value ?? 0,
       container: cap ? { weight: cap.weight, text: capacityText, weightless: cap.weightless } : null,
@@ -197,7 +203,23 @@ export default async function CharacterPage({ params, searchParams }: Props) {
 
   // Acciones (spec de acciones §3-4): armas, conjuros utilizables, rasgos con activación y las acciones básicas de los
   // libros del personaje; el filtro va en `?filtro=`
-  const basicEntries = await listActions(found.books);
+  const { all: allBasics, rules: basicRules } = await loadBasicActions(found);
+  const basicEntries = shownActions(allBasics, custom.basics, basicRules);
+  const basicOptions: BasicActionOption[] = isOwner && !basicRules.restricted ? allBasics.map((e) => {
+    const shown = withActionEdit(e, custom.basics);
+    const key = refKey(e.ref);
+    return {
+      key,
+      name: shown.nameEs ?? shown.name,
+      book: e.bookName,
+      group: BASIC_GROUPS[(e.data as ActionData).time] ?? "other",
+      core: isCoreAction(e, basicRules),
+      active: isActionActive(e, custom.basics, basicRules),
+      editable: isEditableAction(e),
+      edited: custom.basics.edits.some((x) => x.key === key) && isEditableAction(e),
+      text: plainText(parseBbcode(shown.descriptionEs || shown.description)),
+    };
+  }) : [];
   // (los conjuros no están en `entries`: se toman del listado de la pestaña Conjuros)
   const spellEntries = withSpellEntries(entries, spellOptions);
   const actions = deriveActions({
@@ -290,6 +312,7 @@ export default async function CharacterPage({ params, searchParams }: Props) {
             entries={entries}
             spells={actionSpells}
             basics={basics}
+            basicOptions={basicOptions}
             itemCards={itemCards}
             itemDescriptions={itemDescriptions}
             custom={custom}

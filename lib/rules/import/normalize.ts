@@ -5,7 +5,7 @@
 // padre siempre está en el mismo libro. Todas las claves llevan el tipo delante (`spell:fireball|xphb`).
 import { ABILITIES } from "../types";
 import type {
-  Ability, ActionData, ContainerData, ClassTable, Defenses, DefenseList, EntryData, EntryKind, Equipment, FeatSpellChoice, FeatSpellFilter, FeatureData, LevelCounts,
+  Ability, ActionData, ContainerData, ClassTable, Defenses, DefenseList, EntryData, EntryKind, Equipment, FeatSpellChoice, FeatSpellFilter, FeatureData, ItemBonuses, ItemData, LevelCounts,
   LevelFeature, MulticlassData, ChoiceKind, NameGender, OptionalFeatureData, Pack, Ref, Spellcasting, SpellcastingProgression, SpellData, SpellGrant,
 } from "../types";
 import { normalizeName, validateEntryData } from "../schemas";
@@ -660,6 +660,42 @@ function containerOf(raw: unknown): ContainerData | null {
   return { weight, volume, items, weightless: raw.weightless === true };
 }
 
+// «+1» de 5etools como número; undefined si no hay bonificador
+const signed = (v: unknown): number | undefined => {
+  const n = typeof v === "string" ? Number(v) : NaN;
+  return Number.isInteger(n) && n !== 0 ? n : undefined;
+};
+const ABILITY_IDS = ["str", "dex", "con", "int", "wis", "cha"] as const;
+const scoresIn = (v: unknown) => {
+  if (!isObj(v)) return undefined;
+  const found = ABILITY_IDS.flatMap((a) => (typeof v[a] === "number" ? [[a, v[a]]] : []));
+  return found.length ? Object.fromEntries(found) as Partial<Record<(typeof ABILITY_IDS)[number], number>> : undefined;
+};
+
+/**
+ * Sintonización y efectos mecánicos de un objeto de 5etools. Las sumas a características solo cuentan en los objetos con
+ * sintonización: en los demás (Manual de la salud corporal…) son una mejora permanente al leerlos, no un efecto de llevarlos.
+ */
+export function itemMagic(raw: Rec): Pick<ItemData, "attunement" | "bonuses"> {
+  const attunement = !!raw.reqAttune;
+  const weapon = signed(raw.bonusWeapon);
+  const ability = isObj(raw.ability) ? raw.ability : {};
+  const speed = isObj(raw.modifySpeed) && isObj(raw.modifySpeed.static) ? raw.modifySpeed.static.walk : undefined;
+  const all: ItemBonuses = {
+    ac: signed(raw.bonusAc),
+    saves: signed(raw.bonusSavingThrow),
+    attack: signed(raw.bonusWeaponAttack) ?? weapon,
+    damage: signed(raw.bonusWeaponDamage) ?? weapon,
+    spellAttack: signed(raw.bonusSpellAttack),
+    spellDc: signed(raw.bonusSpellSaveDc),
+    setScores: scoresIn(ability.static),
+    addScores: attunement ? scoresIn(ability) : undefined,
+    walk: typeof speed === "number" ? speed : undefined,
+  };
+  const bonuses = Object.fromEntries(Object.entries(all).filter(([, v]) => v !== undefined)) as ItemBonuses;
+  return { ...(attunement ? { attunement } : {}), ...(Object.keys(bonuses).length ? { bonuses } : {}) };
+}
+
 export function normalizeItem(raw: Rec): NormalizedEntry {
   const type = stripSource(str(raw.type)) || "OTH";
   const data: EntryData["item"] = {
@@ -667,6 +703,7 @@ export function normalizeItem(raw: Rec): NormalizedEntry {
     weight: typeof raw.weight === "number" ? raw.weight : 0,
     value: typeof raw.value === "number" ? raw.value : 0,
     ...withDefenses(raw),
+    ...itemMagic(raw),
   };
   if (str(raw.rarity) && raw.rarity !== "none") data.rarity = str(raw.rarity);
   if (type in ARMOR && typeof raw.ac === "number") {

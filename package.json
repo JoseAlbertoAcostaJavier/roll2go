@@ -9,6 +9,8 @@
     "lint": "eslint",
     "test": "vitest run",
     "import:5etools": "tsx scripts/import-5etools.ts",
+    "apply:es-descriptions": "tsx scripts/apply-es-descriptions.ts",
+    "apply:item-magic": "tsx scripts/apply-item-magic.ts",
     "migrate:books": "tsx --conditions=react-server scripts/migrate-book-ids.ts",
     "migrate:levels": "tsx --conditions=react-server scripts/migrate-levels.ts"
   },

@@ -12,7 +12,8 @@ import { fail, type Result } from "@/lib/server/result";
 import { unchangedFilter } from "@/lib/utils/unchangedFilter";
 import { derive } from "@/lib/rules/dnd2024/derive";
 import { weaponProficient } from "@/lib/rules/dnd2024/derive/attacks";
-import { applyCustom } from "@/lib/rules/dnd2024/sheet/custom";
+import { BASIC_OPS, applyCustom } from "@/lib/rules/dnd2024/sheet/custom";
+import { basicOpError } from "@/lib/server/characters/basicActions";
 import { applyHp, applyInventoryOp } from "@/lib/rules/dnd2024/sheet/edits";
 import { bareName, isRef, refKey } from "@/lib/rules/dnd2024/sheet/equipmentRefs";
 import { LEVEL_CHANGED } from "@/lib/rules/dnd2024/levels/levelOps";
@@ -215,6 +216,9 @@ const STATUS_FIELDS = { hitDice: "hitDiceUsed", inspiration: "heroicInspiration"
 
 /* Inspiración heroica, estados y agotamiento (spec de la ficha visual §2). Solo se escribe el campo que cambia, y solo
    si sigue como se leyó. */
+const isBasicOp = (body: unknown): body is Record<string, unknown> =>
+  typeof body === "object" && body !== null && BASIC_OPS.includes(String((body as { op?: unknown }).op));
+
 // Una operación sobre lo personalizado (`CustomOp`). Como las de estado, solo escribe su campo y solo si no ha cambiado.
 export async function applyCustomOperation(
   userId: string,
@@ -224,6 +228,10 @@ export async function applyCustomOperation(
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
     const { found, failure } = await loadForWrite(userId, id);
     if (failure) return failure;
+    if (isBasicOp(body)) {
+      const denied = await basicOpError(found, body);
+      if (denied) return fail(400, denied);
+    }
     const result = applyCustom(found.sheet, body, newId);
     if (!result.ok) return fail(400, result.error);
     const stored = found.character.sheet as Record<string, unknown> | undefined;

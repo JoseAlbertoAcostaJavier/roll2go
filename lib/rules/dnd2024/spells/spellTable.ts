@@ -56,7 +56,7 @@ export function hitOf(tags: string[], caster: CastingBonus | null): string | nul
   if (!caster) return null;
   if (tags.includes(SPELL_ATTACK_TAG)) return fmtMod(caster.attack);
   const save = tags.map((t) => SAVE_ABILITIES.get(t)).find((a) => a);
-  return save ? `CD ${caster.dc} ${ABILITY_ABBR[save]}` : null;
+  return save ? `${caster.dc} ${ABILITY_ABBR[save]}` : null;
 }
 
 /**

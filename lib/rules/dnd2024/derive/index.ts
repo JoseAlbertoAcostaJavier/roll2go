@@ -27,6 +27,9 @@ import { hitPoints } from "./hp";
 import { speedBreakdown } from "./speed";
 import { spellsSummary, type SpellsSummary } from "./spells";
 import { carriedWeight } from "./weight";
+import { bonusParts, bonusTotal, itemIsActive, weaponMagic, withItemScores, withItemSpeed, type ActiveItem } from "./itemEffects";
+
+type EquippedLine = { id: string; name: string; key: string; data: ItemData; attuned?: boolean };
 
 export type { Attack } from "./attacks";
 export type { Breakdown, Part } from "./breakdown";
@@ -159,7 +162,22 @@ export function derive(input: AnySheet, entries: Map<string, CatalogEntry>): Der
     const e = entries.get(refKey(r));
     return e ? e.nameEs ?? e.name : fallback;
   };
-  const abilityParts = abilityBreakdowns(sheet, isEpicBoon, nameOf);
+  // Inventario: objetos equipados, objetos cuyo efecto cuenta y referencias perdidas
+  const equipped: EquippedLine[] = [];
+  const active: ActiveItem[] = [];
+  for (const i of sheet.inventory.items) {
+    if (!i.ref) continue;
+    const entry = entries.get(refKey(i.ref));
+    if (!entry) {
+      missing.push(i.name);
+      continue;
+    }
+    const data = entry.data as ItemData;
+    if (i.equipped) equipped.push({ id: i.id, name: i.name, key: i.ref.key, data, attuned: i.attuned });
+    if (itemIsActive(i, data)) active.push({ name: i.name, data });
+  }
+
+  const abilityParts = withItemScores(abilityBreakdowns(sheet, isEpicBoon, nameOf), active);
   const abilities = scoresFromBreakdowns(abilityParts);
   const mods = Object.fromEntries(Object.entries(abilities).map(([a, v]) => [a, v.mod])) as Record<Ability, number>;
   const choices = sheet.levels.flatMap((l) => l.choices.map((c) => ({ ...c, n: l.n })));
@@ -185,15 +203,7 @@ export function derive(input: AnySheet, entries: Map<string, CatalogEntry>): Der
   const jackOfAllTrades = summary.some((c) => bareName(c.class.ref.key) === "bard" && c.level >= 2);
   // Salvaciones: solo las de la primera clase
   const saveProfs = firstData?.saves ?? [];
-
-  // Inventario: objetos equipados y referencias perdidas
-  const equipped: { id: string; name: string; key: string; data: ItemData }[] = [];
-  for (const i of sheet.inventory.items) {
-    if (!i.ref) continue;
-    const entry = entries.get(refKey(i.ref));
-    if (!entry) missing.push(i.name);
-    else if (i.equipped) equipped.push({ id: i.id, name: i.name, key: i.ref.key, data: entry.data as ItemData });
-  }
+  const saveExtras = bonusParts(active, "saves");
 
   // CA: la armadura de cuerpo equipada que más dé (solo debería haber una) y el escudo
   const unarmored = summary.map((c) => bareName(c.class.ref.key))
@@ -207,8 +217,8 @@ export function derive(input: AnySheet, entries: Map<string, CatalogEntry>): Der
     .sort((a, b) => acOf(b).total - acOf(a).total)[0] ?? null;
   const armorWarning = (bodyArmor && !armor.includes(bodyArmor.category)) || (shield && !armor.includes(SHIELD))
     ? ARMOR_WARNING : null;
-  const acParts = acOf(bodyArmor);
-  const acBreakdown = armorWarning ? makeBreakdown(acParts.parts, [armorWarning]) : acParts;
+  const acParts = [...acOf(bodyArmor).parts, ...bonusParts(active, "ac")];
+  const acBreakdown = makeBreakdown(acParts, armorWarning ? [armorWarning] : undefined);
 
   // Ataques: armas equipadas y sin armas. Las Artes marciales del Monje (su dado y la mejor de FUE y DES, sin armas y
   // con armas de monje) solo sin armadura de cuerpo ni escudo
@@ -218,22 +228,22 @@ export function derive(input: AnySheet, entries: Map<string, CatalogEntry>): Der
       || martialArtsFallback(summary[monk].level));
   // Maestrías actuales (se pueden cambiar en la ficha); en hojas anteriores, las elegidas al subir de nivel
   const masteries = new Set(currentMasteries(sheet).map((r) => r.key));
-  const attackOf = (e: { id: string; name: string; key: string; data: ItemData }): Attack => ({
+  const attackOf = (e: EquippedLine): Attack => ({
     ...weaponAttack(
       { ...e.data, name: e.name }, mods, proficiencyBonus,
-      weaponProficient(e.data, [e.name, bareName(e.key)], weapons), masteries.has(e.key), martialArts,
+      weaponProficient(e.data, [e.name, bareName(e.key)], weapons), masteries.has(e.key), martialArts, weaponMagic(e, e.data),
     ),
     lineId: e.id,
   });
   const attacks: Attack[] = equipped.filter((e) => e.data.weapon).flatMap((e) => {
     const base = attackOf(e);
-    return [base, ...attackVariants(base, e.data)];
+    return [base, ...attackVariants(base, e.data, weaponMagic(e, e.data).damage ?? 0)];
   });
   // El mismo cálculo para las armas sin equipar, para la ficha del objeto (no salen en Acciones)
   const weaponCards: Record<string, Attack> = {};
   for (const i of sheet.inventory.items) {
     const data = i.ref ? (entries.get(refKey(i.ref))?.data as ItemData | undefined) : undefined;
-    if (i.ref && data?.weapon) weaponCards[i.id] = attackOf({ id: i.id, name: i.name, key: i.ref.key, data });
+    if (i.ref && data?.weapon) weaponCards[i.id] = attackOf({ id: i.id, name: i.name, key: i.ref.key, data, attuned: i.attuned });
   }
   attacks.push(unarmedAttack(mods, proficiencyBonus, martialArts));
 
@@ -245,7 +255,7 @@ export function derive(input: AnySheet, entries: Map<string, CatalogEntry>): Der
   // Velocidad: la del legado si la cambia; si no, la de la especie; sin catálogo, 30
   const speedSource = lineageData?.speed !== undefined ? lineage : species;
   const barbarian = summary.find((c) => bareName(c.class.ref.key) === "barbarian");
-  const speedParts = speedBreakdown({
+  const speedParts = withItemSpeed(speedBreakdown({
     base: lineageData?.speed ?? speciesData?.speed ?? DEFAULT_SPEED,
     baseLabel: speedSource ? `Velocidad de ${speedSource.nameEs ?? speedSource.name}` : "Velocidad base",
     barbarianLevel: barbarian?.level ?? 0,
@@ -256,7 +266,7 @@ export function derive(input: AnySheet, entries: Map<string, CatalogEntry>): Der
     anyArmor: !!bodyArmor,
     shield,
     speedy: featKeys.includes(SPEEDY_FEAT),
-  });
+  }), active);
 
   const ac = acBreakdown.total;
   const initiative = initiativeBreakdown.total;
@@ -271,7 +281,7 @@ export function derive(input: AnySheet, entries: Map<string, CatalogEntry>): Der
       name: nameOf(f.ref, f.name ?? ""), defenses: (entries.get(refKey(f.ref))?.data as FeatData | undefined)?.defenses,
       chosen: f.resist,
     })),
-    ...equipped.map((e) => ({ name: e.name, defenses: e.data.defenses })),
+    ...active.map((e) => ({ name: e.name, defenses: e.data.defenses })),
     // Las añadidas a mano, una fuente más
     {
       name: MANUAL_DEFENSE_SOURCE,
@@ -299,7 +309,7 @@ export function derive(input: AnySheet, entries: Map<string, CatalogEntry>): Der
     initiative,
     speed,
     darkvision: Math.max(speciesData?.darkvision ?? 0, lineageData?.darkvision ?? 0),
-    saves: saveRows(abilities, saveProfs, proficiencyBonus),
+    saves: saveRows(abilities, saveProfs, proficiencyBonus, saveExtras),
     skills: skillRows(abilities, skillProfs, expertise, proficiencyBonus, jackOfAllTrades),
     armor,
     weapons,
@@ -310,12 +320,14 @@ export function derive(input: AnySheet, entries: Map<string, CatalogEntry>): Der
     weight: carriedWeight(sheet.inventory, entries, abilities.str.score, size),
     features,
     featureUses: uses,
-    ...spellsSummary(sheet, { abilities, proficiencyBonus }, entries),
+    ...spellsSummary(sheet, {
+      abilities, proficiencyBonus, spellAttackBonus: bonusTotal(active, "spellAttack"), spellDcBonus: bonusTotal(active, "spellDc"),
+    }, entries),
     defenses,
     missing: uniq(missing),
     breakdowns: {
       abilities: abilityParts,
-      saves: saveBreakdowns(abilities, saveProfs, proficiencyBonus),
+      saves: saveBreakdowns(abilities, saveProfs, proficiencyBonus, saveExtras),
       skills: skillBreakdowns(abilities, skillProfs, expertise, proficiencyBonus, jackOfAllTrades),
       ac: acBreakdown,
       initiative: initiativeBreakdown,

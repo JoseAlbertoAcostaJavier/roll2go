@@ -62,7 +62,7 @@ const spellGroup = (time: string): ActionGroup =>
       : time.startsWith("1 acción") ? "action"
         : "other";
 
-const BASIC_GROUPS: Record<ActionData["time"], ActionGroup> = {
+export const BASIC_GROUPS: Record<ActionData["time"], ActionGroup> = {
   action: "action", bonus: "bonus", reaction: "reaction", free: "other", varies: "other",
 };
 

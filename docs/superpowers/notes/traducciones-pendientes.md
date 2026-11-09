@@ -81,7 +81,7 @@ Las listas de clases de los conjuros del XPHB nombran clases que no son del XPHB
 | --- | --- | --- | --- |
 | artificer | Artificer (EFA) | Artífice | Nombre de la edición española de 2014 (Eberron); sin confirmar en 2024 |
 
-Los rasgos de clase y subclase (592) tampoco tienen traducción todavía; quedan fuera de esta lista. Los conjuros tienen su propia sección más abajo.
+Los rasgos de clase y subclase del SRD 5.2.1 (353) llevan nombre y descripción oficiales; los que no están en el SRD siguen sin traducción y quedan fuera de esta lista. Los conjuros tienen su propia sección más abajo.
 
 ## Nombres a verificar
 

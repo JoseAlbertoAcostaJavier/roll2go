@@ -180,6 +180,16 @@ export type SheetCustom = {
   order: Record<string, string[]>;
   /** Filas ocultas, por su clave. */
   hidden: string[];
+  /** Acciones básicas elegidas y retocadas por el jugador (ver `basicActions.ts`). */
+  basics: BasicActionChoices;
+};
+
+/** `on`: activadas fuera de las reglas básicas; `off`: desactivadas de las reglas básicas. Por clave de la acción. */
+export type BasicActionChoices = {
+  on: string[];
+  off: string[];
+  /** Nombre y texto propios de las acciones sin versión oficial en español. */
+  edits: { key: string; name: string; details: string }[];
 };
 
 /** Hoja v2: las clases salen del historial de niveles y el equipo inicial se vuelca al inventario. */

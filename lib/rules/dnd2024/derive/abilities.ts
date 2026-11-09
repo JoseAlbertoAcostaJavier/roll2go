@@ -83,15 +83,17 @@ export function abilityScores(sheet: Dnd2024SheetV2, isEpicBoon: (feat: Ref) => 
   return scoresFromBreakdowns(abilityBreakdowns(sheet, isEpicBoon, (_r, fallback) => fallback));
 }
 
-export function saveBreakdowns(abilities: AbilityScores, proficient: Ability[], profBonus: number): Record<Ability, Breakdown> {
+/** `extra`: bonificadores que valen para todas las salvaciones (objetos mágicos). */
+export function saveBreakdowns(abilities: AbilityScores, proficient: Ability[], profBonus: number, extra: Part[] = []): Record<Ability, Breakdown> {
   return Object.fromEntries(ABILITIES.map((a) => [a, makeBreakdown([
     modPart(abilities, a),
     proficient.includes(a) ? { label: "Competencia", value: profBonus } : { label: "Sin competencia", value: 0 },
+    ...extra,
   ])])) as Record<Ability, Breakdown>;
 }
 
-export function saveRows(abilities: AbilityScores, proficient: Ability[], profBonus: number): SaveRow[] {
-  const b = saveBreakdowns(abilities, proficient, profBonus);
+export function saveRows(abilities: AbilityScores, proficient: Ability[], profBonus: number, extra: Part[] = []): SaveRow[] {
+  const b = saveBreakdowns(abilities, proficient, profBonus, extra);
   return ABILITIES.map((ability) => ({ ability, proficient: proficient.includes(ability), total: b[ability].total }));
 }
 

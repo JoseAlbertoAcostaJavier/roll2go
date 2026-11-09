@@ -4,6 +4,7 @@ import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { BookOpen, Info, Map as MapIcon, Plus } from "lucide-react";
+import { CORE_BOOK_KEY } from "@/lib/rules/catalog/pickBooks";
 import type { BookOption } from "@/lib/rules/catalog/types";
 import { field, labelClass, primaryButton, secondaryButton } from "@/app/components/ui/formStyles";
 
@@ -159,17 +160,22 @@ export default function NewCharacterDialog({ systems, campaigns, books }: Props)
                 {systemBooks.length === 0 ? (
                   <p className="text-sm text-muted">No hay libros disponibles para este juego.</p>
                 ) : (
-                  systemBooks.map((b) => (
-                    <label key={b.id} className="flex cursor-pointer items-center gap-3 text-sm">
-                      <input
-                        type="checkbox"
-                        checked={picked.includes(b.id)}
-                        onChange={() => toggleBook(b.id)}
-                        className="h-4 w-4 accent-brand"
-                      />
-                      {b.name}
-                    </label>
-                  ))
+                  systemBooks.map((b) => {
+                    const core = b.key === CORE_BOOK_KEY;
+                    return (
+                      <label key={b.id} className={`flex items-center gap-3 text-sm ${core ? "" : "cursor-pointer"}`}>
+                        <input
+                          type="checkbox"
+                          checked={core || picked.includes(b.id)}
+                          disabled={core}
+                          onChange={() => toggleBook(b.id)}
+                          className="h-4 w-4 accent-brand"
+                        />
+                        {b.name}
+                        {core && <span className="text-xs text-muted">(reglas básicas, siempre incluidas)</span>}
+                      </label>
+                    );
+                  })
                 )}
               </fieldset>
             )}

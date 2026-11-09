@@ -81,9 +81,8 @@ export async function parseCampaignForm(
   if (restrictBooks && !errors.systemId) {
     const visible = new Set(opts.visibleBooks.filter((b) => b.systemId === systemId).map((b) => b.id));
     allowedBooks = [...new Set(allowedBooks)];
-    if (allowedBooks.length === 0)
-      errors.books = "Selecciona al menos un libro.";
-    else if (allowedBooks.some((id) => !visible.has(id))) {
+    // (sin ninguno marcado, quedan las reglas básicas, que siempre están incluidas)
+    if (allowedBooks.some((id) => !visible.has(id))) {
       errors.books =
         "Hay libros que no son de ese sistema o que no puedes usar.";
     }

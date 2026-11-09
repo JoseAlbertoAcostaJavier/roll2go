@@ -15,6 +15,7 @@ vi.mock("@/lib/server/catalog/catalog", () => ({
     db.missing.has(r.key) ? null : (catalog.get(refKey(r)) ?? null),
 }));
 vi.mock("@/lib/server/characters/characterAccess", () => ({ OUTDATED_SHEET_ERROR: "antigua" }));
+vi.mock("@/lib/server/catalog/books", () => ({ coreBookIds: async () => [] }));
 vi.mock("@/lib/models/Book", () => ({
   Book: {
     find: () => {

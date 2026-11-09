@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import VideoFrame from "@/app/components/ui/VideoFrame";
 import { parseBbcode, plainText, safeUrl, videoEmbedUrl, type BbNode } from "@/lib/utils/bbcode";
 
 // Quita los saltos de línea del principio y del final de un elemento de lista
@@ -46,21 +47,7 @@ function render(nodes: BbNode[]): ReactNode[] {
       case "video": {
         const raw = plainText(n.children);
         const embed = videoEmbedUrl(raw);
-        if (embed) {
-          return (
-            <div key={i} className="my-2 max-w-2xl">
-              <iframe
-                src={embed}
-                title="Vídeo"
-                loading="lazy"
-                allowFullScreen
-                referrerPolicy="strict-origin-when-cross-origin"
-                sandbox="allow-scripts allow-same-origin allow-presentation allow-popups"
-                className="aspect-video w-full rounded-md"
-              />
-            </div>
-          );
-        }
+        if (embed) return <VideoFrame key={i} src={embed} />;
         const href = safeUrl(raw);
         return href ? (
           <a key={i} href={href} target="_blank" rel="noopener noreferrer nofollow ugc" className={linkClass}>

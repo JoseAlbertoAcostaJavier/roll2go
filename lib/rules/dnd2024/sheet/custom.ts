@@ -35,7 +35,13 @@ export type CustomOp =
   | { op: "conditionActive"; id: string; active: boolean }
   | { op: "removeCondition"; id: string }
   | { op: "order"; section: string; keys: string[] }
-  | { op: "hide"; key: string; hidden: boolean };
+  | { op: "hide"; key: string; hidden: boolean }
+  | { op: "basicActive"; key: string; active: boolean; core: boolean }
+  | { op: "basicEdit"; key: string; name: string; details: string }
+  | { op: "basicEditClear"; key: string };
+
+/** Operaciones sobre las acciones básicas: el servidor comprueba antes la campaña y el catálogo. */
+export const BASIC_OPS: readonly string[] = ["basicActive", "basicEdit", "basicEditClear"];
 
 export type CustomResult = { ok: true; sheet: Dnd2024SheetV2; custom: SheetCustom } | { ok: false; error: string };
 
@@ -48,7 +54,7 @@ export function customOf(sheet: Pick<Dnd2024SheetV2, "custom">): SheetCustom {
   const c = sheet.custom;
   return {
     items: c?.items ?? [], notes: c?.notes ?? [], defenses: c?.defenses ?? [], conditions: c?.conditions ?? [],
-    order: c?.order ?? {}, hidden: c?.hidden ?? [],
+    order: c?.order ?? {}, hidden: c?.hidden ?? [], basics: c?.basics ?? { on: [], off: [], edits: [] },
   };
 }
 
@@ -163,6 +169,30 @@ export function applyCustom(sheet: Dnd2024SheetV2, op: unknown, newId: () => str
       const others = c.hidden.filter((k) => k !== op.key);
       if (op.hidden && others.length >= CUSTOM_LIMITS.keys) return fail("Has ocultado demasiados elementos.");
       return done({ ...c, hidden: op.hidden ? [...others, op.key] : others });
+    }
+    case "basicActive": {
+      if (typeof op.key !== "string" || op.key.length > CUSTOM_LIMITS.keyLength || typeof op.active !== "boolean" || typeof op.core !== "boolean")
+        return fail("Petición no válida.");
+      const list = op.core ? "off" : "on";
+      const others = c.basics[list].filter((k) => k !== op.key);
+      // Las básicas se guardan cuando se apagan y las demás cuando se encienden
+      const stored = op.core ? !op.active : op.active;
+      if (stored && others.length >= CUSTOM_LIMITS.keys) return fail("Has cambiado demasiadas acciones.");
+      return done({ ...c, basics: { ...c.basics, [list]: stored ? [...others, op.key] : others } });
+    }
+    case "basicEdit": {
+      if (typeof op.key !== "string" || op.key.length > CUSTOM_LIMITS.keyLength) return fail("Petición no válida.");
+      const name = text(op.name, CUSTOM_LIMITS.name);
+      if (!name) return fail("Ponle un nombre (máximo 80 caracteres).");
+      const details = text(op.details ?? "", CUSTOM_LIMITS.text);
+      if (details === null) return fail("La descripción es demasiado larga.");
+      const others = c.basics.edits.filter((e) => e.key !== op.key);
+      if (others.length >= CUSTOM_LIMITS.keys) return fail("Has editado demasiadas acciones.");
+      return done({ ...c, basics: { ...c.basics, edits: [...others, { key: op.key, name, details }] } });
+    }
+    case "basicEditClear": {
+      if (typeof op.key !== "string") return fail("Petición no válida.");
+      return done({ ...c, basics: { ...c.basics, edits: c.basics.edits.filter((e) => e.key !== op.key) } });
     }
     default:
       return fail("Petición no válida.");

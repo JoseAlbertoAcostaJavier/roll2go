@@ -207,9 +207,9 @@ export default function HpEditor({ characterId, max, current, temp, version, res
             <div className="absolute inset-x-0 bottom-0"><HpBar current={hp.current} max={max} temp={hp.temp} /></div>
           </div>
           <Stepper label="PG temporales" value={hp.temp} max={MAX_TEMP_HP} onChange={(v) => update({ temp: v })} />
-          <div aria-hidden="true" className="flex justify-around">
-            <span className={caption}>Actuales</span>
-            <span className={caption}>Máx.</span>
+          <div aria-hidden="true" className="flex justify-center">
+            <span className={`${caption} w-20`}>Actuales</span>
+            <span className={`${caption} w-20`}>Máx.</span>
           </div>
           <span aria-hidden="true" className={caption}>Temp.</span>
         </div>

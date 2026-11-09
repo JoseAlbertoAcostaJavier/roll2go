@@ -7,7 +7,7 @@ import type { Coins, Inventory } from "@/lib/rules/dnd2024/sheet/sheet";
 import { MAX_ATTUNED, MAX_COINS, MAX_OTHER, type InventoryOp } from "@/lib/rules/dnd2024/sheet/edits";
 import { effectiveContainer, inventoryWeights } from "@/lib/rules/dnd2024/sheet/inventory";
 import { itemDetails, locationText, type ItemDetails } from "@/lib/rules/dnd2024/sheet/itemDetails";
-import { inventoryChips, inventoryGroups, type ItemInfo } from "@/lib/rules/dnd2024/sheet/inventoryTable";
+import { attunementLines, inventoryChips, inventoryGroups, type ItemInfo } from "@/lib/rules/dnd2024/sheet/inventoryTable";
 import { rarityName } from "@/lib/rules/dnd2024/sheet/labels";
 import { parseSection } from "@/lib/rules/dnd2024/sheet/sheetSections";
 import type { NewItem } from "./AddItemDialog";
@@ -142,7 +142,7 @@ export default function EquipmentTab({ characterId, isOwner, inventory, info, ca
       },
     };
   }
-  const magic = inv.items.filter((l) => info[l.id]?.rarity && info[l.id]?.rarity !== "none");
+  const magic = attunementLines(inv.items, info);
   const attuned = inv.items.filter((l) => l.attuned).length;
   const carried = inventoryWeights(inv.items, info).carried;
   const over = carried > capacity;
@@ -242,10 +242,10 @@ export default function EquipmentTab({ characterId, isOwner, inventory, info, ca
         />
       )}
 
-      {/* Sintonización: los objetos mágicos del inventario, con su interruptor */}
+      {/* Sintonización: los objetos que la requieren, con su interruptor */}
       <section className={`animate-fade-up space-y-1 ${section(active === "todo")}`} aria-label="Sintonización">
         <SectionBar title="Sintonización" extra={`${attuned}/${MAX_ATTUNED}`} />
-        {magic.length === 0 ? <p className="px-3 py-2 text-sm text-muted">Sin objetos mágicos.</p> : (
+        {magic.length === 0 ? <p className="px-3 py-2 text-sm text-muted">Sin objetos que requieran sintonización.</p> : (
           <ul className="divide-y divide-line">
             {magic.map((l) => (
               <li key={l.id} className="flex flex-wrap items-center gap-3 px-3 py-2 text-sm">

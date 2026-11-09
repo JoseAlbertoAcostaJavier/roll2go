@@ -12,6 +12,8 @@ export type ItemInfo = WeightInfo & {
   nameEn: string | null;
   type: string | null;
   rarity: string | null;
+  /** Requiere sintonización. */
+  attunement?: boolean;
   properties: string[];
   value: number;
   container: ContainerInfo | null;
@@ -35,6 +37,10 @@ export function matchesItem(line: InventoryItem, info: ItemInfo | undefined, q: 
 }
 
 type Info = Record<string, ItemInfo | undefined>;
+
+/** Líneas de la sección Sintonización: las que la requieren y las ya sintonizadas, para poder deshacerlo. */
+export const attunementLines = (items: InventoryItem[], info: Info): InventoryItem[] =>
+  items.filter((l) => info[l.id]?.attunement || l.attuned);
 
 /** Chips de filtro, en orden: Todo, Equipado, un chip por línea contenedora y Otras posesiones. */
 export function inventoryChips(items: InventoryItem[], info: Info): { id: string; label: string }[] {

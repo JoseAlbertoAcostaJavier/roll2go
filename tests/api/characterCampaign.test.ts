@@ -51,6 +51,7 @@ vi.mock("@/lib/server/characters/characterAccess", () => ({
 vi.mock("@/lib/models/Campaign", () => ({
   Campaign: { findById: (id: string) => lean(db.campaign && String(db.campaign._id) === String(id) ? db.campaign : null) },
 }));
+vi.mock("@/lib/server/catalog/books", async (original) => ({ ...(await original<object>()), coreBookIds: async () => [] }));
 vi.mock("@/lib/models/Book", () => ({
   Book: {
     find: () =>

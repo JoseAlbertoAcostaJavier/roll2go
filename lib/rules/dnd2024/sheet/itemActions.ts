@@ -19,7 +19,7 @@ export type ItemAction = {
 const POTION_TYPE = "P";
 const UTILIZE = /utilize action|acci[oó]n de (?:usar|utilizar)/i;
 const BONUS = /bonus action|acci[oó]n adicional/i;
-const HEALING = /(?:regains?|recupera[sn]?)\s+(\d+d\d+(?:\s*\+\s*\d+)?)\s+(?:hit points|puntos de golpe)/i;
+const HEALING = /(?:regains?|recupera(?:s|n|r|rás|rán|rá)?)\s+(\d+d\d+(?:\s*\+\s*\d+)?)\s+(?:hit points|puntos de golpe)/i;
 
 // Verbo propio de los objetos que el jugador reconoce por lo que hacen; el resto, «Usar»
 const VERBS: [RegExp, string][] = [[/\b(?:oil|aceite)\b/i, "Verter"], [/\b(?:bell|campana)\b/i, "Tocar"]];

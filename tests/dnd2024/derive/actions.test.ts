@@ -134,7 +134,7 @@ describe("deriveActions: conjuros", () => {
     expect(spellItem(items, "Paso brumoso")?.group).toBe("bonus");
   });
   it("salvación: «CD N» con la abreviatura de la característica", () => {
-    expect(spellItem(items, "Manos ardientes")).toMatchObject({ hit: "CD 13 DES", damageTypeId: "fire" });
+    expect(spellItem(items, "Manos ardientes")).toMatchObject({ hit: "13 DES", damageTypeId: "fire" });
     expect(spellItem(items, "Detectar magia")).toMatchObject({ hit: null, damageTypeId: null });
   });
   it("del libro, solo los preparados", () => {
@@ -165,7 +165,7 @@ describe("deriveActions: conjuros", () => {
     })]);
     const out = run(sorcerer).items.filter((i) => i.kind === "spell");
     expect(out.map((i) => i.kind === "spell" && i.name)).toEqual(["Dormir", "Escudo", "Identificar"]);
-    expect(spellItem(out, "Dormir")?.hit).toBe("CD 14 SAB");
+    expect(spellItem(out, "Dormir")?.hit).toBe("14 SAB");
     expect(spellItem(out, "Escudo")?.subtitle).toBe("Nivel 1 · Mente aberrante");
   });
 });

@@ -9,7 +9,7 @@ import { Campaign } from "@/lib/models/Campaign";
 import { escapeRegex } from "@/lib/utils/utils";
 import { visibleBooksOf } from "@/lib/server/catalog/books";
 import { isMasteryWeapon } from "@/lib/rules/dnd2024/levels/masteries";
-import { pickBooks } from "@/lib/rules/catalog/pickBooks";
+import { CORE_BOOK_KEY, pickBooks } from "@/lib/rules/catalog/pickBooks";
 import { normalizeName, validateEntryData } from "@/lib/rules/schemas";
 import { spellSummary } from "@/lib/rules/dnd2024/spells/spellText";
 import { inSpellList, spellRowOf, type SpellRow } from "@/lib/rules/catalog/spellRows";
@@ -42,7 +42,9 @@ export async function usableBooks(opts: {
   campaignId?: string;
   chosenBooks?: string[];
 }): Promise<string[]> {
-  const visible = (await visibleBooksOf(opts.userId, opts.systemId)).map((b) => b.id);
+  const options = await visibleBooksOf(opts.userId, opts.systemId);
+  const visible = options.map((b) => b.id);
+  const core = options.filter((b) => b.key === CORE_BOOK_KEY).map((b) => b.id);
 
   let campaign: { restrictBooks: boolean; allowedBooks: string[] } | null = null;
   if (opts.campaignId) {
@@ -55,7 +57,7 @@ export async function usableBooks(opts: {
     campaign = { restrictBooks: !!doc.restrictBooks, allowedBooks: (doc.allowedBooks ?? []).map(String) };
   }
 
-  return pickBooks({ visible, campaign, chosen: opts.chosenBooks ?? [] });
+  return pickBooks({ visible, campaign, chosen: opts.chosenBooks ?? [], core });
 }
 
 type EntryDoc = {
@@ -113,7 +115,7 @@ export async function listEntries(opts: {
   const parent = opts.parent ?? "";
   const q = normalizeName((opts.q ?? "").trim());
   const ids = validIds(opts.books);
-  return cachedList("rules-entries-v9", [kind, parent, q], ids, async (names) => {
+  return cachedList("rules-entries-v13", [kind, parent, q], ids, async (names) => {
     const withData = KINDS_WITH_DATA.includes(kind);
     const filter: Record<string, unknown> = { book: { $in: ids }, kind, ...NOT_SUPERSEDED };
     if (parent) filter["parent.key"] = parent;
@@ -160,7 +162,7 @@ export function listChoiceItems(books: string[]): Promise<EntryOption[]> {
 /** Conjuros de los libros dados con datos y resumen, para la pestaña Conjuros (sin el límite del listado); ordenados por nombre. */
 export async function listSpells(books: string[]): Promise<SpellOption[]> {
   const ids = validIds(books);
-  return cachedList("rules-spells-v5", [], ids, async (names) => {
+  return cachedList("rules-spells-v6", [], ids, async (names) => {
     const docs = (await BookEntry.find({ book: { $in: ids }, kind: "spell", ...NOT_SUPERSEDED })
       .select("-foundry")
       .sort({ nameLower: 1 })
@@ -182,7 +184,7 @@ export async function listSpells(books: string[]): Promise<SpellOption[]> {
 /** Acciones básicas de combate (entradas `action`) de los libros dados, completas y ordenadas por nombre. */
 export async function listActions(books: string[]): Promise<CatalogEntry[]> {
   const ids = validIds(books);
-  return cachedList("rules-actions-v4", [], ids, async (names) => {
+  return cachedList("rules-actions-v7", [], ids, async (names) => {
     const docs = (await BookEntry.find({ book: { $in: ids }, kind: "action", ...NOT_SUPERSEDED })
       .select("-foundry")
       .sort({ nameLower: 1 })

@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ImagePlus, LoaderCircle, X } from "lucide-react";
 import BbcodeEditor from "@/app/components/ui/BbcodeEditor";
+import ImageCropper from "@/app/components/ui/ImageCropper";
+import { CORE_BOOK_KEY } from "@/lib/rules/catalog/pickBooks";
 import type { BookOption } from "@/lib/rules/catalog/types";
 
 type Option = { id: string; name: string };
@@ -40,15 +42,20 @@ const linkButton = "mt-2 flex items-center gap-1 text-sm text-brand-soft hover:u
 /* Selector de imagen con vista previa y validación de tipo y tamaño.
    currentUrl: imagen que ya tiene la campaña (al editar). onRemove(true) = hay que borrar la actual. */
 export function ImagePicker({
-  id, label, hint, maxMB, previewClass, currentUrl, onFile, onRemove, error,
+  id, label, hint, maxMB, previewClass, currentUrl, onFile, onRemove, error, cropSquare = false, keepRatio = false,
 }: {
   id: string; label: string; hint: string; maxMB: number; previewClass: string;
   currentUrl?: string | null;
   onFile: (f: File | null) => void;
   onRemove: (remove: boolean) => void;
   error?: string;
+  /** Pide elegir una zona cuadrada antes de aceptar el archivo. */
+  cropSquare?: boolean;
+  /** Muestra la imagen entera, con sus proporciones. */
+  keepRatio?: boolean;
 }) {
   const [url, setUrl] = useState<string | null>(null); // vista previa del archivo nuevo
+  const [cropping, setCropping] = useState<{ src: string; name: string } | null>(null);
   const [removed, setRemoved] = useState(false);
   const [localError, setLocalError] = useState("");
   const urlRef = useRef<string | null>(null);
@@ -87,6 +94,20 @@ export function ImagePicker({
       return;
     }
     setLocalError("");
+    if (cropSquare) {
+      clearCrop();
+      setCropping({ src: URL.createObjectURL(file), name: file.name });
+      return;
+    }
+    accept(file);
+  }
+
+  function clearCrop() {
+    if (cropping) URL.revokeObjectURL(cropping.src);
+    setCropping(null);
+  }
+
+  function accept(file: File) {
     if (urlRef.current) URL.revokeObjectURL(urlRef.current);
     urlRef.current = URL.createObjectURL(file);
     setUrl(urlRef.current);
@@ -99,12 +120,27 @@ export function ImagePicker({
 
   return (
     <div>
+      {cropping && (
+        <ImageCropper
+          src={cropping.src}
+          fileName={cropping.name}
+          opener={inputRef.current}
+          onCancel={() => {
+            clearCrop();
+            if (inputRef.current) inputRef.current.value = "";
+          }}
+          onDone={(file) => {
+            clearCrop();
+            accept(file);
+          }}
+        />
+      )}
       <label htmlFor={id} className={labelClass}>{label}</label>
       <div className="flex items-start gap-4">
         <div className={`flex shrink-0 items-center justify-center overflow-hidden rounded-md border border-dashed border-line bg-surface text-muted ${previewClass}`}>
           {shown ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={shown} alt="" className="h-full w-full object-cover" />
+            <img src={shown} alt="" className={keepRatio ? "h-full w-auto max-w-full object-contain" : "h-full w-full object-cover"} />
           ) : (
             <ImagePlus size={26} aria-hidden="true" />
           )}
@@ -183,7 +219,6 @@ export default function CampaignForm({
     const e: Errors = {};
     if (name.trim().length < 3 || name.trim().length > 80) e.name = "El nombre debe tener entre 3 y 80 caracteres.";
     if (!systemId) e.systemId = "Elige un sistema de rol.";
-    if (restrictBooks && selectedBooks.length === 0) e.books = "Selecciona al menos un libro.";
     if (allowCharacters && !allowInternal && !allowExternal) {
       e.characters = "Elige si se admiten personajes internos, externos o ambos.";
     }
@@ -398,17 +433,22 @@ export default function CampaignForm({
               <fieldset>
                 <legend className="mb-2 text-sm text-muted">Libros de este sistema:</legend>
                 <div className="space-y-2">
-                  {available.map((b) => (
-                    <label key={b.id} className="flex cursor-pointer items-center gap-2 text-sm">
-                      <input
-                        type="checkbox"
-                        checked={selectedBooks.includes(b.id)}
-                        onChange={() => toggleBook(b.id)}
-                        className="h-4 w-4 accent-brand"
-                      />
-                      {b.name}
-                    </label>
-                  ))}
+                  {available.map((b) => {
+                    const core = b.key === CORE_BOOK_KEY;
+                    return (
+                      <label key={b.id} className={`flex items-center gap-2 text-sm ${core ? "" : "cursor-pointer"}`}>
+                        <input
+                          type="checkbox"
+                          checked={core || selectedBooks.includes(b.id)}
+                          disabled={core}
+                          onChange={() => toggleBook(b.id)}
+                          className="h-4 w-4 accent-brand"
+                        />
+                        {b.name}
+                        {core && <span className="text-xs text-muted">(reglas básicas, siempre incluidas)</span>}
+                      </label>
+                    );
+                  })}
                 </div>
               </fieldset>
             )}

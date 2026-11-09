@@ -96,6 +96,7 @@ export function weaponAttack(
   proficient: boolean,
   mastery: boolean,
   martialArtsDie: string | null = null,
+  magic: { attack?: number; damage?: number } = {},
 ): Attack {
   const w = weapon.weapon;
   const properties = w?.properties ?? [];
@@ -107,9 +108,10 @@ export function weaponAttack(
     : weapon.type === RANGED_TYPE ? "dex" : "str";
   const mod = mods[ability];
   const die = (dice: string) => (martialArts ? largerDie(dice, martialArts) : dice);
-  let damage = w?.damage ? withMod(die(w.damage), mod) : "";
+  const damageMod = mod + (magic.damage ?? 0);
+  let damage = w?.damage ? withMod(die(w.damage), damageMod) : "";
   const twoHanded = w && properties.includes(VERSATILE) ? versatileDie(w.damage) : null;
-  if (twoHanded) damage += ` / ${withMod(die(twoHanded), mod)} (dos manos)`;
+  if (twoHanded) damage += ` / ${withMod(die(twoHanded), damageMod)} (dos manos)`;
   const masteryLabel = mastery && w?.mastery ? masteryName(w.mastery) : null;
   const notes = [
     ...(w?.category ? [weaponCategoryName(w.category)] : []), ...properties.map(weaponPropertyName),
@@ -117,7 +119,7 @@ export function weaponAttack(
   ].join(", ");
   return {
     name: weapon.name,
-    bonus: mod + (proficient ? profBonus : 0),
+    bonus: mod + (proficient ? profBonus : 0) + (magic.attack ?? 0),
     damage,
     damageType: w ? damageTypeName(w.damageType) : "",
     notes,
@@ -130,9 +132,9 @@ export function weaponAttack(
 
 /**
  * Otras formas de usar un arma cuerpo a cuerpo: lanzarla (arrojadiza, con su alcance a distancia) y atacar con la otra mano
- * (ligera, como acción adicional: el modificador positivo no se suma al daño, uno negativo sí).
+ * (ligera, como acción adicional: el modificador positivo no se suma al daño, uno negativo sí; el bonificador mágico siempre).
  */
-export function attackVariants(base: Attack, weapon: ItemData): Attack[] {
+export function attackVariants(base: Attack, weapon: ItemData, magicDamage = 0): Attack[] {
   if (weapon.type === RANGED_TYPE) return [];
   const properties = weapon.weapon?.properties ?? [];
   const out: Attack[] = [];
@@ -140,7 +142,8 @@ export function attackVariants(base: Attack, weapon: ItemData): Attack[] {
     out.push({ ...base, name: `${base.name} (arrojadiza)`, kind: "ranged", range: attackRange(weapon, true), variant: "thrown" });
   }
   if (properties.includes(LIGHT)) {
-    const damage = base.damage.split(" / ")[0].replace(/\+\d+$/, "");
+    const m = /^(.*?)([+-]\d+)?$/.exec(base.damage.split(" / ")[0])!;
+    const damage = withMod(m[1], Math.min(Number(m[2] ?? 0) - magicDamage, 0) + magicDamage);
     out.push({ ...base, name: `${base.name} (otra mano)`, damage, notes: ["Acción adicional", base.notes].filter(Boolean).join(", "), variant: "offhand" });
   }
   return out;

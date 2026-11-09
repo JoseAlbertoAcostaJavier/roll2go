@@ -1,3 +1,4 @@
+import { CORE_BOOK_KEY } from "@/lib/rules/catalog/pickBooks";
 import type { BookOption } from "@/lib/rules/catalog/types";
 
 type Rules = {
@@ -7,12 +8,12 @@ type Rules = {
   charactersRules: { allowed: boolean; internal: boolean; external: boolean };
 };
 
-// Con filtro: solo los libros aprobados por el DM. Sin filtro: todos los del sistema.
+// Con filtro: los libros aprobados por el DM y las reglas básicas. Sin filtro: todos los del sistema.
 // systemBooks: libros del sistema de la campaña (los carga el llamador desde la base de datos).
 export function booksForCharacter(c: Rules, systemBooks: BookOption[]) {
   if (!c.restrictBooks) return systemBooks;
   const allowed = new Set(c.allowedBooks);
-  return systemBooks.filter((b) => allowed.has(b.id));
+  return systemBooks.filter((b) => allowed.has(b.id) || b.key === CORE_BOOK_KEY);
 }
 
 // "internal": creado desde la campaña. "external": creado fuera y añadido después.
@@ -44,6 +45,8 @@ type JoinInput = {
   // books: los libros que usa de verdad su hoja (booksUsedBy), no Character.books
   character: { systemId: string; campaign: string | null; books: string[] };
   isMember: boolean;
+  /** Ids de las reglas básicas: siempre permitidas. */
+  coreBooks?: string[];
 };
 
 // Si un personaje creado fuera puede solicitar unirse a la campaña. Con libros no permitidos devuelve sus ids en
@@ -59,7 +62,7 @@ export function canRequestJoin(
     return { ok: false, error: "Esta campaña no admite personajes creados fuera de ella." };
   if (character.campaign) return { ok: false, error: "Este personaje ya está en una campaña." };
   if (campaign.restrictBooks) {
-    const allowed = new Set(campaign.allowedBooks);
+    const allowed = new Set([...campaign.allowedBooks, ...(input.coreBooks ?? [])]);
     const disallowed = character.books.filter((b) => !allowed.has(b));
     if (disallowed.length) return { ok: false, error: "Este personaje usa libros que la campaña no permite.", disallowed };
   }

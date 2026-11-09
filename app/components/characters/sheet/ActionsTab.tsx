@@ -12,6 +12,7 @@ import { iconSrc } from "@/lib/utils/icons";
 import MaskIcon from "@/app/components/ui/MaskIcon";
 import UntranslatedTag from "@/app/components/ui/UntranslatedTag";
 import ActionsDialogs, { BasicActionButton, FeatureButton, ItemButton, SpellLink, type BasicActionInfo, type FeatureInfo } from "./ActionsDialogs";
+import BasicActionsManager, { type BasicActionOption } from "./BasicActionsManager";
 import FeatureUsesControl from "./FeatureUsesControl";
 import OrderedSection, { type OrderedRow } from "./OrderedSection";
 import PanelSearch from "./PanelSearch";
@@ -37,6 +38,8 @@ type Props = {
   /** Conjuros de las filas (cabecera de su ficha mientras llega la descripción). */
   spells: SpellOption[];
   basics: BasicActionInfo[];
+  /** Acciones del gestor del engranaje; vacío si no se pueden elegir (no es el dueño, o manda la campaña). */
+  basicOptions: BasicActionOption[];
   /** Fichas y descripciones de las líneas del inventario, para abrir la de cada arma. */
   itemCards: Record<string, ItemDetails>;
   itemDescriptions: Record<string, string>;
@@ -69,11 +72,11 @@ function HitCell({ name, hit }: { name: string; hit: string }) {
     : <span className={`${hitClass} ${hit ? "" : "font-normal text-muted"}`}>{hit || "—"}</span>;
 }
 
-function DamageCell({ name, damage, children }: { name: string; damage: string; children?: ReactNode }) {
+function DamageCell({ name, damage, healing = false, children }: { name: string; damage: string; healing?: boolean; children?: ReactNode }) {
   const expr = diceIn(damage);
   return (
-    <span className={damageClass}>
-      {expr ? <RollButton label={`${name}: daño`} expr={expr}>{damage}</RollButton> : damage}
+    <span className={`${damageClass} ${healing ? "text-success!" : ""}`}>
+      {expr ? <RollButton label={`${name}: ${healing ? "curación" : "daño"}`} expr={expr}>{damage}</RollButton> : damage}
       {children}
     </span>
   );
@@ -81,7 +84,7 @@ function DamageCell({ name, damage, children }: { name: string; damage: string; 
 
 // Pestaña Combate: los ataques y, por lo que cuesta usarlos, los conjuros, rasgos y acciones. Todo sale en el documento: el
 // filtro y el buscador solo deciden qué se ve en pantalla, la hoja impresa sale completa.
-export default function ActionsTab({ characterId, isOwner, active, summary, filter, base, query, entries, spells, basics, itemCards, itemDescriptions, custom, itemActions, mastery }: Props) {
+export default function ActionsTab({ characterId, isOwner, active, summary, filter, base, query, entries, spells, basics, basicOptions, itemCards, itemDescriptions, custom, itemActions, mastery }: Props) {
   const sections = actionSections(summary, "todo");
   const features: FeatureInfo[] = sections.flatMap((s) => s.features).map((f) => {
     const e = entries.get(refKey(f.ref));
@@ -135,7 +138,7 @@ export default function ActionsTab({ characterId, isOwner, active, summary, filt
             <span className="text-muted">{r.range}</span>
             <HitCell name={r.name} hit={r.hit ?? ""} />
             {r.damage ? (
-              <DamageCell name={r.name} damage={r.damage}>
+              <DamageCell name={r.name} damage={r.damage} healing={!!r.healing}>
                 {r.healing ? <span className="text-xs font-normal text-success">Curación</span> : (
                   <MaskIcon src={iconSrc("damageType", r.damageTypeId)} size={16} label={r.damageTypeId ? DAMAGE_TYPE_NAMES[r.damageTypeId] : undefined} className="text-brand-soft" />
                 )}
@@ -162,6 +165,35 @@ export default function ActionsTab({ characterId, isOwner, active, summary, filt
       ),
     }])),
   ];
+
+  // La fila de las acciones básicas sigue ahí aunque se desactiven todas, para poder volver a activarlas
+  const basicsRow = (group: Group, s: ActionSection | undefined): OrderedRow[] => {
+    const shownBasics = s?.basics ?? [];
+    const options = basicOptions.filter((o) => o.group === group);
+    if (shownBasics.length === 0 && options.length === 0) return [];
+    const title = group === "reaction" ? "Reacciones en combate" : "Acciones en combate";
+    return [{
+      key: `basics:${group}`,
+      label: "Acciones en combate",
+      search: `Acciones en combate ${shownBasics.map((b) => b.name).join(" ")}`,
+      node: (
+        <div className={DETAIL_GRID}>
+          <span className="flex items-center gap-2 font-semibold text-white">
+            {title}
+            {options.length > 0 && <BasicActionsManager characterId={characterId} title={title} options={options} />}
+          </span>
+          <p className="text-muted">
+            {shownBasics.length === 0 ? "Ninguna activada." : shownBasics.map((b, i) => (
+              <Fragment key={refKey(b.ref)}>
+                {i > 0 && ", "}
+                <BasicActionButton actionKey={refKey(b.ref)} name={b.name} />
+              </Fragment>
+            ))}
+          </p>
+        </div>
+      ),
+    }];
+  };
 
   const groupRows = (group: Group, s: ActionSection | undefined): OrderedRow[] => [
     ...(s?.spells ?? []).map((sp): OrderedRow => ({
@@ -196,24 +228,7 @@ export default function ActionsTab({ characterId, isOwner, active, summary, filt
         ),
       };
     }),
-    ...(s && s.basics.length > 0 ? [{
-      key: `basics:${group}`,
-      label: "Acciones en combate",
-      search: `Acciones en combate ${s.basics.map((b) => b.name).join(" ")}`,
-      node: (
-        <div className={DETAIL_GRID}>
-          <span className="font-semibold text-white">{group === "reaction" ? "Reacciones en combate" : "Acciones en combate"}</span>
-          <p className="text-muted">
-            {s.basics.map((b, i) => (
-              <Fragment key={refKey(b.ref)}>
-                {i > 0 && ", "}
-                <BasicActionButton actionKey={refKey(b.ref)} name={b.name} />
-              </Fragment>
-            ))}
-          </p>
-        </div>
-      ),
-    }] : []),
+    ...basicsRow(group, s),
     ...itemActions.filter((a) => a.group === group).map((a): OrderedRow => ({
       key: a.key,
       label: a.name,

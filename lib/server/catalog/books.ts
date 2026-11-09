@@ -2,6 +2,7 @@ import "server-only";
 import mongoose from "mongoose";
 import { connectDB } from "@/lib/models/mongodb";
 import { Book } from "@/lib/models/Book";
+import { CORE_BOOK_KEY } from "@/lib/rules/catalog/pickBooks";
 import type { BookOption } from "@/lib/rules/catalog/types";
 
 export type { BookOption };
@@ -59,6 +60,13 @@ export async function visibleBooksOf(userId: string, systemId?: string): Promise
   await connectDB();
   const docs = await Book.find(visibleBooksFilter(userId, systemId)).sort({ name: 1 }).lean();
   return docs.map(toOption);
+}
+
+/** Ids de los libros de reglas básicas (siempre disponibles). */
+export async function coreBookIds(): Promise<string[]> {
+  await connectDB();
+  const docs = await Book.find({ owner: null, key: CORE_BOOK_KEY }).select("_id").lean();
+  return docs.map((b: { _id: unknown }) => String(b._id));
 }
 
 // Ids (de los dados) que son de libros oficiales y públicos, de cualquier sistema

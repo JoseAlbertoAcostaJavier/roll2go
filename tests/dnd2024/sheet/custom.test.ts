@@ -14,7 +14,7 @@ const ok = (r: ReturnType<typeof applyCustom>) => {
 
 describe("customOf", () => {
   it("una hoja antigua se lee como vacía", () => {
-    expect(customOf(sheet())).toEqual({ items: [], notes: [], defenses: [], conditions: [], order: {}, hidden: [] });
+    expect(customOf(sheet())).toEqual({ items: [], notes: [], defenses: [], conditions: [], order: {}, hidden: [], basics: { on: [], off: [], edits: [] } });
   });
 });
 
